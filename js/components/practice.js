@@ -295,10 +295,12 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   useEffect(()=>{buildMCOpts()},[q]);
   const buildMCOpts=()=>{
     if(!q.isMC){setMcOpts([]);return}
+    var _twoMode=questions.length>=14;
     // exam5: 이미 choices 배열이 있는 모의고사 포맷
     if(q.category==='exam5'&&q.choices){
-      const opts=q.choices.map((c,i)=>({text:c,isC:i===q.answer}));
-      setMcOpts(opts);return;
+      var opts5=q.choices.map((c,i)=>({text:c,isC:i===q.answer}));
+      if(_twoMode&&opts5.length>2){var c5=opts5.find(o=>o.isC);var w5=opts5.find(o=>!o.isC);opts5=[c5,w5].filter(Boolean);if(Math.random()<0.5)opts5=[opts5[1],opts5[0]];}
+      setMcOpts(opts5);return;
     }
     let opts=[];
     if(q.category==='math'){
@@ -345,6 +347,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
         if(opts.length<4){let ins2=ins+1;while(divSet.has(ins2)||ins2===ins||Math.abs(ins2-q.target)<=1)ins2++;const f4=[...q.divisors,ins2].sort((a,b)=>a-b);const s4=f4.join(', ');if(!usedFakes.has(s4)){usedFakes.add(s4);opts.push({text:s4,isC:false})}}
       }
     }
+    if(_twoMode&&opts.length>2){var cO=opts.find(o=>o.isC);var wO=opts.find(o=>!o.isC);opts=[cO,wO].filter(Boolean);}
     setMcOpts(shuffle(opts));
   };
 

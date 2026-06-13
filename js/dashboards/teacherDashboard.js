@@ -46,7 +46,21 @@ function StudentAnalysisTab(){
   const[editFolderId,setEditFolderId]=useState(null);
   const[pickerOpen,setPickerOpen]=useState(null);  // 열린 학생 id
 
-  const saveFolders=f=>{setFolders(f);localStorage.setItem('teacherFolders',JSON.stringify(f));};
+  useEffect(()=>{
+    db.collection('teacherSettings').doc('folders').get().then(snap=>{
+      if(snap.exists&&snap.data().folders){
+        var f=snap.data().folders;
+        setFolders(f);
+        try{localStorage.setItem('teacherFolders',JSON.stringify(f));}catch(e){}
+      }
+    }).catch(()=>{});
+  },[]);
+
+  const saveFolders=f=>{
+    setFolders(f);
+    try{localStorage.setItem('teacherFolders',JSON.stringify(f));}catch(e){}
+    db.collection('teacherSettings').doc('folders').set({folders:f,updatedAt:Date.now()}).catch(()=>{});
+  };
   const customFolders=folders.filter(f=>f.id!=='all');
 
   const addFolder=()=>{

@@ -488,7 +488,7 @@ function gen_nec_suff(){
     const root=pick([2,3,4]),other=pick([1,2,3]);
     const a=root+other; // q: x²-(root+other)x+root*other, but simplified
     const{choices,answer}=makeChoices(String(root),[root+1,root-1<0?root+2:root-1,a].filter(w=>w!==root&&w>0).slice(0,3).map(String));
-    return{topic:'충분조건',q:`두 조건 p: x=${root}, q: x²−${root+other}x+${root*other}=0에 대하여 p는 q이기 위한 충분조건이다. 이때 옳은 것은?`,choices:['p는 q의 충분조건이지만 필요조건이 아니다','p는 q의 필요조건이지만 충분조건이 아니다','p는 q의 필요충분조건이다','p와 q는 서로 무관하다'],answer:'p는 q의 충분조건이지만 필요조건이 아니다',meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+    return{topic:'충분조건',q:`두 조건 p: x=${root}, q: x²−${root+other}x+${root*other}=0에 대하여 p는 q이기 위한 충분조건이다. 이때 옳은 것은?`,choices:['p는 q의 충분조건이지만 필요조건이 아니다','p는 q의 필요조건이지만 충분조건이 아니다','p는 q의 필요충분조건이다','p와 q는 서로 무관하다'],answer:0,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
   }
   // 구간형: p가 q의 충분조건이 되도록 하는 상수 a
   const offset=pick([1,2,3]),base=randInt(1,3);

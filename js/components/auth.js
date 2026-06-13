@@ -19,7 +19,7 @@ function AuthScreen({onLogin}){
       const doc=await db.collection('users').doc(name.trim()).get();
       if(isReg){
         if(pin!==pinC){setErr('PIN 번호가 서로 다릅니다.');setLoading(false);return}
-        if(doc.exists){setErr('이미 등록된 이름입니다. 로그인을 해주세요.');setLoading(false);return}
+        if(doc.exists){setErr('이미 같은 이름의 계정이 있습니다. 혹시 본인 계정인지 다시 확인해보시고, 이미 계정이 있으시면 로그인을 해주세요.');setLoading(false);return}
         const isAdmin=ADMIN_NAMES.includes(name.trim());
         const userData={name:name.trim(),pin,role:isAdmin?'admin':'student',createdAt:todayStr(),lastLoginAt:`${todayStr()} ${timeStr()}`,totalLessons:0,todayLessons:0,todayCorrect:0,todayWrong:0,lastDate:todayStr(),activeDates:[],logs:[],currentWeekStart:getKSTMonday(),stampArchive:[],goal:3,ver:0,rangeMin:10,rangeMax:99,divRangeMin:10,divRangeMax:99};
         await db.collection('users').doc(name.trim()).set(userData);
