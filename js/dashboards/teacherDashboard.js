@@ -262,7 +262,9 @@ function StudentDetail({student,onBack}){
   const[qStats,setQStats]=useState({});
   const[qStatsLoading,setQStatsLoading]=useState(false);
   const[isExporting,setIsExporting]=useState(false);
-  const logs=student.logs||[];
+  const[showAllSessions,setShowAllSessions]=useState(false); // 5일 지난 세션까지 보기
+  const[printLog,setPrintLog]=useState(null);                // 회차 인쇄/PDF 대상
+  const logs=student.logs||[]; // ※ 분석 엔진은 전체 로그 사용 (필터 금지)
   const a=analyzeStudent(student);
   const LIGHT_CLS={'light-red':'bg-red-50 text-red-700 border border-red-200','light-yel':'bg-yellow-50 text-yellow-700 border border-yellow-200','light-grn':'bg-green-50 text-green-700 border border-green-200'};
   const ORD=['①','②','③','④'];
@@ -1428,10 +1430,19 @@ function StudentDetail({student,onBack}){
       )}
     </div>
 
-    {/* 세션 기록 (탭 4 또는 항상 표시) */}
-    {tab==='sessions'&&(<div className="space-y-3">
+    {/* 세션 기록 (탭 4 또는 항상 표시) — 5일 이내만 기본 표시, 더보기로 전체 */}
+    {tab==='sessions'&&(()=>{
+      const recentSessions=logs.filter(isRecentLog);
+      const olderSessions=logs.length-recentSessions.length;
+      const sessionLogs=showAllSessions?logs:recentSessions;
+      return(<div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-400">{showAllSessions?'전체 기록':'최근 5일 기록'}</span>
+        {olderSessions>0&&<button onClick={()=>setShowAllSessions(!showAllSessions)} className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-xl">{showAllSessions?'최근만 보기 ▲':`더보기 (지난 기록 ${olderSessions}개) ▼`}</button>}
+      </div>
       {logs.length===0&&<div className="text-center text-gray-400 py-8 font-bold">학습 기록이 없어요.</div>}
-      {logs.map((log,i)=>{
+      {logs.length>0&&sessionLogs.length===0&&<div className="text-center text-gray-400 py-6 text-sm font-bold">최근 5일간 기록이 없어요. ‘더보기’로 지난 기록을 확인하세요.</div>}
+      {sessionLogs.map((log,i)=>{
         const isOpen=open===i;
         const feelIco=log.feeling==='easy'?'😊':log.feeling==='hard'?'😥':log.feeling==='normal'?'😐':'';
         const rawAcc=calcRawAccuracy(log.questions);
@@ -1448,6 +1459,7 @@ function StudentDetail({student,onBack}){
                   {log.totalSec&&<span className="text-xs text-gray-400">⏱️{Math.floor(activeSec/60)}분{activeSec%60}초{flagged?'(⚠️유휴있음)':''}</span>}
                 </div>
               </div>
+              <button onClick={()=>setPrintLog(log)} className="text-xs text-emerald-700 font-bold px-3 py-2 bg-emerald-50 rounded-xl ml-2 flex-shrink-0">🖨️인쇄</button>
               <button onClick={()=>setOpen(isOpen?null:i)} className="text-xs text-indigo-600 font-bold px-3 py-2 bg-indigo-50 rounded-xl ml-2 flex-shrink-0">{isOpen?'닫기':'문항보기'}</button>
             </div>
             {isOpen&&log.questions&&(
@@ -1489,7 +1501,9 @@ function StudentDetail({student,onBack}){
           </div>
         );
       })}
-    </div>)}
+    </div>);
+    })()}
+    {printLog&&<SessionPrintModal log={printLog} studentName={student.name} onClose={()=>setPrintLog(null)}/>}
   </div>);
 }
 

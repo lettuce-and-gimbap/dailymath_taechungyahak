@@ -151,6 +151,17 @@ function SolutionBox({q}){
       <span className="leading-relaxed">{children}</span>
     </div>
   );
+  // 생성기가 직접 만든 단계별 해설(q.sol)이 있으면 우선 사용 — 정답과 동일한 계산값에서 나오므로 항상 일치
+  if(Array.isArray(q.sol)&&q.sol.length){
+    return(
+      <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 fade-in">
+        <div className="text-xs font-black text-amber-600 mb-3 tracking-wide">📖 풀이 과정 (천천히 따라오세요)</div>
+        <div className="space-y-2">
+          {q.sol.map((s,i)=><Row key={i} step={i+1===q.sol.length?'정답':`${i+1}단계`}>{s}</Row>)}
+        </div>
+      </div>
+    );
+  }
   if(q.category==='math'){
     if(q.hasR){
       const prod=q.b*q.ansC;
@@ -385,6 +396,15 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       examSource:getExamSource(q)||null,
       explanation:easyExplanation(q),
       meta};
+    // 검정고시(exam5)는 회차 인쇄/PDF를 위해 원문제 전체를 함께 저장 (그림·선택지·해설 포함)
+    if(q.category==='exam5'){
+      newQ.topic=q.topic;
+      newQ.qFull=q.q;
+      newQ.choices=q.choices;
+      newQ.answerIdx=q.answer;
+      if(q.graph)newQ.graph=q.graph;
+      if(Array.isArray(q.sol))newQ.sol=q.sol;
+    }
     
     const newCorrect=correctCount+(isOk?1:0);const newWrong=wrongCount+(isOk?0:1);
     setCorrectCount(newCorrect);setWrongCount(newWrong);
@@ -562,10 +582,16 @@ function PracticeDone({userData,correct,wrong,onAgain,onHome}){
 
 /* ===== HISTORY TAB ===== */
 function HistoryTab({userData, feedbacks}){
-  const logs=userData.logs||[];
+  const allLogs=userData.logs||[];
   const fbs = feedbacks || [];
   const[open,setOpen]=useState(null);
   const[showFbs, setShowFbs] = useState(false); // 피드백 보관함 열기/닫기
+  const[showAll,setShowAll]=useState(false);     // 5일 지난 기록까지 모두 보기
+  const[printLog,setPrintLog]=useState(null);    // 인쇄/PDF 대상 회차
+  // 5일 이내 기록만 기본 표시, '더보기'로 전체 표시
+  const recentLogs=allLogs.filter(isRecentLog);
+  const olderCount=allLogs.length-recentLogs.length;
+  const logs=showAll?allLogs:recentLogs;
 
   return(<div className="p-4 pb-36 space-y-3">
     
@@ -591,12 +617,17 @@ function HistoryTab({userData, feedbacks}){
       </div>
     )}
 
-    <div className="text-lg font-black text-gray-700 mt-4 mb-2">📅 학습 기록</div>
-    {logs.length===0&&<div className="text-center text-gray-400 py-12 text-base font-bold">아직 완료한 레슨이 없어요.<br/>문제를 풀어보세요!</div>}
+    <div className="flex items-center justify-between mt-4 mb-2">
+      <div className="text-lg font-black text-gray-700">📅 학습 기록 {showAll?'(전체)':'(최근 5일)'}</div>
+      {olderCount>0&&<button onClick={()=>setShowAll(!showAll)} className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-xl">{showAll?'최근만 보기 ▲':`더보기 (지난 기록 ${olderCount}개) ▼`}</button>}
+    </div>
+    {allLogs.length===0&&<div className="text-center text-gray-400 py-12 text-base font-bold">아직 완료한 레슨이 없어요.<br/>문제를 풀어보세요!</div>}
+    {allLogs.length>0&&logs.length===0&&<div className="text-center text-gray-400 py-8 text-sm font-bold">최근 5일간 학습 기록이 없어요.<br/>아래 ‘더보기’로 지난 기록을 볼 수 있어요.</div>}
     {logs.map((log,i)=>{const isOpen=open===i;return(<div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 p-4 border-b border-gray-100">
         <div className="flex-1"><div className="font-bold text-gray-800 text-base">{fmtDate(log.date)} {log.time}</div>
           <div className="text-sm text-gray-500 mt-0.5">{log.type} · 점수 {log.score}{log.totalSec?` · ⏱️ ${Math.floor(log.totalSec/60)}분 ${log.totalSec%60}초`:''}</div></div>
+        <button onClick={()=>setPrintLog(log)} className="text-sm text-emerald-700 font-bold px-3 py-1.5 bg-emerald-50 rounded-xl">🖨️ 인쇄</button>
         <button onClick={()=>setOpen(isOpen?null:i)} className="text-sm text-indigo-600 font-bold px-3 py-1.5 bg-indigo-50 rounded-xl">{isOpen?'닫기':'보기'}</button>
       </div>
       {isOpen&&log.questions&&log.questions.length>0&&(<div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -609,6 +640,7 @@ function HistoryTab({userData, feedbacks}){
         </div>)}
       </div>)}
     </div>)})}
+    {printLog&&<SessionPrintModal log={printLog} onClose={()=>setPrintLog(null)}/>}
   </div>);
 }
 

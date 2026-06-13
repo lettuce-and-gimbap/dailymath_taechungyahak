@@ -23,7 +23,7 @@ function WorksheetTab(){
   const[selStudent, setSelStudent] = useState('');
   const[grades, setGrades] = useState({});
 
-  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2021~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2021~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
+  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
   // 영역별 정답률 계산 (학생 로그 기반)
   const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
@@ -288,9 +288,10 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       </button>
       {examSheet.questions.map((q,i)=>(
         <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center">{i+1}</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{q.topic}</span>
+            {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
           </div>
           <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3">{q.q}</div>
           {q.graph&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}

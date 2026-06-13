@@ -515,7 +515,258 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 10. 이등변삼각형 (꼭지각 표시) ──
+  if(g.type==='iso_triangle'){
+    const{apex,baseAng}=g;
+    const svgW=220,svgH=170;
+    const Ax=110,Ay=24;        // 꼭짓점 A (위)
+    const By=146;
+    const Bx=44,Cx=176;        // 밑변 양끝 B, C
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        <polygon points={`${Ax},${Ay} ${Bx},${By} ${Cx},${By}`} fill="rgba(99,102,241,0.06)" stroke="#6366f1" strokeWidth={2}/>
+        {/* 같은 변 표시 (tick) */}
+        <line x1={(Ax+Bx)/2-5} y1={(Ay+By)/2} x2={(Ax+Bx)/2+5} y2={(Ay+By)/2} stroke="#059669" strokeWidth={2}/>
+        <line x1={(Ax+Cx)/2-5} y1={(Ay+By)/2} x2={(Ax+Cx)/2+5} y2={(Ay+By)/2} stroke="#059669" strokeWidth={2}/>
+        {/* 꼭짓점 라벨 */}
+        <text x={Ax} y={Ay-6} textAnchor="middle" fontSize={13} fill="#1f2937" fontWeight="900">A</text>
+        <text x={Bx-10} y={By+6} textAnchor="middle" fontSize={13} fill="#1f2937" fontWeight="900">B</text>
+        <text x={Cx+10} y={By+6} textAnchor="middle" fontSize={13} fill="#1f2937" fontWeight="900">C</text>
+        {/* 꼭지각 A 표시 (빨강) */}
+        <text x={Ax} y={Ay+22} textAnchor="middle" fontSize={12} fill="#ef4444" fontWeight="900">{apex}°</text>
+        {/* 밑각 B 물음표 */}
+        <text x={Bx+18} y={By-8} textAnchor="middle" fontSize={12} fill="#ef4444" fontWeight="900">?</text>
+      </svg>
+    );
+  }
+
+  // ── 11. 평행선과 각 (동위각·엇각) ──
+  if(g.type==='parallel_lines'){
+    const{ang,kind}=g;
+    const svgW=240,svgH=180;
+    const l_y=52, m_y=128;     // 평행한 두 직선
+    // 횡단선 n: 좌하 → 우상 기울기
+    const nx1=46, ny1=170, nx2=196, ny2=14;
+    // 교점 (직선 m, 직선 l 과의 교점)
+    const slope=(ny2-ny1)/(nx2-nx1);
+    const xAt=y=>nx1+(y-ny1)/slope;
+    const Pl={x:xAt(l_y),y:l_y};   // l 교점 (위)
+    const Pm={x:xAt(m_y),y:m_y};   // m 교점 (아래)
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 평행선 l, m */}
+        <line x1={20} y1={l_y} x2={220} y2={l_y} stroke="#374151" strokeWidth={2}/>
+        <line x1={20} y1={m_y} x2={220} y2={m_y} stroke="#374151" strokeWidth={2}/>
+        {/* 횡단선 n */}
+        <line x1={nx1} y1={ny1} x2={nx2} y2={ny2} stroke="#6366f1" strokeWidth={2}/>
+        {/* 라벨 */}
+        <text x={210} y={l_y-6} fontSize={12} fill="#374151" fontWeight="900">l</text>
+        <text x={210} y={m_y-6} fontSize={12} fill="#374151" fontWeight="900">m</text>
+        <text x={nx2+2} y={ny2+4} fontSize={12} fill="#6366f1" fontWeight="900">n</text>
+        {/* ∠a (m 교점 위쪽, 주어진 각) */}
+        <text x={Pm.x+8} y={m_y-8} fontSize={12} fill="#059669" fontWeight="900">∠a={ang}°</text>
+        {/* ∠b (l 교점, 묻는 각) — 동위각이면 같은 위치 관계 */}
+        <text x={Pl.x+8} y={l_y-8} fontSize={12} fill="#ef4444" fontWeight="900">∠b=?</text>
+        {/* 교점 강조 */}
+        <circle cx={Pl.x} cy={Pl.y} r={3} fill="#ef4444"/>
+        <circle cx={Pm.x} cy={Pm.y} r={3} fill="#059669"/>
+        <text x={svgW/2} y={svgH-6} textAnchor="middle" fontSize={10} fill="#9ca3af" fontWeight="bold">l ∥ m · {kind}</text>
+      </svg>
+    );
+  }
+
+  // ── 12. 직각삼각형 (삼각비) ──
+  if(g.type==='right_triangle'){
+    const{adj,opp,hyp}=g;
+    const svgW=230,svgH=175;
+    // 직각 C는 좌하단, B는 우하단, A는 좌상단
+    const Cx=58,Cy=140;          // 직각 꼭짓점
+    const Bx=190,By=140;         // 밑변 끝 (각 B)
+    const Ax=58,Ay=30;           // 높이 끝 (각 A)
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        <polygon points={`${Cx},${Cy} ${Bx},${By} ${Ax},${Ay}`} fill="rgba(99,102,241,0.06)" stroke="#6366f1" strokeWidth={2}/>
+        {/* 직각 표시 (C) */}
+        <rect x={Cx} y={Cy-14} width={14} height={14} fill="none" stroke="#374151" strokeWidth={1.4}/>
+        {/* 꼭짓점 라벨 */}
+        <text x={Cx-12} y={Cy+12} fontSize={13} fill="#1f2937" fontWeight="900">C</text>
+        <text x={Bx+8} y={By+12} fontSize={13} fill="#1f2937" fontWeight="900">B</text>
+        <text x={Ax-12} y={Ay-2} fontSize={13} fill="#1f2937" fontWeight="900">A</text>
+        {/* 변 길이 */}
+        <text x={(Cx+Bx)/2} y={By+18} textAnchor="middle" fontSize={12} fill="#059669" fontWeight="900">{adj}</text>
+        <text x={Cx-10} y={(Cy+Ay)/2} textAnchor="middle" fontSize={12} fill="#059669" fontWeight="900">{opp}</text>
+        <text x={(Bx+Ax)/2+10} y={(By+Ay)/2-4} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="900">{hyp}</text>
+        {/* 각 B 강조 */}
+        <text x={Bx-26} y={By-6} fontSize={12} fill="#ef4444" fontWeight="900">B</text>
+      </svg>
+    );
+  }
+
+  // ── 13. 일차함수 그래프 (직선 + 점) ──
+  if(g.type==='linear'){
+    const{a,b,x0,y0}=g;
+    const W=200,H=180,SC=18;
+    const CX=W/2,CY=H/2;
+    const tx=x=>CX+x*SC, ty=y=>CY-y*SC;
+    // 보이는 x범위에서 선분 양 끝 계산 (클램프)
+    const xr=(W/2-10)/SC;
+    let x1=-xr,x2=xr,yy1=a*x1+b,yy2=a*x2+b;
+    const yr=(H/2-10)/SC;
+    const cl=(x,y)=>{ // y가 화면 밖이면 x로 보정
+      if(y>yr){x=(yr-b)/a;y=yr;} else if(y<-yr){x=(-yr-b)/a;y=-yr;}
+      return[x,y];
+    };
+    [x1,yy1]=cl(x1,yy1);[x2,yy2]=cl(x2,yy2);
+    const ticks=[-4,-2,2,4];
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 격자 */}
+        {ticks.map(n=>(<g key={'g'+n}>
+          <line x1={tx(n)} y1={6} x2={tx(n)} y2={H-6} stroke="#eef1f6" strokeWidth={0.6}/>
+          <line x1={6} y1={ty(n)} x2={W-6} y2={ty(n)} stroke="#eef1f6" strokeWidth={0.6}/>
+        </g>))}
+        {/* 축 */}
+        <line x1={6} y1={CY} x2={W-6} y2={CY} stroke="#374151" strokeWidth={1.6}/>
+        <line x1={CX} y1={6} x2={CX} y2={H-6} stroke="#374151" strokeWidth={1.6}/>
+        <text x={W-8} y={CY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
+        <text x={CX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
+        {ticks.map(n=>(<g key={'t'+n}>
+          <text x={tx(n)} y={CY+12} textAnchor="middle" fontSize={9} fill="#9ca3af">{n}</text>
+          <text x={CX-5} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af">{n}</text>
+        </g>))}
+        {/* 직선 */}
+        <line x1={tx(x1)} y1={ty(yy1)} x2={tx(x2)} y2={ty(yy2)} stroke="#6366f1" strokeWidth={2.4}/>
+        {/* y절편 점 */}
+        <circle cx={tx(0)} cy={ty(b)} r={4} fill="#059669"/>
+        {/* f(x0) 점 강조 */}
+        {x0!==undefined&&<g>
+          <line x1={tx(x0)} y1={ty(0)} x2={tx(x0)} y2={ty(y0)} stroke="#ef4444" strokeWidth={1} strokeDasharray="3 2"/>
+          <line x1={tx(0)} y1={ty(y0)} x2={tx(x0)} y2={ty(y0)} stroke="#ef4444" strokeWidth={1} strokeDasharray="3 2"/>
+          <circle cx={tx(x0)} cy={ty(y0)} r={5} fill="#ef4444"/>
+          <text x={tx(x0)+6} y={ty(y0)-6} fontSize={11} fill="#ef4444" fontWeight="900">({x0}, {y0})</text>
+        </g>}
+      </svg>
+    );
+  }
+
+  // ── 14. 좌표평면 점 찍기 (사분면) ──
+  if(g.type==='point_plot'){
+    const{px,py}=g;
+    const W=190,H=190,SC=18;
+    const CX=W/2,CY=H/2;
+    const tx=x=>CX+x*SC, ty=y=>CY-y*SC;
+    const ticks=[-4,-2,2,4];
+    const quadCenters=[[CX+45,CY-50,'Ⅰ'],[CX-45,CY-50,'Ⅱ'],[CX-45,CY+55,'Ⅲ'],[CX+45,CY+55,'Ⅳ']];
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {ticks.map(n=>(<g key={'g'+n}>
+          <line x1={tx(n)} y1={6} x2={tx(n)} y2={H-6} stroke="#eef1f6" strokeWidth={0.6}/>
+          <line x1={6} y1={ty(n)} x2={W-6} y2={ty(n)} stroke="#eef1f6" strokeWidth={0.6}/>
+        </g>))}
+        {/* 사분면 라벨 (옅게) */}
+        {quadCenters.map(([x,y,t],i)=>(<text key={'q'+i} x={x} y={y} textAnchor="middle" fontSize={11} fill="#d1d5db" fontWeight="900">{t}</text>))}
+        <line x1={6} y1={CY} x2={W-6} y2={CY} stroke="#374151" strokeWidth={1.6}/>
+        <line x1={CX} y1={6} x2={CX} y2={H-6} stroke="#374151" strokeWidth={1.6}/>
+        <text x={W-8} y={CY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
+        <text x={CX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
+        {ticks.map(n=>(<g key={'t'+n}>
+          <text x={tx(n)} y={CY+12} textAnchor="middle" fontSize={9} fill="#9ca3af">{n}</text>
+          <text x={CX-5} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af">{n}</text>
+        </g>))}
+        {/* 점 P 보조선 */}
+        <line x1={tx(px)} y1={ty(0)} x2={tx(px)} y2={ty(py)} stroke="#ef4444" strokeWidth={1} strokeDasharray="3 2"/>
+        <line x1={tx(0)} y1={ty(py)} x2={tx(px)} y2={ty(py)} stroke="#ef4444" strokeWidth={1} strokeDasharray="3 2"/>
+        <circle cx={tx(px)} cy={ty(py)} r={5.5} fill="#ef4444"/>
+        <text x={tx(px)+(px>0?6:-6)} y={ty(py)+(py>0?-7:14)} textAnchor={px>0?'start':'end'} fontSize={11} fill="#ef4444" fontWeight="900">P({px}, {py})</text>
+      </svg>
+    );
+  }
+
   return null;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   회차(세션) 문제 + 정답 + 해설 인쇄/PDF 모달
+   - 학생 기록·선생님 대시보드에서 공용 사용
+   - 브라우저 네이티브 인쇄(Ctrl+P / Save as PDF) → SVG 그림 그대로 출력
+   - log.questions[*] 에 qFull·choices·answerIdx·graph·sol 이 있으면 원문제 복원,
+     없으면(구버전 로그) 저장된 요약(qTxt·정답)만 출력
+   ═══════════════════════════════════════════════════════════ */
+function SessionPrintModal({log,studentName,onClose}){
+  if(!log)return null;
+  const ORD=['①','②','③','④','⑤'];
+  const qs=log.questions||[];
+  const doPrint=()=>{ window.print(); };
+  return(
+    <div className="session-print-area fixed inset-0 z-50 bg-white overflow-auto">
+      {/* 상단 조작 바 (인쇄 시 숨김) */}
+      <div className="no-print sticky top-0 bg-indigo-600 text-white px-4 py-3 flex items-center gap-3 shadow-md">
+        <button onClick={onClose} className="px-3 py-1.5 bg-white/20 rounded-xl font-bold text-sm">← 닫기</button>
+        <div className="flex-1 font-black text-sm">📄 회차 문제·해설 인쇄</div>
+        <button onClick={doPrint} className="px-4 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm">🖨️ 인쇄 / PDF 저장</button>
+      </div>
+      <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ ‘인쇄 / PDF 저장’을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>‘PDF로 저장’</b>으로 선택하면 파일로 저장됩니다.</div>
+
+      {/* 인쇄 본문 */}
+      <div className="px-6 py-5 max-w-3xl mx-auto">
+        <div className="text-center border-b-2 border-gray-800 pb-3 mb-5">
+          <div className="text-xl font-black text-gray-900">검정고시 연습 문제·해설지</div>
+          <div className="text-sm text-gray-600 mt-1 font-bold">
+            {studentName?`${studentName} · `:''}{log.type||'연습'} · {fmtDate(log.date)} {log.time||''} · 점수 {log.score||''}
+          </div>
+        </div>
+
+        {qs.map((q,i)=>{
+          const hasFull=q.qFull&&Array.isArray(q.choices);
+          const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+          return(
+            <div key={i} className="session-print-item mb-6 pb-4 border-b border-gray-200">
+              <div className="flex items-start gap-2 mb-1">
+                <span className="font-black text-indigo-700">{i+1}.</span>
+                <span className="font-bold text-gray-900 leading-relaxed flex-1">{hasFull?q.qFull:q.qTxt}</span>
+                <span className={`text-xs font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
+              </div>
+              {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:''}</div>}
+              {!q.topic&&q.examSource&&<div className="ml-5 mb-1 text-xs text-blue-600 font-bold">📌 {q.examSource}</div>}
+
+              {/* 그림(SVG) */}
+              {q.graph&&<div className="my-2 flex justify-center"><GraphPreview q={q}/></div>}
+
+              {/* 선택지 */}
+              {hasFull&&(
+                <div className="ml-5 grid grid-cols-2 gap-x-4 gap-y-1 my-2">
+                  {q.choices.map((c,j)=>(
+                    <div key={j} className={`text-sm ${j===q.answerIdx?'font-black text-green-700':'text-gray-700'}`}>
+                      {ORD[j]} {String(c)}{j===q.answerIdx?' ✓':''}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 정답 */}
+              <div className="ml-5 mt-1 text-sm font-black text-green-700">
+                정답: {hasFull?`${ORD[q.answerIdx]} `:''}{correctText}
+                {!q.isOk&&q.uAns?<span className="ml-3 text-red-500 font-bold">(내 답: {q.uAns})</span>:null}
+              </div>
+
+              {/* 해설 */}
+              {Array.isArray(q.sol)&&q.sol.length?(
+                <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
+                  <ol className="list-decimal ml-5 space-y-0.5">{q.sol.map((s,k)=><li key={k}>{s}</li>)}</ol>
+                </div>
+              ):(q.explanation?(
+                <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <span className="font-black text-amber-700">💡 해설 · </span>{q.explanation}
+                </div>
+              ):null)}
+            </div>
+          );
+        })}
+        <div className="text-center text-xs text-gray-400 mt-6">— 태청야학 수학 학습 도우미 —</div>
+      </div>
+    </div>
+  );
 }
 
 /* ════════════════════════════════════════════════
@@ -686,7 +937,13 @@ function gen_inverse_func(){
       q:`함수 f : X → Y가 그림과 같을 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,
       choices,answer,
       meta:{category:'func',type:'집합과 함수',diff:'기초'},
-      graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV}
+      graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV},
+      sol:[
+        `f⁻¹(${fxV})은 'f를 거치면 ${fxV}가 되는 x'를 거꾸로 찾으라는 뜻입니다.`,
+        `즉, f(x)=${fxV}가 되는 x를 그림에서 찾습니다. 화살표가 ${fxV}로 도착하는 출발점을 봅니다.`,
+        `${xV} → ${fxV}이므로 f(${xV})=${fxV}입니다.`,
+        `따라서 f⁻¹(${fxV})=${xV}입니다.`
+      ]
     };
   }
   const a=pick([2,3,4]),b=randInt(-3,4);
@@ -694,7 +951,13 @@ function gen_inverse_func(){
   const c=a*xVal+b;
   const bStr=b>=0?`+${b}`:String(b);
   const{choices,answer}=makeChoices(String(xVal),[xVal+1,xVal-1<0?xVal+2:xVal-1,c].filter(w=>w!==xVal).slice(0,3).map(String));
-  return{topic:'역함수(공식)',q:`함수 f(x)=${a}x${bStr}에 대하여 f⁻¹(${c})의 값은? (단, f⁻¹는 f의 역함수)`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+  return{topic:'역함수(공식)',q:`함수 f(x)=${a}x${bStr}에 대하여 f⁻¹(${c})의 값은? (단, f⁻¹는 f의 역함수)`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    sol:[
+      `f⁻¹(${c})은 f(x)=${c}가 되는 x를 찾는 것입니다.`,
+      `f(x)=${a}x${bStr}=${c}로 놓고 x를 구합니다.`,
+      `${a}x=${c}${b>=0?`−${b}`:`+${-b}`}=${c-b}, 그러므로 x=${c-b}÷${a}=${xVal}`,
+      `따라서 f⁻¹(${c})=${xVal}입니다.`
+    ]};
 }
 
 // 4-10. 유리함수 점근선 → 상수  (기출 Q18 패턴A: 2021-2, 2022-2, 2023-1, 2026-1)
@@ -702,6 +965,7 @@ function gen_rational_asymptote(){
   const p=pick([2,3,4,-2,-3]),q=pick([2,3,4,-1,-2]);
   const k=pick([1,2,-1]);
   const t=pick([1,2,3]);
+  const pn=v=>v<0?`(${v})`:`${v}`;
   if(t===1){
     // y=k/(x-a)+b 형태, 점근선 x=a, y=b → a+b 또는 a-b
     const op=pick(['a+b','a-b']);
@@ -710,7 +974,13 @@ function gen_rational_asymptote(){
     const pStr=p>0?`x−${p}`:`x+${-p}`;
     const qStr=q>=0?`+${q}`:String(q);
     const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2,p,q].filter(w=>w!==ans).slice(0,3).map(String));
-    return{topic:'유리함수 점근선',q:`유리함수 y=${kStr}1/(${pStr})${qStr}의 그래프의 점근선이 x=a, y=b일 때, ${op}의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+    return{topic:'유리함수 점근선',q:`유리함수 y=${kStr}1/(${pStr})${qStr}의 그래프의 점근선이 x=a, y=b일 때, ${op}의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+      graph:{type:'rational',k,p,q},
+      sol:[
+        `세로 점근선 x=a는 분모를 0으로 만드는 x값, 가로 점근선 y=b는 맨 끝 상수항입니다.`,
+        `이 함수의 점근선은 x=${p}, y=${q}이므로 a=${p}, b=${q}입니다.`,
+        `${op}=${op==='a+b'?`${p}+${pn(q)}`:`${p}−${pn(q)}`}=${ans}입니다.`
+      ]};
   }
   if(t===2){
     // y=1/(x-a)+b가 y=1/x 이동 → a 구하기
@@ -719,7 +989,13 @@ function gen_rational_asymptote(){
     const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,bV].filter(w=>w!==ans).slice(0,3).map(String));
     const pStr=aV>0?`x−${aV}`:`x+${-aV}`;
     const bStr=bV>=0?`+${bV}`:String(bV);
-    return{topic:'유리함수 점근선',q:`유리함수 y=1/(${pStr})${bStr}의 그래프의 점근선이 x=${aV}, y=${bV}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+    return{topic:'유리함수 점근선',q:`유리함수 y=1/(${pStr})${bStr}의 그래프의 점근선이 x=${aV}, y=${bV}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+      graph:{type:'rational',k:1,p:aV,q:bV},
+      sol:[
+        `세로 점근선 x=a는 분모(x−a)를 0으로 만드는 x값입니다.`,
+        `분모가 ${pStr}이므로 ${pStr}=0, 즉 x=${aV}에서 점근선이 생깁니다.`,
+        `따라서 a=${aV}입니다.`
+      ]};
   }
   // y=k/(x-a)+b가 y=k/x 이동 → a+b
   const aV=pick([1,2,3,-1,-2]),bV=pick([2,3,4,-1,-2]);
@@ -729,32 +1005,57 @@ function gen_rational_asymptote(){
   const pStr=aV>0?`x−${aV}`:`x+${-aV}`;
   const bStr=bV>=0?`+${bV}`:String(bV);
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans).map(String));
-  return{topic:'유리함수 평행이동',q:`유리함수 y=${sign}${kStr||''}1/(${pStr})${bStr}의 그래프는 y=${sign}${kStr||''}1/x의 그래프를 x축 방향으로 a만큼, y축 방향으로 b만큼 평행이동한 것이다. 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+  return{topic:'유리함수 평행이동',q:`유리함수 y=${sign}${kStr||''}1/(${pStr})${bStr}의 그래프는 y=${sign}${kStr||''}1/x의 그래프를 x축 방향으로 a만큼, y축 방향으로 b만큼 평행이동한 것이다. 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    graph:{type:'rational',k,p:aV,q:bV},
+    sol:[
+      `y=k/x를 x축으로 a만큼, y축으로 b만큼 옮기면 분모는 (x−a), 끝에 +b가 붙어 y=k/(x−a)+b가 됩니다.`,
+      `주어진 식 y=${sign}${kStr||''}1/(${pStr})${bStr}와 비교하면 a=${aV}, b=${bV}입니다.`,
+      `a+b=${aV}+${pn(bV)}=${ans}입니다.`
+    ]};
 }
 
 // 4-11. 무리함수 평행이동 a+b  (기출 Q18 패턴B: 2021-1, 2022-1, 2023-2, 2024-2, 2025-2)
 function gen_radical_translate(){
   const a=pick([1,2,3,4]),b=pick([1,2,3,4,-1,-2]);
   const t=pick([1,2,3]);
+  const pn=v=>v<0?`(${v})`:`${v}`;
   if(t===1){
     // y=√(x-a)+b는 y=√x를 x방향 a, y방향 b 이동 → a+b
     const ans=a+b;
     const bStr=b>=0?`+${b}`:String(b);
     const ws=[ans+1,ans-1,a,b,a-b].filter(w=>w!==ans).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(ans),ws);
-    return{topic:'무리함수 평행이동',q:`무리함수 y=√(x−${a})${bStr}의 그래프는 y=√x의 그래프를 x축의 방향으로 a만큼, y축의 방향으로 b만큼 평행이동한 것이다. a+b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+    return{topic:'무리함수 평행이동',q:`무리함수 y=√(x−${a})${bStr}의 그래프는 y=√x의 그래프를 x축의 방향으로 a만큼, y축의 방향으로 b만큼 평행이동한 것이다. a+b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+      graph:{type:'radical',a:1,p:a,q:b},
+      sol:[
+        `y=√x를 x축으로 a만큼, y축으로 b만큼 옮기면 y=√(x−a)+b가 됩니다.`,
+        `주어진 식 y=√(x−${a})${bStr}와 비교하면 a=${a}, b=${b}입니다.`,
+        `a+b=${a}+${pn(b)}=${ans}입니다.`
+      ]};
   }
   if(t===2){
     // a-b 묻기
     const ans2=a-b;
     const bStr2=b>=0?`+${b}`:String(b);
     const{choices,answer}=makeChoices(String(ans2),[ans2+1,ans2-1,ans2+2].filter(w=>w!==ans2).map(String));
-    return{topic:'무리함수 평행이동',q:`무리함수 y=√(x−${a})${bStr2}의 그래프는 y=√x의 그래프를 x축의 방향으로 a만큼, y축의 방향으로 b만큼 평행이동한 것이다. 두 상수 a, b에 대하여 a−b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+    return{topic:'무리함수 평행이동',q:`무리함수 y=√(x−${a})${bStr2}의 그래프는 y=√x의 그래프를 x축의 방향으로 a만큼, y축의 방향으로 b만큼 평행이동한 것이다. 두 상수 a, b에 대하여 a−b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+      graph:{type:'radical',a:1,p:a,q:b},
+      sol:[
+        `y=√(x−a)+b 꼴과 비교하면 a는 x방향 이동, b는 y방향 이동입니다.`,
+        `주어진 식에서 a=${a}, b=${b}입니다.`,
+        `a−b=${a}−${pn(b)}=${ans2}입니다.`
+      ]};
   }
-  // 상수 a의 값 직접 묻기
+  // 상수 a의 값 직접 묻기 (시작점)
   const bStr3=b>=0?`+${b}`:String(b);
   const{choices,answer}=makeChoices(String(a),[a+1,a-1<0?a+2:a-1,a+2].filter(w=>w!==a).map(String));
-  return{topic:'무리함수 상수',q:`무리함수 y=√(x−a)${bStr3}의 그래프의 시작점이 (${a}, ${b})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+  return{topic:'무리함수 상수',q:`무리함수 y=√(x−a)${bStr3}의 그래프의 시작점이 (${a}, ${b})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    graph:{type:'radical',a:1,p:a,q:b},
+    sol:[
+      `무리함수 y=√(x−a)+b의 그래프는 점 (a, b)에서 시작합니다.`,
+      `시작점이 (${a}, ${b})이므로 x좌표 a=${a}입니다.`,
+      `따라서 상수 a=${a}입니다.`
+    ]};
 }
 
 // 집합·함수 디스패처 (11개 유형)
@@ -887,13 +1188,32 @@ function genMidQuadraticEq(){
 }
 function genMidLinearFunc(){
   const a=pick([-3,-2,-1,1,2,3]),b=randInt(-4,5),ask=pick(['value','intercept']);
+  // 표기 정리: a=1→x, a=-1→−x, b=0→생략, b<0→−n
+  const axTerm=a===1?'x':a===-1?'−x':`${a}x`;
+  const bTerm=b===0?'':b>0?`+${b}`:`−${-b}`;
+  const fStr=`${axTerm}${bTerm}`;
   if(ask==='intercept'){
-    const{choices,answer}=makeChoices(String(b),[b-1,b+1,a].map(String));
-    return{topic:'일차함수 y절편',q:`일차함수 y=${a}x${b>=0?`+${b}`:b}의 y절편은?`,choices,answer,meta:middleMeta('mid_func','함수')};
+    const{choices,answer}=makeChoices(String(b),[b-1,b+1,a].filter(v=>v!==b).map(String));
+    return{topic:'일차함수 y절편',q:`일차함수 y=${fStr}의 그래프의 y절편은?`,choices,answer,meta:middleMeta('mid_func','함수'),
+      graph:{type:'linear',a,b},
+      sol:[
+        `y절편은 그래프가 y축과 만나는 점의 y좌표입니다. x=0을 넣어 구합니다.`,
+        `y=(${a})×0${bTerm||'+0'}=${b}`,
+        `따라서 y절편은 ${b}입니다. (그래프가 y축과 만나는 높이)`
+      ]};
   }
   const x=randInt(-2,4),ans=a*x+b;
-  const{choices,answer}=makeChoices(String(ans),[ans-2,ans+1,ans+2].map(String));
-  return{topic:'일차함수',q:`함수 f(x)=${a}x${b>=0?`+${b}`:b}일 때, f(${x})의 값은?`,choices,answer,meta:middleMeta('mid_func','함수')};
+  const{choices,answer}=makeChoices(String(ans),[ans-2,ans+1,ans+2].filter(v=>v!==ans).map(String));
+  const xIn=x<0?`(${x})`:x;
+  const bAdd=b===0?'':b>0?`+${b}`:`−${-b}`;
+  const prodStr=`${a*x}`;
+  return{topic:'일차함수',q:`일차함수 f(x)=${fStr}일 때, f(${x})의 값은?`,choices,answer,meta:middleMeta('mid_func','함수'),
+    graph:{type:'linear',a,b,x0:x,y0:ans},
+    sol:[
+      `f(${x})은 x자리에 ${x}를 그대로 넣어 계산하라는 뜻입니다.`,
+      `f(${x})=(${a})×${xIn}${bAdd}=${prodStr}${bAdd}=${ans}`,
+      `따라서 f(${x})=${ans}입니다.`
+    ]};
 }
 function genMidQuadraticDesc(){
   const a=pick([-1,1]),p=randInt(-2,2),q=randInt(-3,3);
@@ -904,9 +1224,47 @@ function genMidQuadraticDesc(){
   return{topic:'이차함수 그래프',q:`이차함수 ${eq}의 그래프에 대한 설명으로 옳은 것은?`,choices,answer,graph:{type:'quadratic',a,p,q,ds:p-2,de:p+2},meta:middleMeta('mid_func','함수')};
 }
 function genMidIsosceles(){
-  const top=pick([40,60,80,100]),ans=(180-top)/2;
-  const{choices,answer}=makeChoices(`${ans}°`,[ans-10,ans+10,top].filter(v=>v>0&&v<180).map(v=>`${v}°`));
-  return{topic:'이등변삼각형',q:`AB=AC인 이등변삼각형 ABC에서 ∠A=${top}°일 때, ∠B의 크기는?`,choices,answer,meta:middleMeta('mid_geo','기하')};
+  const top=pick([40,50,70,80,100]),ans=(180-top)/2;
+  const{choices,answer}=makeChoices(`${ans}°`,[ans-10,ans+10,top].filter(v=>v>0&&v<180&&v!==ans).map(v=>`${v}°`));
+  return{topic:'이등변삼각형',q:`AB=AC인 이등변삼각형 ABC에서 ∠A=${top}°일 때, ∠B의 크기는?`,choices,answer,meta:middleMeta('mid_geo','기하'),
+    graph:{type:'iso_triangle',apex:top,baseAng:ans},
+    sol:[
+      `삼각형 세 각의 크기를 모두 더하면 180°입니다.`,
+      `AB=AC인 이등변삼각형은 밑각이 서로 같으므로 ∠B=∠C입니다.`,
+      `∠B+∠C=180°−∠A=180°−${top}°=${180-top}°`,
+      `∠B와 ∠C가 같으므로 ∠B=${180-top}°÷2=${ans}°입니다.`
+    ]};
+}
+// 평행선과 각 (동위각·엇각)  — 그림 필수 유형
+function genMidParallel(){
+  const g=pick([50,55,65,70,110,115,125,130]);
+  const kind=pick(['동위각','엇각']);
+  // 동위각·엇각은 크기가 서로 같다
+  const ans=g;
+  const{choices,answer}=makeChoices(`${ans}°`,[180-g,g+10,Math.abs(g-15)].filter(v=>v>0&&v<180&&v!==ans).slice(0,3).map(v=>`${v}°`));
+  return{topic:'평행선과 각',q:`두 직선 l, m이 서로 평행하고 직선 n과 만난다. 그림에서 ∠a=${g}°일 때, ∠a의 ${kind}인 ∠b의 크기는?`,choices,answer,meta:middleMeta('mid_geo','기하'),
+    graph:{type:'parallel_lines',ang:g,kind},
+    sol:[
+      `두 직선 l, m이 평행할 때, ${kind}의 크기는 서로 같습니다.`,
+      `따라서 ∠b는 ∠a와 같은 ${g}°입니다.`,
+      `참고: 한 점에서 일직선을 이루는 두 각의 합은 180°이므로, ∠a의 이웃한 각은 ${180-g}°입니다.`
+    ]};
+}
+// 순서쌍을 좌표평면에 — 사분면 찾기 (그림 필수 유형)
+function genMidQuadrant(){
+  const x=pick([-4,-3,-2,2,3,4]),y=pick([-4,-3,-2,2,3,4]);
+  const quad=x>0&&y>0?1:x<0&&y>0?2:x<0&&y<0?3:4;
+  const ko=['제1사분면','제2사분면','제3사분면','제4사분면'];
+  const correct=ko[quad-1];
+  const{choices,answer}=makeChoices(correct,ko.filter(v=>v!==correct));
+  const xSign=x>0?'양수(+)':'음수(−)', ySign=y>0?'양수(+)':'음수(−)';
+  return{topic:'좌표와 사분면',q:`좌표평면 위의 점 P(${x}, ${y})는 제몇 사분면 위의 점인가?`,choices,answer,meta:middleMeta('mid_func','함수'),
+    graph:{type:'point_plot',px:x,py:y},
+    sol:[
+      `점의 좌표는 (x좌표, y좌표) 순서로 읽습니다. 여기서 x=${x}, y=${y}입니다.`,
+      `x좌표 ${x}는 ${xSign}, y좌표 ${y}는 ${ySign}입니다.`,
+      `x가 ${x>0?'오른쪽':'왼쪽'}, y가 ${y>0?'위쪽':'아래쪽'}이므로 점 P는 ${correct}에 있습니다.`
+    ]};
 }
 function genMidSimilarity(){
   const scale=pick([2,3]),small=randInt(2,6),ans=small*scale;
@@ -914,10 +1272,26 @@ function genMidSimilarity(){
   return{topic:'닮음',q:`서로 닮은 두 삼각형의 닮음비가 1:${scale}이다. 작은 삼각형의 한 변이 ${small}cm일 때 대응하는 큰 삼각형의 변의 길이는?`,choices,answer,meta:middleMeta('mid_geo','기하')};
 }
 function genMidTrig(){
-  const tri=pick([[3,4,5],[5,12,13],[8,15,17]]),[h,b,hyp]=tri,kind=pick(['sin','cos','tan']);
-  const correct=kind==='sin'?`${h}/${hyp}`:kind==='cos'?`${b}/${hyp}`:`${h}/${b}`;
-  const{choices,answer}=makeChoices(correct,[`${b}/${hyp}`,`${h}/${b}`,`${hyp}/${b}`].filter(v=>v!==correct));
-  return{topic:'삼각비',q:`직각삼각형에서 높이=${h}, 밑변=${b}, 빗변=${hyp}일 때, ${kind} θ의 값은?`,choices,answer,meta:middleMeta('mid_geo','기하')};
+  // 직각삼각형 ABC: 직각은 C, 각 B를 기준으로 삼각비를 구한다.
+  // 변: BC = 밑변(각 B에 이웃) = adj, AC = 높이(각 B의 대변) = opp, AB = 빗변 = hyp
+  const tri=pick([[3,4,5],[5,12,13],[8,15,17]]); // 서로소 삼각수만 사용(기약분수 보장)
+  const[opp,adj,hyp]=tri; // opp=AC(높이), adj=BC(밑변), hyp=AB(빗변)
+  const kind=pick(['sin','cos','tan']);
+  // 각 B 기준: sinB=대변/빗변=opp/hyp, cosB=이웃변/빗변=adj/hyp, tanB=대변/이웃변=opp/adj
+  const correct=kind==='sin'?`${opp}/${hyp}`:kind==='cos'?`${adj}/${hyp}`:`${opp}/${adj}`;
+  const pool=[`${opp}/${hyp}`,`${adj}/${hyp}`,`${opp}/${adj}`,`${adj}/${opp}`].filter(v=>v!==correct);
+  const{choices,answer}=makeChoices(correct,pool);
+  const desc=kind==='sin'?'sin은 (높이)/(빗변)':kind==='cos'?'cos은 (밑변)/(빗변)':'tan은 (높이)/(밑변)';
+  const num=kind==='sin'?opp:kind==='cos'?adj:opp;
+  const den=kind==='sin'?hyp:kind==='cos'?hyp:adj;
+  return{topic:'삼각비',q:`그림과 같은 직각삼각형 ABC에서 ∠C=90°이고 BC=${adj}, AC=${opp}, AB=${hyp}일 때, ${kind} B의 값은?`,choices,answer,meta:middleMeta('mid_geo','기하'),
+    graph:{type:'right_triangle',adj,opp,hyp},
+    sol:[
+      `각 B를 기준으로 봅니다. 직각(∠C=90°)의 맞은편 변 AB=${hyp}가 빗변입니다.`,
+      `각 B에 이웃한 변(밑변)은 BC=${adj}, 각 B의 맞은편 변(높이)은 AC=${opp}입니다.`,
+      `${desc} 이므로 ${kind} B = ${num}/${den}입니다.`,
+      `따라서 정답은 ${correct}입니다.`
+    ]};
 }
 function genMidCircleAngle(){
   const ins=pick([30,35,40,45,50]),ask=pick(['center','same']);
@@ -960,8 +1334,8 @@ function genMidFrequency(){
 var MID_DOMAIN_GENS={
   '수와 연산':()=>weightedGen([[genMidPrime,4],[genMidNumber,3],[genMidRepeating,3],[genMidExponent,3]]),
   '문자와 식':()=>weightedGen([[genMidLinearEq,4],[genMidSystem,4],[genMidInequality,3],[genMidSubstitute,3],[genMidWordExpr,3],[genMidRadical,4],[genMidQuadraticEq,4]]),
-  '함수':()=>weightedGen([[genMidLinearFunc,5],[genMidQuadraticDesc,5]]),
-  '기하':()=>weightedGen([[genMidIsosceles,4],[genMidSimilarity,5],[genMidTrig,5],[genMidCircleAngle,5]]),
+  '함수':()=>weightedGen([[genMidLinearFunc,5],[genMidQuadraticDesc,5],[genMidQuadrant,3]]),
+  '기하':()=>weightedGen([[genMidIsosceles,4],[genMidSimilarity,4],[genMidTrig,5],[genMidCircleAngle,4],[genMidParallel,4]]),
   '확률과 통계':()=>weightedGen([[genMidProbability,5],[genMidCounting,4],[genMidRepresentative,5],[genMidFrequency,3]])
 };
 function genMiddleMock(domain){

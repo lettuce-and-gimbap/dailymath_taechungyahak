@@ -55,6 +55,18 @@ function easyExplanation(q){
   return`문제에서 묻는 값과 주어진 조건을 먼저 표시합니다. 필요한 계산을 한 단계씩 하고, 마지막에 보기와 같은 값을 찾습니다.${finish}`;
 }
 function ExplanationBox({q,className=''}) {
+  // 생성기가 만든 단계별 해설이 있으면 번호를 매겨 표시 (정답과 동일한 계산 → 항상 일치)
+  if(q&&Array.isArray(q.sol)&&q.sol.length){
+    return <div className={`mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900 font-semibold leading-relaxed ${className}`}>
+      <div className="font-black text-amber-700 mb-1.5">📖 풀이 과정</div>
+      <ol className="space-y-1">
+        {q.sol.map((s,i)=>(<li key={i} className="flex gap-1.5">
+          <span className="shrink-0 font-black text-amber-600">{i+1===q.sol.length?'➡':`${i+1}.`}</span>
+          <span>{s}</span>
+        </li>))}
+      </ol>
+    </div>;
+  }
   return <div className={`mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900 font-semibold leading-relaxed ${className}`}>
     <span className="font-black text-amber-700">쉬운 해설 · </span>{easyExplanation(q)}
   </div>;
@@ -479,7 +491,14 @@ function gen_internal_1d(){
   if(att>=30){m=1;n=2;a=1;b=7;p=3;}
   const correct=String(p);
   const{choices,answer}=makeChoices(correct,[p+1,p-1<a?p+2:p-1,p+2].filter(w=>String(w)!==correct).slice(0,3).map(String));
-  return{topic:'내분점(수직선)',q:`수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점 P의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_1d',a,b,p,m,n}};
+  const pn=v=>v<0?`(${v})`:`${v}`;
+  return{topic:'내분점(수직선)',q:`수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점 P의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_1d',a,b,p,m,n},
+    sol:[
+      `내분점 공식: 선분 AB를 m:n으로 내분하는 점은 (m×B+n×A)÷(m+n)으로 구합니다.`,
+      `여기서 m=${m}, n=${n}, A=${a}, B=${b}입니다.`,
+      `P=(${m}×${pn(b)}+${n}×${pn(a)})÷(${m}+${n})=(${m*b}+${n*a})÷${m+n}=${m*b+n*a}÷${m+n}=${p}`,
+      `따라서 점 P의 좌표는 ${p}입니다.`
+    ]};
 }
 
 // 3-3. 내분점 — 좌표평면  (기출 Q11 패턴B)
@@ -500,7 +519,15 @@ function gen_internal_2d(){
   const correct=`(${px}, ${py})`;
   const wrongs=[`(${px+1}, ${py})`,`(${px}, ${py+1})`,`(${px-1}, ${py-1})`].filter(w=>w!==correct);
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_2d',ax,ay,bx,by,px,py,m,n}};
+  const s=m+n;
+  const pn=v=>v<0?`(${v})`:`${v}`;
+  return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_2d',ax,ay,bx,by,px,py,m,n},
+    sol:[
+      `내분점 공식을 x좌표, y좌표에 각각 적용합니다. m:n=${m}:${n}, A(${ax}, ${ay}), B(${bx}, ${by}).`,
+      `x좌표=(${m}×${pn(bx)}+${n}×${pn(ax)})÷${s}=(${m*bx}+${n*ax})÷${s}=${m*bx+n*ax}÷${s}=${px}`,
+      `y좌표=(${m}×${pn(by)}+${n}×${pn(ay)})÷${s}=(${m*by}+${n*ay})÷${s}=${m*by+n*ay}÷${s}=${py}`,
+      `따라서 내분점의 좌표는 (${px}, ${py})입니다.`
+    ]};
 }
 
 // 3-4. 직선의 방정식 (기울기+점)  (기출 Q12 패턴A)

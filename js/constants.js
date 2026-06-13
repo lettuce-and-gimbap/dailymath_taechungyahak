@@ -72,10 +72,12 @@ var MID_Q_SPECIFIC={
   '일차부등식':{y:2025,s:2,q:9},
   '근호의 계산':{y:2025,s:2,q:10},
   '이차방정식':{y:2025,s:2,q:11},
+  '좌표와 사분면':{y:2024,s:2,q:13},
   '일차함수':{y:2025,s:2,q:13},
   '일차함수 y절편':{y:2025,s:2,q:14},
   '이차함수 그래프':{y:2025,s:2,q:15},
   '이등변삼각형':{y:2025,s:2,q:16},
+  '평행선과 각':{y:2024,s:1,q:16},
   '닮음':{y:2025,s:2,q:17},
   '삼각비':{y:2025,s:2,q:18},
   '원주각과 중심각':{y:2025,s:2,q:19},
@@ -181,6 +183,18 @@ var getExamSource=function(q){
 var todayStr=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 var timeStr=()=>{const d=new Date();return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
 var fmtDate=s=>{const d=new Date(s);const dy=['일','월','화','수','목','금','토'];return`${d.getMonth()+1}월 ${d.getDate()}일(${dy[d.getDay()]})`};
+// 오늘로부터 며칠 전인지 (날짜 문자열 'YYYY-MM-DD' 기준, 자정 기준 정수 일수)
+var daysSince=s=>{
+  if(!s)return 9999;
+  var d=new Date(s);if(isNaN(d))return 9999;
+  var t=new Date();
+  var d0=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  var t0=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+  return Math.round((t0-d0)/86400000);
+};
+// 5일 이내 기록만 '최근'으로 분류 (학습 기록 기본 표시 범위)
+var RECENT_DAYS=5;
+var isRecentLog=log=>daysSince(log&&(log.date||log.createdAt))<=RECENT_DAYS;
 
 /* ===== 객관적 학습 데이터 수집 유틸리티 =====
    설계 원칙 (pasted doc 기반):

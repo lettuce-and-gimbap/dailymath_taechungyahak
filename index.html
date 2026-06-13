@@ -64,6 +64,13 @@ svg{touch-action:none}
   .ws-print-area,.ws-print-area *{visibility:visible!important}
   .ws-print-area{position:fixed!important;left:0!important;top:0!important;width:100%!important;padding:8mm!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:4mm!important;background:white!important}
   .ws-problem{page-break-inside:avoid!important;border:1px solid #333!important}
+  /* 세션(회차) 문제+해설 인쇄 영역 */
+  .session-print-area,.session-print-area *{visibility:visible!important}
+  .session-print-area{position:absolute!important;left:0!important;top:0!important;width:100%!important;padding:10mm!important;background:white!important}
+  .session-print-item{page-break-inside:avoid!important}
+  .no-print{display:none!important}
+  /* 인쇄 시 버튼 최소높이 강제 해제 (레이아웃 깨짐 방지) */
+  button{min-height:0!important}
   }
 
   /* 🟢 [새로 추가] 모바일 환경 시니어 터치 최적화 (오터치 방지 및 가독성 확보) */
