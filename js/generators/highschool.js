@@ -246,17 +246,16 @@ function gen_poly_factor(){
   return{topic:'인수분해',q:`다항식 x³+${cube}을 인수분해한 식이 (x+${n})(x²+ax+${n*n})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
 }
 
-// 1-6. 조립제법 — 몫 구하기  (기출 Q3 패턴C: 2022~)
+// 1-6. 조립제법 — 나머지 구하기  (기출 Q3 패턴C)
+// ※ 2023~2026년 기출 기준: 조립제법은 항상 '나머지'를 묻는 유형으로 출제
 function gen_poly_synthetic(){
-  // x³+bx²+cx+d ÷ (x−1) → 몫 계수: [1, b+1, b+c+1]
+  // x³+bx²+cx+d ÷ (x−1) → 나머지: f(1) = 1+b+c+d
   const b=randInt(-3,3),c=randInt(-3,3),d=randInt(-4,4);
-  const q2=b+1,q3=b+c+1;
-  const quotient=_p2(1,q2,q3);
-  // 오답: q2±1 또는 q3±1
-  const w=[_p2(1,q2+1,q3),_p2(1,q2-1,q3),_p2(1,q2,q3+1)].filter(x=>x!==quotient);
-  const{choices,answer}=makeChoices(quotient,w);
+  const rem=1+b+c+d;
   const bS=b>=0?`+${b}x²`:`${b}x²`,cS=c>=0?`+${c}x`:`${c}x`,dS=d>=0?`+${d}`:String(d);
-  return{topic:'조립제법',q:`다항식 x³${bS}${cS}${dS}을 x−1로 나누어 얻은 몫은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+  const wrongs=[rem+1,rem-1,rem+2,rem-2].filter(w=>w!==rem).slice(0,3).map(String);
+  const{choices,answer}=makeChoices(String(rem),wrongs);
+  return{topic:'조립제법',q:`다음은 조립제법을 이용하여 다항식 x³${bS}${cS}${dS}을 x−1로 나누는 과정이다. 이때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},synthetic:{b,c,d,rem}};
 }
 
 // 다항식 영역 디스패처

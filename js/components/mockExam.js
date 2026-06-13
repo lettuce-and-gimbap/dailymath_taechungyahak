@@ -108,10 +108,10 @@ function MockExamTab({userData,onUpdate}){
         <p className="text-sm opacity-90">먼저 응시할 학력을 골라 주세요.</p>
       </div>
       <button onClick={()=>setExamLevel('middle')} className="w-full p-6 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026 최근 핵심 유형 · 중학교 과정 5개 영역</div>
+        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2023~2026 최근 핵심 유형 · 중학교 과정 5개 영역</div>
       </button>
       <button onClick={()=>setExamLevel('high')} className="w-full p-6 bg-gradient-to-r from-violet-500 to-indigo-700 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026 고졸 기출 변형 · 고등학교 과정 5개 영역</div>
+        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2023~2026 고졸 기출 변형 · 고등학교 과정 5개 영역</div>
       </button>
     </div>);
     const stats=computeStats(userData.logs||[]);
@@ -123,7 +123,7 @@ function MockExamTab({userData,onUpdate}){
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
         <button onClick={()=>setExamLevel(null)} className="text-sm font-bold opacity-90 mb-3">← 학력 다시 선택</button>
         <h2 className="text-xl font-black mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
-        <p className="text-sm opacity-90">2021~2026 기출 패턴 변형 · 최근 유형 우선</p>
+        <p className="text-sm opacity-90">2023~2026 기출 패턴 변형 · 최근 유형 우선</p>
       </div>
       {weakDomains.length>0&&(<div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
         <div className="text-sm font-black text-orange-700 mb-2">🎯 현재 취약 영역 (정답률 70% 미만)</div>

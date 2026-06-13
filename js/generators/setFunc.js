@@ -369,12 +369,73 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 7. 역함수 — X·Y 두 타원 + 화살표 매핑 다이어그램 ──
+  // 기출 참고: 2023년 2회 Q17, 2025년 1·2회 Q17, 2026년 1회 Q17
+  if(g.type==='inverse_map'){
+    const{X,Y,f_map,ask_y,ans_x}=g;
+    const n=X.length;
+    const svgW=240,svgH=190;
+    const leftCX=68,rightCX=172,ovalCY=svgH/2;
+    const ovalRX=42,ovalRY=Math.min(72,n*16+16);
+    const ySpacing=Math.min(28,(ovalRY*2-20)/Math.max(n-1,1));
+    const baseY=ovalCY-(n-1)*ySpacing/2;
+    const getXpos=(i)=>({x:leftCX,y:baseY+i*ySpacing});
+    const getYpos=(i)=>({x:rightCX,y:baseY+i*ySpacing});
+    const highlightColor='#ef4444';
+    const arrowColor='#6366f1';
+    const xCircleColor='#059669';
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* X 타원 (왼쪽, 초록) */}
+        <ellipse cx={leftCX} cy={ovalCY} rx={ovalRX} ry={ovalRY} fill="rgba(16,185,129,0.07)" stroke={xCircleColor} strokeWidth={2}/>
+        {/* Y 타원 (오른쪽, 남색) */}
+        <ellipse cx={rightCX} cy={ovalCY} rx={ovalRX} ry={ovalRY} fill="rgba(99,102,241,0.07)" stroke={arrowColor} strokeWidth={2}/>
+        {/* 레이블 */}
+        <text x={leftCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={xCircleColor} fontWeight="900">X</text>
+        <text x={rightCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={arrowColor} fontWeight="900">Y</text>
+        {/* X 원소 */}
+        {X.map((x,i)=>{
+          const pos=getXpos(i);
+          const isAns=(x===ans_x);
+          return(<text key={'xi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill={isAns?highlightColor:'#1f2937'} fontWeight={isAns?'900':'700'}>{x}</text>);
+        })}
+        {/* Y 원소 */}
+        {Y.map((y,i)=>{
+          const pos=getYpos(i);
+          const isAsked=(y===ask_y);
+          return(<text key={'yi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill={isAsked?highlightColor:'#1f2937'} fontWeight={isAsked?'900':'700'}>{y}</text>);
+        })}
+        {/* 화살표 (X→Y 매핑) */}
+        {f_map.map(([x,y],i)=>{
+          const xi=X.indexOf(x),yi=Y.indexOf(y);
+          const sp=getXpos(xi),ep=getYpos(yi);
+          const isHL=(y===ask_y);
+          const color=isHL?highlightColor:arrowColor;
+          const sw=isHL?2.8:1.6;
+          const sx=sp.x+ovalRX-5,sy=sp.y,ex=ep.x-ovalRX+5,ey=ep.y;
+          const ang=Math.atan2(ey-sy,ex-sx);
+          const al=8,aw=4;
+          const ax1=ex-al*Math.cos(ang)+aw*Math.sin(ang),ay1=ey-al*Math.sin(ang)-aw*Math.cos(ang);
+          const ax2=ex-al*Math.cos(ang)-aw*Math.sin(ang),ay2=ey-al*Math.sin(ang)+aw*Math.cos(ang);
+          return(
+            <g key={'arr'+i} opacity={isHL?1:0.6}>
+              <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={color} strokeWidth={sw}/>
+              <polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={color}/>
+            </g>
+          );
+        })}
+        {/* 하단 힌트 */}
+        <text x={svgW/2} y={svgH-7} textAnchor="middle" fontSize={10} fill={highlightColor} fontWeight="bold">f⁻¹({ask_y}) = ?</text>
+      </svg>
+    );
+  }
+
   return null;
 }
 
 /* ════════════════════════════════════════════════
    ④ 집합과 함수 영역 — 11개 세부유형 완전 분석
-   2021~2026 Q15~Q18 전 패턴 커버
+   2023~2026 Q15~Q18 전 패턴 커버
    ════════════════════════════════════════════════ */
 
 // 4-1. 집합 원소 나열 연산 (합/교/차집합)  (기출 Q15 패턴A)
@@ -519,6 +580,8 @@ function gen_composite_func(){
 }
 
 // 4-9. 역함수 f⁻¹(a)  (기출 Q17 패턴B)
+// ※ t===1 화살표 그림형: 2023년 2회, 2025년 1·2회, 2026년 1회 기출
+// ※ t===2 공식형: 2024년 2회 기출
 function gen_inverse_func(){
   const t=pick([1,2]);
   if(t===1){
@@ -527,9 +590,15 @@ function gen_inverse_func(){
     const slope=pick([2,3]),intercept=pick([-1,0,1,2]);
     const f=X.map(x=>[x,slope*x+intercept]);
     const[xV,fxV]=pick(f);
-    const fStr=f.map(([x,y])=>`${x}→${y}`).join(', ');
+    const Yvals=f.map(([,y])=>y);
     const{choices,answer}=makeChoices(String(xV),[xV+1,xV-1<domStart?xV+2:xV-1,fxV].filter(w=>w!==xV&&w>0).slice(0,3).map(String));
-    return{topic:'역함수',q:`함수 f가 {${fStr}}일 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+    return{
+      topic:'역함수',
+      q:`함수 f : X → Y가 그림과 같을 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,
+      choices,answer,
+      meta:{category:'func',type:'집합과 함수',diff:'기초'},
+      graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV}
+    };
   }
   const a=pick([2,3,4]),b=randInt(-3,4);
   const xVal=randInt(1,6);
