@@ -430,6 +430,91 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 8. 내분점 (수직선) ──
+  if(g.type==='section_1d'){
+    const{a,b,p,m,n}=g;
+    const svgW=280,svgH=88;
+    const lx=40,rx=240,cy=50;
+    const range=b-a||1;
+    const toX=v=>lx+(v-a)/range*(rx-lx);
+    const ax_=toX(a),px_=toX(p),bx_=toX(b);
+    const midAP=(ax_+px_)/2, midPB=(px_+bx_)/2;
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 수직선 */}
+        <line x1={lx-16} y1={cy} x2={rx+16} y2={cy} stroke="#374151" strokeWidth={1.8}/>
+        <polygon points={`${rx+16},${cy} ${rx+8},${cy-3.5} ${rx+8},${cy+3.5}`} fill="#374151"/>
+        {/* m 구간 브라켓+레이블 */}
+        <line x1={ax_+2} y1={cy-13} x2={px_-2} y2={cy-13} stroke="#059669" strokeWidth={1.4}/>
+        <line x1={ax_+2} y1={cy-10} x2={ax_+2} y2={cy-16} stroke="#059669" strokeWidth={1.2}/>
+        <line x1={px_-2} y1={cy-10} x2={px_-2} y2={cy-16} stroke="#059669" strokeWidth={1.2}/>
+        <text x={midAP} y={cy-17} textAnchor="middle" fontSize={12} fill="#059669" fontWeight="bold">{m}</text>
+        {/* n 구간 브라켓+레이블 */}
+        <line x1={px_+2} y1={cy-13} x2={bx_-2} y2={cy-13} stroke="#6366f1" strokeWidth={1.4}/>
+        <line x1={px_+2} y1={cy-10} x2={px_+2} y2={cy-16} stroke="#6366f1" strokeWidth={1.2}/>
+        <line x1={bx_-2} y1={cy-10} x2={bx_-2} y2={cy-16} stroke="#6366f1" strokeWidth={1.2}/>
+        <text x={midPB} y={cy-17} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="bold">{n}</text>
+        {/* A 점 */}
+        <circle cx={ax_} cy={cy} r={5} fill="#059669"/>
+        <text x={ax_} y={cy+20} textAnchor="middle" fontSize={12} fill="#059669" fontWeight="bold">A({a})</text>
+        {/* P 점 (빨강 강조) */}
+        <circle cx={px_} cy={cy} r={6} fill="#ef4444"/>
+        <text x={px_} y={cy+20} textAnchor="middle" fontSize={12} fill="#ef4444" fontWeight="bold">P({p})</text>
+        {/* B 점 */}
+        <circle cx={bx_} cy={cy} r={5} fill="#6366f1"/>
+        <text x={bx_} y={cy+20} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="bold">B({b})</text>
+      </svg>
+    );
+  }
+
+  // ── 9. 내분점 (좌표평면) ──
+  if(g.type==='section_2d'){
+    const{ax,ay,bx,by,px,py,m,n}=g;
+    const svgW=240,svgH=200;
+    const pad=24;
+    const allX=[ax,bx,px],allY=[ay,by,py];
+    const minX=Math.min(...allX),maxX=Math.max(...allX);
+    const minY=Math.min(...allY),maxY=Math.max(...allY);
+    const spanX=Math.max(maxX-minX,1),spanY=Math.max(maxY-minY,1);
+    // 여백 추가 (좌표축이 보일 여지 포함)
+    const vxLo=Math.min(minX,-0.5)-spanX*0.25,vxHi=Math.max(maxX,0.5)+spanX*0.25;
+    const vyLo=Math.min(minY,-0.5)-spanY*0.25,vyHi=Math.max(maxY,0.5)+spanY*0.25;
+    const toSX=x=>pad+(x-vxLo)/(vxHi-vxLo)*(svgW-2*pad);
+    const toSY=y=>(svgH-pad)-(y-vyLo)/(vyHi-vyLo)*(svgH-2*pad);
+    const sAx=toSX(ax),sAy=toSY(ay);
+    const sBx=toSX(bx),sBy=toSY(by);
+    const sPx=toSX(px),sPy=toSY(py);
+    const ox=toSX(0),oy=toSY(0);
+    // 레이블 위치: 중심점 반대 방향으로 오프셋
+    const midX=(sAx+sBx)/2,midY=(sAy+sBy)/2;
+    const aLbl={dx:sAx<midX?-4:4,dy:sAy<midY?-10:14};
+    const bLbl={dx:sBx<midX?-4:4,dy:sBy<midY?-10:14};
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 좌표축 */}
+        {ox>pad&&ox<svgW-pad&&<line x1={ox} y1={pad} x2={ox} y2={svgH-pad} stroke="#d1d5db" strokeWidth={1.2}/>}
+        {oy>pad&&oy<svgH-pad&&<line x1={pad} y1={oy} x2={svgW-pad} y2={oy} stroke="#d1d5db" strokeWidth={1.2}/>}
+        {ox>pad&&ox<svgW-pad&&<text x={ox+4} y={pad+10} fontSize={10} fill="#9ca3af" fontWeight="bold">y</text>}
+        {oy>pad&&oy<svgH-pad&&<text x={svgW-pad-4} y={oy-4} fontSize={10} fill="#9ca3af" fontWeight="bold">x</text>}
+        {/* 선분 A-B */}
+        <line x1={sAx} y1={sAy} x2={sBx} y2={sBy} stroke="#94a3b8" strokeWidth={1.8}/>
+        {/* m 구간 레이블 (선분 위) */}
+        <text x={(sAx+sPx)/2} y={(sAy+sPy)/2-7} textAnchor="middle" fontSize={11} fill="#059669" fontWeight="bold">{m}</text>
+        {/* n 구간 레이블 */}
+        <text x={(sPx+sBx)/2} y={(sPy+sBy)/2-7} textAnchor="middle" fontSize={11} fill="#6366f1" fontWeight="bold">{n}</text>
+        {/* A 점 */}
+        <circle cx={sAx} cy={sAy} r={5} fill="#059669"/>
+        <text x={sAx+aLbl.dx} y={sAy+aLbl.dy} textAnchor={aLbl.dx<0?'end':'start'} fontSize={11} fill="#059669" fontWeight="bold">A({ax},{ay})</text>
+        {/* B 점 */}
+        <circle cx={sBx} cy={sBy} r={5} fill="#6366f1"/>
+        <text x={sBx+bLbl.dx} y={sBy+bLbl.dy} textAnchor={bLbl.dx<0?'end':'start'} fontSize={11} fill="#6366f1" fontWeight="bold">B({bx},{by})</text>
+        {/* P 점 (빨강 강조) */}
+        <circle cx={sPx} cy={sPy} r={6.5} fill="#ef4444"/>
+        <text x={sPx+5} y={sPy+16} fontSize={11} fill="#ef4444" fontWeight="bold">P({px},{py})</text>
+      </svg>
+    );
+  }
+
   return null;
 }
 
@@ -510,7 +595,8 @@ function gen_truth_set(){
   return{topic:'진리집합',q:`전체집합 U={x|x는 ${maxN} 이하의 자연수}일 때, 조건 "x는 ${div}의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
 }
 
-// 4-6. 명제의 역/대우/이  (기출 Q16 패턴)
+// 4-6. 명제의 역/대우  (기출 Q16 패턴)
+// ※ 고졸 검정고시에서 '역'과 '대우'만 출제됨 ('이'는 미출제)
 function gen_proposition(){
   const propType=pick(['num','shape']);
   let orig,rev,contra,inv;
@@ -528,35 +614,38 @@ function gen_proposition(){
     contra=`${sp.B}이 아니면 ${sp.A}이 아니다.`;
     inv=`${sp.A}이 아니면 ${sp.B}이 아니다.`;
   }
-  const askType=pick(['역','대우','이']);
-  const correct=askType==='역'?rev:askType==='대우'?contra:inv;
+  // '이'는 출제되지 않음 — '역'·'대우'만 출제
+  const askType=pick(['역','대우']);
+  const correct=askType==='역'?rev:contra;
+  // inv를 오답 보기로 포함해 변별력 유지
   const{choices,answer}=makeChoices(correct,[orig,rev,contra,inv].filter(w=>w!==correct).slice(0,3));
   return{topic:`명제의 ${askType}`,q:`명제 '${orig}'의 ${askType}는?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
 }
 
-// 4-7. 필요조건/충분조건  (기출 Q15/Q16: 2024-2, 2025-1, 2026-1)
+// 4-7. 필요조건/충분조건/필요충분조건  (기출 Q16: 2024-2, 2025-1·2, 2026-1)
+// 세 유형: 충분조건(p→q, p⊆q), 필요조건(q→p, q⊆p), 필요충분조건(p=q)
 function gen_nec_suff(){
   const t=pick([1,2,3]);
   if(t===1){
-    // p: x-a=0, q: x²-Sx+P=0에서 p가 q의 충분조건 → a는 q의 근
+    // 충분조건: p: x=a, q: x²-Sx+P=0 → p가 q의 충분조건 ↔ a∈{r1,r2}
     const r1=pick([2,3,4]),r2=r1+pick([1,2,3]);
-    const S=r1+r2,P=r1*r2,a=r1;
-    const{choices,answer}=makeChoices(String(a),[r2,a+1,a+r2].filter(w=>w!==a&&w>0).slice(0,3).map(String));
-    return{topic:'충분조건',q:`두 조건 p: x−a=0, q: x²−${S}x+${P}=0에 대하여 p가 q이기 위한 충분조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+    const S=r1+r2,P=r1*r2;
+    const a=pick([r1,r2]);
+    const{choices,answer}=makeChoices(String(a),[r2===a?r2+1:r2,a+2,a+3].filter(w=>w!==a&&w>0).slice(0,3).map(String));
+    return{topic:'충분조건',q:`두 조건 p: x=a, q: x²−${S}x+${P}=0에 대하여 p가 q이기 위한 충분조건이 되도록 하는 양수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
   }
   if(t===2){
-    // p: x=2, q: x²-ax-0=0={0,a} → p는 q의 충분조건이 되려면 2는 q의 근
-    const root=pick([2,3,4]),other=pick([1,2,3]);
-    const a=root+other; // q: x²-(root+other)x+root*other, but simplified
-    const{choices,answer}=makeChoices(String(root),[root+1,root-1<0?root+2:root-1,a].filter(w=>w!==root&&w>0).slice(0,3).map(String));
-    return{topic:'충분조건',q:`두 조건 p: x=${root}, q: x²−${root+other}x+${root*other}=0에 대하여 p는 q이기 위한 충분조건이다. 이때 옳은 것은?`,choices:['p는 q의 충분조건이지만 필요조건이 아니다','p는 q의 필요조건이지만 충분조건이 아니다','p는 q의 필요충분조건이다','p와 q는 서로 무관하다'],answer:0,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+    // 필요조건: p: lo<x<a, q: lo<x<hi → p가 q의 필요조건 ↔ q⊆p ↔ a≥hi → 최솟값=hi
+    const lo=randInt(0,2),hi=lo+randInt(3,5);
+    const ans=hi;
+    const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
+    return{topic:'필요조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p가 q이기 위한 필요조건이 되도록 하는 자연수 a의 최솟값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
   }
-  // 구간형: p가 q의 충분조건이 되도록 하는 상수 a
-  const offset=pick([1,2,3]),base=randInt(1,3);
-  const lo=base,hi=base+offset+pick([2,3]);
-  const ans=lo+offset; // p구간 좁게
-  const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1<lo?ans+2:ans-1,hi].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
-  return{topic:'필요충분조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p가 q이기 위한 충분조건이 되도록 하는 자연수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  // 필요충분조건: p: lo<x<a, q: lo<x<hi → p↔q ↔ a=hi
+  const lo=randInt(1,3),hi=lo+randInt(2,4);
+  const ans=hi;
+  const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1>lo?ans-1:ans+2,ans+2].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
+  return{topic:'필요충분조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p와 q가 서로 필요충분조건이 되도록 하는 자연수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
 }
 
 // 4-8. 합성함수 (g∘f)(a)  (기출 Q17 패턴A)

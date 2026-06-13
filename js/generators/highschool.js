@@ -479,7 +479,7 @@ function gen_internal_1d(){
   if(att>=30){m=1;n=2;a=1;b=7;p=3;}
   const correct=String(p);
   const{choices,answer}=makeChoices(correct,[p+1,p-1<a?p+2:p-1,p+2].filter(w=>String(w)!==correct).slice(0,3).map(String));
-  return{topic:'내분점(수직선)',q:`수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점 P의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  return{topic:'내분점(수직선)',q:`수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점 P의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_1d',a,b,p,m,n}};
 }
 
 // 3-3. 내분점 — 좌표평면  (기출 Q11 패턴B)
@@ -500,7 +500,7 @@ function gen_internal_2d(){
   const correct=`(${px}, ${py})`;
   const wrongs=[`(${px+1}, ${py})`,`(${px}, ${py+1})`,`(${px-1}, ${py-1})`].filter(w=>w!==correct);
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_2d',ax,ay,bx,by,px,py,m,n}};
 }
 
 // 3-4. 직선의 방정식 (기울기+점)  (기출 Q12 패턴A)

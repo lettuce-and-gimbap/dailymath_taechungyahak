@@ -382,6 +382,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       firstClickMs:firstActionMs,  // DailyPractice: 진정한 망설임 시간 (one-at-a-time)
       revisionCount:null,          // 자유입력 형식 → 수정 횟수 미적용
       qTopicHash:topicHash,
+      examSource:getExamSource(q)||null,
       explanation:easyExplanation(q),
       meta};
     
@@ -601,6 +602,7 @@ function HistoryTab({userData, feedbacks}){
       {isOpen&&log.questions&&log.questions.length>0&&(<div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
         {log.questions.map((q,j)=><div key={j} className={`rounded-xl p-3 text-sm ${q.isOk?'bg-green-50':'bg-red-50'}`}>
           <div className="flex gap-2"><span className="font-bold text-gray-500">Q{j+1}.</span><span className="font-bold text-gray-800 flex-1">{q.qTxt}</span><span className={`font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span></div>
+          {q.examSource&&<div className="mt-1 pl-6 text-xs text-blue-500 font-bold">📌 {q.examSource}</div>}
           {!q.isOk&&<div className="mt-1 pl-6 text-xs text-gray-500">내 답: {q.uAns} → 정답: <span className="text-indigo-600 font-bold">{q.cAns}</span></div>}
           {q.explanation&&<div className="mt-2 pl-6 text-xs text-amber-800 leading-relaxed">💡 {q.explanation}</div>}
           {q.timeSec!==undefined&&<div className="mt-0.5 pl-6 text-xs text-indigo-400 font-bold">⏱️ {q.timeSec}초</div>}

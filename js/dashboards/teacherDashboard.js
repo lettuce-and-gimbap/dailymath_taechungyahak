@@ -1462,6 +1462,7 @@ function StudentDetail({student,onBack}){
                         <span className="font-bold text-gray-800 flex-1 leading-relaxed">{q.qTxt}</span>
                         <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
                       </div>
+                      {q.examSource&&<div className="pl-6 mb-1 text-[10px] text-blue-500 font-bold">📌 {q.examSource}</div>}
                       {/* 행동 지표 뱃지 */}
                       <div className="flex items-center gap-1.5 pl-6 flex-wrap mt-1">
                         {q.meta&&<span className="text-[10px] text-indigo-400 font-bold bg-indigo-50 px-1.5 py-0.5 rounded-full">{q.meta.type}</span>}
