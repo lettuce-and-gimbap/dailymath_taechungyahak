@@ -1,0 +1,152 @@
+var {useState,useRef,useCallback,useEffect,useMemo}=React;
+var db=window._db;
+
+/* ===== CONSTANTS ===== */
+var ADMIN_NAMES=['박소명','이은희','최시은','윤새별','신현섭','최예원'];
+var DAY_KO=['월','화','수','목','금','토','일'];
+
+/* ===== UTILS ===== */
+var todayStr=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+var timeStr=()=>{const d=new Date();return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+var fmtDate=s=>{const d=new Date(s);const dy=['일','월','화','수','목','금','토'];return`${d.getMonth()+1}월 ${d.getDate()}일(${dy[d.getDay()]})`};
+
+/* ===== 객관적 학습 데이터 수집 유틸리티 =====
+   설계 원칙 (pasted doc 기반):
+   - 출제자 주관 태그(상/중/하) 배제 → 행동 로그에서 직접 추출
+   - Firebase Read/Write 비용 현실적 고려 → 토픽-레벨 집계만 사용
+   - 리스트 형식 퀴즈의 한계 명시 → firstClickMs는 "세션 내 참여 타이밍"이지 "문항 소요시간"이 아님
+
+   수집 지표 4가지:
+   1. firstClickMs  - 세션 시작~첫 선택까지 ms (망설임 패턴 분류)
+   2. revisionCount - 첫 선택 후 답 변경 횟수 (수정 행동 패턴 분류)
+   3. qTopicHash   - 토픽 해시 (크로스-학생 영역난이도 집계)
+   4. timeSec       - DailyPractice: 실제 측정값 / 리스트형: firstClickMs 환산값
+
+   ⚠️ 리스트 형식(MockExam, GeoQuiz) 한계:
+   - 모든 문항이 동시에 렌더링되므로 "특정 문항에 머문 시간" 계산 불가
+   - firstClickMs는 세션 내 참여 순서/타이밍 정보만 제공
+   - 진정한 per-question time은 one-at-a-time UI에서만 가능 (DailyPractice 방식)
+*/
+
+// djb2 해시 - 토픽 문자열을 짧은 키로 변환 (크로스-학생 집계용)
+function djb2Hash(str){
+  let h=5381;
+  for(let i=0;i<str.length;i++){h=((h<<5)+h)^str.charCodeAt(i);h=h>>>0;}
+  return h.toString(36).slice(0,8);
+}
+
+// 문항 토픽 해시 추출 (문항 자체가 매번 다른 파라미터로 생성되므로 토픽 레벨 집계)
+function getTopicHash(q){
+  const key=(q.meta?.type||q.topic||'기타').trim();
+  return djb2Hash(key);
+}
+
+// 크로스-학생 토픽 난이도 통계 업데이트 (Firestore qStats 컬렉션)
+// 학생 저장 시 fire-and-forget으로 호출 → Firebase Write 비용: 세션당 토픽 수 (보통 3~6회)
+async function updateQStats(questions){
+  const batch={};
+  questions.forEach(q=>{
+    const h=getTopicHash(q);
+    const topic=(q.meta?.type||q.topic||'기타');
+    if(!batch[h])batch[h]={topic,total:0,correct:0};
+    batch[h].total++;
+    if(q.isOk)batch[h].correct++;
+  });
+  const promises=Object.entries(batch).map(async([hash,data])=>{
+    const ref=db.collection('qStats').doc(hash);
+    try{
+      await db.runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        const ex=doc.exists?doc.data():{topic:data.topic,total:0,correct:0};
+        tx.set(ref,{topic:ex.topic||data.topic,total:(ex.total||0)+data.total,correct:(ex.correct||0)+data.correct});
+      });
+    }catch(e){/* fire-and-forget: 실패해도 로그 저장에 영향 없음 */}
+  });
+  await Promise.all(promises);
+}
+
+// 세션 유휴시간 추정 (간이 방법: totalSec이 문항당 3분 초과 시 초과분을 유휴로 간주)
+// ⚠️ 실제 이벤트 리스닝 없이 추정하는 방식 → 정확하지 않으나 zero-cost
+var IDLE_THRESHOLD_PER_Q = 180; // 문항당 최대 180초(3분) 이상은 유휴로 간주
+function estimateActiveTime(totalSec, qCount){
+  if(!totalSec||!qCount)return{activeSec:totalSec||0,idleSec:0,flagged:false};
+  const maxExpected=qCount*IDLE_THRESHOLD_PER_Q;
+  if(totalSec>maxExpected){
+    return{activeSec:maxExpected,idleSec:totalSec-maxExpected,flagged:true};
+  }
+  return{activeSec:totalSec,idleSec:0,flagged:false};
+}
+
+// 망설임 패턴 분류 (firstClickMs 기반)
+// ⚠️ 리스트 UI에서는 "세션 내 참여 순서" 정보이므로 해석 시 주의
+function classifyHesitation(firstClickMs, isOk){
+  if(firstClickMs==null)return'unknown';
+  const sec=firstClickMs/1000;
+  if(sec<8&&!isOk)return'impulsive';      // 빠름+오답: 충동적
+  if(sec<8&&isOk)return'fluent';           // 빠름+정답: 자동화/숙달
+  if(sec>=30&&isOk)return'effortful';      // 느림+정답: 노력·신중
+  if(sec>=30&&!isOk)return'struggling';   // 느림+오답: 어려움
+  return'moderate';                         // 중간 (8~30s)
+}
+
+// 답안 수정 패턴 분류
+function classifyRevision(revisionCount, isOk){
+  if(revisionCount==null)return'unknown';
+  if(revisionCount===0&&!isOk)return'fixated';            // 수정없음+오답: 오개념 고착 (가장 위험)
+  if(revisionCount===0&&isOk)return'confident';           // 수정없음+정답: 확신 있는 정답
+  if(revisionCount>=2&&isOk)return'uncertain_capable';   // 많이 바꿈+정답: 능력있지만 불안
+  if(revisionCount>=2&&!isOk)return'searching';          // 많이 바꿈+오답: 개념 탐색 중
+  return'reconsidered';                                   // 1회 수정 (정상적 재검토)
+}
+var gcdFn=(a,b)=>b===0?Math.abs(a):gcdFn(b,a%b);
+var lcmFn=(a,b)=>(a*b)/gcdFn(a,b);
+var randInt=(lo,hi)=>Math.floor(Math.random()*(hi-lo+1))+lo;
+var pick=a=>a[Math.floor(Math.random()*a.length)];
+var cl5=v=>Math.max(-5,Math.min(5,Math.round(v)));
+var shuffle=arr=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+var distFracStr=(num,denSq)=>{if(num===0)return"0";const sqI=Math.round(Math.sqrt(denSq));if(sqI*sqI===denSq){if(sqI===0)return"0";const g=gcdFn(num,sqI);const n=num/g,d=sqI/g;return d===1?String(n):`${n}/${d}`}return`${num}/√${denSq}`};
+// ── 수식 표기 헬퍼 ──
+// 분수 텍스트: "3/4" → "³⁄₄" 스타일 대신 가독성 위해 "3/4" 유지하되 앞뒤 공백 없이
+// 선지에 표시될 때 렌더러에서 수식 클래스로 감쌈
+var fmtFrac=(n,d)=>d===1?String(n):`${n}/${d}`;
+// 루트 표기: √ 유니코드 + 숫자 (√25=5이면 5로, 아니면 √n)
+var fmtSqrt=(n)=>{const s=Math.round(Math.sqrt(n));return s*s===n?String(s):`√${n}`;};
+// 원 방정식 항 포맷: (x-h)² 형태
+var fmtCircleTerm=(v,sym)=>{if(v===0)return`${sym}²`;if(v>0)return`(${sym}−${v})²`;return`(${sym}+${-v})²`;};
+// 원 방정식 wrongs 생성기 (중복/정답 제외 보장)
+var circleWrongs=(h,k,r2,correct,extras=[])=>{
+  const r=Math.round(Math.sqrt(r2));
+  const hEq=fmtCircleTerm(h,'x'),kEq=fmtCircleTerm(k,'y');
+  const hWr=fmtCircleTerm(-h,'x'),kWr=fmtCircleTerm(-k,'y');
+  const cands=[
+    `${hWr}+${kEq}=${r2}`,       // x 부호 반전
+    `${hEq}+${kWr}=${r2}`,       // y 부호 반전
+    `${hEq}+${kEq}=${r}`,        // r² → r
+    `${hEq}+${kEq}=${r2+r}`,     // r² + r
+    ...extras
+  ].map(String).filter(w=>w!==correct&&w!==undefined);
+  return [...new Set(cands)].slice(0,3);
+};
+var eqSh=p=>p>0?`−${p}`:p<0?`+${-p}`:"";
+var eqSg=q=>q>0?` + ${q}`:q<0?` − ${-q}`:"";
+
+var getKSTMonday=()=>{
+  const now=new Date();const kst=new Date(now.getTime()+9*60*60*1000);
+  const day=kst.getUTCDay();const diff=day===0?-6:1-day;
+  const mon=new Date(kst.getTime()+diff*24*60*60*1000);
+  return`${mon.getUTCFullYear()}-${String(mon.getUTCMonth()+1).padStart(2,'0')}-${String(mon.getUTCDate()).padStart(2,'0')}`;
+};
+
+var weekDatesFrom=monday=>{
+  const dates=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(monday+'T00:00:00+09:00');d.setDate(d.getDate()+i);
+    dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+  }return dates;
+};
+
+/* ===== FIREBASE HELPERS ===== */
+var saveUser=async(data)=>{try{await db.collection('users').doc(data.name).set(data,{merge:true})}catch(e){console.error(e)}};
+var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).get();return d.exists?d.data():null}catch(e){return null}};
+var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
+
