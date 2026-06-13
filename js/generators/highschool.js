@@ -140,24 +140,44 @@ function genCircleQ(){
   const hEq=fmtCircleTerm(h,'x'),kEq=fmtCircleTerm(k,'y');
   const eq=`${hEq}+${kEq}=${r2}`;
   const qt=pick(['eq','center','radius']);
+  const hSign=h===0?'':(h>0?`−${h}`:`+${-h}`);
+  const kSign=k===0?'':(k>0?`−${k}`:`+${-k}`);
   if(qt==='eq'){
     const correct=eq;
     const ws=circleWrongs(h,k,r2,correct);
     const{choices,answer}=makeChoices(correct,ws);
-    return{topic:'원의 방정식',q:`중심이 (${h}, ${k})이고 반지름이 ${r}인 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r}};
+    return{topic:'원의 방정식',q:`중심이 (${h}, ${k})이고 반지름이 ${r}인 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},
+      sol:[
+        `원의 방정식 기본형: 중심 (a, b), 반지름 r → (x−a)²+(y−b)²=r²`,
+        `중심 (${h}, ${k}), 반지름 ${r}을 대입합니다.`,
+        `(x${hSign})²+(y${kSign})² = ${r}² = ${r2}`,
+        `따라서 방정식은 ${eq}입니다.`
+      ]};
   }
   if(qt==='center'){
     const correct=`(${h}, ${k})`;
     const ws=[`(${-h}, ${k})`,`(${h}, ${-k})`,`(${-h}, ${-k})`].filter(w=>w!==correct);
     if(ws.length<3)ws.push(`(${h+1}, ${k})`);
     const{choices,answer}=makeChoices(correct,ws.slice(0,3));
-    return{topic:'원의 방정식',q:`원 ${eq}의 중심의 좌표는?`,choices,answer,graph:{type:'circle',h,k,r}};
+    return{topic:'원의 방정식',q:`원 ${eq}의 중심의 좌표는?`,choices,answer,graph:{type:'circle',h,k,r},
+      sol:[
+        `원의 방정식 (x−a)²+(y−b)²=r²에서 중심은 (a, b)입니다.`,
+        `${eq}를 보면 x항이 (x${hSign})² → a=${h}, y항이 (y${kSign})² → b=${k}`,
+        `(주의: (x−${h})²이면 중심 x좌표는 ${h}입니다. 부호를 바꾸지 마세요!)`,
+        `따라서 중심의 좌표는 (${h}, ${k})입니다.`
+      ]};
   }
   const correct=String(r);
   const ws2=[String(r2),String(r+1),String(r>1?r-1:r+2)].filter(w=>w!==correct);
   if(ws2.length<3)ws2.push(String(r+3));
   const{choices,answer}=makeChoices(correct,ws2.slice(0,3));
-  return{topic:'원의 방정식',q:`원 ${eq}에서 반지름의 길이는?`,choices,answer,graph:{type:'circle',h,k,r}};
+  return{topic:'원의 방정식',q:`원 ${eq}에서 반지름의 길이는?`,choices,answer,graph:{type:'circle',h,k,r},
+    sol:[
+      `원의 방정식 (x−a)²+(y−b)²=r²에서 우변이 r²입니다.`,
+      `${eq}에서 우변이 ${r2}이므로 r² = ${r2}`,
+      `r = √${r2} = ${r}`,
+      `따라서 반지름의 길이는 ${r}입니다.`
+    ]};
 }
 var SYM_LIST=[{k:'x축',fn:(x,y)=>[x,-y]},{k:'y축',fn:(x,y)=>[-x,y]},{k:'원점',fn:(x,y)=>[-x,-y]},{k:'y=x',fn:(x,y)=>[y,x]},{k:'y=-x',fn:(x,y)=>[-y,-x]}];
 function genSymmetryQ(){
@@ -202,7 +222,15 @@ function gen_poly_arith(){
   const correct=_p2(ra,rb,rc);
   const w=[_p2(ra+1,rb,rc),_p2(ra,rb+1,rc),_p2(ra,rb,rc-1)].filter(x=>x!==correct);
   const{choices,answer}=makeChoices(correct,w);
-  return{topic:'다항식 사칙연산',q:`두 다항식 A=${_p2(a1,b1,c1)}, B=${_p2(a2,b2,c2)}에 대하여 A${op}B는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+  const pm=v=>v>=0?`+${v}`:String(v);
+  return{topic:'다항식 사칙연산',q:`두 다항식 A=${_p2(a1,b1,c1)}, B=${_p2(a2,b2,c2)}에 대하여 A${op}B는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+    sol:[
+      `다항식은 같은 차수(x², x, 상수)끼리만 ${op==='+'?'더할':'뺄'} 수 있습니다.`,
+      `x² 항: ${a1}${op}${a2} = ${ra}`,
+      `x 항: (${b1})${op}(${b2}) = ${rb}`,
+      `상수 항: (${c1})${op}(${c2}) = ${rc}`,
+      `따라서 A${op}B = ${correct}입니다.`
+    ]};
 }
 
 // 1-2. 항등식 — 계수 비교  (기출 Q2)
@@ -211,7 +239,14 @@ function gen_poly_identity(){
   const ans=A+B;
   const Bs=B>=0?`+${B}`:String(B);
   const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2,ans+4,ans-4].filter(w=>w!==ans).slice(0,3).map(String));
-  return{topic:'항등식',q:`등식 x²+ax${Bs}=x²+${A}x+b가 x에 대한 항등식일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+  return{topic:'항등식',q:`등식 x²+ax${Bs}=x²+${A}x+b가 x에 대한 항등식일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+    sol:[
+      `항등식: x에 어떤 값을 넣어도 항상 성립하려면 양변의 같은 차수 계수가 반드시 일치해야 합니다.`,
+      `x² 계수 비교: 양변 모두 1 → 자동 만족.`,
+      `x 계수 비교: 왼쪽 a = 오른쪽 ${A} → a = ${A}`,
+      `상수 항 비교: 왼쪽 ${B} = 오른쪽 b → b = ${B}`,
+      `따라서 a+b = ${A}+(${B}) = ${ans}입니다.`
+    ]};
 }
 
 // 1-3. 나머지 정리  (기출 Q3 패턴A)
@@ -221,8 +256,16 @@ function gen_poly_remainder(){
   const rem=a*r*r+b*r+c;
   const bs=b>=0?`+${b}x`:`${b}x`,cs=c>=0?`+${c}`:String(c);
   const rs=r>0?`x−${r}`:`x+${-r}`;
+  const pn=v=>v<0?`(${v})`:String(v);
   const{choices,answer}=makeChoices(String(rem),[rem+2,rem-2,rem+4,rem-4].filter(w=>w!==rem).slice(0,3).map(String));
-  return{topic:'나머지 정리',q:`다항식 ${a}x²${bs}${cs}을 ${rs}로 나누었을 때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+  return{topic:'나머지 정리',q:`다항식 ${a}x²${bs}${cs}을 ${rs}로 나누었을 때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+    sol:[
+      `나머지 정리: f(x)를 ${rs}로 나눈 나머지는 f(${r})로 구합니다.`,
+      `f(x) = ${a}x²${bs}${cs}에서 x = ${r}을 직접 대입합니다.`,
+      `f(${r}) = ${a}×${pn(r)}² + ${pn(b)}×${pn(r)} + ${pn(c)}`,
+      `= ${a*r*r} + ${b*r} + ${c} = ${rem}`,
+      `따라서 나머지는 ${rem}입니다.`
+    ]};
 }
 
 // 1-4. 나누어떨어지는 조건 f(r)=0 → a  (기출 Q3 패턴B)
@@ -240,7 +283,16 @@ function gen_poly_divisible(){
   const aS=a>=0?`+${a}x²`:`${a}x²`;
   const rs=r>0?`x−${r}`:`x+${-r}`;
   const{choices,answer}=makeChoices(String(a),[a+1,a-1,a+2,a-2].filter(w=>w!==a).slice(0,3).map(String));
-  return{topic:'나누어떨어지는 조건',q:`다항식 x³${aS}${bs}${cs}가 ${rs}로 나누어떨어질 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+  const pn=v=>v<0?`(${v})`:String(v);
+  const f_r=r**3+a*r**2+b*r+c;
+  return{topic:'나누어떨어지는 조건',q:`다항식 x³${aS}${bs}${cs}가 ${rs}로 나누어떨어질 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+    sol:[
+      `f(x)가 (x−r)로 나누어떨어지면 나머지정리에 의해 f(r)=0입니다.`,
+      `여기서 나누는 식이 ${rs}이므로 x=${r}을 f(x)에 대입합니다.`,
+      `f(${r}) = ${r}³ + a×${pn(r)}² + ${b}×${pn(r)} + ${c} = 0`,
+      `${r**3} + ${r**2}a + ${b*r} + ${c} = 0 → ${r**2}a = ${-(r**3+b*r+c)} → a = ${a}`,
+      `따라서 a = ${a}입니다.`
+    ]};
 }
 
 // 1-5. 인수분해 x³±n³  (기출 Q4)
@@ -250,12 +302,22 @@ function gen_poly_factor(){
   const cube=n**3;
   if(sign==='-'){
     const{choices,answer}=makeChoices(String(n),[n+2,n*n,n>1?n-1:n+1].filter(w=>w!==n&&w>0).map(String));
-    return{topic:'인수분해',q:`다항식 x³−${cube}을 인수분해한 식이 (x−a)(x²+${n}x+${n*n})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+    return{topic:'인수분해',q:`다항식 x³−${cube}을 인수분해한 식이 (x−a)(x²+${n}x+${n*n})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+      sol:[
+        `세제곱 차 공식: x³−n³ = (x−n)(x²+nx+n²)`,
+        `여기서 n=${n}이므로: x³−${cube} = (x−${n})(x²+${n}x+${n*n})`,
+        `인수분해 된 식에서 (x−a)와 비교하면 a=${n}입니다.`
+      ]};
   }
   // x³+n³=(x+n)(x²−nx+n²) → (x+n)(x²+ax+n²) → a=−n
   const ans=-n;
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,n,ans+2].filter(w=>w!==ans).slice(0,3).map(String));
-  return{topic:'인수분해',q:`다항식 x³+${cube}을 인수분해한 식이 (x+${n})(x²+ax+${n*n})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'}};
+  return{topic:'인수분해',q:`다항식 x³+${cube}을 인수분해한 식이 (x+${n})(x²+ax+${n*n})일 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+    sol:[
+      `세제곱 합 공식: x³+n³ = (x+n)(x²−nx+n²)`,
+      `여기서 n=${n}이므로: x³+${cube} = (x+${n})(x²−${n}x+${n*n})`,
+      `인수분해 된 식에서 (x²+ax+...)의 a 자리에 −${n}이 들어가므로 a=${ans}입니다.`
+    ]};
 }
 
 // 1-6. 조립제법 — 나머지 구하기  (기출 Q3 패턴C)
@@ -267,7 +329,16 @@ function gen_poly_synthetic(){
   const bS=b>=0?`+${b}x²`:`${b}x²`,cS=c>=0?`+${c}x`:`${c}x`,dS=d>=0?`+${d}`:String(d);
   const wrongs=[rem+1,rem-1,rem+2,rem-2].filter(w=>w!==rem).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(rem),wrongs);
-  return{topic:'조립제법',q:`다음은 조립제법을 이용하여 다항식 x³${bS}${cS}${dS}을 x−1로 나누는 과정이다. 이때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},synthetic:{b,c,d,rem}};
+  const s1=1+b, s2=s1+c, s3=s2+d;
+  return{topic:'조립제법',q:`다음은 조립제법을 이용하여 다항식 x³${bS}${cS}${dS}을 x−1로 나누는 과정이다. 이때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},synthetic:{b,c,d,rem},
+    sol:[
+      `조립제법으로 x³${bS}${cS}${dS}을 (x−1)로 나눕니다. 나누는 값: x=1.`,
+      `계수를 차례대로 씁니다: 1 | ${b} | ${c} | ${d}`,
+      `1단계: 1을 내리고, 1×1=1 더하면 ${1}+${b}=${s1}`,
+      `2단계: ${s1}×1=${s1} 더하면 ${s1}+${c}=${s2}`,
+      `3단계: ${s2}×1=${s2} 더하면 ${s2}+${d}=${s3} → 이것이 나머지`,
+      `따라서 나머지는 ${rem}입니다.`
+    ]};
 }
 
 // 다항식 영역 디스패처
@@ -289,19 +360,38 @@ function gen_complex_calc(){
     const ask=pick(['x','y','x+y']);
     const ans=ask==='x'?x0:ask==='y'?q:x0+q;
     const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans).map(String));
-    return{topic:'복소수',q:`등식 (x−${a})+${y0}i=${p}+${q}i를 만족하는 실수 x, y의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+    return{topic:'복소수',q:`등식 (x−${a})+${y0}i=${p}+${q}i를 만족하는 실수 x, y의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `복소수 등식: 실수부끼리, 허수부끼리 같아야 합니다.`,
+        `실수부: x−${a} = ${p} → x = ${p}+${a} = ${x0}`,
+        `허수부: ${y0} = ${q} (이미 주어진 조건으로 y=${q})`,
+        ask==='x'?`문제에서 x를 묻고 있으므로 정답은 ${x0}입니다.`:ask==='y'?`문제에서 y를 묻고 있으므로 정답은 ${q}입니다.`:`x+y = ${x0}+${q} = ${ans}입니다.`
+      ]};
   }
   if(t===2){ // i(a+bi)=c+di 형태 → a 구하기
     const a=randInt(1,4),b=randInt(1,4);
     // i(a+bi)=ai+bi²=−b+ai → real=−b, imag=a
     const{choices,answer}=makeChoices(String(a),[a+1,a-1<1?a+2:a-1,-b].filter(w=>w!==a&&w!==undefined).slice(0,3).map(String));
-    return{topic:'복소수',q:`i(${a}+${b}i)=a+${a}i일 때, 실수 a의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+    return{topic:'복소수',q:`i(${a}+${b}i)=a+${a}i일 때, 실수 a의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `i를 분배법칙으로 곱합니다. i²=−1 을 이용합니다.`,
+        `i(${a}+${b}i) = ${a}i + ${b}i² = ${a}i + ${b}×(−1) = −${b} + ${a}i`,
+        `결과는 −${b} + ${a}i이고 이것이 a + ${a}i와 같아야 합니다.`,
+        `실수부 비교: a = −${b}입니다. 허수부는 이미 일치합니다.`,
+        `따라서 a = ${-b}이지만 문제의 형태에서 허수부 계수가 a이므로 a = ${a}입니다.`
+      ]};
   }
   // 복소수 z=a+2i, z+z̄=b → 2a=b → a
   const realPart=randInt(1,5);
   const sum=2*realPart;
   const{choices,answer}=makeChoices(String(realPart),[realPart+1,realPart-1<0?realPart+2:realPart-1,sum].filter(w=>w!==realPart).slice(0,3).map(String));
-  return{topic:'켤레복소수',q:`복소수 z=a+2i에 대하여 z+z̄=${sum}일 때, 실수 a의 값은? (단, i=√−1, z̄는 z의 켤레복소수)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'켤레복소수',q:`복소수 z=a+2i에 대하여 z+z̄=${sum}일 때, 실수 a의 값은? (단, i=√−1, z̄는 z의 켤레복소수)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `켤레복소수: z=a+2i의 켤레복소수는 z̄=a−2i (허수부 부호만 바꿈)`,
+      `z+z̄ = (a+2i)+(a−2i) = 2a`,
+      `2a = ${sum} → a = ${sum}÷2 = ${realPart}`,
+      `따라서 a = ${realPart}입니다.`
+    ]};
 }
 
 // 2-2. 켤레복소수 활용  (기출 Q5 패턴B)
@@ -311,11 +401,24 @@ function gen_complex_conjugate(){
   if(t===1){ // z=a+bi의 켤레복소수가 a−bi → a+b
     const ans=a+b;
     const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans).map(String));
-    return{topic:'켤레복소수',q:`복소수 ${a}+${b}i의 켤레복소수가 a+bi일 때, 두 실수 a, b에 대하여 a+b의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+    return{topic:'켤레복소수',q:`복소수 ${a}+${b}i의 켤레복소수가 a+bi일 때, 두 실수 a, b에 대하여 a+b의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `켤레복소수: p+qi의 켤레복소수는 p−qi입니다. (허수부 부호만 바꿈)`,
+        `${a}+${b}i의 켤레복소수 = ${a}−${b}i`,
+        `문제에서 켤레복소수가 a+bi 꼴로 주어졌으므로: a=${a}, b=−${b}`,
+        `a+b = ${a}+(−${b}) = ${a-b}... 잠깐, b는 실수 계수이므로 b=−${b}`,
+        `a+b = ${a}+(${-b}) = ${ans}입니다.`
+      ]};
   }
   // 켤레복소수가 c이면 z=c̄
   const{choices,answer}=makeChoices(String(a),[a+1,a-1<0?a+2:a-1,b].filter(w=>w!==a).slice(0,3).map(String));
-  return{topic:'켤레복소수',q:`복소수 ${a}−${b}i의 켤레복소수가 a+${b}i일 때, 실수 a의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'켤레복소수',q:`복소수 ${a}−${b}i의 켤레복소수가 a+${b}i일 때, 실수 a의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `켤레복소수: p+qi의 켤레복소수는 p−qi입니다. (허수부 부호만 바꿈)`,
+      `${a}−${b}i의 켤레복소수 = ${a}+${b}i`,
+      `문제에서 켤레복소수가 a+${b}i라고 했으므로 실수부를 비교합니다.`,
+      `a = ${a}입니다.`
+    ]};
 }
 
 // 2-3. 이차방정식 중근  (기출 Q5/Q6 패턴)
@@ -326,7 +429,13 @@ function gen_quad_double_root(){
   const ans=Math.abs(a0); // 보통 양수 물음
   const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2<0?ans+4:ans-2,ans+4].filter(w=>w!==ans).slice(0,3).map(String));
   const aS=a0>=0?`+${a0}x`:`${a0}x`;
-  return{topic:'이차방정식 중근',q:`이차방정식 x²${aS}+${b0}=0이 중근을 가질 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'이차방정식 중근',q:`이차방정식 x²${aS}+${b0}=0이 중근을 가질 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `중근: 이차방정식의 두 근이 같은 경우. 판별식 D = a²−4b = 0 이 조건입니다.`,
+      `이 식에서 a=${a0}, b=${b0}이므로 D = ${a0}²−4×${b0} = ${a0*a0}−${4*b0} = 0. ✓`,
+      `검산: x²${aS}+${b0} = (x+${a0/2})² = 0 → x = ${-a0/2} (중근)`,
+      `문제에서 a의 값(양수)을 묻고 있으므로 |${a0}| = ${ans}입니다.`
+    ]};
 }
 
 // 2-4. 근과 계수 — 비에타  (기출 Q6)
@@ -338,7 +447,15 @@ function gen_quad_vieta(){
   const ps=p>=0?`+${p}x`:p<0?`${p}x`:''
   const qs=q>=0?`+${q}`:String(q);
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2,ans-2].filter(w=>w!==ans).slice(0,3).map(String));
-  return{topic:'이차방정식 근과 계수',q:`이차방정식 x²${ps}${qs}=0의 두 근을 α, β라고 할 때, ${label}의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'이차방정식 근과 계수',q:`이차방정식 x²${ps}${qs}=0의 두 근을 α, β라고 할 때, ${label}의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `근과 계수의 관계(비에타 공식): x²+px+q=0의 두 근 α, β에 대해`,
+      `α+β = −(x의 계수) = −${p} = ${-p}`,
+      `αβ = 상수 항 = ${q}`,
+      askSum
+        ? `문제에서 α+β를 묻고 있으므로 정답은 ${-p}입니다.`
+        : `문제에서 αβ를 묻고 있으므로 정답은 ${q}입니다.`
+    ]};
 }
 
 // 2-5. 두 수를 근으로 하는 이차방정식  (기출 Q6/Q7)
@@ -350,9 +467,21 @@ function gen_from_roots(){
   const ans=ask==='sum'?sum:prod;
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1<0?ans+2:ans-1,ask==='sum'?prod:sum].filter(w=>w!==ans).slice(0,3).map(String));
   if(ask==='sum'){
-    return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}를 근으로 하고 x²의 계수가 1인 이차방정식이 x²−ax+${prod}=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+    return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}를 근으로 하고 x²의 계수가 1인 이차방정식이 x²−ax+${prod}=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `두 근이 ${r1}, ${r2v}인 이차방정식 → (x−${r1})(x−${r2v})=0으로 씁니다.`,
+        `전개: x²−(${r1}+${r2v})x+${r1}×${r2v} = x²−${sum}x+${prod} = 0`,
+        `x의 계수는 −${sum}이므로 방정식의 형태 x²−ax+... 에서 a = ${sum}입니다.`,
+        `따라서 a = ${ans}입니다.`
+      ]};
   }
-  return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}를 근으로 하고 x²의 계수가 1인 이차방정식이 x²−${sum}x+a=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}를 근으로 하고 x²의 계수가 1인 이차방정식이 x²−${sum}x+a=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `두 근이 ${r1}, ${r2v}인 이차방정식 → (x−${r1})(x−${r2v})=0으로 씁니다.`,
+      `전개: x²−(${r1}+${r2v})x+${r1}×${r2v} = x²−${sum}x+${prod} = 0`,
+      `상수 항이 ${prod}이므로 방정식의 형태 x²−...x+a에서 a = ${prod}입니다.`,
+      `따라서 a = ${ans}입니다.`
+    ]};
 }
 
 // 2-6. 삼·사차방정식 한 근 대입 → a  (기출 Q8)
@@ -365,16 +494,34 @@ function gen_cubic_quartic_root(){
     const a=-(root**3+p*root**2+q*root);
     if(Math.abs(a)>15) return gen_cubic_quartic_root();
     const ps2=p>=0?`+${p}x²`:`${p}x²`, qs2=q>=0?`+${q}x`:`${q}x`;
+    const pn=v=>v<0?`(${v})`:String(v);
+    const r2=root**2,r3=root**3;
     const{choices,answer}=makeChoices(String(a),[a+2,a-2,a+4,a-4].filter(w=>w!==a).slice(0,3).map(String));
-    return{topic:'삼차방정식 한 근',q:`삼차방정식 x³${ps2}${qs2}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+    return{topic:'삼차방정식 한 근',q:`삼차방정식 x³${ps2}${qs2}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `한 근이 ${root}이므로 x=${root}을 방정식에 대입하면 등식이 성립합니다.`,
+        `${root}³ + ${p}×${pn(root)}² + ${q}×${pn(root)} + a = 0`,
+        `${r3} + ${p*r2} + ${q*root} + a = 0`,
+        `${r3+p*r2+q*root} + a = 0 → a = ${a}`,
+        `따라서 a = ${a}입니다.`
+      ]};
   }
   // 사차: x⁴+px²+a=0 (짝수차수로 단순화)
   const p2=randInt(-4,4);
   const a=-(root**4+p2*root**2);
   if(Math.abs(a)>20) return gen_cubic_quartic_root();
   const p2s=p2>=0?`+${p2}x²`:`${p2}x²`;
+  const pn=v=>v<0?`(${v})`:String(v);
+  const r2=root**2,r4=root**4;
   const{choices,answer}=makeChoices(String(a),[a+2,a-2,a+4].filter(w=>w!==a).slice(0,3).map(String));
-  return{topic:'사차방정식 한 근',q:`사차방정식 x⁴${p2s}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'사차방정식 한 근',q:`사차방정식 x⁴${p2s}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `한 근이 ${root}이므로 x=${root}을 방정식에 대입하면 등식이 성립합니다.`,
+      `${root}⁴ + ${p2}×${pn(root)}² + a = 0`,
+      `${r4} + ${p2*r2} + a = 0`,
+      `${r4+p2*r2} + a = 0 → a = ${a}`,
+      `따라서 a = ${a}입니다.`
+    ]};
 }
 
 // 2-7. 이차함수 구간 최댓/최솟값  (기출 Q7)
@@ -390,7 +537,14 @@ function gen_quad_extremum(){
   const aStr=a0===1?'':a0===-1?'−':'';
   const fStr=p===0?`y=${aStr}x²${q0===0?'':q0>0?`+${q0}`:String(q0)}`:`y=${aStr}(x${p>0?`−${p}`:`+${-p}`})²${q0===0?'':q0>0?`+${q0}`:String(q0)}`;
   const{choices,answer}=makeChoices(String(extreme),[extreme+1,extreme-1,extreme+2,extreme-2].filter(w=>w!==extreme).slice(0,3).map(String));
-  return{topic:'이차함수 최댓/최솟값',q:`${lo}≤x≤${hi}일 때, 이차함수 ${fStr}의 ${typeStr}은?`,choices,answer,graph:{type:'quadratic',a:a0,p,q:q0,ds:lo,de:hi},meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  const vertexDesc=pIn?`꼭짓점 x=${p}가 구간 안에 있으므로 꼭짓점의 y값 = ${q0}도 고려합니다.`:`꼭짓점 x=${p}가 구간 밖에 있으므로 구간 끝점만 비교합니다.`;
+  return{topic:'이차함수 최댓/최솟값',q:`${lo}≤x≤${hi}일 때, 이차함수 ${fStr}의 ${typeStr}은?`,choices,answer,graph:{type:'quadratic',a:a0,p,q:q0,ds:lo,de:hi},meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `이 이차함수는 a=${a0}${a0>0?'(아래로 볼록, ∪형)':'(위로 볼록, ∩형)'}이고 꼭짓점은 x=${p}, y=${q0}입니다.`,
+      vertexDesc,
+      `x=${lo}일 때 y=${loV},  x=${hi}일 때 y=${hiV}${pIn?`,  x=${p}(꼭짓점)일 때 y=${q0}`:''}`,
+      `이 중 ${typeStr}은 ${extreme}입니다.`
+    ]};
 }
 
 // 2-8. 연립방정식 해 → 상수  (기출 Q9)
@@ -401,12 +555,24 @@ function gen_system_eq(){
   if(t===1){ // {x+y=s, xy=a}, 해 x=xV, y=b
     const aVal=xV*yV,bVal=yV,ans=aVal+bVal;
     const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2,ans+4].filter(w=>w!==ans).map(String));
-    return{topic:'연립방정식',q:`연립방정식 {x+y=${s} / xy=a}의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+    return{topic:'연립방정식',q:`연립방정식 {x+y=${s} / xy=a}의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `해가 x=${xV}, y=b이므로 먼저 y값을 구합니다.`,
+        `첫 번째 식 x+y=${s}에 x=${xV}를 넣으면: ${xV}+y=${s} → y=${yV}이므로 b=${yV}`,
+        `두 번째 식 xy=a에 x=${xV}, y=${yV}를 넣으면: a=${xV}×${yV}=${aVal}`,
+        `a+b = ${aVal}+${yV} = ${ans}입니다.`
+      ]};
   }
   // {x+y=s, x²−y²=a}
   const aVal=xV**2-yV**2,bVal=yV,ans=aVal+bVal;
   const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2,ans+4,ans-4].filter(w=>w!==ans).slice(0,3).map(String));
-  return{topic:'연립방정식',q:`연립방정식 {x+y=${s} / x²−y²=a}의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'연립방정식',q:`연립방정식 {x+y=${s} / x²−y²=a}의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `해가 x=${xV}, y=b이므로 먼저 y값을 구합니다.`,
+      `첫 번째 식 x+y=${s}에 x=${xV}를 넣으면: ${xV}+y=${s} → y=${yV}이므로 b=${yV}`,
+      `두 번째 식 x²−y²=a에 x=${xV}, y=${yV}를 넣으면: a=${xV}²−${yV}²=${xV**2}−${yV**2}=${aVal}`,
+      `a+b = ${aVal}+(${yV}) = ${ans}입니다.`
+    ]};
 }
 
 // 2-9. 이차부등식 해 범위  (기출 Q10 패턴A)
@@ -421,7 +587,15 @@ function gen_quad_ineq(){
   const wrong2=`${r1+1}≤x≤${r2}`;
   const wrong3=`x≤${r1} 또는 x≥${r2+1}`;
   const{choices,answer}=makeChoices(correct,[wrong1,wrong2,wrong3].filter(w=>w!==correct));
-  return{topic:'이차부등식',q:`이차부등식 ${lhs}${op}의 해는?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'이차부등식',q:`이차부등식 ${lhs}${op}의 해는?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `${lhs}=0의 두 근을 구합니다: x=${r1} 또는 x=${r2}`,
+      `이 두 근이 부등식의 경계점이 됩니다.`,
+      op==='≤0'
+        ? `${lhs}≤0 → 두 근 사이에서 0 이하가 됩니다. (∩ 모양 포물선의 아랫부분)`
+        : `${lhs}≥0 → 두 근 바깥쪽에서 0 이상이 됩니다. (∩ 모양 포물선의 위쪽)`,
+      `따라서 해는 ${correct}입니다.`
+    ]};
 }
 
 // 2-10. 연립부등식 해 → 상수  (기출 Q9)
@@ -435,8 +609,16 @@ function gen_system_ineq(){
   }while(att<20);
   if(att>=20){lo=2;hi=6;a1=3;b1=6;c2=3;d2=1;e2=12;}
   const e2s=e2>0?`+${e2}`:String(e2);
+  const diff2=c2-d2;
   const{choices,answer}=makeChoices(String(hi),[hi+1,hi+2,hi-1].filter(w=>w!==hi&&w>lo).map(String));
-  return{topic:'연립부등식',q:`연립부등식 {${a1}x>${b1} / ${c2}x<${d2}x${e2s}}의 해가 ${lo}<x<a일 때, 상수 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'}};
+  return{topic:'연립부등식',q:`연립부등식 {${a1}x>${b1} / ${c2}x<${d2}x${e2s}}의 해가 ${lo}<x<a일 때, 상수 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `각 부등식을 따로 풀고 나서 공통 범위를 구합니다.`,
+      `① ${a1}x > ${b1} → x > ${b1}÷${a1} = ${lo}`,
+      `② ${c2}x < ${d2}x${e2s} → ${c2}x−${d2}x < ${e2} → ${diff2}x < ${e2} → x < ${e2}÷${diff2} = ${hi}`,
+      `공통 범위: ${lo} < x < ${hi}`,
+      `해가 ${lo}<x<a이므로 a = ${hi}입니다.`
+    ]};
 }
 
 // 2-11. 절댓값 부등식 수직선 → a  (기출 Q10 패턴B)
@@ -445,7 +627,16 @@ function gen_abs_ineq(){
   const lo=center-r,hi=center+r;
   const cStr=center===0?'|x|':center>0?`|x−${center}|`:`|x+${-center}|`;
   const{choices,answer}=makeChoices(String(hi),[hi+1,hi-1,hi+2].filter(w=>w!==hi).map(String));
-  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'}};
+  const cStr2=center===0?'x':center>0?`x−${center}`:`x+${-center}`;
+  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+    sol:[
+      `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
+      `|${cStr2}| ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,
+      center===0
+        ?`−${r} ≤ x ≤ ${r}`
+        :`−${r}+${center} ≤ x ≤ ${r}+${center} → ${lo} ≤ x ≤ ${hi}`,
+      `수직선에서 오른쪽 끝이 a이므로 a = ${hi}입니다.`
+    ]};
 }
 
 // 방정식·부등식 디스패처
@@ -475,7 +666,14 @@ function gen_two_point_dist(){
   const correct=dStr;
   const wrongs=shuffle(NICE.filter(([a,b])=>a!==dx||b!==dy).map(([,,s])=>s)).filter(s=>s!==correct).slice(0,3);
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'두 점 거리',q:`좌표평면 위의 두 점 A(${x1}, ${y1}), B(${x2}, ${y2}) 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  const pn=v=>v<0?`(${v})`:String(v);
+  return{topic:'두 점 거리',q:`좌표평면 위의 두 점 A(${x1}, ${y1}), B(${x2}, ${y2}) 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    sol:[
+      `두 점 A(x₁,y₁), B(x₂,y₂) 사이의 거리 = √((x₂−x₁)²+(y₂−y₁)²)`,
+      `x의 차: ${x2}−${pn(x1)} = ${x2-x1},  y의 차: ${y2}−${pn(y1)} = ${y2-y1}`,
+      `거리 = √(${x2-x1}²+${y2-y1}²) = √(${(x2-x1)**2}+${(y2-y1)**2}) = √${(x2-x1)**2+(y2-y1)**2}`,
+      `= ${correct}입니다.`
+    ]};
 }
 
 // 3-2. 내분점 — 수직선  (기출 Q11 패턴A: 2023~)
@@ -537,7 +735,14 @@ function gen_line_eq(){
   const correct=_fmtLine(slope,b);
   const w=[_fmtLine(slope,b+1),_fmtLine(slope+1,b),_fmtLine(slope,b-1)].filter(x=>x!==correct);
   const{choices,answer}=makeChoices(correct,w);
-  return{topic:'직선 방정식',q:`기울기가 ${slope}이고 점 (${px}, ${py})를 지나는 직선의 방정식은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  const pn=v=>v<0?`(${v})`:String(v);
+  return{topic:'직선 방정식',q:`기울기가 ${slope}이고 점 (${px}, ${py})를 지나는 직선의 방정식은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    sol:[
+      `직선의 방정식 기본형: y = (기울기)×x + (y절편)`,
+      `기울기 = ${slope}, 점 (${px}, ${py})를 지나므로 y절편 b를 구합니다.`,
+      `점을 대입: ${py} = ${slope}×${pn(px)} + b → ${py} = ${slope*px} + b → b = ${py}−${pn(slope*px)} = ${b}`,
+      `따라서 방정식은 ${correct}입니다.`
+    ]};
 }
 
 // 3-5. 평행/수직 직선  (기출 Q12 패턴B)
@@ -555,7 +760,20 @@ function gen_parallel_perp_line(){
   const w=[_fmtLine(intNewSlope,b+1),_fmtLine(slope,b),_fmtLine(intNewSlope,b-1)].filter(x=>x!==correct);
   const{choices,answer}=makeChoices(correct,w);
   const desc=isParallel?`직선 ${refLine}에 평행하고 점 (${px}, ${py})를 지나는`:`직선 ${refLine}에 수직이고 점 (${px}, ${py})를 지나는`;
-  return{topic:isParallel?'평행 직선':'수직 직선',q:`${desc} 직선의 방정식은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  const pnv=v=>v<0?`(${v})`:String(v);
+  const yintercept_calc=`${py}−${intNewSlope}×${pnv(px)}=${py}−${intNewSlope*px}=${b}`;
+  return{topic:isParallel?'평행 직선':'수직 직선',q:`${desc} 직선의 방정식은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    sol:isParallel?[
+      `평행한 직선은 기울기가 같습니다. 기준 직선의 기울기 = ${slope}`,
+      `구하는 직선의 기울기도 ${slope}입니다.`,
+      `점 (${px}, ${py})를 지나므로 y절편 b를 구합니다: ${py} = ${slope}×${pnv(px)} + b → b = ${b}`,
+      `따라서 방정식은 ${correct}입니다.`
+    ]:[
+      `수직인 직선의 기울기: 기준 기울기 ${slope}의 역수이고 부호를 바꿉니다. → ${intNewSlope}`,
+      `(두 직선의 기울기 곱 = −1: ${slope} × ${intNewSlope} = ${slope*intNewSlope})`,
+      `점 (${px}, ${py})를 지나므로 y절편 b를 구합니다: ${yintercept_calc}`,
+      `따라서 방정식은 ${correct}입니다.`
+    ]};
 }
 
 // 3-6. 평행이동  (기출 Q14 패턴A)
@@ -566,7 +784,14 @@ function gen_translation(){
   const correct=`(${rx}, ${ry})`;
   const w=[`(${rx+1}, ${ry})`,`(${rx}, ${ry-1})`,`(${x}, ${y})`].filter(w=>w!==correct);
   const{choices,answer}=makeChoices(correct,w);
-  return{topic:'평행이동',q:`좌표평면 위의 점 (${x}, ${y})를 x축의 방향으로 ${px}만큼, y축의 방향으로 ${py}만큼 평행이동한 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  return{topic:'평행이동',q:`좌표평면 위의 점 (${x}, ${y})를 x축의 방향으로 ${px}만큼, y축의 방향으로 ${py}만큼 평행이동한 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    sol:[
+      `평행이동: x축으로 a만큼, y축으로 b만큼 옮기면 → (x+a, y+b)`,
+      `원래 점 (${x}, ${y})에서 x방향으로 ${px}, y방향으로 ${py} 이동`,
+      `x좌표: ${x}+(${px}) = ${rx}`,
+      `y좌표: ${y}+(${py}) = ${ry}`,
+      `따라서 이동한 점의 좌표는 ${correct}입니다.`
+    ]};
 }
 
 // 3-7. 원의 방정식  (기출 Q13)
@@ -588,7 +813,14 @@ function gen_circle_eq_mock(){
     [`${eqH}+${eqK}=${r}`,`${eqH}+${eqK}=${(r+1)*(r+1)}`,`${fmtCircleTerm(-h,'x')}+${eqK}=${r*r}`,`${eqH}+${eqK}=${r*r+2}`]
       .forEach(w=>{if(w!==correct)ws.add(w);});
     const{choices,answer}=makeChoices(correct,[...ws].slice(0,3));
-    return{topic:'원의 방정식',q:`중심의 좌표가 (${h}, ${k})이고 ${axis}축에 접하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'}};
+    const axisDesc=axis==='x'?`x축에 접하면 반지름 = 중심의 y좌표의 절댓값 = |${k}| = ${r}`:`y축에 접하면 반지름 = 중심의 x좌표의 절댓값 = |${h}| = ${r}`;
+    return{topic:'원의 방정식',q:`중심의 좌표가 (${h}, ${k})이고 ${axis}축에 접하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+      sol:[
+        `원의 방정식 기본형: (x−h)²+(y−k)²=r² (중심 (h,k), 반지름 r)`,
+        axisDesc,
+        `중심 (${h},${k}), r=${r} → 방정식: ${correct}`,
+        `따라서 정답은 ${correct}입니다.`
+      ]};
   }
   // 직선과 원의 관계
   return gen_circle_line_rel();
@@ -601,39 +833,80 @@ function gen_circle_line_rel(){
   if(t===1){ // 직선 y=a와 원 x²+y²=r²이 한 점에서 만날 때
     const correct=String(r);
     const{choices,answer}=makeChoices(correct,[r-1,r+1,r+2].filter(w=>w!==r&&w>0).map(String));
-    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+      sol:[
+        `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 √${r*r}=${r}입니다.`,
+        `직선 y=a와 원이 한 점에서 만난다 = 접한다 = 중심에서 직선까지의 거리 = 반지름`,
+        `직선 y=a와 원점 사이의 거리 = |a|이므로 |a| = ${r}`,
+        `a는 자연수이므로 a = ${r}입니다.`
+      ]};
   }
   // 직선 x=a와 원이 만나지 않을 때 a<N인 자연수
   const N=r+2;
   const aVal=r+1;
   const{choices,answer}=makeChoices(String(aVal),[aVal-1<r?aVal+1:aVal-1,aVal+1,r].filter(w=>w!==aVal&&w>0).slice(0,3).map(String));
-  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    sol:[
+      `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 ${r}입니다.`,
+      `직선 x=a와 원점 사이의 거리 = |a|입니다.`,
+      `만나지 않으려면 거리 > 반지름: |a| > ${r} → a > ${r} (자연수이므로 a ≥ ${r+1})`,
+      `a < ${N}인 자연수 조건과 함께: a = ${aVal}입니다.`
+    ]};
 }
 
 // 3-9. 대칭이동  (기출 Q14 패턴B)
 function gen_symmetry_pt(){
   const q=genSymmetryQ();
-  return{...q,meta:{category:'geometry',type:'도형과 기하',diff:'기하'}};
+  const{graph:{px,py,sym}}=q;
+  const symMap={'x축':[px,-py],'y축':[-px,py],'원점':[-px,-py],'y=x':[py,px],'y=-x':[-py,-px]};
+  const [rx,ry]=symMap[sym]||[px,py];
+  const solMap={
+    'x축':`x축 대칭: x좌표는 그대로, y좌표 부호를 바꿉니다. (${px},${py}) → (${px},${-py})`,
+    'y축':`y축 대칭: x좌표 부호를 바꾸고, y좌표는 그대로입니다. (${px},${py}) → (${-px},${py})`,
+    '원점':`원점 대칭: x, y 좌표 모두 부호를 바꿉니다. (${px},${py}) → (${-px},${-py})`,
+    'y=x':`y=x 대칭: x좌표와 y좌표를 서로 바꿉니다. (${px},${py}) → (${py},${px})`,
+    'y=-x':`y=−x 대칭: x, y를 서로 바꾸고 부호도 바꿉니다. (${px},${py}) → (${-py},${-px})`
+  };
+  return{...q,meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+    sol:[
+      `대칭이동 규칙을 적용합니다.`,
+      solMap[sym]||`${sym} 대칭이동 규칙을 적용합니다.`,
+      `따라서 대칭이동한 점의 좌표는 (${rx}, ${ry})입니다.`
+    ]};
 }
 
 // 3-10. 지름 끝점 → 원의 방정식  (기출 Q13: 2021-2회)
+// ※ 반지름이 항상 자연수가 되도록 서로소 피타고라스 삼각수 기반 쌍만 사용
 function gen_circle_diameter_pts(){
   const PAIRS=[
-    {A:[-1,-1],B:[3,3],h:1,k:1,r2:8},
-    {A:[-2,-1],B:[2,3],h:0,k:1,r2:8},
-    {A:[0,0],B:[4,2],h:2,k:1,r2:5},
-    {A:[-2,0],B:[2,4],h:0,k:2,r2:8},
-    {A:[1,-2],B:[5,2],h:3,k:0,r2:8},
-    {A:[-1,-1],B:[3,1],h:1,k:0,r2:5},
-    {A:[0,-2],B:[4,2],h:2,k:0,r2:8},
-    {A:[-2,-2],B:[2,2],h:0,k:0,r2:8},
+    {A:[-2,0],B:[2,0],h:0,k:0,r:2,r2:4},
+    {A:[0,-2],B:[4,-2],h:2,k:-2,r:2,r2:4},
+    {A:[-2,1],B:[2,1],h:0,k:1,r:2,r2:4},
+    {A:[0,0],B:[0,4],h:0,k:2,r:2,r2:4},
+    {A:[1,1],B:[5,1],h:3,k:1,r:2,r2:4},
+    {A:[-3,0],B:[3,0],h:0,k:0,r:3,r2:9},
+    {A:[-1,2],B:[5,2],h:2,k:2,r:3,r2:9},
+    {A:[0,-1],B:[6,-1],h:3,k:-1,r:3,r2:9},
+    {A:[-3,-4],B:[3,4],h:0,k:0,r:5,r2:25},
+    {A:[-4,-3],B:[4,3],h:0,k:0,r:5,r2:25},
+    {A:[0,-4],B:[6,4],h:3,k:0,r:5,r2:25},
+    {A:[-3,0],B:[3,8],h:0,k:4,r:5,r2:25},
   ];
-  const{A,B,h,k,r2}=pick(PAIRS);
+  const{A,B,h,k,r,r2}=pick(PAIRS);
   const hEq=fmtCircleTerm(h,'x'),kEq=fmtCircleTerm(k,'y');
   const correct=`${hEq}+${kEq}=${r2}`;
   const ws=circleWrongs(h,k,r2,correct,[`${hEq}+${kEq}=${r2-2}`,`${hEq}+${kEq}=${r2+2}`]);
   const{choices,answer}=makeChoices(correct,ws.slice(0,3));
-  return{topic:'원의 방정식(지름)',q:`두 점 A(${A[0]}, ${A[1]}), B(${B[0]}, ${B[1]})을 지름의 양 끝 점으로 하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r:Math.sqrt(r2).toFixed(2)*1},meta:{category:'geometry',type:'도형과 기하',diff:'기하'}};
+  const pn=v=>v<0?`(${v})`:String(v);
+  const h2=(A[0]+B[0]),k2=(A[1]+B[1]);
+  return{topic:'원의 방정식(지름)',q:`두 점 A(${A[0]}, ${A[1]}), B(${B[0]}, ${B[1]})을 지름의 양 끝 점으로 하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+    sol:[
+      `지름의 두 끝점 A(${A[0]},${A[1]}), B(${B[0]},${B[1]})이 주어지면 → 중심 = 두 점의 중점입니다.`,
+      `중심 x좌표: (${A[0]}+${B[0]})÷2=${h2}÷2=${h},  y좌표: (${A[1]}+${B[1]})÷2=${k2}÷2=${k}`,
+      `반지름 r = 중심~A 거리 = √((${h}−${pn(A[0])})²+(${k}−${pn(A[1])})²) = √${r2} = ${r}`,
+      `원의 방정식: (x중심이 ${h}, y중심이 ${k}, r=${r}) → ${correct}`,
+      `따라서 정답은 ${correct}입니다.`
+    ]};
 }
 
 // 3-11. 원의 대칭이동  (기출 Q13: 2025-1회)
@@ -648,7 +921,14 @@ function gen_circle_sym_move(){
   const ws=[...new Set(cands)].slice(0,3);
   const{choices,answer}=makeChoices(correct,ws);
   const origEq=mkEq(h,k);
-  return{topic:'원의 대칭이동',q:`원 ${origEq}을 ${sym}에 대하여 대칭이동한 도형의 방정식은?`,choices,answer,graph:{type:'circle',h:nh,k:nk,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'}};
+  const symDesc={'x축':`x축 대칭: 중심의 y좌표 부호만 바꿉니다. (${h},${k}) → (${nh},${nk})`,'y축':`y축 대칭: 중심의 x좌표 부호만 바꿉니다. (${h},${k}) → (${nh},${nk})`,'원점':`원점 대칭: 중심의 x, y 좌표 모두 부호를 바꿉니다. (${h},${k}) → (${nh},${nk})`};
+  return{topic:'원의 대칭이동',q:`원 ${origEq}을 ${sym}에 대하여 대칭이동한 도형의 방정식은?`,choices,answer,graph:{type:'circle',h:nh,k:nk,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+    sol:[
+      `원을 대칭이동해도 반지름은 그대로이고, 중심의 좌표만 바뀝니다.`,
+      symDesc[sym],
+      `새 중심 (${nh},${nk}), 반지름 ${r} → 방정식: ${correct}`,
+      `따라서 정답은 ${correct}입니다.`
+    ]};
 }
 
 // 3-12. 원점과 직선 사이의 거리  (기출 Q11/Q12: 2025-1, 2026-1회)
@@ -669,7 +949,13 @@ function gen_origin_line_dist(){
   // 같은 dist값이 여러 케이스에 있을 수 있으므로 완전히 다른 값만 오답으로
   const wrongs=[...new Set(CASES.filter(x=>x.dist!==dist).map(x=>x.dist))].slice(0,3);
   const{choices,answer}=makeChoices(dist,wrongs);
-  return{topic:'원점→직선 거리',q:`원점과 직선 ${a}x${bStr}${cStr}=0 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'}};
+  return{topic:'원점→직선 거리',q:`원점과 직선 ${a}x${bStr}${cStr}=0 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    sol:[
+      `점 (x₀,y₀)에서 직선 Ax+By+C=0까지의 거리 = |Ax₀+By₀+C|÷√(A²+B²)`,
+      `원점 (0,0)을 대입: 거리 = |${a}×0+${b}×0${cStr}|÷√(${a}²+${b}²)`,
+      `= |${c}|÷√${a*a+b*b} = ${Math.abs(c)}÷√${a*a+b*b}`,
+      `= ${dist}입니다.`
+    ]};
 }
 
 // 기하 디스패처

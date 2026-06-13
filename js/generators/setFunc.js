@@ -393,13 +393,12 @@ function GraphPreview({q}){
         {/* 레이블 */}
         <text x={leftCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={xCircleColor} fontWeight="900">X</text>
         <text x={rightCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={arrowColor} fontWeight="900">Y</text>
-        {/* X 원소 */}
+        {/* X 원소 (정답은 학생이 직접 찾아야 하므로 모두 같은 색으로 표시) */}
         {X.map((x,i)=>{
           const pos=getXpos(i);
-          const isAns=(x===ans_x);
-          return(<text key={'xi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill={isAns?highlightColor:'#1f2937'} fontWeight={isAns?'900':'700'}>{x}</text>);
+          return(<text key={'xi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{x}</text>);
         })}
-        {/* Y 원소 */}
+        {/* Y 원소 (ask_y는 문제에서 주어진 값이므로 강조 표시) */}
         {Y.map((y,i)=>{
           const pos=getYpos(i);
           const isAsked=(y===ask_y);
@@ -457,9 +456,9 @@ function GraphPreview({q}){
         {/* A 점 */}
         <circle cx={ax_} cy={cy} r={5} fill="#059669"/>
         <text x={ax_} y={cy+20} textAnchor="middle" fontSize={12} fill="#059669" fontWeight="bold">A({a})</text>
-        {/* P 점 (빨강 강조) */}
+        {/* P 점 (빨강 강조, 좌표는 학생이 구해야 하므로 ? 표시) */}
         <circle cx={px_} cy={cy} r={6} fill="#ef4444"/>
-        <text x={px_} y={cy+20} textAnchor="middle" fontSize={12} fill="#ef4444" fontWeight="bold">P({p})</text>
+        <text x={px_} y={cy+20} textAnchor="middle" fontSize={12} fill="#ef4444" fontWeight="bold">P( ? )</text>
         {/* B 점 */}
         <circle cx={bx_} cy={cy} r={5} fill="#6366f1"/>
         <text x={bx_} y={cy+20} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="bold">B({b})</text>
@@ -508,9 +507,9 @@ function GraphPreview({q}){
         {/* B 점 */}
         <circle cx={sBx} cy={sBy} r={5} fill="#6366f1"/>
         <text x={sBx+bLbl.dx} y={sBy+bLbl.dy} textAnchor={bLbl.dx<0?'end':'start'} fontSize={11} fill="#6366f1" fontWeight="bold">B({bx},{by})</text>
-        {/* P 점 (빨강 강조) */}
+        {/* P 점 (빨강 강조, 좌표는 학생이 구해야 하므로 ? 표시) */}
         <circle cx={sPx} cy={sPy} r={6.5} fill="#ef4444"/>
-        <text x={sPx+5} y={sPy+16} fontSize={11} fill="#ef4444" fontWeight="bold">P({px},{py})</text>
+        <text x={sPx+5} y={sPy+16} fontSize={11} fill="#ef4444" fontWeight="bold">P( ? )</text>
       </svg>
     );
   }
@@ -792,7 +791,17 @@ function gen_set_elements(){
   const w3=`{${B.filter(x=>!A.includes(x)).sort((a,b)=>a-b).concat(result).slice(0,result.length).join(', ')}}`;
   const wrongs=[w1,w2,w3].filter(w=>w!==correct&&!w.includes('undefined')&&w!=='{}');
   const{choices,answer}=makeChoices(correct,wrongs.slice(0,3));
-  return{topic:'집합 원소연산',q:`두 집합 A={${A.join(', ')}}, B={${B.join(', ')}}에 대하여 ${qText}는?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  const opDesc={'∪':'합집합(∪): A 또는 B에 속하는 원소 모두 모읍니다.','∩':'교집합(∩): A와 B 모두에 속하는 원소만 남깁니다.','A−B':'차집합(A−B): A에 있고 B에 없는 원소만 남깁니다.','B−A':'차집합(B−A): B에 있고 A에 없는 원소만 남깁니다.'};
+  return{topic:'집합 원소연산',q:`두 집합 A={${A.join(', ')}}, B={${B.join(', ')}}에 대하여 ${qText}는?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[
+      opDesc[op],
+      `A={${A.join(', ')}}, B={${B.join(', ')}}`,
+      op==='∪'?`A∪B = A와 B의 원소를 합치고 중복 제거: ${correct}`
+      :op==='∩'?`A∩B = 둘 다 있는 원소: ${A.filter(x=>B.includes(x)).join(', ')||'없음'} → ${correct}`
+      :op==='A−B'?`A−B = A에서 B와 겹치는 ${A.filter(x=>B.includes(x)).join(', ')}를 뺀 나머지: ${correct}`
+      :`B−A = B에서 A와 겹치는 ${B.filter(x=>A.includes(x)).join(', ')}를 뺀 나머지: ${correct}`,
+      `따라서 ${qText} = ${correct}입니다.`
+    ]};
 }
 
 // 4-2. 집합 개수 n(A op B)  (기출 Q15 패턴B)
@@ -808,7 +817,21 @@ function gen_set_count(){
   if(ans<1)return gen_set_count();
   const qText=op==='A-B'?'n(A−B)':`n(A${op}B)`;
   const{choices,answer}=makeChoices(String(ans),[ans+1,Math.max(0,ans-1),ans+2].filter(w=>w!==ans&&w>=0).slice(0,3).map(String));
-  return{topic:'집합 개수',q:`두 집합 A={${A.join(', ')}}, B={${B.join(', ')}}에 대하여 ${qText}의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  const inter=A.filter(x=>B.includes(x));
+  return{topic:'집합 개수',q:`두 집합 A={${A.join(', ')}}, B={${B.join(', ')}}에 대하여 ${qText}의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:op==='∪'?[
+      `n(A∪B) = A 또는 B에 속하는 원소의 개수입니다.`,
+      `A∪B = {${[...new Set([...A,...B])].sort((a,b)=>a-b).join(', ')}}`,
+      `원소의 개수 = ${ans}입니다.`
+    ]:op==='∩'?[
+      `n(A∩B) = A와 B 모두에 속하는 원소의 개수입니다.`,
+      `A∩B = {${inter.join(', ')||'∅'}}`,
+      `원소의 개수 = ${ans}입니다.`
+    ]:[
+      `n(A−B) = A에 있고 B에 없는 원소의 개수입니다.`,
+      `A−B = {${A.filter(x=>!B.includes(x)).join(', ')||'∅'}}`,
+      `원소의 개수 = ${ans}입니다.`
+    ]};
 }
 
 // 4-3. n(A∪B)+n(A∩B) 유형  (기출 Q14/Q15: 2024-1, 2025-1)
@@ -820,30 +843,49 @@ function gen_set_union_inter_sum(){
   const interN=A.filter(x=>B.includes(x)).length;
   const ans=unionN+interN;
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans).map(String));
-  return{topic:'합집합+교집합 개수',q:`두 집합 A={${A.join(', ')}}, B={${B.join(', ')}}에 대하여 n(A∪B)+n(A∩B)의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  const interArr=A.filter(x=>B.includes(x));
+  const unionArr=[...new Set([...A,...B])].sort((a,b)=>a-b);
+  return{topic:'합집합+교집합 개수',q:`두 집합 A={${A.join(', ')}}, B={${B.join(', ')}}에 대하여 n(A∪B)+n(A∩B)의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[
+      `n(A∪B)+n(A∩B)를 각각 구해서 더합니다.`,
+      `A∪B = {${unionArr.join(', ')}} → n(A∪B) = ${unionN}`,
+      `A∩B = {${interArr.join(', ')||'∅'}} → n(A∩B) = ${interN}`,
+      `n(A∪B)+n(A∩B) = ${unionN}+${interN} = ${ans}입니다.`
+    ]};
 }
 
 // 4-4. 집합 A=B 조건 → 상수 a  (기출 Q15: 2023-2, 2025-2)
 function gen_set_equal_const(){
   const t=pick([1,2,3]);
-  if(t===1){const a=4;const{choices,answer}=makeChoices('4',['3','5','6']);return{topic:'집합 상수 구하기',q:`두 집합 A={1, a−1, 5}, B={1, 3, 5}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};}
-  if(t===2){const a=5;const{choices,answer}=makeChoices('5',['4','6','3']);return{topic:'집합 상수 구하기',q:`두 집합 A={2, 4, a+1}, B={2, 4, 6}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};}
+  if(t===1){const a=4;const{choices,answer}=makeChoices('4',['3','5','6']);return{topic:'집합 상수 구하기',q:`두 집합 A={1, a−1, 5}, B={1, 3, 5}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`B={1, 3, 5}이므로 A의 원소 a−1은 B의 원소 중 하나여야 합니다.`,`a−1=3이면 a=4. 확인: A={1, 3, 5}=B ✓`,`따라서 a=4입니다.`]};}
+  if(t===2){const a=5;const{choices,answer}=makeChoices('5',['4','6','3']);return{topic:'집합 상수 구하기',q:`두 집합 A={2, 4, a+1}, B={2, 4, 6}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`B={2, 4, 6}이므로 A의 원소 a+1은 B의 원소 중 하나여야 합니다.`,`a+1=6이면 a=5. 확인: A={2, 4, 6}=B ✓`,`따라서 a=5입니다.`]};}
   const a=4;const{choices,answer}=makeChoices('4',['3','5','6']);
-  return{topic:'집합 상수 구하기',q:`두 집합 A={1, 3, a+1}, B={1, a−1, 5}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  return{topic:'집합 상수 구하기',q:`두 집합 A={1, 3, a+1}, B={1, a−1, 5}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`B의 원소: {1, a−1, 5}이고 A의 원소: {1, 3, a+1}이 같아야 합니다.`,`3=a−1이면 a=4, 또는 a+1=5이면 a=4. 둘 다 a=4입니다.`,`따라서 a=4입니다.`]};
 }
 
 // 4-5. 진리집합  (기출 Q16: 2023-2, 2024-1)
 function gen_truth_set(){
   const t=pick([1,2,3,4]);
-  if(t===1){const{choices,answer}=makeChoices('{2, 4, 6, 8}',['{1, 3, 5, 7, 9}','{2, 4, 6}','{2, 4, 6, 8, 10}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 짝수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};}
-  if(t===2){const{choices,answer}=makeChoices('{3, 6, 9}',['{3, 6}','{1, 4, 7}','{6, 9}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 3의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};}
-  if(t===3){const{choices,answer}=makeChoices('{4, 8}',['{4}','{2, 4, 8}','{4, 8, 12}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 4의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};}
+  if(t===1){const{choices,answer}=makeChoices('{2, 4, 6, 8}',['{1, 3, 5, 7, 9}','{2, 4, 6}','{2, 4, 6, 8, 10}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 짝수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,`U={1~9} 중 짝수는 2, 4, 6, 8입니다.`,`따라서 진리집합은 {2, 4, 6, 8}입니다.`]};}
+  if(t===2){const{choices,answer}=makeChoices('{3, 6, 9}',['{3, 6}','{1, 4, 7}','{6, 9}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 3의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,`U={1~9} 중 3의 배수는 3, 6, 9입니다.`,`따라서 진리집합은 {3, 6, 9}입니다.`]};}
+  if(t===3){const{choices,answer}=makeChoices('{4, 8}',['{4}','{2, 4, 8}','{4, 8, 12}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 4의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,`U={1~9} 중 4의 배수는 4, 8입니다.`,`따라서 진리집합은 {4, 8}입니다.`]};}
   const div=pick([3,4,5]),maxN=pick([9,10,12]);
   const mults=[];for(let i=div;i<=maxN;i+=div)mults.push(i);
   const correct=`{${mults.join(', ')}}`;
   const w1=`{${mults.slice(0,-1).join(', ')}}`,w2=`{${mults.map(x=>x+1).join(', ')}}`,w3=`{${mults.filter((_,i)=>i%2===0).join(', ')}}`;
   const{choices,answer}=makeChoices(correct,[w1,w2,w3].filter(w=>w!==correct));
-  return{topic:'진리집합',q:`전체집합 U={x|x는 ${maxN} 이하의 자연수}일 때, 조건 "x는 ${div}의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  return{topic:'진리집합',q:`전체집합 U={x|x는 ${maxN} 이하의 자연수}일 때, 조건 "x는 ${div}의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[
+      `진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,
+      `U={1~${maxN}} 중 ${div}의 배수를 순서대로 찾습니다: ${mults.join(', ')}`,
+      `따라서 진리집합은 ${correct}입니다.`
+    ]};
 }
 
 // 4-6. 명제의 역/대우  (기출 Q16 패턴)
@@ -870,7 +912,16 @@ function gen_proposition(){
   const correct=askType==='역'?rev:contra;
   // inv를 오답 보기로 포함해 변별력 유지
   const{choices,answer}=makeChoices(correct,[orig,rev,contra,inv].filter(w=>w!==correct).slice(0,3));
-  return{topic:`명제의 ${askType}`,q:`명제 '${orig}'의 ${askType}는?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  return{topic:`명제의 ${askType}`,q:`명제 '${orig}'의 ${askType}는?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[
+      `명제를 'p이면 q이다' 꼴로 분석합니다.`,
+      `원래 명제: p이면 q이다 → '${orig}'`,
+      askType==='역'
+        ? `역(逆): q이면 p이다 → p와 q의 위치를 바꿉니다. → '${rev}'`
+        : `대우(對偶): q가 아니면 p가 아니다 → p, q 모두 부정하고 위치도 바꿉니다. → '${contra}'`,
+      `(참고: 대우는 원래 명제와 참/거짓이 항상 일치합니다. 역은 일치하지 않을 수 있습니다.)`,
+      `따라서 정답은 '${correct}'입니다.`
+    ]};
 }
 
 // 4-7. 필요조건/충분조건/필요충분조건  (기출 Q16: 2024-2, 2025-1·2, 2026-1)
@@ -883,20 +934,38 @@ function gen_nec_suff(){
     const S=r1+r2,P=r1*r2;
     const a=pick([r1,r2]);
     const{choices,answer}=makeChoices(String(a),[r2===a?r2+1:r2,a+2,a+3].filter(w=>w!==a&&w>0).slice(0,3).map(String));
-    return{topic:'충분조건',q:`두 조건 p: x=a, q: x²−${S}x+${P}=0에 대하여 p가 q이기 위한 충분조건이 되도록 하는 양수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+    return{topic:'충분조건',q:`두 조건 p: x=a, q: x²−${S}x+${P}=0에 대하여 p가 q이기 위한 충분조건이 되도록 하는 양수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+      sol:[
+        `p가 q의 충분조건 ↔ 'p이면 q이다'가 성립 ↔ p의 경우가 q를 만족해야 합니다.`,
+        `q: x²−${S}x+${P}=0의 해를 구합니다. (x−${r1})(x−${r2})=0 → x=${r1} 또는 x=${r2}`,
+        `p: x=a가 q의 충분조건 ↔ a는 q의 해 중 하나 → a=${r1} 또는 a=${r2}`,
+        `양수 조건에 맞는 a = ${a}입니다.`
+      ]};
   }
   if(t===2){
     // 필요조건: p: lo<x<a, q: lo<x<hi → p가 q의 필요조건 ↔ q⊆p ↔ a≥hi → 최솟값=hi
     const lo=randInt(0,2),hi=lo+randInt(3,5);
     const ans=hi;
     const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
-    return{topic:'필요조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p가 q이기 위한 필요조건이 되도록 하는 자연수 a의 최솟값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+    return{topic:'필요조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p가 q이기 위한 필요조건이 되도록 하는 자연수 a의 최솟값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+      sol:[
+        `p가 q의 필요조건 ↔ 'q이면 p이다'가 성립 ↔ q의 범위가 p의 범위에 포함되어야 합니다.`,
+        `q의 범위: ${lo}<x<${hi},  p의 범위: ${lo}<x<a`,
+        `q⊆p가 되려면 q의 오른쪽 끝 ${hi}보다 a가 같거나 커야 합니다: a ≥ ${hi}`,
+        `자연수 중 최솟값은 a = ${ans}입니다.`
+      ]};
   }
   // 필요충분조건: p: lo<x<a, q: lo<x<hi → p↔q ↔ a=hi
   const lo=randInt(1,3),hi=lo+randInt(2,4);
   const ans=hi;
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1>lo?ans-1:ans+2,ans+2].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
-  return{topic:'필요충분조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p와 q가 서로 필요충분조건이 되도록 하는 자연수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'}};
+  return{topic:'필요충분조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p와 q가 서로 필요충분조건이 되도록 하는 자연수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[
+      `p가 q의 필요충분조건 ↔ p와 q가 완전히 같은 범위 ↔ 두 조건의 진리집합이 동일합니다.`,
+      `p의 범위: ${lo}<x<a,  q의 범위: ${lo}<x<${hi}`,
+      `두 범위가 완전히 일치하려면 a = ${hi}이어야 합니다.`,
+      `따라서 a = ${ans}입니다.`
+    ]};
 }
 
 // 4-8. 합성함수 (g∘f)(a)  (기출 Q17 패턴A)
@@ -916,7 +985,13 @@ function gen_composite_func(){
   const fStr=f.map(([x,y])=>`${x}→${y}`).join(', ');
   const gStr=g.map(([y,z])=>`${y}→${z}`).join(', ');
   const{choices,answer}=makeChoices(String(gfx),[gfx+1,gfx-1,gfx+2,fx].filter(w=>w!==gfx).slice(0,3).map(String));
-  return{topic:'합성함수',q:`두 함수 f:{${fStr}}, g:{${gStr}}일 때, (g∘f)(${inp})의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'}};
+  return{topic:'합성함수',q:`두 함수 f:{${fStr}}, g:{${gStr}}일 때, (g∘f)(${inp})의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    sol:[
+      `(g∘f)(${inp})는 f를 먼저 계산한 뒤 그 결과에 g를 적용합니다.`,
+      `1단계 — f(${inp}) 계산: f의 대응표에서 ${inp}→${fx} 이므로 f(${inp})=${fx}`,
+      `2단계 — g(f(${inp})) = g(${fx}) 계산: g의 대응표에서 ${fx}→${gfx} 이므로 g(${fx})=${gfx}`,
+      `따라서 (g∘f)(${inp}) = ${gfx}입니다.`
+    ]};
 }
 
 // 4-9. 역함수 f⁻¹(a)  (기출 Q17 패턴B)
@@ -1100,7 +1175,13 @@ function genMockProbStat(){
     let pnr=1;for(let i=n;i>n-r;i--)pnr*=i;
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
-    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'}};
+    const pSteps=[];let acc=1;for(let i=n;i>n-r;i--){pSteps.push(`${i}`);acc*=i;}
+    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+      sol:[
+        `순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,
+        `P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,
+        `(순서가 다르면 다른 경우이므로, 첫 번째부터 차례로 선택 가능한 수를 곱합니다.)`
+      ]};
   }
   const safeCombs=[[4,2],[5,2],[6,2],[4,3],[5,3],[6,3]];
   const[n2,r2]=pick(safeCombs);
@@ -1108,7 +1189,13 @@ function genMockProbStat(){
   if(cnr>20)cnr=10; // safety
   const wrongs2=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(cnr),wrongs2);
-  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'}};
+  const cNum=[];const cDen=[];for(let i=0;i<r2;i++){cNum.push(n2-i);cDen.push(i+1);}
+  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    sol:[
+      `조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,
+      `C(${n2},${r2}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cNum.reduce((a,b)=>a*b,1)} ÷ ${cDen.reduce((a,b)=>a*b,1)} = ${cnr}`,
+      `(순서가 달라도 같은 선택이므로, 순열값을 r!로 나눕니다.)`
+    ]};
 }
 
 /* ===== 2021~2026 중졸 검정고시 생성기 =====
@@ -1121,70 +1208,147 @@ function weightedGen(items){
 var middleMeta=(category,type)=>({category, type, diff:'중졸',level:'middle'});
 function genMidPrime(){
   const cases=[
-    [36,'2²×3²'],[45,'3²×5'],[54,'2×3³'],[84,'2²×3×7'],
-    [90,'2×3²×5'],[100,'2²×5²']
+    [36,'2²×3²',[[2,18],[2,9],[3,3]]],[45,'3²×5',[[3,15],[3,5]]],
+    [54,'2×3³',[[2,27],[3,9],[3,3]]],[84,'2²×3×7',[[2,42],[2,21],[3,7]]],
+    [90,'2×3²×5',[[2,45],[3,15],[3,5]]],[100,'2²×5²',[[2,50],[2,25],[5,5]]]
   ];
-  const[n,correct]=pick(cases);
+  const[n,correct,steps]=pick(cases);
   const wrongs=shuffle(['2×3×5','2²×3×5','2×3²×7','2³×5²','3²×5²']).filter(v=>v!==correct).slice(0,3);
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'소인수분해',q:`${n}을 소인수분해한 결과로 옳은 것은?`,choices,answer,meta:middleMeta('mid_num','수와 연산')};
+  const stepStr=steps.map(([d,q])=>`${q}÷${d}=${Math.round(q/d)}`).join(' → ');
+  return{topic:'소인수분해',q:`${n}을 소인수분해한 결과로 옳은 것은?`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
+    sol:[
+      `소인수분해: 가장 작은 소수(2, 3, 5, 7…)부터 차례대로 나눕니다.`,
+      `${n} → ${stepStr} → 1`,
+      `나눈 소수들을 모두 곱하면: ${correct}`,
+      `따라서 ${n} = ${correct}입니다.`
+    ]};
 }
 function genMidNumber(){
   const nums=shuffle([randInt(-7,-2),-1,0,randInt(1,5),randInt(6,10)]).slice(0,4);
   const sorted=[...nums].sort((a,b)=>a-b),pos=randInt(1,4),correct=String(sorted[pos-1]);
   const{choices,answer}=makeChoices(correct,nums.filter(v=>String(v)!==correct).map(String));
-  return{topic:'수의 대소',q:`${nums.join(', ')}을 작은 수부터 차례대로 나열할 때, ${['첫','둘','셋','넷'][pos-1]}째 수는?`,choices,answer,meta:middleMeta('mid_num','수와 연산')};
+  return{topic:'수의 대소',q:`${nums.join(', ')}을 작은 수부터 차례대로 나열할 때, ${['첫','둘','셋','넷'][pos-1]}째 수는?`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
+    sol:[
+      `수직선에서 왼쪽에 있을수록 작은 수입니다. (음수 < 0 < 양수)`,
+      `주어진 수: ${nums.join(', ')}`,
+      `작은 순서대로: ${sorted.join(' < ')}`,
+      `${['첫','둘','셋','넷'][pos-1]}째 수는 ${correct}입니다.`
+    ]};
 }
 function genMidRepeating(){
   const n=randInt(1,8),correct=`${n}/9`;
   const{choices,answer}=makeChoices(correct,[`${Math.max(1,n-1)}/9`,`${n}/10`,`${Math.min(8,n+1)}/9`]);
-  return{topic:'순환소수',q:`순환소수 0.${n}${n}${n}…을 기약분수로 나타낸 것은?`,choices,answer,meta:middleMeta('mid_num','수와 연산')};
+  return{topic:'순환소수',q:`순환소수 0.${n}${n}${n}…을 기약분수로 나타낸 것은?`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
+    sol:[
+      `x = 0.${n}${n}${n}… 로 놓습니다.`,
+      `10x = ${n}.${n}${n}${n}… 입니다.`,
+      `10x − x = ${n}.${n}${n}… − 0.${n}${n}… = ${n}`,
+      `9x = ${n}  →  x = ${n}/9`,
+      `따라서 0.${n}${n}${n}… = ${n}/9입니다.`
+    ]};
 }
 function genMidExponent(){
   const a=randInt(2,4),b=randInt(2,5),c=randInt(1,Math.min(3,a+b-1)),ans=a+b-c;
   const{choices,answer}=makeChoices(`x${ans===1?'':`^${ans}`}`,[ans-1,ans+1,a*b].filter(v=>v>0&&v!==ans).map(v=>`x${v===1?'':`^${v}`}`));
-  return{topic:'지수법칙',q:`x^${a} × x^${b} ÷ x^${c}을 간단히 한 것은? (단, x≠0)`,choices,answer,meta:middleMeta('mid_num','수와 연산')};
+  return{topic:'지수법칙',q:`x^${a} × x^${b} ÷ x^${c}을 간단히 한 것은? (단, x≠0)`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
+    sol:[
+      `지수법칙: 같은 밑(x)끼리 곱하면 지수를 더하고, 나누면 지수를 뺍니다.`,
+      `x^${a} × x^${b} = x^(${a}+${b}) = x^${a+b}`,
+      `x^${a+b} ÷ x^${c} = x^(${a+b}−${c}) = x^${ans}`,
+      `따라서 답은 x^${ans}${ans===1?' = x':''}입니다.`
+    ]};
 }
 function genMidSubstitute(){
   const a=randInt(-3,5),m=randInt(2,5),b=randInt(-4,5),ans=m*a+b;
   const bS=b>=0?`+${b}`:String(b);
+  const pn=v=>v<0?`(${v})`:String(v);
   const{choices,answer}=makeChoices(String(ans),[ans-2,ans+2,ans+m].map(String));
-  return{topic:'식의 값',q:`a=${a}일 때, ${m}a${bS}의 값은?`,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'식의 값',q:`a=${a}일 때, ${m}a${bS}의 값은?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:[
+      `식의 값: a 자리에 ${a}를 그대로 넣어 계산합니다.`,
+      `${m}a${bS}에 a=${a}를 대입하면: ${m}×${pn(a)}${bS}`,
+      `= ${m*a}${bS} = ${ans}`,
+      `따라서 답은 ${ans}입니다.`
+    ]};
 }
 function genMidWordExpr(){
   const price=pick([300,500,700,1200,2000]),base=pick([0,100,200]);
   const correct=base?`${price}x+${base}`:`${price}x`;
   const q=base?`무게가 ${base}g인 빈 상자에 ${price}g인 물건 x개를 넣었을 때 전체 무게를 식으로 나타낸 것은?`:`한 개에 ${price}원인 물건 x개의 가격을 식으로 나타낸 것은?`;
   const{choices,answer}=makeChoices(correct,[`${price}+x`,`${price}-x`,`${price}÷x`]);
-  return{topic:'문자를 사용한 식',q,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'문자를 사용한 식',q,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:base?[
+      `문자 x는 '개수'를 나타내므로 x를 곱해서 전체 양을 구합니다.`,
+      `물건 x개의 무게: ${price}×x = ${price}x (g)`,
+      `빈 상자 무게 ${base}g을 더하면 전체 무게: ${price}x + ${base} (g)`,
+      `따라서 식은 ${correct}입니다.`
+    ]:[
+      `한 개의 가격 × 개수 = 전체 가격입니다.`,
+      `${price}원짜리 물건 x개의 가격: ${price}×x = ${price}x (원)`,
+      `따라서 식은 ${correct}입니다.`
+    ]};
 }
 function genMidLinearEq(){
   const x=randInt(1,8),a=randInt(2,5),c=randInt(1,a-1),b=randInt(-5,5),d=(a-c)*x+b;
   const bS=b>=0?`+${b}`:String(b),dS=d>=0?`+${d}`:String(d);
+  const coeff=a-c;
+  const rhs=d-b;
   const{choices,answer}=makeChoices(String(x),[x-1,x+1,x+2].filter(v=>v>=0).map(String));
-  return{topic:'일차방정식',q:`일차방정식 ${a}x${bS}=${c}x${dS}의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'일차방정식',q:`일차방정식 ${a}x${bS}=${c}x${dS}의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:[
+      `x가 있는 항은 왼쪽으로, 숫자만 있는 항은 오른쪽으로 옮깁니다.`,
+      `${a}x${bS}=${c}x${dS}에서 ${a}x−${c}x = ${d>=0?d:'('+d+')'}${b>=0?'−'+b:'+('+Math.abs(b)+')'}`,
+      `${coeff}x = ${rhs}`,
+      `x = ${rhs}÷${coeff} = ${x}`,
+      `따라서 해는 x = ${x}입니다.`
+    ]};
 }
 function genMidSystem(){
   const x=randInt(1,5),y=randInt(1,5),s=x+y,d=x-y,correct=`x=${x}, y=${y}`;
   const wrongs=[`x=${y}, y=${x}`,`x=${x+1}, y=${Math.max(0,y-1)}`,`x=${Math.max(0,x-1)}, y=${y+1}`];
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'연립방정식',q:`연립방정식 { x+y=${s}, x−y=${d} }의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'연립방정식',q:`연립방정식 { x+y=${s}, x−y=${d} }의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:[
+      `두 식을 더해서 y를 없애는 방법을 씁니다.`,
+      `①+②: (x+y)+(x−y) = ${s}+(${d}) → 2x = ${s+d} → x = ${x}`,
+      `①에 x=${x}를 넣으면: ${x}+y=${s} → y = ${s}−${x} = ${y}`,
+      `따라서 해는 x=${x}, y=${y}입니다.`
+    ]};
 }
 function genMidInequality(){
   const a=randInt(2,6),x=randInt(1,7),b=a*x,correct=`x≥${x}`;
   const{choices,answer}=makeChoices(correct,[`x>${x}`,`x≤${x}`,`x<${x}`]);
-  return{topic:'일차부등식',q:`일차부등식 ${a}x≥${b}의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'일차부등식',q:`일차부등식 ${a}x≥${b}의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:[
+      `부등식도 방정식처럼 양변에 같은 연산을 합니다. (양수로 나눌 때 부등호 방향 유지)`,
+      `${a}x ≥ ${b}의 양변을 ${a}로 나눕니다.`,
+      `x ≥ ${b}÷${a} = ${x}`,
+      `따라서 해는 x ≥ ${x}입니다.`
+    ]};
 }
 function genMidRadical(){
   const r=pick([2,3,5]),a=randInt(2,6),b=randInt(1,a-1),op=pick(['+','−']);
   const ans=op==='+'?a+b:a-b,correct=`${ans===1?'':ans}√${r}`;
   const{choices,answer}=makeChoices(correct,[`${a+b+1}√${r}`,`${Math.max(1,ans-1)}√${r}`,`${ans}√${r+1}`]);
-  return{topic:'근호의 계산',q:`${a}√${r} ${op} ${b}√${r}을 간단히 한 것은?`,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'근호의 계산',q:`${a}√${r} ${op} ${b}√${r}을 간단히 한 것은?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:[
+      `√${r}이 공통으로 있으므로 √${r}을 하나로 묶어 계수끼리만 계산합니다.`,
+      `${a}√${r} ${op} ${b}√${r} = (${a}${op==='+'?'+':'−'}${b})×√${r}`,
+      `= ${ans}×√${r} = ${correct}`,
+      `(주의: √안의 숫자가 같아야 더하거나 뺄 수 있습니다.)`
+    ]};
 }
 function genMidQuadraticEq(){
   const r1=randInt(1,4),r2=randInt(5,8),known=pick([r1,r2]),ans=known===r1?r2:r1;
   const{choices,answer}=makeChoices(String(ans),[ans-1,ans+1,ans+2].filter(v=>v>0).map(String));
-  return{topic:'이차방정식',q:`이차방정식 (x−${r1})(x−${r2})=0의 한 근이 ${known}이다. 다른 한 근은?`,choices,answer,meta:middleMeta('mid_alg','문자와 식')};
+  return{topic:'이차방정식',q:`이차방정식 (x−${r1})(x−${r2})=0의 한 근이 ${known}이다. 다른 한 근은?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+    sol:[
+      `A×B=0이면 A=0 또는 B=0입니다. 두 인수 중 하나가 반드시 0이 됩니다.`,
+      `(x−${r1})=0 또는 (x−${r2})=0`,
+      `x=${r1} 또는 x=${r2}가 두 근입니다.`,
+      `한 근이 ${known}이라고 했으므로 다른 한 근은 ${ans}입니다.`
+    ]};
 }
 function genMidLinearFunc(){
   const a=pick([-3,-2,-1,1,2,3]),b=randInt(-4,5),ask=pick(['value','intercept']);
@@ -1221,7 +1385,14 @@ function genMidQuadraticDesc(){
   const correct=`꼭짓점은 (${p}, ${q})이다.`;
   const wrongs=[`꼭짓점은 (${-p}, ${q})이다.`,`축은 x=${-p}이다.`,a>0?'위로 볼록하다.':'아래로 볼록하다.'];
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'이차함수 그래프',q:`이차함수 ${eq}의 그래프에 대한 설명으로 옳은 것은?`,choices,answer,graph:{type:'quadratic',a,p,q,ds:p-2,de:p+2},meta:middleMeta('mid_func','함수')};
+  return{topic:'이차함수 그래프',q:`이차함수 ${eq}의 그래프에 대한 설명으로 옳은 것은?`,choices,answer,graph:{type:'quadratic',a,p,q,ds:p-2,de:p+2},meta:middleMeta('mid_func','함수'),
+    sol:[
+      `y=a(x−p)²+q 꼴에서 꼭짓점은 (p, q)이고 축의 방정식은 x=p입니다.`,
+      `주어진 식에서 p=${p}, q=${q}이므로 꼭짓점은 (${p}, ${q})입니다.`,
+      `축의 방정식은 x=${p}입니다. (부호 주의: (x${p>0?`−${p}`:`+${-p}`})에서 p=${p})`,
+      `a=${a}${a>0?'이므로 아래로 볼록':'이므로 위로 볼록'}한 포물선입니다.`,
+      `따라서 옳은 것은 '꼭짓점은 (${p}, ${q})이다.'입니다.`
+    ]};
 }
 function genMidIsosceles(){
   const top=pick([40,50,70,80,100]),ans=(180-top)/2;
@@ -1269,7 +1440,12 @@ function genMidQuadrant(){
 function genMidSimilarity(){
   const scale=pick([2,3]),small=randInt(2,6),ans=small*scale;
   const{choices,answer}=makeChoices(String(ans),[ans-2,ans+2,small+scale].filter(v=>v>0).map(String));
-  return{topic:'닮음',q:`서로 닮은 두 삼각형의 닮음비가 1:${scale}이다. 작은 삼각형의 한 변이 ${small}cm일 때 대응하는 큰 삼각형의 변의 길이는?`,choices,answer,meta:middleMeta('mid_geo','기하')};
+  return{topic:'닮음',q:`서로 닮은 두 삼각형의 닮음비가 1:${scale}이다. 작은 삼각형의 한 변이 ${small}cm일 때 대응하는 큰 삼각형의 변의 길이는?`,choices,answer,meta:middleMeta('mid_geo','기하'),
+    sol:[
+      `닮음비 1:${scale}은 '작은 도형의 변 길이 × ${scale} = 큰 도형의 변 길이'를 뜻합니다.`,
+      `작은 삼각형의 변이 ${small}cm이므로 큰 삼각형의 대응하는 변 = ${small} × ${scale} = ${ans}cm`,
+      `따라서 정답은 ${ans}cm입니다.`
+    ]};
 }
 function genMidTrig(){
   // 직각삼각형 ABC: 직각은 C, 각 B를 기준으로 삼각비를 구한다.
@@ -1298,7 +1474,16 @@ function genMidCircleAngle(){
   const ans=ask==='center'?ins*2:ins;
   const q=ask==='center'?`원에서 같은 호 AB를 보는 원주각이 ${ins}°일 때 중심각의 크기는?`:`원 위의 두 점 C, D가 같은 호 AB를 볼 때, ∠ACB=${ins}°이면 ∠ADB의 크기는?`;
   const{choices,answer}=makeChoices(`${ans}°`,[ans-10,ans+10,ins*2].filter(v=>v!==ans&&v>0).map(v=>`${v}°`));
-  return{topic:ask==='center'?'원주각과 중심각':'같은 호의 원주각',q,choices,answer,meta:middleMeta('mid_geo','기하')};
+  return{topic:ask==='center'?'원주각과 중심각':'같은 호의 원주각',q,choices,answer,meta:middleMeta('mid_geo','기하'),
+    sol:ask==='center'?[
+      `원주각과 중심각의 관계: 중심각 = 원주각 × 2`,
+      `같은 호 AB를 보는 원주각이 ${ins}°이므로 중심각 = ${ins}°× 2 = ${ans}°`,
+      `따라서 중심각의 크기는 ${ans}°입니다.`
+    ]:[
+      `같은 호를 보는 원주각의 크기는 모두 같습니다.`,
+      `∠ACB와 ∠ADB는 모두 같은 호 AB에 대한 원주각입니다.`,
+      `따라서 ∠ADB = ∠ACB = ${ins}°입니다.`
+    ]};
 }
 function genMidProbability(){
   const total=pick([8,10,12]),fav=pick([2,3,4,5]),g=gcdFn(fav,total),correct=`${fav/g}/${total/g}`;
@@ -1309,27 +1494,71 @@ function genMidProbability(){
     if(s!==correct&&!wrongs.includes(s))wrongs.push(s);
   }
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'확률',q:`모양과 크기가 같은 공 ${total}개 중 빨간 공이 ${fav}개이다. 한 개를 꺼낼 때 빨간 공이 나올 확률은?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계')};
+  const g2=gcdFn(fav,total);
+  return{topic:'확률',q:`모양과 크기가 같은 공 ${total}개 중 빨간 공이 ${fav}개이다. 한 개를 꺼낼 때 빨간 공이 나올 확률은?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계'),
+    sol:[
+      `확률 = (원하는 경우의 수) ÷ (전체 경우의 수)`,
+      `전체 경우의 수: 공 ${total}개 중 1개를 꺼내는 방법 = ${total}가지`,
+      `빨간 공이 나오는 경우의 수: ${fav}가지`,
+      `확률 = ${fav}/${total}${g2>1?` = ${fav/g2}/${total/g2} (분자·분모를 ${g2}로 약분)`:''}`,
+      `따라서 정답은 ${correct}입니다.`
+    ]};
 }
 function genMidCounting(){
   const a=randInt(2,5),b=randInt(2,4),ans=a*b;
   const{choices,answer}=makeChoices(String(ans),[a+b,ans-1,ans+2].filter(v=>v!==ans).map(String));
-  return{topic:'경우의 수',q:`윗옷 ${a}벌과 바지 ${b}벌 중에서 각각 하나씩 골라 입는 경우의 수는?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계')};
+  return{topic:'경우의 수',q:`윗옷 ${a}벌과 바지 ${b}벌 중에서 각각 하나씩 골라 입는 경우의 수는?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계'),
+    sol:[
+      `두 가지 선택을 동시에 할 때는 곱의 법칙: (윗옷 수) × (바지 수)를 씁니다.`,
+      `윗옷 ${a}벌 중 1벌 선택: ${a}가지`,
+      `바지 ${b}벌 중 1벌 선택: ${b}가지`,
+      `전체 경우의 수: ${a} × ${b} = ${ans}가지`
+    ]};
 }
 function genMidRepresentative(){
   const kind=pick(['평균','중앙값','최빈값']);
-  let data,ans;
-  if(kind==='평균'){const m=randInt(4,8);data=[m-2,m,m+1,m+1];ans=m;}
-  else if(kind==='중앙값'){data=shuffle([2,4,5,7,9]);ans=5;}
-  else{data=shuffle([3,5,5,5,7,8]);ans=5;}
+  let data,ans,sol;
+  if(kind==='평균'){
+    const m=randInt(4,8);data=[m-2,m,m+1,m+1];ans=m;
+    const sum=(m-2)+m+(m+1)+(m+1);
+    sol=[
+      `평균 = (모든 자료의 합) ÷ (자료의 개수)`,
+      `합: ${data.join('+')} = ${sum}`,
+      `자료의 개수: ${data.length}개`,
+      `평균 = ${sum} ÷ ${data.length} = ${ans}`
+    ];
+  }else if(kind==='중앙값'){
+    data=shuffle([2,4,5,7,9]);const sorted=[2,4,5,7,9];ans=5;
+    sol=[
+      `중앙값: 자료를 크기 순서대로 늘어놓았을 때 가운데 값입니다.`,
+      `크기 순서로 정렬: ${sorted.join(', ')}`,
+      `자료 5개이므로 가운데(3번째) 값 = ${ans}`,
+      `따라서 중앙값은 ${ans}입니다.`
+    ];
+  }else{
+    data=shuffle([3,5,5,5,7,8]);ans=5;
+    sol=[
+      `최빈값: 자료에서 가장 많이 나타나는 값입니다.`,
+      `자료: ${[3,5,5,5,7,8].join(', ')}`,
+      `3은 1번, 5는 3번, 7은 1번, 8은 1번 나타납니다.`,
+      `가장 많이 나오는 값은 5(3번)이므로 최빈값 = ${ans}`
+    ];
+  }
   const{choices,answer}=makeChoices(String(ans),[ans-1,ans+1,ans+2].map(String));
-  return{topic:kind,q:`자료 ${data.join(', ')}의 ${kind}은?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계')};
+  return{topic:kind,q:`자료 ${data.join(', ')}의 ${kind}은?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계'),sol};
 }
 function genMidFrequency(){
   const rows=[{label:'0 이상~10 미만',n:3},{label:'10 이상~20 미만',n:7},{label:'20 이상~30 미만',n:6},{label:'30 이상~40 미만',n:4}];
   const ans=rows[2].n+rows[3].n;
   const{choices,answer}=makeChoices(String(ans),[ans-2,ans+1,ans+2].map(String));
-  return{topic:'도수분포표',q:`통학 시간별 학생 수가 0~10분 3명, 10~20분 7명, 20~30분 6명, 30~40분 4명일 때, 20분 이상인 학생 수는?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계')};
+  return{topic:'도수분포표',q:`통학 시간별 학생 수가 0~10분 3명, 10~20분 7명, 20~30분 6명, 30~40분 4명일 때, 20분 이상인 학생 수는?`,choices,answer,meta:middleMeta('mid_stat','확률과 통계'),
+    sol:[
+      `'20분 이상'이란 20분~30분 구간과 30분~40분 구간을 모두 포함합니다.`,
+      `20~30분 구간: ${rows[2].n}명`,
+      `30~40분 구간: ${rows[3].n}명`,
+      `합계: ${rows[2].n} + ${rows[3].n} = ${ans}명`,
+      `따라서 20분 이상인 학생 수는 ${ans}명입니다.`
+    ]};
 }
 var MID_DOMAIN_GENS={
   '수와 연산':()=>weightedGen([[genMidPrime,4],[genMidNumber,3],[genMidRepeating,3],[genMidExponent,3]]),
