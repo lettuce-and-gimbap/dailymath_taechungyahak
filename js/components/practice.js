@@ -486,8 +486,9 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
         </div>
         :<div className="inline-block bg-yellow-100 text-yellow-800 text-sm font-bold px-3 py-1 rounded-full mb-4">{q.category==='div'?'약수 구하기':'나눗셈'}</div>
       }
+      {q.category==='exam5'&&q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2 w-full"><GraphPreview q={q}/></div>}
       {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left px-1">{q.q}</div>}
-      {q.category==='exam5'&&q.graph&&<div className="flex justify-center mt-3 w-full"><GraphPreview q={q}/></div>}
+      {q.category==='exam5'&&q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3 w-full"><GraphPreview q={q}/></div>}
       {q.category==='math'&&<div className="text-4xl font-black text-gray-800 tracking-wide">{q.a} ÷ {q.b} = ?</div>}
       {q.category==='div'&&<div className="text-3xl font-black text-gray-800 leading-relaxed">
         <span className="text-indigo-600">{q.target}</span> 의<br/>

@@ -293,8 +293,9 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{q.topic}</span>
             {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
           </div>
+          {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3">{q.q}</div>
-          {q.graph&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
+          {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="grid grid-cols-2 gap-1.5">
             {q.choices.map((c,j)=><div key={j} className={`text-xs px-3 py-2 rounded-xl border font-semibold ${j===q.answer?'bg-green-50 border-green-300 text-green-800':'bg-gray-50 border-gray-200 text-gray-600'}`}>{ORD[j]} <MathText v={c}/></div>)}
           </div>

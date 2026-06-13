@@ -45,6 +45,27 @@ function GraphPreview({q}){
   if(!q?.graph) return null;
   const g=q.graph;
 
+  // ── 0. 연립방정식/연립부등식 — 세로 나열 + 왼쪽 중괄호 ──
+  if(g.type==='system_eq'){
+    const{eqs}=g;
+    const lineH=34, padX=18, padY=16;
+    const svgH=padY*2+eqs.length*lineH;
+    const svgW=280;
+    const bracePath=(()=>{
+      const top=padY+lineH/2-2, bot=padY+(eqs.length-1)*lineH+lineH/2+2, mid=(top+bot)/2;
+      const bx=10, inset=6;
+      return `M${bx+inset},${top} Q${bx},${top} ${bx},${top+8} L${bx},${mid-6} Q${bx},${mid} ${bx-inset},${mid} Q${bx},${mid} ${bx},${mid+6} L${bx},${bot-8} Q${bx},${bot} ${bx+inset},${bot}`;
+    })();
+    return(
+      <svg width={svgW} height={svgH} className="my-1 block mx-auto overflow-visible">
+        <path d={bracePath} fill="none" stroke="#374151" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+        {eqs.map((eq,i)=>(
+          <text key={i} x={padX} y={padY+(i+0.5)*lineH+6} fontSize={15} fontWeight="700" fill="#1e293b" fontFamily="monospace">{eq}</text>
+        ))}
+      </svg>
+    );
+  }
+
   // 공통 좌표계 설정
   const W=220,H=180,SC=22;
   // 그래프 중심을 콘텐츠에 맞게 이동 (circle은 원의 중심 기준, 나머지 원점 기준)
@@ -144,9 +165,14 @@ function GraphPreview({q}){
     const axXvis=axX>=4&&axX<=W-4;
     const axYvis=axY>=4&&axY<=H-4;
 
-    // 좌표 포맷(정수면 정수, 소수면 소수 1자리)
-    const fmtN=v=>Number.isInteger(v)?String(v):(+v.toFixed(1)).toString();
-    const fmtCoord=pt=>`(${fmtN(pt.x)}, ${fmtN(pt.y)})`;
+    // 수선의 발 점선: 점 → x축, 점 → y축
+    const drawDropLines=(px2,py2,lineColor)=>{
+      if(!axYvis&&!axXvis)return null;
+      return(<g opacity={0.65}>
+        {axYvis&&<line x1={px2} y1={py2} x2={px2} y2={axY} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2"/>}
+        {axXvis&&<line x1={axX} y1={py2} x2={px2} y2={py2} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2"/>}
+      </g>);
+    };
 
     return(
       <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
@@ -170,30 +196,25 @@ function GraphPreview({q}){
         {axXvis&&allYInts.filter((n,i)=>n!==0&&i%yStep===0&&toQy(n)>10&&toQy(n)<H-6).map(n=>(
           <text key={'ly'+n} x={Math.max(axX-6,14)} y={toQy(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
         ))}
-        {/* 구간 경계 점선 */}
-        <line x1={toQx(ds)} y1={8} x2={toQx(ds)} y2={H-8} stroke="#f59e0b" strokeWidth={1.2} strokeDasharray="4,3" opacity={0.7}/>
-        <line x1={toQx(de)} y1={8} x2={toQx(de)} y2={H-8} stroke="#f59e0b" strokeWidth={1.2} strokeDasharray="4,3" opacity={0.7}/>
         {/* 포물선 전체(옅게) */}
         {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke="#c7d2fe" strokeWidth={1.4}/>}
         {/* 포물선 구간(진하게) */}
         {rangePts.length>1&&<polyline points={rangePts.join(' ')} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"/>}
-        {/* 구간 시작점 (극값 아닌 경우에만 별도 표시) */}
+        {/* 구간 시작점 수선의 발 + 점 (극값 아닌 경우) */}
         {!isDsExtreme&&<g>
+          {drawDropLines(toQx(ds),toQy(yDs),'#6b7280')}
           <circle cx={toQx(ds)} cy={toQy(yDs)} r={4} fill="white" stroke="#6b7280" strokeWidth={2}/>
-          <text x={toQx(ds)} y={toQy(yDs)+(yDs<=extremePt.y?14:-8)} textAnchor="middle" fontSize={9} fill="#6b7280" fontWeight="700" stroke="white" strokeWidth="2.5" paintOrder="stroke">{fmtCoord(startPt)}</text>
         </g>}
-        {/* 구간 끝점 (극값 아닌 경우에만 별도 표시) */}
+        {/* 구간 끝점 수선의 발 + 점 (극값 아닌 경우) */}
         {!isDeExtreme&&<g>
+          {drawDropLines(toQx(de),toQy(yDe),'#6b7280')}
           <circle cx={toQx(de)} cy={toQy(yDe)} r={4} fill="white" stroke="#6b7280" strokeWidth={2}/>
-          <text x={toQx(de)} y={toQy(yDe)+(yDe<=extremePt.y?14:-8)} textAnchor="middle" fontSize={9} fill="#6b7280" fontWeight="700" stroke="white" strokeWidth="2.5" paintOrder="stroke">{fmtCoord(endPt)}</text>
         </g>}
-        {/* 꼭짓점이 구간 내이고 극값이 아닌 경우: 꼭짓점 좌표만 옅게 */}
-        {vxInRange&&extremePt.x!==p&&<g>
-          <circle cx={toQx(p)} cy={toQy(vq)} r={3.5} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>
-        </g>}
-        {/* ★ 극값점: 크고 선명하게, 좌표만 표기(최솟값/최댓값 텍스트 없음) */}
+        {/* 꼭짓점이 구간 내이고 극값이 아닌 경우 */}
+        {vxInRange&&extremePt.x!==p&&<circle cx={toQx(p)} cy={toQy(vq)} r={3.5} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>}
+        {/* ★ 극값점: 수선의 발 + 크고 선명한 원 (좌표 텍스트 없음) */}
+        {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor)}
         <circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={6} fill={extremeColor} stroke="white" strokeWidth={2.5}/>
-        <text x={toQx(extremePt.x)} y={toQy(extremePt.y)+(a>0?-10:16)} textAnchor="middle" fontSize={10} fill={extremeColor} fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">{fmtCoord(extremePt)}</text>
       </svg>
     );
   }
@@ -373,46 +394,56 @@ function GraphPreview({q}){
   if(g.type==='composite_map'){
     const{X,Y,Z,f_map,g_map,inp,fx,gfx}=g;
     const n=X.length;
-    const svgW=310,svgH=200;
-    const lx=55,mx=155,rx=255,oy=svgH/2;
-    const ry=Math.min(68,n*16+14),rx2=38;
-    const sp=Math.min(28,(ry*2-16)/Math.max(n-1,1));
-    const baseY=oy-(n-1)*sp/2;
-    const gXp=(i)=>({x:lx,y:baseY+i*sp});
-    const gYp=(i)=>({x:mx,y:baseY+i*sp});
-    const gZp=(i)=>({x:rx,y:baseY+i*sp});
-    const hC='#ef4444',fC='#059669',gC='#6366f1';
-    const drawArrow=(sx,sy,ex,ey,color,thick=1.6)=>{
+    const svgW=320,svgH=Math.max(200,n*38+60);
+    const lx=54,mx=160,rzx=266,oy=svgH/2;
+    const ovalRy=Math.min(70,n*14+18),ovalRx=40;
+    const spY=Math.min(32,(ovalRy*2-20)/Math.max(n-1,1));
+    const baseY=oy-(n-1)*spY/2;
+    const pX=(i)=>({x:lx,y:baseY+i*spY});
+    const pY=(i)=>({x:mx,y:baseY+i*spY});
+    const pZ=(i)=>({x:rzx,y:baseY+i*spY});
+    const cGreen='#059669',cIndigo='#6366f1',cRed='#ef4444',cGray='#9ca3af';
+    const mkArrow=(sx,sy,ex,ey,color,thick)=>{
       const ang=Math.atan2(ey-sy,ex-sx),al=8,aw=4;
       const ax1=ex-al*Math.cos(ang)+aw*Math.sin(ang),ay1=ey-al*Math.sin(ang)-aw*Math.cos(ang);
       const ax2=ex-al*Math.cos(ang)-aw*Math.sin(ang),ay2=ey-al*Math.sin(ang)+aw*Math.cos(ang);
-      return(<g opacity={0.85}><line x1={sx} y1={sy} x2={ex} y2={ey} stroke={color} strokeWidth={thick}/><polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={color}/></g>);
+      return(<g><line x1={sx} y1={sy} x2={ex} y2={ey} stroke={color} strokeWidth={thick}/><polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={color}/></g>);
     };
     return(
       <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
         {/* 세 타원 */}
-        <ellipse cx={lx} cy={oy} rx={rx2} ry={ry} fill="rgba(16,185,129,0.07)" stroke={fC} strokeWidth={2}/>
-        <ellipse cx={mx} cy={oy} rx={rx2} ry={ry} fill="rgba(99,102,241,0.07)" stroke={gC} strokeWidth={2}/>
-        <ellipse cx={rx} cy={oy} rx={rx2} ry={ry} fill="rgba(239,68,68,0.07)" stroke={hC} strokeWidth={2}/>
-        {/* 레이블 */}
-        <text x={lx} y={oy-ry-10} textAnchor="middle" fontSize={13} fill={fC} fontWeight="900">X</text>
-        <text x={mx} y={oy-ry-10} textAnchor="middle" fontSize={13} fill={gC} fontWeight="900">Y</text>
-        <text x={rx} y={oy-ry-10} textAnchor="middle" fontSize={13} fill={hC} fontWeight="900">Z</text>
-        {/* f 레이블 */}
-        <text x={(lx+mx)/2} y={oy-ry-18} textAnchor="middle" fontSize={10} fill={fC} fontWeight="bold">f</text>
-        <text x={(mx+rx)/2} y={oy-ry-18} textAnchor="middle" fontSize={10} fill={gC} fontWeight="bold">g</text>
+        <ellipse cx={lx} cy={oy} rx={ovalRx} ry={ovalRy} fill="rgba(16,185,129,0.07)" stroke={cGreen} strokeWidth={2}/>
+        <ellipse cx={mx} cy={oy} rx={ovalRx} ry={ovalRy} fill="rgba(99,102,241,0.07)" stroke={cIndigo} strokeWidth={2}/>
+        <ellipse cx={rzx} cy={oy} rx={ovalRx} ry={ovalRy} fill="rgba(239,68,68,0.07)" stroke={cRed} strokeWidth={2}/>
+        {/* 집합 레이블 */}
+        <text x={lx} y={oy-ovalRy-8} textAnchor="middle" fontSize={14} fill={cGreen} fontWeight="900">X</text>
+        <text x={mx} y={oy-ovalRy-8} textAnchor="middle" fontSize={14} fill={cIndigo} fontWeight="900">Y</text>
+        <text x={rzx} y={oy-ovalRy-8} textAnchor="middle" fontSize={14} fill={cRed} fontWeight="900">Z</text>
+        {/* 함수 이름 레이블 */}
+        <text x={(lx+mx)/2} y={oy-ovalRy-22} textAnchor="middle" fontSize={11} fill={cGreen} fontWeight="bold">f</text>
+        <text x={(mx+rzx)/2} y={oy-ovalRy-22} textAnchor="middle" fontSize={11} fill={cIndigo} fontWeight="bold">g</text>
         {/* X 원소 */}
-        {X.map((x,i)=>{const p=gXp(i);const isInp=(x===inp);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={12} fill={isInp?fC:'#1f2937'} fontWeight={isInp?'900':'700'}>{x}</text>);})};
+        {X.map((x,i)=>{const p=pX(i);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={x===inp?cGreen:'#1f2937'} fontWeight={x===inp?'900':'700'}>{x}</text>);})}
         {/* Y 원소 */}
-        {Y.map((y,i)=>{const p=gYp(i);const isFx=(y===fx);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={12} fill={isFx?gC:'#1f2937'} fontWeight={isFx?'900':'700'}>{y}</text>);})};
+        {Y.map((y,i)=>{const p=pY(i);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={y===fx?cIndigo:'#1f2937'} fontWeight={y===fx?'900':'700'}>{y}</text>);})}
         {/* Z 원소 */}
-        {Z.map((z,i)=>{const p=gZp(i);const isAns=(z===gfx);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={12} fill={isAns?hC:'#1f2937'} fontWeight={isAns?'900':'700'}>{z}</text>);})};
+        {Z.map((z,i)=>{const p=pZ(i);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={z===gfx?cRed:'#1f2937'} fontWeight={z===gfx?'900':'700'}>{z}</text>);})}
         {/* f 화살표 X→Y */}
-        {f_map.map(([x,y],i)=>{const xi=X.indexOf(x),yi=Y.indexOf(y);const sp2=gXp(xi),ep=gYp(yi);const isHL=(x===inp);return drawArrow(sp2.x+rx2-4,sp2.y,ep.x-rx2+4,ep.y,isHL?fC:fC,isHL?2.4:1.4);})};
+        {f_map.map(([x,y],i)=>{
+          const xi=X.indexOf(x),yi=Y.indexOf(y);
+          const s2=pX(xi),e2=pY(yi);
+          const hl=x===inp;
+          return(<g key={'fa'+i} opacity={hl?1:0.5}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,hl?cGreen:cGray,hl?2.5:1.3)}</g>);
+        })}
         {/* g 화살표 Y→Z */}
-        {g_map.map(([y,z],i)=>{const yi=Y.indexOf(y),zi=Z.indexOf(z);const sp2=gYp(yi),ep=gZp(zi);const isHL=(y===fx);return drawArrow(sp2.x+rx2-4,sp2.y,ep.x-rx2+4,ep.y,isHL?gC:gC,isHL?2.4:1.4);})};
+        {g_map.map(([y,z],i)=>{
+          const yi=Y.indexOf(y),zi=Z.indexOf(z);
+          const s2=pY(yi),e2=pZ(zi);
+          const hl=y===fx;
+          return(<g key={'ga'+i} opacity={hl?1:0.5}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,hl?cIndigo:cGray,hl?2.5:1.3)}</g>);
+        })}
         {/* 하단 힌트 */}
-        <text x={svgW/2} y={svgH-7} textAnchor="middle" fontSize={10} fill={hC} fontWeight="bold">(g∘f)({inp}) = ?</text>
+        <text x={svgW/2} y={svgH-6} textAnchor="middle" fontSize={11} fill={cRed} fontWeight="bold">(g∘f)({inp}) = ?</text>
       </svg>
     );
   }

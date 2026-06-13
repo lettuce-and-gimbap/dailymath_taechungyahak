@@ -343,8 +343,8 @@ function gen_poly_synthetic(){
 
 // 다항식 영역 디스패처
 function genMockPoly(){
-  return weightedGen([[gen_poly_arith,4],[gen_poly_identity,4],[gen_poly_remainder,4],
-    [gen_poly_divisible,3],[gen_poly_factor,4],[gen_poly_synthetic,5]]);
+  return weightedGen([[gen_poly_arith,4],[gen_poly_identity,4],[gen_poly_remainder,7],
+    [gen_poly_factor,4],[gen_poly_synthetic,5]]);
 }
 
 /* ════════════════════════════════════════════════
@@ -554,7 +554,9 @@ function gen_system_eq(){
   if(t===1){ // {x+y=s, xy=a}, 해 x=xV, y=b
     const aVal=xV*yV,bVal=yV,ans=aVal+bVal;
     const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2,ans+4].filter(w=>w!==ans).map(String));
-    return{topic:'연립방정식',q:`연립방정식 {x+y=${s} / xy=a}의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    return{topic:'연립방정식',q:`연립방정식의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,
+      graph:{type:'system_eq',eqs:[`x + y = ${s}`,`xy = a`]},
+      meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
       sol:[
         `해가 x=${xV}, y=b이므로 먼저 y값을 구합니다.`,
         `첫 번째 식 x+y=${s}에 x=${xV}를 넣으면: ${xV}+y=${s} → y=${yV}이므로 b=${yV}`,
@@ -565,7 +567,9 @@ function gen_system_eq(){
   // {x+y=s, x²−y²=a}
   const aVal=xV**2-yV**2,bVal=yV,ans=aVal+bVal;
   const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2,ans+4,ans-4].filter(w=>w!==ans).slice(0,3).map(String));
-  return{topic:'연립방정식',q:`연립방정식 {x+y=${s} / x²−y²=a}의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+  return{topic:'연립방정식',q:`연립방정식의 해가 x=${xV}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,
+    graph:{type:'system_eq',eqs:[`x + y = ${s}`,`x² − y² = a`]},
+    meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `해가 x=${xV}, y=b이므로 먼저 y값을 구합니다.`,
       `첫 번째 식 x+y=${s}에 x=${xV}를 넣으면: ${xV}+y=${s} → y=${yV}이므로 b=${yV}`,
@@ -610,7 +614,8 @@ function gen_system_ineq(){
   const e2s=e2>0?`+${e2}`:String(e2);
   const diff2=c2-d2;
   const{choices,answer}=makeChoices(String(hi),[hi+1,hi+2,hi-1].filter(w=>w!==hi&&w>lo).map(String));
-  return{topic:'연립부등식',q:`연립부등식 {${a1}x>${b1} / ${c2}x<${d2}x${e2s}}의 해가 ${lo}<x<a일 때, 상수 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+  return{topic:'연립부등식',q:`연립부등식의 해가 ${lo}<x<a일 때, 상수 a의 값은?`,choices,answer,
+    graph:{type:'system_eq',eqs:[`${a1}x > ${b1}`,`${c2}x < ${d2}x${e2s}`]},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `각 부등식을 따로 풀고 나서 공통 범위를 구합니다.`,
       `① ${a1}x > ${b1} → x > ${b1}÷${a1} = ${lo}`,

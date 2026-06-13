@@ -174,9 +174,10 @@ function MockExamTab({userData,onUpdate}){
             {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
+          {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3">{q.q}</div>
           {/* 기하 문제 그래프 미리보기 */}
-          {q.graph&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
+          {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="grid grid-cols-1 gap-2">
             {q.choices.map((ch,j)=>{
               let cls='bg-gray-50 border-gray-200 text-gray-700';
