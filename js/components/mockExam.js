@@ -171,6 +171,7 @@ function MockExamTab({userData,onUpdate}){
           <div className="flex items-center gap-2 mb-3">
             <span className="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0">{i+1}</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{q.topic}</span>
+            {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
           <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3">{q.q}</div>

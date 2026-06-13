@@ -295,7 +295,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   useEffect(()=>{buildMCOpts()},[q]);
   const buildMCOpts=()=>{
     if(!q.isMC){setMcOpts([]);return}
-    var _twoMode=questions.length>=14;
+    var _twoMode=questions.length>=15;
     // exam5: 이미 choices 배열이 있는 모의고사 포맷
     if(q.category==='exam5'&&q.choices){
       var opts5=q.choices.map((c,i)=>({text:c,isC:i===q.answer}));
@@ -459,7 +459,10 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     </div>
     <div className={`bg-white rounded-3xl p-6 shadow-md flex flex-col items-center justify-center ${q.category==='exam5'?(q.graph?'':'min-h-48'):'min-h-40'}`}>
       {q.category==='exam5'
-        ?<div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full mb-4">📚 {q.topic||q.meta?.type||'검정고시 영역 연습'}</div>
+        ?<div className="flex flex-col items-center gap-1 mb-4">
+          <div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">📚 {q.topic||q.meta?.type||'검정고시 영역 연습'}</div>
+          {(()=>{var src=getExamSource(q);return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
+        </div>
         :<div className="inline-block bg-yellow-100 text-yellow-800 text-sm font-bold px-3 py-1 rounded-full mb-4">{q.category==='div'?'약수 구하기':'나눗셈'}</div>
       }
       {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left px-1">{q.q}</div>}

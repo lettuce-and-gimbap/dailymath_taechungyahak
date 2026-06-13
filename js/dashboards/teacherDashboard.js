@@ -27,6 +27,8 @@ function StudentAnalysisTab(){
   const[loading,setLoading]=useState(false);
   const[selected,setSelected]=useState(null);
   const[onlineMap,setOnlineMap]=useState({}); // {학생이름: lastSeen timestamp}
+  const[sortBy,setSortBy]=useState('date'); // 'date' | 'name'
+  const[sortAsc,setSortAsc]=useState(false);
 
   // 접속중 실시간 구독 (30초 이상 업데이트 없으면 오프라인 간주)
   useEffect(()=>{
@@ -116,16 +118,31 @@ function StudentAnalysisTab(){
   const curFolder=folders.find(f=>f.id===activeFolder)||folders[0];
   // '폴더없음' 탭: 어느 커스텀 폴더에도 없는 학생
   // 커스텀 폴더 탭: 해당 폴더 ids에 포함된 학생
-  const visibleStudents=activeFolder==='all'
+  const _filtered=activeFolder==='all'
     ?students.filter(s=>!customFolders.some(f=>f.ids.includes(s.id)))
     :students.filter(s=>curFolder?.ids.includes(s.id));
+  const visibleStudents=[..._filtered].sort((a,b)=>{
+    var cmp=sortBy==='name'
+      ?(a.name||a.id).localeCompare(b.name||b.id)
+      :(a.lastLoginAt||a.lastDate||'').localeCompare(b.lastLoginAt||b.lastDate||'');
+    return sortAsc?cmp:-cmp;
+  });
+  const toggleSort=key=>{if(sortBy===key)setSortAsc(v=>!v);else{setSortBy(key);setSortAsc(key==='name');}};
 
   const LIGHT_CLS={'light-red':'bg-red-50 text-red-700 border border-red-200','light-yel':'bg-yellow-50 text-yellow-700 border border-yellow-200','light-grn':'bg-green-50 text-green-700 border border-green-200'};
 
   return(<div className="p-4 pb-36 space-y-3">
     <div className="flex items-center justify-between mb-2">
       <div className="text-lg font-black text-gray-800">📊 학생 현황</div>
-      <button onClick={load} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-bold">🔄 새로고침</button>
+      <div className="flex items-center gap-2">
+        <button onClick={()=>toggleSort('name')} className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${sortBy==='name'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
+          이름순 {sortBy==='name'?(sortAsc?'↑':'↓'):''}
+        </button>
+        <button onClick={()=>toggleSort('date')} className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${sortBy==='date'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
+          접속순 {sortBy==='date'?(sortAsc?'↑':'↓'):''}
+        </button>
+        <button onClick={load} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-bold">🔄</button>
+      </div>
     </div>
 
     {/* ── 폴더 탭 ── */}
