@@ -398,16 +398,15 @@ function gen_complex_calc(){
 function gen_complex_conjugate(){
   const a=randInt(1,6),b=randInt(1,5);
   const t=pick([1,2]);
-  if(t===1){ // z=a+bi의 켤레복소수가 a−bi → a+b
-    const ans=a+b;
-    const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans).map(String));
-    return{topic:'켤레복소수',q:`복소수 ${a}+${b}i의 켤레복소수가 a+bi일 때, 두 실수 a, b에 대하여 a+b의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+  if(t===1){ // ${a}+${b}i의 켤레복소수를 p+qi라 할 때 p+q
+    const ans=a-b; // 켤레복소수는 a−bi이므로 p=a, q=−b → p+q=a−b
+    const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2,a+b].filter(w=>w!==ans).slice(0,3).map(String));
+    return{topic:'켤레복소수',q:`복소수 ${a}+${b}i의 켤레복소수를 p+qi라 할 때, p+q의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
       sol:[
-        `켤레복소수: p+qi의 켤레복소수는 p−qi입니다. (허수부 부호만 바꿈)`,
+        `켤레복소수: A+Bi의 켤레복소수는 A−Bi입니다. (허수부의 부호만 바꿈)`,
         `${a}+${b}i의 켤레복소수 = ${a}−${b}i`,
-        `문제에서 켤레복소수가 a+bi 꼴로 주어졌으므로: a=${a}, b=−${b}`,
-        `a+b = ${a}+(−${b}) = ${a-b}... 잠깐, b는 실수 계수이므로 b=−${b}`,
-        `a+b = ${a}+(${-b}) = ${ans}입니다.`
+        `이것을 p+qi 꼴로 쓰면: p=${a}, q=−${b}`,
+        `p+q = ${a}+(−${b}) = ${ans}입니다.`
       ]};
   }
   // 켤레복소수가 c이면 z=c̄

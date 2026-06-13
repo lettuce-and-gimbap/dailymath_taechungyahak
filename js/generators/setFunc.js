@@ -369,6 +369,54 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 6b. 합성함수 — X·Y·Z 세 타원 + 이중 화살표 다이어그램 ──
+  if(g.type==='composite_map'){
+    const{X,Y,Z,f_map,g_map,inp,fx,gfx}=g;
+    const n=X.length;
+    const svgW=310,svgH=200;
+    const lx=55,mx=155,rx=255,oy=svgH/2;
+    const ry=Math.min(68,n*16+14),rx2=38;
+    const sp=Math.min(28,(ry*2-16)/Math.max(n-1,1));
+    const baseY=oy-(n-1)*sp/2;
+    const gXp=(i)=>({x:lx,y:baseY+i*sp});
+    const gYp=(i)=>({x:mx,y:baseY+i*sp});
+    const gZp=(i)=>({x:rx,y:baseY+i*sp});
+    const hC='#ef4444',fC='#059669',gC='#6366f1';
+    const drawArrow=(sx,sy,ex,ey,color,thick=1.6)=>{
+      const ang=Math.atan2(ey-sy,ex-sx),al=8,aw=4;
+      const ax1=ex-al*Math.cos(ang)+aw*Math.sin(ang),ay1=ey-al*Math.sin(ang)-aw*Math.cos(ang);
+      const ax2=ex-al*Math.cos(ang)-aw*Math.sin(ang),ay2=ey-al*Math.sin(ang)+aw*Math.cos(ang);
+      return(<g opacity={0.85}><line x1={sx} y1={sy} x2={ex} y2={ey} stroke={color} strokeWidth={thick}/><polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={color}/></g>);
+    };
+    return(
+      <svg width={svgW} height={svgH} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 세 타원 */}
+        <ellipse cx={lx} cy={oy} rx={rx2} ry={ry} fill="rgba(16,185,129,0.07)" stroke={fC} strokeWidth={2}/>
+        <ellipse cx={mx} cy={oy} rx={rx2} ry={ry} fill="rgba(99,102,241,0.07)" stroke={gC} strokeWidth={2}/>
+        <ellipse cx={rx} cy={oy} rx={rx2} ry={ry} fill="rgba(239,68,68,0.07)" stroke={hC} strokeWidth={2}/>
+        {/* 레이블 */}
+        <text x={lx} y={oy-ry-10} textAnchor="middle" fontSize={13} fill={fC} fontWeight="900">X</text>
+        <text x={mx} y={oy-ry-10} textAnchor="middle" fontSize={13} fill={gC} fontWeight="900">Y</text>
+        <text x={rx} y={oy-ry-10} textAnchor="middle" fontSize={13} fill={hC} fontWeight="900">Z</text>
+        {/* f 레이블 */}
+        <text x={(lx+mx)/2} y={oy-ry-18} textAnchor="middle" fontSize={10} fill={fC} fontWeight="bold">f</text>
+        <text x={(mx+rx)/2} y={oy-ry-18} textAnchor="middle" fontSize={10} fill={gC} fontWeight="bold">g</text>
+        {/* X 원소 */}
+        {X.map((x,i)=>{const p=gXp(i);const isInp=(x===inp);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={12} fill={isInp?fC:'#1f2937'} fontWeight={isInp?'900':'700'}>{x}</text>);})};
+        {/* Y 원소 */}
+        {Y.map((y,i)=>{const p=gYp(i);const isFx=(y===fx);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={12} fill={isFx?gC:'#1f2937'} fontWeight={isFx?'900':'700'}>{y}</text>);})};
+        {/* Z 원소 */}
+        {Z.map((z,i)=>{const p=gZp(i);const isAns=(z===gfx);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={12} fill={isAns?hC:'#1f2937'} fontWeight={isAns?'900':'700'}>{z}</text>);})};
+        {/* f 화살표 X→Y */}
+        {f_map.map(([x,y],i)=>{const xi=X.indexOf(x),yi=Y.indexOf(y);const sp2=gXp(xi),ep=gYp(yi);const isHL=(x===inp);return drawArrow(sp2.x+rx2-4,sp2.y,ep.x-rx2+4,ep.y,isHL?fC:fC,isHL?2.4:1.4);})};
+        {/* g 화살표 Y→Z */}
+        {g_map.map(([y,z],i)=>{const yi=Y.indexOf(y),zi=Z.indexOf(z);const sp2=gYp(yi),ep=gZp(zi);const isHL=(y===fx);return drawArrow(sp2.x+rx2-4,sp2.y,ep.x-rx2+4,ep.y,isHL?gC:gC,isHL?2.4:1.4);})};
+        {/* 하단 힌트 */}
+        <text x={svgW/2} y={svgH-7} textAnchor="middle" fontSize={10} fill={hC} fontWeight="bold">(g∘f)({inp}) = ?</text>
+      </svg>
+    );
+  }
+
   // ── 7. 역함수 — X·Y 두 타원 + 화살표 매핑 다이어그램 ──
   // 기출 참고: 2023년 2회 Q17, 2025년 1·2회 Q17, 2026년 1회 Q17
   if(g.type==='inverse_map'){
@@ -985,12 +1033,14 @@ function gen_composite_func(){
   const fStr=f.map(([x,y])=>`${x}→${y}`).join(', ');
   const gStr=g.map(([y,z])=>`${y}→${z}`).join(', ');
   const{choices,answer}=makeChoices(String(gfx),[gfx+1,gfx-1,gfx+2,fx].filter(w=>w!==gfx).slice(0,3).map(String));
-  return{topic:'합성함수',q:`두 함수 f:{${fStr}}, g:{${gStr}}일 때, (g∘f)(${inp})의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+  return{topic:'합성함수',q:`그림과 같이 두 함수 f: X→Y, g: Y→Z가 있을 때, (g∘f)(${inp})의 값은?`,choices,answer,
+    graph:{type:'composite_map',X,Y,Z,f_map:f,g_map:g,inp,fx,gfx},
+    meta:{category:'func',type:'집합과 함수',diff:'기초'},
     sol:[
-      `(g∘f)(${inp})는 f를 먼저 계산한 뒤 그 결과에 g를 적용합니다.`,
-      `1단계 — f(${inp}) 계산: f의 대응표에서 ${inp}→${fx} 이므로 f(${inp})=${fx}`,
-      `2단계 — g(f(${inp})) = g(${fx}) 계산: g의 대응표에서 ${fx}→${gfx} 이므로 g(${fx})=${gfx}`,
-      `따라서 (g∘f)(${inp}) = ${gfx}입니다.`
+      `(g∘f)(${inp})는 f를 먼저 적용한 뒤, 그 결과에 g를 적용합니다.`,
+      `1단계 — f(${inp}): 그림에서 X의 ${inp}이 Y의 어디로 가는지 화살표를 따라갑니다. ${inp}→${fx}이므로 f(${inp})=${fx}`,
+      `2단계 — g(${fx}): Y의 ${fx}이 Z의 어디로 가는지 화살표를 따라갑니다. ${fx}→${gfx}이므로 g(${fx})=${gfx}`,
+      `따라서 (g∘f)(${inp}) = g(f(${inp})) = g(${fx}) = ${gfx}입니다.`
     ]};
 }
 

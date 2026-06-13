@@ -394,7 +394,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       revisionCount:null,          // 자유입력 형식 → 수정 횟수 미적용
       qTopicHash:topicHash,
       examSource:getExamSource(q)||null,
-      explanation:easyExplanation(q),
+      explanation:Array.isArray(q.sol)&&q.sol.length?q.sol.join('\n'):easyExplanation(q),
       meta};
     // 검정고시(exam5)는 회차 인쇄/PDF를 위해 원문제 전체를 함께 저장 (그림·선택지·해설 포함)
     if(q.category==='exam5'){
