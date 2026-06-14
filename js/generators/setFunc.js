@@ -1370,14 +1370,18 @@ function genMidRepeating(){
     ]};
 }
 function genMidExponent(){
+  const supMap='⁰¹²³⁴⁵⁶⁷⁸⁹';
+  const sup=n=>String(n).split('').map(c=>supMap[+c]||c).join('');
+  const xPow=n=>n===1?'x':`x${sup(n)}`;
   const a=randInt(2,4),b=randInt(2,5),c=randInt(1,Math.min(3,a+b-1)),ans=a+b-c;
-  const{choices,answer}=makeChoices(`x${ans===1?'':`^${ans}`}`,[ans-1,ans+1,a*b].filter(v=>v>0&&v!==ans).map(v=>`x${v===1?'':`^${v}`}`));
-  return{topic:'지수법칙',q:`x^${a} × x^${b} ÷ x^${c}을 간단히 한 것은? (단, x≠0)`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
+  const wrongVals=[...new Set([ans-1,ans+1,a*b,a+b].filter(v=>v>0&&v!==ans))];
+  const{choices,answer}=makeChoices(xPow(ans),wrongVals.map(xPow));
+  return{topic:'지수법칙',q:`${xPow(a)} × ${xPow(b)} ÷ ${xPow(c)}을 간단히 한 것은? (단, x≠0)`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
     sol:[
       `지수법칙: 같은 밑(x)끼리 곱하면 지수를 더하고, 나누면 지수를 뺍니다.`,
-      `x^${a} × x^${b} = x^(${a}+${b}) = x^${a+b}`,
-      `x^${a+b} ÷ x^${c} = x^(${a+b}−${c}) = x^${ans}`,
-      `따라서 답은 x^${ans}${ans===1?' = x':''}입니다.`
+      `${xPow(a)} × ${xPow(b)} = x^(${a}+${b}) = ${xPow(a+b)}`,
+      `${xPow(a+b)} ÷ ${xPow(c)} = x^(${a+b}−${c}) = ${xPow(ans)}`,
+      `따라서 답은 ${xPow(ans)}입니다.`
     ]};
 }
 function genMidSubstitute(){

@@ -864,23 +864,36 @@ function generateStoryWorksheet(counts, ratios) {
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);
+  // 유니코드 위첨자 ↔ 숫자 변환
+  const SUP_N={'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9'};
+  const N_SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  const toSup=n=>String(Math.max(1,n)).split('').map(c=>N_SUP[c]||c).join('');
   let ex=1;
   while(uw.length<3){
     let fb;
     if(Number.isFinite(Number(cs))){
+      // 숫자형: 인접 숫자 생성
       fb=String(Number(cs)+ex);
     } else {
-      // 비수치형 답변(예: "x=3, y=2"): 첫 번째 정수를 ±ex 변형하여 다른 선지 생성
+      const supM=cs.match(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+$/);
       const numM=cs.match(/\d+/);
-      if(numM){
+      if(supM){
+        // x², x³ 등 지수 형태: 지수를 변형
+        const expN=parseInt(supM[0].split('').map(c=>SUP_N[c]).join(''));
+        const stem=cs.slice(0,cs.length-supM[0].length);
+        fb=stem+toSup(expN+ex);
+        if(fb===cs||uw.includes(fb)) fb=stem+toSup(Math.max(1,expN-ex));
+      } else if(numM){
+        // "x=3, y=2" 등 일반 숫자 포함 문자열: 첫 숫자를 변형
         const base=parseInt(numM[0]);
         fb=cs.replace(/\d+/,String(base+ex));
         if(fb===cs||uw.includes(fb)) fb=cs.replace(/\d+/,String(Math.max(0,base-ex)));
       } else {
-        fb=`(${ex})`;
+        // 숫자 없는 경우 (극히 드문 케이스): 숫자 추가
+        fb=String(ex);
       }
     }
-    if(fb&&!uw.includes(fb)&&fb!==cs)uw.push(fb);
+    if(fb!=null&&fb!==cs&&!uw.includes(fb))uw.push(fb);
     ex++;if(ex>20)break;
   }
   const choices=shuffle([cs,...uw.slice(0,3)]);
@@ -3242,14 +3255,18 @@ function genMidRepeating(){
     ]};
 }
 function genMidExponent(){
+  const supMap='⁰¹²³⁴⁵⁶⁷⁸⁹';
+  const sup=n=>String(n).split('').map(c=>supMap[+c]||c).join('');
+  const xPow=n=>n===1?'x':`x${sup(n)}`;
   const a=randInt(2,4),b=randInt(2,5),c=randInt(1,Math.min(3,a+b-1)),ans=a+b-c;
-  const{choices,answer}=makeChoices(`x${ans===1?'':`^${ans}`}`,[ans-1,ans+1,a*b].filter(v=>v>0&&v!==ans).map(v=>`x${v===1?'':`^${v}`}`));
-  return{topic:'지수법칙',q:`x^${a} × x^${b} ÷ x^${c}을 간단히 한 것은? (단, x≠0)`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
+  const wrongVals=[...new Set([ans-1,ans+1,a*b,a+b].filter(v=>v>0&&v!==ans))];
+  const{choices,answer}=makeChoices(xPow(ans),wrongVals.map(xPow));
+  return{topic:'지수법칙',q:`${xPow(a)} × ${xPow(b)} ÷ ${xPow(c)}을 간단히 한 것은? (단, x≠0)`,choices,answer,meta:middleMeta('mid_num','수와 연산'),
     sol:[
       `지수법칙: 같은 밑(x)끼리 곱하면 지수를 더하고, 나누면 지수를 뺍니다.`,
-      `x^${a} × x^${b} = x^(${a}+${b}) = x^${a+b}`,
-      `x^${a+b} ÷ x^${c} = x^(${a+b}−${c}) = x^${ans}`,
-      `따라서 답은 x^${ans}${ans===1?' = x':''}입니다.`
+      `${xPow(a)} × ${xPow(b)} = x^(${a}+${b}) = ${xPow(a+b)}`,
+      `${xPow(a+b)} ÷ ${xPow(c)} = x^(${a+b}−${c}) = ${xPow(ans)}`,
+      `따라서 답은 ${xPow(ans)}입니다.`
     ]};
 }
 function genMidSubstitute(){
@@ -5456,6 +5473,7 @@ function MockExamTab({userData,onUpdate}){
   // ── 행동 추적 (신규) ──
   const[firstClickTimes,setFirstClickTimes]=useState({}); // {qIdx: ms from startTime to first click}
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
+  const[selectedDomains,setSelectedDomains]=useState([]);
 
   const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS=examLevel==='middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS;
@@ -5486,7 +5504,7 @@ function MockExamTab({userData,onUpdate}){
     return s;
   };
 
-  const startExam=(examMode)=>{
+  const startExam=(examMode,domainList)=>{
     setMode(examMode);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
@@ -5498,6 +5516,15 @@ function MockExamTab({userData,onUpdate}){
         const dom=i<7?targets[i%targets.length]:DOMAINS[i%DOMAINS.length];
         const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);
       }
+    }else if(examMode==='domain'){
+      const targets=domainList&&domainList.length>0?domainList:DOMAINS;
+      let safety2=0;
+      while(pool.length<10&&safety2++<80){
+        const dom=pick(targets);
+        const q=safeGen(DOMAIN_GENS[dom]);
+        if(q)pool.push(q);
+      }
+      pool=shuffle(pool);
     }else{
       DOMAINS.forEach(dom=>{for(let j=0;j<2;j++){const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
       pool=shuffle(pool);
@@ -5529,7 +5556,7 @@ function MockExamTab({userData,onUpdate}){
       };
     });
     const levelLabel=examLevel==='middle'?'중졸':'고졸';
-    const typeLabel=mode==='weak'?`📝 ${levelLabel} 약점 집중 모의고사`:`📝 ${levelLabel} 랜덤 혼합 모의고사`;
+    const typeLabel=mode==='weak'?`📝 ${levelLabel} 약점 집중 모의고사`:mode==='domain'?`📝 ${levelLabel} 영역집중 [${selectedDomains.join('+')}]`:`📝 ${levelLabel} 랜덤 혼합 모의고사`;
     const log={date:todayStr(),time:timeStr(),type:typeLabel,score:`${correctCount} / 10`,questions:qs,totalSec,feeling};
     const newLogs=[log,...(userData.logs||[])];
     const newTodayLessons=(userData.todayLessons||0)+1;
@@ -5586,6 +5613,23 @@ function MockExamTab({userData,onUpdate}){
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="text-sm font-black text-gray-700 mb-2">📌 영역 선택 집중 풀기</div>
+        <div className="text-xs text-gray-400 mb-3">원하는 영역만 체크하고 그 영역에서만 문제를 풀어요</div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {DOMAINS.map(d=>(
+            <button key={d} onClick={()=>setSelectedDomains(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d])}
+              className={`px-3 py-2 rounded-full text-xs font-bold border-2 transition-all active:scale-95 ${selectedDomains.includes(d)?'bg-teal-500 text-white border-teal-500':'bg-white text-gray-600 border-gray-200'}`}>
+              {selectedDomains.includes(d)?'✓ ':''}{d}
+            </button>
+          ))}
+        </div>
+        <button onClick={()=>{if(selectedDomains.length>0)startExam('domain',selectedDomains);}}
+          className={`w-full py-4 rounded-2xl font-black text-base transition-all active:scale-95 ${selectedDomains.length>0?'bg-gradient-to-r from-teal-500 to-green-600 text-white shadow-md':'bg-gray-100 text-gray-400 cursor-default'}`}>
+          {selectedDomains.length>0?`📌 선택 영역 10문제 시작 →`:'영역을 먼저 선택하세요'}
+          {selectedDomains.length>0&&<div className="text-xs font-normal opacity-80 mt-1">{selectedDomains.join(' · ')}</div>}
+        </button>
+      </div>
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
         <div className="text-sm font-black text-gray-600 mb-3">🌳 나의 수학 나무 숲 현황</div>
         <div className="space-y-2.5">
           {DOMAINS.map(d=>{
@@ -5608,7 +5652,7 @@ function MockExamTab({userData,onUpdate}){
     return(<div className="p-4 pb-36 space-y-4 fade-in">
       <div className="sticky top-0 bg-white border-b py-3 flex items-center gap-3 z-10 -mx-4 px-4 shadow-sm">
         <button onClick={()=>setScreen('start')} className="text-gray-500 text-sm font-bold">← 나가기</button>
-        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':'🎲 랜덤 혼합'} ({answered}/10)</span>
+        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 랜덤 혼합'} ({answered}/10)</span>
         {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/10점</span>}
       </div>
       {questions.map((q,i)=>{

@@ -10,6 +10,7 @@ function MockExamTab({userData,onUpdate}){
   // ── 행동 추적 (신규) ──
   const[firstClickTimes,setFirstClickTimes]=useState({}); // {qIdx: ms from startTime to first click}
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
+  const[selectedDomains,setSelectedDomains]=useState([]);
 
   const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS=examLevel==='middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS;
@@ -40,7 +41,7 @@ function MockExamTab({userData,onUpdate}){
     return s;
   };
 
-  const startExam=(examMode)=>{
+  const startExam=(examMode,domainList)=>{
     setMode(examMode);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
@@ -52,6 +53,15 @@ function MockExamTab({userData,onUpdate}){
         const dom=i<7?targets[i%targets.length]:DOMAINS[i%DOMAINS.length];
         const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);
       }
+    }else if(examMode==='domain'){
+      const targets=domainList&&domainList.length>0?domainList:DOMAINS;
+      let safety2=0;
+      while(pool.length<10&&safety2++<80){
+        const dom=pick(targets);
+        const q=safeGen(DOMAIN_GENS[dom]);
+        if(q)pool.push(q);
+      }
+      pool=shuffle(pool);
     }else{
       DOMAINS.forEach(dom=>{for(let j=0;j<2;j++){const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
       pool=shuffle(pool);
@@ -83,7 +93,7 @@ function MockExamTab({userData,onUpdate}){
       };
     });
     const levelLabel=examLevel==='middle'?'중졸':'고졸';
-    const typeLabel=mode==='weak'?`📝 ${levelLabel} 약점 집중 모의고사`:`📝 ${levelLabel} 랜덤 혼합 모의고사`;
+    const typeLabel=mode==='weak'?`📝 ${levelLabel} 약점 집중 모의고사`:mode==='domain'?`📝 ${levelLabel} 영역집중 [${selectedDomains.join('+')}]`:`📝 ${levelLabel} 랜덤 혼합 모의고사`;
     const log={date:todayStr(),time:timeStr(),type:typeLabel,score:`${correctCount} / 10`,questions:qs,totalSec,feeling};
     const newLogs=[log,...(userData.logs||[])];
     const newTodayLessons=(userData.todayLessons||0)+1;
@@ -140,6 +150,23 @@ function MockExamTab({userData,onUpdate}){
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="text-sm font-black text-gray-700 mb-2">📌 영역 선택 집중 풀기</div>
+        <div className="text-xs text-gray-400 mb-3">원하는 영역만 체크하고 그 영역에서만 문제를 풀어요</div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {DOMAINS.map(d=>(
+            <button key={d} onClick={()=>setSelectedDomains(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d])}
+              className={`px-3 py-2 rounded-full text-xs font-bold border-2 transition-all active:scale-95 ${selectedDomains.includes(d)?'bg-teal-500 text-white border-teal-500':'bg-white text-gray-600 border-gray-200'}`}>
+              {selectedDomains.includes(d)?'✓ ':''}{d}
+            </button>
+          ))}
+        </div>
+        <button onClick={()=>{if(selectedDomains.length>0)startExam('domain',selectedDomains);}}
+          className={`w-full py-4 rounded-2xl font-black text-base transition-all active:scale-95 ${selectedDomains.length>0?'bg-gradient-to-r from-teal-500 to-green-600 text-white shadow-md':'bg-gray-100 text-gray-400 cursor-default'}`}>
+          {selectedDomains.length>0?`📌 선택 영역 10문제 시작 →`:'영역을 먼저 선택하세요'}
+          {selectedDomains.length>0&&<div className="text-xs font-normal opacity-80 mt-1">{selectedDomains.join(' · ')}</div>}
+        </button>
+      </div>
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
         <div className="text-sm font-black text-gray-600 mb-3">🌳 나의 수학 나무 숲 현황</div>
         <div className="space-y-2.5">
           {DOMAINS.map(d=>{
@@ -162,7 +189,7 @@ function MockExamTab({userData,onUpdate}){
     return(<div className="p-4 pb-36 space-y-4 fade-in">
       <div className="sticky top-0 bg-white border-b py-3 flex items-center gap-3 z-10 -mx-4 px-4 shadow-sm">
         <button onClick={()=>setScreen('start')} className="text-gray-500 text-sm font-bold">← 나가기</button>
-        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':'🎲 랜덤 혼합'} ({answered}/10)</span>
+        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 랜덤 혼합'} ({answered}/10)</span>
         {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/10점</span>}
       </div>
       {questions.map((q,i)=>{

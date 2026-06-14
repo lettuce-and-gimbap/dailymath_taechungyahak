@@ -1,23 +1,36 @@
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);
+  // 유니코드 위첨자 ↔ 숫자 변환
+  const SUP_N={'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9'};
+  const N_SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  const toSup=n=>String(Math.max(1,n)).split('').map(c=>N_SUP[c]||c).join('');
   let ex=1;
   while(uw.length<3){
     let fb;
     if(Number.isFinite(Number(cs))){
+      // 숫자형: 인접 숫자 생성
       fb=String(Number(cs)+ex);
     } else {
-      // 비수치형 답변(예: "x=3, y=2"): 첫 번째 정수를 ±ex 변형하여 다른 선지 생성
+      const supM=cs.match(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+$/);
       const numM=cs.match(/\d+/);
-      if(numM){
+      if(supM){
+        // x², x³ 등 지수 형태: 지수를 변형
+        const expN=parseInt(supM[0].split('').map(c=>SUP_N[c]).join(''));
+        const stem=cs.slice(0,cs.length-supM[0].length);
+        fb=stem+toSup(expN+ex);
+        if(fb===cs||uw.includes(fb)) fb=stem+toSup(Math.max(1,expN-ex));
+      } else if(numM){
+        // "x=3, y=2" 등 일반 숫자 포함 문자열: 첫 숫자를 변형
         const base=parseInt(numM[0]);
         fb=cs.replace(/\d+/,String(base+ex));
         if(fb===cs||uw.includes(fb)) fb=cs.replace(/\d+/,String(Math.max(0,base-ex)));
       } else {
-        fb=`(${ex})`;
+        // 숫자 없는 경우 (극히 드문 케이스): 숫자 추가
+        fb=String(ex);
       }
     }
-    if(fb&&!uw.includes(fb)&&fb!==cs)uw.push(fb);
+    if(fb!=null&&fb!==cs&&!uw.includes(fb))uw.push(fb);
     ex++;if(ex>20)break;
   }
   const choices=shuffle([cs,...uw.slice(0,3)]);
