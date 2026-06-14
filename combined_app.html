@@ -181,7 +181,10 @@ window._db = firebase.firestore();
 try{if(localStorage.getItem('yakHakTheme')==='dark')document.body.classList.add('dark');}catch(e){}
 </script>
 
+<!-- ===== 공통 상수 · 유틸 · Firebase 헬퍼 ===== -->
 <script type="text/babel">
+
+// ===== js\constants.js =====
 var {useState,useRef,useCallback,useEffect,useMemo}=React;
 var db=window._db;
 
@@ -267,12 +270,6 @@ var MID_Q_SPECIFIC={
   '삼각비':[_q(2023,1,18),_q(2023,2,18),_q(2024,1,18),_q(2024,2,18),_q(2025,1,18),_q(2025,2,18),_q(2026,1,18)],
   '원주각과 중심각':[_q(2023,1,19),_q(2023,2,19),_q(2024,1,19),_q(2024,2,19),_q(2025,1,19),_q(2025,2,19),_q(2026,1,19)],
   '같은 호의 원주각':[_q(2023,2,20),_q(2024,1,20),_q(2025,1,20),_q(2025,2,20),_q(2026,1,20)],
-  '확률':[_q(2023,1,21),_q(2023,2,21),_q(2024,1,21),_q(2024,2,21),_q(2025,1,21),_q(2025,2,21),_q(2026,1,21)],
-  '경우의 수':[_q(2023,1,22),_q(2023,2,22),_q(2024,1,22),_q(2024,2,22),_q(2025,1,22),_q(2025,2,22),_q(2026,1,22)],
-  '평균':[_q(2023,1,23),_q(2023,2,23),_q(2024,1,23),_q(2024,2,23),_q(2025,1,23),_q(2025,2,23),_q(2026,1,23)],
-  '중앙값':[_q(2023,1,23),_q(2023,2,23),_q(2024,2,23),_q(2025,1,23),_q(2025,2,23),_q(2026,1,23)],
-  '최빈값':[_q(2023,2,23),_q(2024,1,23),_q(2025,1,23),_q(2025,2,23)],
-  '도수분포표':[_q(2023,1,24),_q(2023,2,24),_q(2024,1,24),_q(2024,2,24),_q(2025,1,24),_q(2025,2,24),_q(2026,1,24)],
 };
 // 넓은 범위 참고용 (기존 유지)
 var HIGH_Q_SOURCE={
@@ -524,6 +521,8 @@ var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).ge
 var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
 
 
+
+// ===== js\generators\basic.js =====
 /* ===== MATH PROBLEM GENERATORS ===== */
 function genDivBasic(mn,mx){
   let pairs=[];
@@ -860,14 +859,28 @@ function generateStoryWorksheet(counts, ratios) {
 
 /* ===== GEOMETRY GENERATORS ===== */
 
+
+// ===== js\generators\highschool.js =====
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);
-  // fallback: cs+숫자 형태가 수식처럼 보이지 않도록 별도 처리
   let ex=1;
   while(uw.length<3){
-    const fb=Number.isFinite(Number(cs))?String(Number(cs)+ex):`${cs}(${ex})`;
-    if(!uw.includes(fb)&&fb!==cs)uw.push(fb);
+    let fb;
+    if(Number.isFinite(Number(cs))){
+      fb=String(Number(cs)+ex);
+    } else {
+      // 비수치형 답변(예: "x=3, y=2"): 첫 번째 정수를 ±ex 변형하여 다른 선지 생성
+      const numM=cs.match(/\d+/);
+      if(numM){
+        const base=parseInt(numM[0]);
+        fb=cs.replace(/\d+/,String(base+ex));
+        if(fb===cs||uw.includes(fb)) fb=cs.replace(/\d+/,String(Math.max(0,base-ex)));
+      } else {
+        fb=`(${ex})`;
+      }
+    }
+    if(fb&&!uw.includes(fb)&&fb!==cs)uw.push(fb);
     ex++;if(ex>20)break;
   }
   const choices=shuffle([cs,...uw.slice(0,3)]);
@@ -1533,7 +1546,7 @@ function gen_two_point_dist(){
   const wrongs=shuffle(NICE.filter(([a,b])=>a!==dx||b!==dy).map(([,,s])=>s)).filter(s=>s!==correct).slice(0,3);
   const{choices,answer}=makeChoices(correct,wrongs);
   const pn=v=>v<0?`(${v})`:String(v);
-  return{topic:'두 점 거리',q:`좌표평면 위의 두 점 A(${x1}, ${y1}), B(${x2}, ${y2}) 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+  return{topic:'두 점 거리',q:`좌표평면 위의 두 점 A(${x1}, ${y1}), B(${x2}, ${y2}) 사이의 거리는?`,choices,answer,graph:{type:'two_point',x1,y1,x2,y2},meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
       `두 점 A(x₁,y₁), B(x₂,y₂) 사이의 거리 = √((x₂−x₁)²+(y₂−y₁)²)`,
       `x의 차: ${x2}−${pn(x1)} = ${x2-x1},  y의 차: ${y2}−${pn(y1)} = ${y2-y1}`,
@@ -1855,6 +1868,8 @@ function genMockGeometry(){
    ③ 유리함수 선지 "y=−3/(x−2)+2"  → VF 세로분수
    ④ 기타(좌표, 정수, 방정식 등)    → 텍스트 그대로 */
 
+
+// ===== js\generators\setFunc.js =====
 function MathExpr({v}){
   if(v==null) return null;
   const s=String(v);
@@ -1929,6 +1944,7 @@ function GraphPreview({q}){
   let CX=W/2, CY=H/2;
   if(g.type==='circle'){CX=W/2-g.h*SC*0.5; CY=H/2+g.k*SC*0.5;}
   if(g.type==='rational'){CX=W/2-g.p*SC; CY=H/2+g.q*SC;}
+  if(g.type==='two_point'){CX=W/2-((g.x1+g.x2)/2)*SC; CY=H/2+((g.y1+g.y2)/2)*SC;}
   const toSx=x=>CX+x*SC, toSy=y=>CY-y*SC;
   const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 
@@ -2277,7 +2293,22 @@ function GraphPreview({q}){
     );
   }
 
-  // ── 6b. 합성함수 — X·Y·Z 세 타원 + 이중 화살표 다이어그램 ──
+  // ── 6b. 두 점 사이의 거리 — A·B 두 점과 연결 선분 ──
+  if(g.type==='two_point'){
+    const{x1,y1,x2,y2}=g;
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        <Axes/>
+        <line x1={toSx(x1)} y1={toSy(y1)} x2={toSx(x2)} y2={toSy(y2)} stroke="#6366f1" strokeWidth={2} strokeDasharray="5,3"/>
+        <circle cx={toSx(x1)} cy={toSy(y1)} r={5} fill="#4f46e5" stroke="white" strokeWidth={2}/>
+        <text x={toSx(x1)+8} y={toSy(y1)-6} fontSize={9} fontWeight="bold" fill="#4f46e5">A({x1},{y1})</text>
+        <circle cx={toSx(x2)} cy={toSy(y2)} r={5} fill="#dc2626" stroke="white" strokeWidth={2}/>
+        <text x={toSx(x2)+8} y={toSy(y2)-6} fontSize={9} fontWeight="bold" fill="#dc2626">B({x2},{y2})</text>
+      </svg>
+    );
+  }
+
+  // ── 6c. 합성함수 — X·Y·Z 세 타원 + 이중 화살표 다이어그램 ──
   if(g.type==='composite_map'){
     const{X,Y,Z,f_map,g_map,inp,fx,gfx}=g;
     const n=X.length;
@@ -3268,9 +3299,11 @@ function genMidLinearEq(){
 }
 function genMidSystem(){
   const x=randInt(1,5),y=randInt(1,5),s=x+y,d=x-y,correct=`x=${x}, y=${y}`;
-  const wrongs=[`x=${y}, y=${x}`,`x=${x+1}, y=${Math.max(0,y-1)}`,`x=${Math.max(0,x-1)}, y=${y+1}`];
+  const wrongs=x===y
+    ?[`x=${x+1}, y=${y}`,`x=${x}, y=${y+1}`,`x=${x+1}, y=${y+1}`]
+    :[`x=${y}, y=${x}`,`x=${x+1}, y=${Math.max(0,y-1)}`,`x=${Math.max(0,x-1)}, y=${y+1}`];
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'연립방정식',q:`연립방정식 { x+y=${s}, x−y=${d} }의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+  return{topic:'연립방정식',q:`다음 연립방정식의 해는?`,choices,answer,graph:{type:'system_eq',eqs:[`x+y=${s}`,`x−y=${d}`]},meta:middleMeta('mid_alg','문자와 식'),
     sol:[
       `두 식을 더해서 y를 없애는 방법을 씁니다.`,
       `①+②: (x+y)+(x−y) = ${s}+(${d}) → 2x = ${s+d} → x = ${x}`,
@@ -3536,6 +3569,8 @@ function genMiddleMock(domain){
 
 /* ===== SVG BASE COMPONENTS ===== */
 
+
+// ===== js\components\canvas.js =====
 function Grid({W,H,SC,cx,cy}){
   // cx/cy: 원점의 픽셀 위치 (팬 이동 반영됨), 범위 ±12까지 확장
   const rX=Math.min(12,Math.ceil(Math.max(cx,W-cx)/SC)+1);
@@ -4035,6 +4070,8 @@ function QText({v}){
 
 /* ===== AUTH SCREEN ===== */
 
+
+// ===== js\components\auth.js =====
 function DarkToggle({className}){
   const[dark,setDark]=React.useState(()=>typeof document!=='undefined'&&document.body.classList.contains('dark'));
   const toggle=()=>{
@@ -4103,6 +4140,8 @@ function AuthScreen({onLogin}){
 
 /* ===== STREAK CALCULATOR ===== */
 
+
+// ===== js\components\home.js =====
 function calcStreak(activeDates){
   if(!activeDates?.length)return{total:0,streak:0};
   const u=[...new Set(activeDates)].sort((a,b)=>b.localeCompare(a));const total=u.length;
@@ -4415,6 +4454,8 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
 /* ===== DAILY PRACTICE TAB ===== */
 
+
+// ===== js\components\practice.js =====
 function DailyPracticeTab({userData,onUpdate}){
   const[screen,setScreen]=useState('menu');// menu | session | done
   const[session,setSession]=useState(null);
@@ -5064,6 +5105,8 @@ function HistoryTab({userData, feedbacks}){
 
 /* ===== GEOMETRY TAB ===== */
 
+
+// ===== js\components\geometry.js =====
 function GeometryTab({userData, onUpdate}){
   const[subTab,setSubTab]=useState('learn');
   const sz=useCanvasSize();
@@ -5399,6 +5442,8 @@ function GeometryQuiz({userData, onUpdate}){
 
 /* ===== MOCK EXAM TAB ===== */
 
+
+// ===== js\components\mockExam.js =====
 function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
@@ -5576,7 +5621,7 @@ function MockExamTab({userData,onUpdate}){
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
           {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3">{q.q}</div>
+          <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3"><QText v={q.q}/></div>
           {/* 기하 문제 그래프 미리보기 */}
           {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="grid grid-cols-1 gap-2">
@@ -5625,6 +5670,8 @@ function MockExamTab({userData,onUpdate}){
 
 /* ===== STUDENT DASHBOARD ===== */
 
+
+// ===== js\components\worksheet.js =====
 function WorksheetTab(){
   const[wsType,setWsType]=useState('div');
   const[title,setTitle]=useState('');
@@ -5643,6 +5690,9 @@ function WorksheetTab(){
   const[examSheet,setExamSheet]=useState(null); // 생성된 문제지 미리보기
   const[examMode,setExamMode]=useState('random'); // 'random' | 'weak'
   const[targetStudent,setTargetStudent]=useState(''); // 취약점 분석 대상 학생
+
+  // 출제 영역 선택 (모의고사 전용)
+  const[selectedDomains,setSelectedDomains]=useState([]);
 
   // 채점(Grading) 전용 상태
   const[gradeModal, setGradeModal] = useState(null);
@@ -5684,12 +5734,13 @@ function WorksheetTab(){
   // 모의고사 문제지 생성
   const createExamSheet=()=>{
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
+    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T;
     let pool=[];
     if(examMode==='weak'&&targetStudent){
       const stu=studentList.find(s=>s.name===targetStudent);
       const stats=stu?computeStatsT(stu.logs||[]):{};
-      const weakDomains=DOMAINS_T.filter(d=>!stats[d]||stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
-      const targets=weakDomains.length>0?weakDomains:DOMAINS_T;
+      const weakDomains=activeDomains.filter(d=>!stats[d]||stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
+      const targets=weakDomains.length>0?weakDomains:activeDomains;
       // ── 취약점 모드 중복 방지: 토픽 + 문제 텍스트 기준 ──
       const seenQ=new Set();
       let safety=0;
@@ -5706,7 +5757,7 @@ function WorksheetTab(){
       // ── 랜덤 모드: 토픽 중복 방지 + 문제 텍스트 중복 방지 ──
       const usedTopics=new Set();
       const usedQTexts=new Set();
-      DOMAINS_T.forEach(dom=>{
+      activeDomains.forEach(dom=>{
         let added=0,retries=0;
         while(added<2&&retries<15){
           const q=safeGen(DOMAIN_GENS_T[dom]);
@@ -5730,7 +5781,7 @@ function WorksheetTab(){
     const usedTopicsAll=new Set(pool.map(q=>q.topic));
     const usedQAll=new Set(pool.map(q=>`${q.topic}::${q.q?.slice(0,30)||''}`));
     while(pool.length<10&&safety++<30){
-      const q=safeGen(pick(Object.values(DOMAIN_GENS_T)));
+      const q=safeGen(DOMAIN_GENS_T[pick(activeDomains)]);
       if(q){
         const qKey=`${q.topic}::${q.q?.slice(0,30)||''}`;
         if(!usedQAll.has(qKey)){usedTopicsAll.add(q.topic);usedQAll.add(qKey);pool.push(q);}
@@ -5789,6 +5840,8 @@ function WorksheetTab(){
       loadWsList();
     }catch(e){showToast('❌ 저장 실패. 인터넷을 확인하세요.');}
   };
+
+  useEffect(()=>{setSelectedDomains([]);},[wsType]);
 
   useEffect(()=>{
     db.collection('users').where('role','==','student').get().then(snap => {
@@ -5921,7 +5974,7 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
             {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
           </div>
           {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3">{q.q}</div>
+          <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3"><QText v={q.q}/></div>
           {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="grid grid-cols-2 gap-1.5">
             {q.choices.map((c,j)=><div key={j} className={`text-xs px-3 py-2 rounded-xl border font-semibold ${j===q.answer?'bg-green-50 border-green-300 text-green-800':'bg-gray-50 border-gray-200 text-gray-600'}`}>{ORD[j]} <MathText v={c}/></div>)}
@@ -6219,6 +6272,18 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
           <option value="">학생 선택 (취약 영역 자동 분석)</option>
           {studentList.map(s=><option key={s.name} value={s.name}>{s.name} 학생</option>)}
         </select>}
+        <div className="border-2 border-indigo-50 rounded-2xl p-3 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-gray-700">📌 출제 영역 선택 <span className="text-gray-400 font-normal">(미선택 시 전 영역)</span></span>
+            {selectedDomains.length>0&&<button onClick={()=>setSelectedDomains([])} className="text-xs text-indigo-500 font-bold">전체 해제</button>}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {DOMAINS_T.map(d=>(
+              <button key={d} onClick={()=>setSelectedDomains(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d])}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedDomains.includes(d)?'bg-indigo-500 text-white':'bg-white border border-gray-300 text-gray-600'}`}>{d}</button>
+            ))}
+          </div>
+        </div>
         <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
         <button onClick={createExamSheet} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">
           📝 {wsType==='mock_middle'?'중졸':'고졸'} 검정고시 문제지 생성 →
@@ -6264,6 +6329,8 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
 }
 
 
+
+// ===== js\components\feedback.js =====
 function StudentFeedbackPanel(){
   const[msgs,setMsgs]=React.useState([]);const[loading,setLoading]=React.useState(false);
   const load=async()=>{setLoading(true);try{const snap=await db.collection('studentFeedback').orderBy('sentAt','desc').limit(30).get();const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setMsgs(arr);}catch(e){}setLoading(false);};
@@ -6534,6 +6601,8 @@ var QUOTE_BGS=[
 ];
 
 
+
+// ===== js\dashboards\studentDashboard.js =====
 function StudentDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
@@ -6837,6 +6906,8 @@ function analyzeStudent(sData){
 var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 전`;
 
 
+
+// ===== js\dashboards\teacherDashboard.js =====
 function TeacherDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('analysis');
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생현황'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'feedback',icon:'💬',lbl:'피드백'}];
@@ -8347,6 +8418,8 @@ function StudentDetail({student,onBack}){
 }
 
 
+
+// ===== js\app.js =====
 function QuoteSplash({onDone}){
   const DURATION=4500;
   // 접속할 때마다 다음 글귀가 나오도록 인덱스 회전

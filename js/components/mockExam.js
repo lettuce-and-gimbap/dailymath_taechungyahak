@@ -175,7 +175,7 @@ function MockExamTab({userData,onUpdate}){
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
           {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3">{q.q}</div>
+          <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3"><QText v={q.q}/></div>
           {/* 기하 문제 그래프 미리보기 */}
           {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="grid grid-cols-1 gap-2">

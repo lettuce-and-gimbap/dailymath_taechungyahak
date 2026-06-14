@@ -17,6 +17,9 @@ function WorksheetTab(){
   const[examMode,setExamMode]=useState('random'); // 'random' | 'weak'
   const[targetStudent,setTargetStudent]=useState(''); // 취약점 분석 대상 학생
 
+  // 출제 영역 선택 (모의고사 전용)
+  const[selectedDomains,setSelectedDomains]=useState([]);
+
   // 채점(Grading) 전용 상태
   const[gradeModal, setGradeModal] = useState(null);
   const[studentList, setStudentList] = useState([]);
@@ -57,12 +60,13 @@ function WorksheetTab(){
   // 모의고사 문제지 생성
   const createExamSheet=()=>{
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
+    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T;
     let pool=[];
     if(examMode==='weak'&&targetStudent){
       const stu=studentList.find(s=>s.name===targetStudent);
       const stats=stu?computeStatsT(stu.logs||[]):{};
-      const weakDomains=DOMAINS_T.filter(d=>!stats[d]||stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
-      const targets=weakDomains.length>0?weakDomains:DOMAINS_T;
+      const weakDomains=activeDomains.filter(d=>!stats[d]||stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
+      const targets=weakDomains.length>0?weakDomains:activeDomains;
       // ── 취약점 모드 중복 방지: 토픽 + 문제 텍스트 기준 ──
       const seenQ=new Set();
       let safety=0;
@@ -79,7 +83,7 @@ function WorksheetTab(){
       // ── 랜덤 모드: 토픽 중복 방지 + 문제 텍스트 중복 방지 ──
       const usedTopics=new Set();
       const usedQTexts=new Set();
-      DOMAINS_T.forEach(dom=>{
+      activeDomains.forEach(dom=>{
         let added=0,retries=0;
         while(added<2&&retries<15){
           const q=safeGen(DOMAIN_GENS_T[dom]);
@@ -103,7 +107,7 @@ function WorksheetTab(){
     const usedTopicsAll=new Set(pool.map(q=>q.topic));
     const usedQAll=new Set(pool.map(q=>`${q.topic}::${q.q?.slice(0,30)||''}`));
     while(pool.length<10&&safety++<30){
-      const q=safeGen(pick(Object.values(DOMAIN_GENS_T)));
+      const q=safeGen(DOMAIN_GENS_T[pick(activeDomains)]);
       if(q){
         const qKey=`${q.topic}::${q.q?.slice(0,30)||''}`;
         if(!usedQAll.has(qKey)){usedTopicsAll.add(q.topic);usedQAll.add(qKey);pool.push(q);}
@@ -162,6 +166,8 @@ function WorksheetTab(){
       loadWsList();
     }catch(e){showToast('❌ 저장 실패. 인터넷을 확인하세요.');}
   };
+
+  useEffect(()=>{setSelectedDomains([]);},[wsType]);
 
   useEffect(()=>{
     db.collection('users').where('role','==','student').get().then(snap => {
@@ -294,7 +300,7 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
             {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
           </div>
           {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3">{q.q}</div>
+          <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3"><QText v={q.q}/></div>
           {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
           <div className="grid grid-cols-2 gap-1.5">
             {q.choices.map((c,j)=><div key={j} className={`text-xs px-3 py-2 rounded-xl border font-semibold ${j===q.answer?'bg-green-50 border-green-300 text-green-800':'bg-gray-50 border-gray-200 text-gray-600'}`}>{ORD[j]} <MathText v={c}/></div>)}
@@ -592,6 +598,18 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
           <option value="">학생 선택 (취약 영역 자동 분석)</option>
           {studentList.map(s=><option key={s.name} value={s.name}>{s.name} 학생</option>)}
         </select>}
+        <div className="border-2 border-indigo-50 rounded-2xl p-3 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-gray-700">📌 출제 영역 선택 <span className="text-gray-400 font-normal">(미선택 시 전 영역)</span></span>
+            {selectedDomains.length>0&&<button onClick={()=>setSelectedDomains([])} className="text-xs text-indigo-500 font-bold">전체 해제</button>}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {DOMAINS_T.map(d=>(
+              <button key={d} onClick={()=>setSelectedDomains(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d])}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedDomains.includes(d)?'bg-indigo-500 text-white':'bg-white border border-gray-300 text-gray-600'}`}>{d}</button>
+            ))}
+          </div>
+        </div>
         <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
         <button onClick={createExamSheet} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">
           📝 {wsType==='mock_middle'?'중졸':'고졸'} 검정고시 문제지 생성 →

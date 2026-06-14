@@ -72,6 +72,7 @@ function GraphPreview({q}){
   let CX=W/2, CY=H/2;
   if(g.type==='circle'){CX=W/2-g.h*SC*0.5; CY=H/2+g.k*SC*0.5;}
   if(g.type==='rational'){CX=W/2-g.p*SC; CY=H/2+g.q*SC;}
+  if(g.type==='two_point'){CX=W/2-((g.x1+g.x2)/2)*SC; CY=H/2+((g.y1+g.y2)/2)*SC;}
   const toSx=x=>CX+x*SC, toSy=y=>CY-y*SC;
   const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 
@@ -420,7 +421,22 @@ function GraphPreview({q}){
     );
   }
 
-  // ── 6b. 합성함수 — X·Y·Z 세 타원 + 이중 화살표 다이어그램 ──
+  // ── 6b. 두 점 사이의 거리 — A·B 두 점과 연결 선분 ──
+  if(g.type==='two_point'){
+    const{x1,y1,x2,y2}=g;
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        <Axes/>
+        <line x1={toSx(x1)} y1={toSy(y1)} x2={toSx(x2)} y2={toSy(y2)} stroke="#6366f1" strokeWidth={2} strokeDasharray="5,3"/>
+        <circle cx={toSx(x1)} cy={toSy(y1)} r={5} fill="#4f46e5" stroke="white" strokeWidth={2}/>
+        <text x={toSx(x1)+8} y={toSy(y1)-6} fontSize={9} fontWeight="bold" fill="#4f46e5">A({x1},{y1})</text>
+        <circle cx={toSx(x2)} cy={toSy(y2)} r={5} fill="#dc2626" stroke="white" strokeWidth={2}/>
+        <text x={toSx(x2)+8} y={toSy(y2)-6} fontSize={9} fontWeight="bold" fill="#dc2626">B({x2},{y2})</text>
+      </svg>
+    );
+  }
+
+  // ── 6c. 합성함수 — X·Y·Z 세 타원 + 이중 화살표 다이어그램 ──
   if(g.type==='composite_map'){
     const{X,Y,Z,f_map,g_map,inp,fx,gfx}=g;
     const n=X.length;
@@ -1411,9 +1427,11 @@ function genMidLinearEq(){
 }
 function genMidSystem(){
   const x=randInt(1,5),y=randInt(1,5),s=x+y,d=x-y,correct=`x=${x}, y=${y}`;
-  const wrongs=[`x=${y}, y=${x}`,`x=${x+1}, y=${Math.max(0,y-1)}`,`x=${Math.max(0,x-1)}, y=${y+1}`];
+  const wrongs=x===y
+    ?[`x=${x+1}, y=${y}`,`x=${x}, y=${y+1}`,`x=${x+1}, y=${y+1}`]
+    :[`x=${y}, y=${x}`,`x=${x+1}, y=${Math.max(0,y-1)}`,`x=${Math.max(0,x-1)}, y=${y+1}`];
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'연립방정식',q:`연립방정식 { x+y=${s}, x−y=${d} }의 해는?`,choices,answer,meta:middleMeta('mid_alg','문자와 식'),
+  return{topic:'연립방정식',q:`다음 연립방정식의 해는?`,choices,answer,graph:{type:'system_eq',eqs:[`x+y=${s}`,`x−y=${d}`]},meta:middleMeta('mid_alg','문자와 식'),
     sol:[
       `두 식을 더해서 y를 없애는 방법을 씁니다.`,
       `①+②: (x+y)+(x−y) = ${s}+(${d}) → 2x = ${s+d} → x = ${x}`,

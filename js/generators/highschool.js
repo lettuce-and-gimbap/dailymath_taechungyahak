@@ -1,11 +1,23 @@
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);
-  // fallback: cs+숫자 형태가 수식처럼 보이지 않도록 별도 처리
   let ex=1;
   while(uw.length<3){
-    const fb=Number.isFinite(Number(cs))?String(Number(cs)+ex):`${cs}(${ex})`;
-    if(!uw.includes(fb)&&fb!==cs)uw.push(fb);
+    let fb;
+    if(Number.isFinite(Number(cs))){
+      fb=String(Number(cs)+ex);
+    } else {
+      // 비수치형 답변(예: "x=3, y=2"): 첫 번째 정수를 ±ex 변형하여 다른 선지 생성
+      const numM=cs.match(/\d+/);
+      if(numM){
+        const base=parseInt(numM[0]);
+        fb=cs.replace(/\d+/,String(base+ex));
+        if(fb===cs||uw.includes(fb)) fb=cs.replace(/\d+/,String(Math.max(0,base-ex)));
+      } else {
+        fb=`(${ex})`;
+      }
+    }
+    if(fb&&!uw.includes(fb)&&fb!==cs)uw.push(fb);
     ex++;if(ex>20)break;
   }
   const choices=shuffle([cs,...uw.slice(0,3)]);
@@ -671,7 +683,7 @@ function gen_two_point_dist(){
   const wrongs=shuffle(NICE.filter(([a,b])=>a!==dx||b!==dy).map(([,,s])=>s)).filter(s=>s!==correct).slice(0,3);
   const{choices,answer}=makeChoices(correct,wrongs);
   const pn=v=>v<0?`(${v})`:String(v);
-  return{topic:'두 점 거리',q:`좌표평면 위의 두 점 A(${x1}, ${y1}), B(${x2}, ${y2}) 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+  return{topic:'두 점 거리',q:`좌표평면 위의 두 점 A(${x1}, ${y1}), B(${x2}, ${y2}) 사이의 거리는?`,choices,answer,graph:{type:'two_point',x1,y1,x2,y2},meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
       `두 점 A(x₁,y₁), B(x₂,y₂) 사이의 거리 = √((x₂−x₁)²+(y₂−y₁)²)`,
       `x의 차: ${x2}−${pn(x1)} = ${x2-x1},  y의 차: ${y2}−${pn(y1)} = ${y2-y1}`,
