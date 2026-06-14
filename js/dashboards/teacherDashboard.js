@@ -536,6 +536,7 @@ function StudentDetail({student,onBack}){
       </table>
 
       <!-- ③ 영역별 성취도 -->
+      <div style="page-break-before:always;"></div>
       ${sectionHead('📈','영역별 성취도')}
       ${relativeMastery.length === 0
         ? `<div style="padding:16px;text-align:center;color:#94a3b8;border:1px solid #e2e8f0;border-radius:8px;font-size:11px;margin-bottom:18px;">
@@ -949,6 +950,7 @@ function StudentDetail({student,onBack}){
         selfEffN > 0 ? `점검 필요 (${selfEffN}회)` : '✅ 양호', selfEffN > 0 ? '#d97706' : '#16a34a',
         selfEffFormula, selfEffTheory, selfEffStudent, selfEffAction, selfEffWarn)}
 
+      <div style="page-break-before:always;"></div>
       ${dc('자기주도 탐색', '🔭 자기주도 탐색 (그래프 탐험)',
         !explore.has ? '데이터 없음' : `${explore.breadth}/6개 개념 · ${explore.activeMin}분`, !explore.has ? '#94a3b8' : explore.breadth >= 3 ? '#2563eb' : '#d97706',
         exploreFormula, exploreTheory, exploreStudent, exploreAction, exploreWarn)}
