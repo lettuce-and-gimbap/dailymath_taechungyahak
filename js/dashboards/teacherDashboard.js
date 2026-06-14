@@ -391,7 +391,7 @@ function StudentDetail({student,onBack}){
 
     // ── 페이지 1 HTML ──
     const page1 = `
-    <div style="width:794px;min-height:1123px;background:white;padding:36px 42px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;">
+    <div style="width:794px;background:white;padding:36px 42px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
       <!-- 헤더 배너 -->
       <div style="background:linear-gradient(135deg,#3730a3,#6366f1);border-radius:10px;padding:18px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
@@ -438,7 +438,7 @@ function StudentDetail({student,onBack}){
           <th style="padding:7px 10px;text-align:left;font-size:11px;">교수자 제언</th>
         </tr>
         <!-- 평균 참여 시간 -->
-        <tr style="background:#f0fdf4;">
+        <tr style="background:#f0fdf4;page-break-inside:avoid;">
           <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
             평균 참여 시간
             <div style="font-size:9px;color:#94a3b8;margin-top:3px;font-weight:400;">📌 ${INDICATOR_DESC.activeTime}</div>
@@ -461,7 +461,7 @@ function StudentDetail({student,onBack}){
           </td>
         </tr>
         <!-- 자기주도 탐색 (그래프 탐험) -->
-        <tr style="background:#f0f9ff;">
+        <tr style="background:#f0f9ff;page-break-inside:avoid;">
           <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
             🔭 자기주도 탐색
             <div style="font-size:9px;color:#94a3b8;margin-top:3px;font-weight:400;">📌 ${INDICATOR_DESC.exploration}</div>
@@ -490,7 +490,7 @@ function StudentDetail({student,onBack}){
               : '한두 개념에 탐색이 몰려 있습니다. 아직 안 만져본 개념을 직접 조작해보도록 안내하세요.'}
           </td>
         </tr>
-        <tr style="background:${revision.counts?.fixated > 0 ? '#fff1f2' : '#f8fafc'};">
+        <tr style="background:${revision.counts?.fixated > 0 ? '#fff1f2' : '#f8fafc'};page-break-inside:avoid;">
           <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
             오개념 고착
             <div style="font-size:9px;color:#94a3b8;margin-top:3px;font-weight:400;">📌 ${INDICATOR_DESC.fixated}</div>
@@ -512,7 +512,7 @@ function StudentDetail({student,onBack}){
           </td>
         </tr>
         <!-- 자기효능감 -->
-        <tr style="background:#f0f1fe;">
+        <tr style="background:#f0f1fe;page-break-inside:avoid;">
           <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
             자기효능감
             <div style="font-size:9px;color:#94a3b8;margin-top:3px;font-weight:400;">📌 ${INDICATOR_DESC.selfEff}</div>
@@ -535,8 +535,11 @@ function StudentDetail({student,onBack}){
         </tr>
       </table>
 
+    </div>
+
+    <div style="width:794px;background:white;padding:36px 42px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
+
       <!-- ③ 영역별 성취도 -->
-      <div style="page-break-before:always;"></div>
       ${sectionHead('📈','영역별 성취도')}
       ${relativeMastery.length === 0
         ? `<div style="padding:16px;text-align:center;color:#94a3b8;border:1px solid #e2e8f0;border-radius:8px;font-size:11px;margin-bottom:18px;">
@@ -569,7 +572,7 @@ function StudentDetail({student,onBack}){
                 '점과 직선 거리':'공식 암기보다 유도 과정을 설명하게 해보세요.',
               };
               const tip = tips[m.topic] || '관련 단원 문제를 추가로 제공하세요.';
-              return `<tr style="background:${idx%2===0?'white':'#f8fafc'};">
+              return `<tr style="background:${idx%2===0?'white':'#f8fafc'};page-break-inside:avoid;">
                 <td style="padding:8px 8px;font-weight:700;border:1px solid #e2e8f0;vertical-align:middle;">${m.topic}</td>
                 <td style="padding:8px 8px;text-align:center;border:1px solid #e2e8f0;vertical-align:middle;">
                   <span style="font-size:16px;font-weight:900;color:${barColor};">${sc}%</span>
@@ -612,7 +615,7 @@ function StudentDetail({student,onBack}){
     const noDataAreas  = relativeMastery.filter(m => m.myRate == null).map(m => m.topic);
 
     const page2 = `
-    <div style="width:794px;min-height:1123px;background:white;padding:36px 42px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;">
+    <div style="width:794px;background:white;padding:36px 42px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
       <!-- 헤더 배너 (연속 표시) -->
       <div style="background:linear-gradient(135deg,#3730a3,#6366f1);border-radius:10px;padding:14px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
@@ -670,7 +673,7 @@ function StudentDetail({student,onBack}){
           ['🔭 자기주도 탐색','그래프 탐험의 조작 횟수·유휴 보정 활동 시간·탐색 개념 폭(체류 시간 아님)','성취가 아닌 참여·호기심 지표. 탐색이 많은 개념의 퀴즈 정답률이 함께 오르는지로 실효성 판단.'],
           ['영역별 성취율','해당 토픽 문항의 정답 수 ÷ 전체 풀이 수','풀이 문항이 적을수록 신뢰도 낮음. 최소 5문항 이상 축적 후 해석 권장.'],
           ['전체 평균 대비 %p','이 학생 성취율 − 전체 학생 동일 문항 평균','양수=또래 평균 이상, 음수=또래 평균 이하. 전체 학생 수가 적을수록 비교 신뢰도 낮음.'],
-        ].map((r,i)=>`<tr style="background:${i%2===0?'white':'#f8fafc'};">
+        ].map((r,i)=>`<tr style="background:${i%2===0?'white':'#f8fafc'};page-break-inside:avoid;">
           <td style="padding:7px 10px;font-weight:700;border:1px solid #e2e8f0;vertical-align:top;">${r[0]}</td>
           <td style="padding:7px 10px;border:1px solid #e2e8f0;vertical-align:top;color:#475569;">${r[1]}</td>
           <td style="padding:7px 10px;border:1px solid #e2e8f0;vertical-align:top;color:#475569;line-height:1.6;">${r[2]}</td>
@@ -904,7 +907,7 @@ function StudentDetail({student,onBack}){
     // page3a: 현황 지표 상세 해설
     // ══════════════════════
     const page3a = `
-    <div style="width:794px;min-height:1123px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;">
+    <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
       ${pageHeader2('현황 지표 상세 해설', '3/5')}
 
@@ -932,7 +935,7 @@ function StudentDetail({student,onBack}){
     // page3b: 행동 패턴 지표 상세 해설 (별도 페이지)
     // ══════════════════════
     const page3b_behavior = `
-    <div style="width:794px;min-height:1123px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;">
+    <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
       ${pageHeader2('행동 패턴 지표 상세 해설', '4/5')}
 
@@ -965,7 +968,7 @@ function StudentDetail({student,onBack}){
     // page3c: 영역별 성취도 상세 해설 + 종합 해석 안내
     // ══════════════════════
     const page3c = `
-    <div style="width:794px;min-height:1123px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;">
+    <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
       ${pageHeader2('영역별 성취도 상세 해설', '5/5')}
 
