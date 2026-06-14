@@ -697,7 +697,7 @@ function StudentDetail({student,onBack}){
     // ── 지표 상세해설 페이지 (page3) ──
     // 이 학생의 실제 값에 맞게 각 지표별 상세 해설 생성
     // ── 공통 헬퍼 ──
-    const pageHeader2 = (subtitle, pageNum) =>
+    const pageHeader2 = (subtitle) =>
       `<div style="background:linear-gradient(135deg,#0f172a,#3730a3);border-radius:10px;padding:13px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:13px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 지표 상세 해설</div>
@@ -909,7 +909,7 @@ function StudentDetail({student,onBack}){
     const page3a = `
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('현황 지표 상세 해설', '3/5')}
+      ${pageHeader2('현황 지표 상세 해설')}
 
       ${sH2('📊','현황 지표')}
 
@@ -937,7 +937,7 @@ function StudentDetail({student,onBack}){
     const page3b_behavior = `
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('행동 패턴 지표 상세 해설 (1/2)', '4/6')}
+      ${pageHeader2('행동 패턴 지표 상세 해설')}
 
       ${sH2('🔍','행동 패턴 지표')}
 
@@ -961,7 +961,7 @@ function StudentDetail({student,onBack}){
 
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('행동 패턴 지표 상세 해설 (2/2)', '5/6')}
+      ${pageHeader2('행동 패턴 지표 상세 해설 (계속)')}
 
       ${sH2('🔍','행동 패턴 지표 (계속)')}
 
@@ -981,7 +981,7 @@ function StudentDetail({student,onBack}){
     const page3c = `
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('영역별 성취도 상세 해설', '5/5')}
+      ${pageHeader2('영역별 성취도 상세 해설')}
 
       ${sH2('📈','영역별 성취도 상세 해설')}
 
@@ -1109,7 +1109,7 @@ function StudentDetail({student,onBack}){
                   <span className="text-lg">📊</span>
                   <div>
                     <div>학습 분석 리포트</div>
-                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">현황·패턴·성취도·피드백 (2쪽)</div>
+                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">현황·패턴·성취도·피드백</div>
                   </div>
                 </button>
                 <button onClick={()=>exportReport('detail')}
@@ -1117,15 +1117,15 @@ function StudentDetail({student,onBack}){
                   <span className="text-lg">📖</span>
                   <div>
                     <div>지표 상세 해설서</div>
-                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">이 학생 맞춤 지표 심층 해설 (3쪽)</div>
+                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">이 학생 맞춤 지표 심층 해설</div>
                   </div>
                 </button>
                 <button onClick={()=>exportReport('all')}
                   className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-700 flex items-start gap-2.5 transition-colors border-t border-gray-100">
                   <span className="text-lg">📦</span>
                   <div>
-                    <div>전체 묶음 (5쪽)</div>
-                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">리포트 + 해설서 합본 (5쪽)</div>
+                    <div>전체 묶음</div>
+                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">리포트 + 해설서 합본</div>
                   </div>
                 </button>
               </div>
