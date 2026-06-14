@@ -482,4 +482,17 @@ var CONCEPTS=[
 var CMAP={blue:{bg:'bg-blue-50',bd:'border-blue-200',hd:'text-blue-700',badge:'bg-blue-100 text-blue-800'},purple:{bg:'bg-purple-50',bd:'border-purple-200',hd:'text-purple-700',badge:'bg-purple-100 text-purple-800'},green:{bg:'bg-emerald-50',bd:'border-emerald-200',hd:'text-emerald-700',badge:'bg-emerald-100 text-emerald-800'},orange:{bg:'bg-orange-50',bd:'border-orange-200',hd:'text-orange-700',badge:'bg-orange-100 text-orange-800'},teal:{bg:'bg-teal-50',bd:'border-teal-200',hd:'text-teal-700',badge:'bg-teal-100 text-teal-800'},amber:{bg:'bg-amber-50',bd:'border-amber-200',hd:'text-amber-700',badge:'bg-amber-100 text-amber-800'}};
 var GEO_TABS=[{k:'rad',lbl:'🌿 무리함수',C:RadicalModule},{k:'rat',lbl:'🔀 유리함수',C:RationalModule},{k:'qua',lbl:'🏹 이차함수',C:QuadraticModule},{k:'dis',lbl:'📏 점↔직선',C:DistanceModule},{k:'cir',lbl:'⭕ 원',C:CircleModule},{k:'sym',lbl:'🪞 대칭이동',C:SymmetryModule}];
 
+/* 문제 텍스트에서 k/x 형태의 분수를 VF로 렌더링 */
+function QText({v}){
+  if(!v) return null;
+  const s=String(v);
+  const parts=s.split(/([-−]?\d+\/x(?!\())/g);
+  if(parts.length<=1) return <>{s}</>;
+  return <>{parts.map((pt,i)=>{
+    if(i%2===0) return <React.Fragment key={i}>{pt}</React.Fragment>;
+    const num=pt.split('/')[0];
+    return <VF key={i} n={num.replace('−','-')} d="x"/>;
+  })}</>;
+}
+
 /* ===== AUTH SCREEN ===== */

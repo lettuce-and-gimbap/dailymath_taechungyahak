@@ -275,7 +275,7 @@ function GeometryQuiz({userData, onUpdate}){
               {/* 채점된 이후에만 정답(O/X) 이모지 표시 */}
               {isGraded && isSel && <span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
             </div>
-            <p className="text-base text-gray-800 leading-relaxed mb-3 font-medium">{prob.q}</p>
+            <p className="text-base text-gray-800 leading-relaxed mb-3 font-medium"><QText v={prob.q}/></p>
             {prob.graph && <div className="flex justify-center mb-3"><GraphPreview q={prob}/></div>}
             <div className="grid grid-cols-1 gap-2.5">
                 {prob.choices.map((ch,j)=>{

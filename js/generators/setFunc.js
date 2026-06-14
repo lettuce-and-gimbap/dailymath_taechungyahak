@@ -71,6 +71,7 @@ function GraphPreview({q}){
   // 그래프 중심을 콘텐츠에 맞게 이동 (circle은 원의 중심 기준, 나머지 원점 기준)
   let CX=W/2, CY=H/2;
   if(g.type==='circle'){CX=W/2-g.h*SC*0.5; CY=H/2+g.k*SC*0.5;}
+  if(g.type==='rational'){CX=W/2-g.p*SC; CY=H/2+g.q*SC;}
   const toSx=x=>CX+x*SC, toSy=y=>CY-y*SC;
   const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 
@@ -221,32 +222,61 @@ function GraphPreview({q}){
 
   // ── 2. 무리함수  y = a√(x − p) + q ──
   if(g.type==='radical'){
-    const{a,p,q:vq}=g;  // p=dx(x이동), q=dy(y이동), a=계수
-    const startX=p; // 정의역 시작: x ≥ p
-    const pts=[];
-    for(let xi=startX;xi<=startX+6;xi+=0.12){
-      const yi=a*Math.sqrt(xi-startX)+vq;
-      if(Math.abs(yi)<=6&&toSx(xi)>=4&&toSx(xi)<=W-4)
-        pts.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
-    }
-    const color='#059669';
+    const{a,p,q:vq}=g;
+    const aStr=a===1?'':a===-1?'−':String(a);
+    const pStr=p===0?'x':(p>0?`x−${p}`:`x+${-p}`);
+    const qStr=vq===0?'':(vq>0?`+${vq}`:`−${-vq}`);
+    // 두 시작점 (0,0)과 (p,vq)가 모두 보이는 뷰포트 자동 계산
+    const xLo=Math.min(0,p)-0.3, xHi=Math.max(0,p)+5.5;
+    const yEnd1=a*Math.sqrt(Math.max(0,xHi-p))+vq;
+    const yEnd2=a*Math.sqrt(xHi);
+    const allY=[0,vq,yEnd1,yEnd2];
+    const yLoR=Math.min(...allY)-0.6, yHiR=Math.max(...allY)+0.8;
+    const marg=22;
+    const scX=(W-2*marg)/(xHi-xLo), scY=(H-2*marg)/(yHiR-yLoR);
+    const sc=Math.min(scX,scY,28);
+    const rtx=x=>marg+(x-xLo)*sc, rty=y=>H-marg-(y-yLoR)*sc;
+    const axY=rty(0), axX=rtx(0);
+    const axYvis=axY>=4&&axY<=H-4, axXvis=axX>=4&&axX<=W-4;
+    const xInts=[]; for(let n=Math.ceil(xLo);n<=Math.floor(xHi);n++) xInts.push(n);
+    const yInts=[]; for(let n=Math.ceil(yLoR);n<=Math.floor(yHiR);n++) yInts.push(n);
+    // 원본 곡선 y=a√x
+    const refPts=[];
+    for(let xi=0;xi<=xHi;xi+=0.08){const yi=a*Math.sqrt(xi);const sx=rtx(xi),sy=rty(yi);if(sy>=-4&&sy<=H+4&&sx<=W+4)refPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
+    // 번역 곡선 y=a√(x-p)+vq
+    const mainPts=[];
+    for(let xi=p;xi<=xHi;xi+=0.08){const yi=a*Math.sqrt(Math.max(0,xi-p))+vq;const sx=rtx(xi),sy=rty(yi);if(sy>=-4&&sy<=H+4&&sx<=W+4)mainPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
+    // 레이블 위치
+    const refLX=Math.min(xHi*0.45,3), refLY=a*Math.sqrt(Math.max(0,refLX));
+    const mnLX=p+Math.min(2.5,(xHi-p)*0.45), mnLY=a*Math.sqrt(Math.max(0,mnLX-p))+vq;
+    const cRef='#9ca3af', cMain='#059669';
     return(
       <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
-        <Axes/>
-        {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"/>}
-        {/* 시작점 (p, vq) */}
-        <circle cx={toSx(startX)} cy={toSy(vq)} r={4.5} fill={color} stroke="white" strokeWidth={2}/>
-        <text x={toSx(startX)+7} y={toSy(vq)-5} fontSize={9} fill={color} fontWeight="bold">({startX},{vq})</text>
-        {/* 참고: y=a√x 기본형 (회색) */}
-        {(() => {
-          const refPts=[];
-          for(let xi=0;xi<=6;xi+=0.15){
-            const yi=a*Math.sqrt(xi);
-            if(Math.abs(yi)<=6&&toSx(xi)>=4&&toSx(xi)<=W-4)
-              refPts.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
-          }
-          return refPts.length>1?<polyline points={refPts.join(' ')} fill="none" stroke="#d1fae5" strokeWidth={1.5} strokeDasharray="4,3"/>:null;
-        })()}
+        <g>{xInts.map(n=><line key={'gx'+n} x1={rtx(n)} y1={4} x2={rtx(n)} y2={H-4} stroke="#eef1f6" strokeWidth={0.6}/>)}
+           {yInts.map(n=><line key={'gy'+n} x1={4} y1={rty(n)} x2={W-4} y2={rty(n)} stroke="#eef1f6" strokeWidth={0.6}/>)}</g>
+        {axYvis&&<line x1={4} y1={axY} x2={W-4} y2={axY} stroke="#374151" strokeWidth={1.8}/>}
+        {axYvis&&<polygon points={`${W-4},${axY} ${W-12},${axY-3} ${W-12},${axY+3}`} fill="#374151"/>}
+        {axYvis&&<text x={W-3} y={Math.min(axY+12,H-2)} fontSize={9} fill="#374151" fontWeight="bold">x</text>}
+        {axXvis&&<line x1={axX} y1={4} x2={axX} y2={H-4} stroke="#374151" strokeWidth={1.8}/>}
+        {axXvis&&<polygon points={`${axX},4 ${axX-3},12 ${axX+3},12`} fill="#374151"/>}
+        {axXvis&&<text x={axX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>}
+        {axYvis&&xInts.filter(n=>n!==0&&rtx(n)>12&&rtx(n)<W-8).map(n=>(
+          <text key={'lx'+n} x={rtx(n)} y={Math.min(axY+13,H-2)} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
+        ))}
+        {axXvis&&yInts.filter(n=>n!==0&&rty(n)>8&&rty(n)<H-4).map(n=>(
+          <text key={'ly'+n} x={Math.max(axX-5,14)} y={rty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
+        ))}
+        {/* 원본 곡선 y=a√x (회색 점선 + 레이블) */}
+        {refPts.length>1&&<polyline points={refPts.join(' ')} fill="none" stroke={cRef} strokeWidth={2} strokeDasharray="5,3"/>}
+        {refPts.length>3&&<text x={rtx(refLX)+4} y={rty(refLY)+(a>0?-7:9)} fontSize={9} fill={cRef} fontWeight="bold">y={aStr}√x</text>}
+        {/* 번역 곡선 y=a√(x-p)+vq (녹색 실선) */}
+        {mainPts.length>1&&<polyline points={mainPts.join(' ')} fill="none" stroke={cMain} strokeWidth={3} strokeLinecap="round"/>}
+        {/* 시작점 → 축 수선의 발 */}
+        {axYvis&&<line x1={rtx(p)} y1={rty(vq)} x2={rtx(p)} y2={axY} stroke={cMain} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.7}/>}
+        {axXvis&&<line x1={axX} y1={rty(vq)} x2={rtx(p)} y2={rty(vq)} stroke={cMain} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.7}/>}
+        <circle cx={rtx(p)} cy={rty(vq)} r={4.5} fill={cMain} stroke="white" strokeWidth={2}/>
+        {/* 번역 곡선 레이블 */}
+        {mainPts.length>3&&<text x={rtx(mnLX)+4} y={rty(mnLY)+(a>0?-7:9)} fontSize={9} fill={cMain} fontWeight="bold">y={aStr}√({pStr}){qStr}</text>}
       </svg>
     );
   }
