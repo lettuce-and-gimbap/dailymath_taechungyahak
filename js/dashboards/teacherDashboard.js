@@ -619,7 +619,7 @@ function StudentDetail({student,onBack}){
 
       <!-- 헤더 배너 (연속 표시) -->
       <div style="background:linear-gradient(135deg,#3730a3,#6366f1);border-radius:10px;padding:14px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:14px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 2/2 페이지</div>
+        <div style="font-size:14px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트</div>
         <div style="font-size:13px;color:#c7d2fe;">${student.name} 학생 · 출력일: ${new Date().toLocaleDateString('ko-KR')}</div>
       </div>
 
@@ -700,7 +700,7 @@ function StudentDetail({student,onBack}){
     const pageHeader2 = (subtitle, pageNum) =>
       `<div style="background:linear-gradient(135deg,#0f172a,#3730a3);border-radius:10px;padding:13px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-size:13px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 지표 상세 해설 ${pageNum}</div>
+          <div style="font-size:13px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 지표 상세 해설</div>
           <div style="font-size:10px;color:#c7d2fe;margin-top:2px;">${subtitle}</div>
         </div>
         <div style="text-align:right;">
