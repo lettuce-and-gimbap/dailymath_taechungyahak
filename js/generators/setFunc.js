@@ -286,13 +286,13 @@ function GraphPreview({q}){
     const{k,p,q:vq}=g;  // p=dx, q=dy, k=분자
     const eps=0.18;
     const ptsL=[], ptsR=[];
-    for(let xi=-5;xi<p-eps;xi+=0.12){
+    for(let xi=p-6;xi<p-eps;xi+=0.12){
       const yi=k/(xi-p)+vq;
-      if(Math.abs(yi)<=7&&toSx(xi)>=4) ptsL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
+      if(Math.abs(yi-vq)<=5&&toSx(xi)>=4&&toSx(xi)<=W-4) ptsL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
     }
-    for(let xi=p+eps;xi<=5;xi+=0.12){
+    for(let xi=p+eps;xi<=p+6;xi+=0.12){
       const yi=k/(xi-p)+vq;
-      if(Math.abs(yi)<=7&&toSx(xi)<=W-4) ptsR.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
+      if(Math.abs(yi-vq)<=5&&toSx(xi)>=4&&toSx(xi)<=W-4) ptsR.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
     }
     const color='#7c3aed';
     return(
@@ -453,24 +453,22 @@ function GraphPreview({q}){
         <text x={(lx+mx)/2} y={oy-ovalRy-22} textAnchor="middle" fontSize={11} fill={cGreen} fontWeight="bold">f</text>
         <text x={(mx+rzx)/2} y={oy-ovalRy-22} textAnchor="middle" fontSize={11} fill={cIndigo} fontWeight="bold">g</text>
         {/* X 원소 */}
-        {X.map((x,i)=>{const p=pX(i);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={x===inp?cGreen:'#1f2937'} fontWeight={x===inp?'900':'700'}>{x}</text>);})}
+        {X.map((x,i)=>{const p=pX(i);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{x}</text>);})}
         {/* Y 원소 */}
-        {Y.map((y,i)=>{const p=pY(i);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={y===fx?cIndigo:'#1f2937'} fontWeight={y===fx?'900':'700'}>{y}</text>);})}
+        {Y.map((y,i)=>{const p=pY(i);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{y}</text>);})}
         {/* Z 원소 */}
-        {Z.map((z,i)=>{const p=pZ(i);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={z===gfx?cRed:'#1f2937'} fontWeight={z===gfx?'900':'700'}>{z}</text>);})}
+        {Z.map((z,i)=>{const p=pZ(i);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{z}</text>);})}
         {/* f 화살표 X→Y */}
         {f_map.map(([x,y],i)=>{
           const xi=X.indexOf(x),yi=Y.indexOf(y);
           const s2=pX(xi),e2=pY(yi);
-          const hl=x===inp;
-          return(<g key={'fa'+i} opacity={hl?1:0.5}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,hl?cGreen:cGray,hl?2.5:1.3)}</g>);
+          return(<g key={'fa'+i}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,cGreen,1.5)}</g>);
         })}
         {/* g 화살표 Y→Z */}
         {g_map.map(([y,z],i)=>{
           const yi=Y.indexOf(y),zi=Z.indexOf(z);
           const s2=pY(yi),e2=pZ(zi);
-          const hl=y===fx;
-          return(<g key={'ga'+i} opacity={hl?1:0.5}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,hl?cIndigo:cGray,hl?2.5:1.3)}</g>);
+          return(<g key={'ga'+i}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,cIndigo,1.5)}</g>);
         })}
         {/* 하단 힌트 */}
         <text x={svgW/2} y={svgH-6} textAnchor="middle" fontSize={11} fill={cRed} fontWeight="bold">(g∘f)({inp}) = ?</text>
@@ -502,33 +500,29 @@ function GraphPreview({q}){
         {/* 레이블 */}
         <text x={leftCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={xCircleColor} fontWeight="900">X</text>
         <text x={rightCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={arrowColor} fontWeight="900">Y</text>
-        {/* X 원소 (정답은 학생이 직접 찾아야 하므로 모두 같은 색으로 표시) */}
+        {/* X 원소 */}
         {X.map((x,i)=>{
           const pos=getXpos(i);
           return(<text key={'xi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{x}</text>);
         })}
-        {/* Y 원소 (ask_y는 문제에서 주어진 값이므로 강조 표시) */}
+        {/* Y 원소 */}
         {Y.map((y,i)=>{
           const pos=getYpos(i);
-          const isAsked=(y===ask_y);
-          return(<text key={'yi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill={isAsked?highlightColor:'#1f2937'} fontWeight={isAsked?'900':'700'}>{y}</text>);
+          return(<text key={'yi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{y}</text>);
         })}
         {/* 화살표 (X→Y 매핑) */}
         {f_map.map(([x,y],i)=>{
           const xi=X.indexOf(x),yi=Y.indexOf(y);
           const sp=getXpos(xi),ep=getYpos(yi);
-          const isHL=(y===ask_y);
-          const color=isHL?highlightColor:arrowColor;
-          const sw=isHL?2.8:1.6;
           const sx=sp.x+ovalRX-5,sy=sp.y,ex=ep.x-ovalRX+5,ey=ep.y;
           const ang=Math.atan2(ey-sy,ex-sx);
           const al=8,aw=4;
           const ax1=ex-al*Math.cos(ang)+aw*Math.sin(ang),ay1=ey-al*Math.sin(ang)-aw*Math.cos(ang);
           const ax2=ex-al*Math.cos(ang)-aw*Math.sin(ang),ay2=ey-al*Math.sin(ang)+aw*Math.cos(ang);
           return(
-            <g key={'arr'+i} opacity={isHL?1:0.6}>
-              <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={color} strokeWidth={sw}/>
-              <polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={color}/>
+            <g key={'arr'+i}>
+              <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={arrowColor} strokeWidth={1.6}/>
+              <polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={arrowColor}/>
             </g>
           );
         })}

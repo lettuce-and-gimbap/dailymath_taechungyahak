@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -167,7 +167,6 @@ body.dark .dark-toggle{background:rgba(255,255,255,0.12);}
 <body>
 <div id="root"></div>
 <div id="pdf-render-area" style="position:fixed;left:-9999px;top:0;width:794px;background:white;font-family:'Noto Sans KR',sans-serif;color:#000;overflow:visible;"></div>
-
 <script>
 firebase.initializeApp({
   apiKey:"AIzaSyB91eiFNRs_ziJnzWMjvg-TKSq447oPasY",
@@ -181,8 +180,8 @@ window._db = firebase.firestore();
 // 저장된 다크/라이트 테마를 첫 페인트 전에 적용
 try{if(localStorage.getItem('yakHakTheme')==='dark')document.body.classList.add('dark');}catch(e){}
 </script>
+
 <script type="text/babel">
-// ===== js/constants.js =====
 var {useState,useRef,useCallback,useEffect,useMemo}=React;
 var db=window._db;
 
@@ -525,8 +524,6 @@ var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).ge
 var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
 
 
-
-// ===== js/generators/basic.js =====
 /* ===== MATH PROBLEM GENERATORS ===== */
 function genDivBasic(mn,mx){
   let pairs=[];
@@ -863,8 +860,6 @@ function generateStoryWorksheet(counts, ratios) {
 
 /* ===== GEOMETRY GENERATORS ===== */
 
-
-// ===== js/generators/highschool.js =====
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);
@@ -1860,8 +1855,6 @@ function genMockGeometry(){
    ③ 유리함수 선지 "y=−3/(x−2)+2"  → VF 세로분수
    ④ 기타(좌표, 정수, 방정식 등)    → 텍스트 그대로 */
 
-
-// ===== js/generators/setFunc.js =====
 function MathExpr({v}){
   if(v==null) return null;
   const s=String(v);
@@ -2090,6 +2083,7 @@ function GraphPreview({q}){
     const aStr=a===1?'':a===-1?'−':String(a);
     const pStr=p===0?'x':(p>0?`x−${p}`:`x+${-p}`);
     const qStr=vq===0?'':(vq>0?`+${vq}`:`−${-vq}`);
+    // 두 시작점 (0,0)과 (p,vq)가 모두 보이는 뷰포트 자동 계산
     const xLo=Math.min(0,p)-0.3, xHi=Math.max(0,p)+5.5;
     const yEnd1=a*Math.sqrt(Math.max(0,xHi-p))+vq;
     const yEnd2=a*Math.sqrt(xHi);
@@ -2103,10 +2097,13 @@ function GraphPreview({q}){
     const axYvis=axY>=4&&axY<=H-4, axXvis=axX>=4&&axX<=W-4;
     const xInts=[]; for(let n=Math.ceil(xLo);n<=Math.floor(xHi);n++) xInts.push(n);
     const yInts=[]; for(let n=Math.ceil(yLoR);n<=Math.floor(yHiR);n++) yInts.push(n);
+    // 원본 곡선 y=a√x
     const refPts=[];
     for(let xi=0;xi<=xHi;xi+=0.08){const yi=a*Math.sqrt(xi);const sx=rtx(xi),sy=rty(yi);if(sy>=-4&&sy<=H+4&&sx<=W+4)refPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
+    // 번역 곡선 y=a√(x-p)+vq
     const mainPts=[];
     for(let xi=p;xi<=xHi;xi+=0.08){const yi=a*Math.sqrt(Math.max(0,xi-p))+vq;const sx=rtx(xi),sy=rty(yi);if(sy>=-4&&sy<=H+4&&sx<=W+4)mainPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
+    // 레이블 위치
     const refLX=Math.min(xHi*0.45,3), refLY=a*Math.sqrt(Math.max(0,refLX));
     const mnLX=p+Math.min(2.5,(xHi-p)*0.45), mnLY=a*Math.sqrt(Math.max(0,mnLX-p))+vq;
     const cRef='#9ca3af', cMain='#059669';
@@ -2126,12 +2123,16 @@ function GraphPreview({q}){
         {axXvis&&yInts.filter(n=>n!==0&&rty(n)>8&&rty(n)<H-4).map(n=>(
           <text key={'ly'+n} x={Math.max(axX-5,14)} y={rty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
         ))}
+        {/* 원본 곡선 y=a√x (회색 점선 + 레이블) */}
         {refPts.length>1&&<polyline points={refPts.join(' ')} fill="none" stroke={cRef} strokeWidth={2} strokeDasharray="5,3"/>}
         {refPts.length>3&&<text x={rtx(refLX)+4} y={rty(refLY)+(a>0?-7:9)} fontSize={9} fill={cRef} fontWeight="bold">y={aStr}√x</text>}
+        {/* 번역 곡선 y=a√(x-p)+vq (녹색 실선) */}
         {mainPts.length>1&&<polyline points={mainPts.join(' ')} fill="none" stroke={cMain} strokeWidth={3} strokeLinecap="round"/>}
+        {/* 시작점 → 축 수선의 발 */}
         {axYvis&&<line x1={rtx(p)} y1={rty(vq)} x2={rtx(p)} y2={axY} stroke={cMain} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.7}/>}
         {axXvis&&<line x1={axX} y1={rty(vq)} x2={rtx(p)} y2={rty(vq)} stroke={cMain} strokeWidth={1.2} strokeDasharray="3,2" opacity={0.7}/>}
         <circle cx={rtx(p)} cy={rty(vq)} r={4.5} fill={cMain} stroke="white" strokeWidth={2}/>
+        {/* 번역 곡선 레이블 */}
         {mainPts.length>3&&<text x={rtx(mnLX)+4} y={rty(mnLY)+(a>0?-7:9)} fontSize={9} fill={cMain} fontWeight="bold">y={aStr}√({pStr}){qStr}</text>}
       </svg>
     );
@@ -2142,13 +2143,13 @@ function GraphPreview({q}){
     const{k,p,q:vq}=g;  // p=dx, q=dy, k=분자
     const eps=0.18;
     const ptsL=[], ptsR=[];
-    for(let xi=-5;xi<p-eps;xi+=0.12){
+    for(let xi=p-6;xi<p-eps;xi+=0.12){
       const yi=k/(xi-p)+vq;
-      if(Math.abs(yi)<=7&&toSx(xi)>=4) ptsL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
+      if(Math.abs(yi-vq)<=5&&toSx(xi)>=4&&toSx(xi)<=W-4) ptsL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
     }
-    for(let xi=p+eps;xi<=5;xi+=0.12){
+    for(let xi=p+eps;xi<=p+6;xi+=0.12){
       const yi=k/(xi-p)+vq;
-      if(Math.abs(yi)<=7&&toSx(xi)<=W-4) ptsR.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
+      if(Math.abs(yi-vq)<=5&&toSx(xi)>=4&&toSx(xi)<=W-4) ptsR.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
     }
     const color='#7c3aed';
     return(
@@ -2309,24 +2310,22 @@ function GraphPreview({q}){
         <text x={(lx+mx)/2} y={oy-ovalRy-22} textAnchor="middle" fontSize={11} fill={cGreen} fontWeight="bold">f</text>
         <text x={(mx+rzx)/2} y={oy-ovalRy-22} textAnchor="middle" fontSize={11} fill={cIndigo} fontWeight="bold">g</text>
         {/* X 원소 */}
-        {X.map((x,i)=>{const p=pX(i);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={x===inp?cGreen:'#1f2937'} fontWeight={x===inp?'900':'700'}>{x}</text>);})}
+        {X.map((x,i)=>{const p=pX(i);return(<text key={'xi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{x}</text>);})}
         {/* Y 원소 */}
-        {Y.map((y,i)=>{const p=pY(i);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={y===fx?cIndigo:'#1f2937'} fontWeight={y===fx?'900':'700'}>{y}</text>);})}
+        {Y.map((y,i)=>{const p=pY(i);return(<text key={'yi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{y}</text>);})}
         {/* Z 원소 */}
-        {Z.map((z,i)=>{const p=pZ(i);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill={z===gfx?cRed:'#1f2937'} fontWeight={z===gfx?'900':'700'}>{z}</text>);})}
+        {Z.map((z,i)=>{const p=pZ(i);return(<text key={'zi'+i} x={p.x} y={p.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{z}</text>);})}
         {/* f 화살표 X→Y */}
         {f_map.map(([x,y],i)=>{
           const xi=X.indexOf(x),yi=Y.indexOf(y);
           const s2=pX(xi),e2=pY(yi);
-          const hl=x===inp;
-          return(<g key={'fa'+i} opacity={hl?1:0.5}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,hl?cGreen:cGray,hl?2.5:1.3)}</g>);
+          return(<g key={'fa'+i}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,cGreen,1.5)}</g>);
         })}
         {/* g 화살표 Y→Z */}
         {g_map.map(([y,z],i)=>{
           const yi=Y.indexOf(y),zi=Z.indexOf(z);
           const s2=pY(yi),e2=pZ(zi);
-          const hl=y===fx;
-          return(<g key={'ga'+i} opacity={hl?1:0.5}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,hl?cIndigo:cGray,hl?2.5:1.3)}</g>);
+          return(<g key={'ga'+i}>{mkArrow(s2.x+ovalRx-4,s2.y,e2.x-ovalRx+4,e2.y,cIndigo,1.5)}</g>);
         })}
         {/* 하단 힌트 */}
         <text x={svgW/2} y={svgH-6} textAnchor="middle" fontSize={11} fill={cRed} fontWeight="bold">(g∘f)({inp}) = ?</text>
@@ -2358,33 +2357,29 @@ function GraphPreview({q}){
         {/* 레이블 */}
         <text x={leftCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={xCircleColor} fontWeight="900">X</text>
         <text x={rightCX} y={ovalCY-ovalRY-10} textAnchor="middle" fontSize={14} fill={arrowColor} fontWeight="900">Y</text>
-        {/* X 원소 (정답은 학생이 직접 찾아야 하므로 모두 같은 색으로 표시) */}
+        {/* X 원소 */}
         {X.map((x,i)=>{
           const pos=getXpos(i);
           return(<text key={'xi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{x}</text>);
         })}
-        {/* Y 원소 (ask_y는 문제에서 주어진 값이므로 강조 표시) */}
+        {/* Y 원소 */}
         {Y.map((y,i)=>{
           const pos=getYpos(i);
-          const isAsked=(y===ask_y);
-          return(<text key={'yi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill={isAsked?highlightColor:'#1f2937'} fontWeight={isAsked?'900':'700'}>{y}</text>);
+          return(<text key={'yi'+i} x={pos.x} y={pos.y+5} textAnchor="middle" fontSize={13} fill='#1f2937' fontWeight='700'>{y}</text>);
         })}
         {/* 화살표 (X→Y 매핑) */}
         {f_map.map(([x,y],i)=>{
           const xi=X.indexOf(x),yi=Y.indexOf(y);
           const sp=getXpos(xi),ep=getYpos(yi);
-          const isHL=(y===ask_y);
-          const color=isHL?highlightColor:arrowColor;
-          const sw=isHL?2.8:1.6;
           const sx=sp.x+ovalRX-5,sy=sp.y,ex=ep.x-ovalRX+5,ey=ep.y;
           const ang=Math.atan2(ey-sy,ex-sx);
           const al=8,aw=4;
           const ax1=ex-al*Math.cos(ang)+aw*Math.sin(ang),ay1=ey-al*Math.sin(ang)-aw*Math.cos(ang);
           const ax2=ex-al*Math.cos(ang)-aw*Math.sin(ang),ay2=ey-al*Math.sin(ang)+aw*Math.cos(ang);
           return(
-            <g key={'arr'+i} opacity={isHL?1:0.6}>
-              <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={color} strokeWidth={sw}/>
-              <polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={color}/>
+            <g key={'arr'+i}>
+              <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={arrowColor} strokeWidth={1.6}/>
+              <polygon points={`${ex},${ey} ${ax1},${ay1} ${ax2},${ay2}`} fill={arrowColor}/>
             </g>
           );
         })}
@@ -3541,8 +3536,6 @@ function genMiddleMock(domain){
 
 /* ===== SVG BASE COMPONENTS ===== */
 
-
-// ===== js/components/canvas.js =====
 function Grid({W,H,SC,cx,cy}){
   // cx/cy: 원점의 픽셀 위치 (팬 이동 반영됨), 범위 ±12까지 확장
   const rX=Math.min(12,Math.ceil(Math.max(cx,W-cx)/SC)+1);
@@ -4042,8 +4035,6 @@ function QText({v}){
 
 /* ===== AUTH SCREEN ===== */
 
-
-// ===== js/components/auth.js =====
 function DarkToggle({className}){
   const[dark,setDark]=React.useState(()=>typeof document!=='undefined'&&document.body.classList.contains('dark'));
   const toggle=()=>{
@@ -4112,8 +4103,6 @@ function AuthScreen({onLogin}){
 
 /* ===== STREAK CALCULATOR ===== */
 
-
-// ===== js/components/home.js =====
 function calcStreak(activeDates){
   if(!activeDates?.length)return{total:0,streak:0};
   const u=[...new Set(activeDates)].sort((a,b)=>b.localeCompare(a));const total=u.length;
@@ -4426,8 +4415,6 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
 /* ===== DAILY PRACTICE TAB ===== */
 
-
-// ===== js/components/practice.js =====
 function DailyPracticeTab({userData,onUpdate}){
   const[screen,setScreen]=useState('menu');// menu | session | done
   const[session,setSession]=useState(null);
@@ -5077,8 +5064,6 @@ function HistoryTab({userData, feedbacks}){
 
 /* ===== GEOMETRY TAB ===== */
 
-
-// ===== js/components/geometry.js =====
 function GeometryTab({userData, onUpdate}){
   const[subTab,setSubTab]=useState('learn');
   const sz=useCanvasSize();
@@ -5414,8 +5399,6 @@ function GeometryQuiz({userData, onUpdate}){
 
 /* ===== MOCK EXAM TAB ===== */
 
-
-// ===== js/components/mockExam.js =====
 function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
@@ -5642,8 +5625,6 @@ function MockExamTab({userData,onUpdate}){
 
 /* ===== STUDENT DASHBOARD ===== */
 
-
-// ===== js/components/worksheet.js =====
 function WorksheetTab(){
   const[wsType,setWsType]=useState('div');
   const[title,setTitle]=useState('');
@@ -6283,8 +6264,6 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
 }
 
 
-
-// ===== js/components/feedback.js =====
 function StudentFeedbackPanel(){
   const[msgs,setMsgs]=React.useState([]);const[loading,setLoading]=React.useState(false);
   const load=async()=>{setLoading(true);try{const snap=await db.collection('studentFeedback').orderBy('sentAt','desc').limit(30).get();const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setMsgs(arr);}catch(e){}setLoading(false);};
@@ -6555,8 +6534,6 @@ var QUOTE_BGS=[
 ];
 
 
-
-// ===== js/dashboards/studentDashboard.js =====
 function StudentDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
@@ -6860,8 +6837,6 @@ function analyzeStudent(sData){
 var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 전`;
 
 
-
-// ===== js/dashboards/teacherDashboard.js =====
 function TeacherDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('analysis');
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생현황'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'feedback',icon:'💬',lbl:'피드백'}];
@@ -8372,8 +8347,6 @@ function StudentDetail({student,onBack}){
 }
 
 
-
-// ===== js/app.js =====
 function QuoteSplash({onDone}){
   const DURATION=4500;
   // 접속할 때마다 다음 글귀가 나오도록 인덱스 회전
