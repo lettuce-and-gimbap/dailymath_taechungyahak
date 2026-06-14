@@ -429,7 +429,7 @@ function StudentDetail({student,onBack}){
 
       <!-- ② 행동·학습 패턴 분석 -->
       ${sectionHead('🔍','행동 및 학습 패턴 분석')}
-      <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px;page-break-inside:avoid;">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px;">
         <colgroup><col style="width:110px"/><col style="width:64px"/><col/><col style="width:150px"/></colgroup>
         <tr style="background:#3730a3;color:white;">
           <th style="padding:7px 10px;text-align:center;font-size:11px;">분석 항목</th>
