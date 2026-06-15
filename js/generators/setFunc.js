@@ -895,63 +895,90 @@ function SessionPrintModal({log,studentName,onClose}){
       </div>
       <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ ‘인쇄 / PDF 저장’을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>‘PDF로 저장’</b>으로 선택하면 파일로 저장됩니다.</div>
 
+      {/* 인쇄용 CSS: 3문제 단위 페이지 나누기 */}
+      <style dangerouslySetInnerHTML={{__html:`
+        @media print {
+          .no-print { display: none !important; }
+          .session-print-item { page-break-inside: avoid; break-inside: avoid; }
+          .print-page-group { page-break-after: always; break-after: page; }
+          .print-page-group:last-child { page-break-after: auto; break-after: auto; }
+          .print-page-header { page-break-inside: avoid; break-inside: avoid; }
+        }
+      `}}/>
+
       {/* 인쇄 본문 */}
       <div className="px-6 py-5 max-w-3xl mx-auto">
-        <div className="text-center border-b-2 border-gray-800 pb-3 mb-5">
-          <div className="text-xl font-black text-gray-900">검정고시 연습 문제·해설지</div>
-          <div className="text-sm text-gray-600 mt-1 font-bold">
-            {studentName?`${studentName} · `:''}{log.type||'연습'} · {fmtDate(log.date)} {log.time||''} · 점수 {log.score||''}
-          </div>
-        </div>
-
-        {qs.map((q,i)=>{
-          const hasFull=q.qFull&&Array.isArray(q.choices);
-          const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+        {Array.from({length:Math.ceil(qs.length/3)},(_,pi)=>{
+          const pageQs=qs.slice(pi*3,pi*3+3);
+          const isLast=pi===Math.ceil(qs.length/3)-1;
           return(
-            <div key={i} className="session-print-item mb-6 pb-4 border-b border-gray-200">
-              <div className="flex items-start gap-2 mb-1">
-                <span className="font-black text-indigo-700">{i+1}.</span>
-                <span className="font-bold text-gray-900 leading-relaxed flex-1">{hasFull?q.qFull:q.qTxt}</span>
-                <span className={`text-xs font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
-              </div>
-              {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:''}</div>}
-              {!q.topic&&q.examSource&&<div className="ml-5 mb-1 text-xs text-blue-600 font-bold">📌 {q.examSource}</div>}
-
-              {/* 그림(SVG) */}
-              {q.graph&&<div className="my-2 flex justify-center"><GraphPreview q={q}/></div>}
-
-              {/* 선택지 */}
-              {hasFull&&(
-                <div className="ml-5 grid grid-cols-2 gap-x-4 gap-y-1 my-2">
-                  {q.choices.map((c,j)=>(
-                    <div key={j} className={`text-sm ${j===q.answerIdx?'font-black text-green-700':'text-gray-700'}`}>
-                      {ORD[j]} {String(c)}{j===q.answerIdx?' ✓':''}
-                    </div>
-                  ))}
+            <div key={pi} className={isLast?'':'print-page-group'}>
+              {/* 페이지 상단 헤더 (1페이지만 큰 제목, 이후는 작은 이음 헤더) */}
+              {pi===0?(
+                <div className="text-center border-b-2 border-gray-800 pb-3 mb-5 print-page-header">
+                  <div className="text-xl font-black text-gray-900">검정고시 연습 문제·해설지</div>
+                  <div className="text-sm text-gray-600 mt-1 font-bold">
+                    {studentName?`${studentName} · `:''}{log.type||'연습'} · {fmtDate(log.date)} {log.time||''} · 점수 {log.score||''}
+                  </div>
+                </div>
+              ):(
+                <div className="text-right text-xs text-gray-400 border-b border-gray-200 pb-1 mb-4 print-page-header">
+                  {studentName||'연습'} · {fmtDate(log.date)} ({pi+1}/{Math.ceil(qs.length/3)} 페이지)
                 </div>
               )}
 
-              {/* 정답 */}
-              <div className="ml-5 mt-1 text-sm font-black text-green-700">
-                정답: {hasFull?`${ORD[q.answerIdx]} `:''}{correctText}
-                {!q.isOk&&q.uAns?<span className="ml-3 text-red-500 font-bold">(내 답: {q.uAns})</span>:null}
-              </div>
+              {pageQs.map((q,j)=>{
+                const i=pi*3+j;
+                const hasFull=q.qFull&&Array.isArray(q.choices);
+                const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+                return(
+                  <div key={i} className="session-print-item mb-6 pb-4 border-b border-gray-200">
+                    <div className="flex items-start gap-2 mb-1">
+                      <span className="font-black text-indigo-700">{i+1}.</span>
+                      <span className="font-bold text-gray-900 leading-relaxed flex-1">{hasFull?q.qFull:q.qTxt}</span>
+                      <span className={`text-xs font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
+                    </div>
+                    {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:''}</div>}
+                    {!q.topic&&q.examSource&&<div className="ml-5 mb-1 text-xs text-blue-600 font-bold">📌 {q.examSource}</div>}
 
-              {/* 해설 */}
-              {Array.isArray(q.sol)&&q.sol.length?(
-                <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
-                  <ol className="list-decimal ml-5 space-y-0.5">{q.sol.map((s,k)=><li key={k}>{s}</li>)}</ol>
-                </div>
-              ):(q.explanation?(
-                <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <span className="font-black text-amber-700">💡 해설 · </span>{q.explanation}
-                </div>
-              ):null)}
+                    {/* 그림(SVG) */}
+                    {q.graph&&<div className="my-2 flex justify-center"><GraphPreview q={q}/></div>}
+
+                    {/* 선택지 */}
+                    {hasFull&&(
+                      <div className="ml-5 grid grid-cols-2 gap-x-4 gap-y-1 my-2">
+                        {q.choices.map((c,jj)=>(
+                          <div key={jj} className={`text-sm ${jj===q.answerIdx?'font-black text-green-700':'text-gray-700'}`}>
+                            {ORD[jj]} {String(c)}{jj===q.answerIdx?' ✓':''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 정답 */}
+                    <div className="ml-5 mt-1 text-sm font-black text-green-700">
+                      정답: {hasFull?`${ORD[q.answerIdx]} `:''}{correctText}
+                      {!q.isOk&&q.uAns?<span className="ml-3 text-red-500 font-bold">(내 답: {q.uAns})</span>:null}
+                    </div>
+
+                    {/* 해설 */}
+                    {Array.isArray(q.sol)&&q.sol.length?(
+                      <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
+                        <ol className="list-decimal ml-5 space-y-0.5">{q.sol.map((s,k)=><li key={k}>{s}</li>)}</ol>
+                      </div>
+                    ):(q.explanation?(
+                      <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <span className="font-black text-amber-700">💡 해설 · </span>{q.explanation}
+                      </div>
+                    ):null)}
+                  </div>
+                );
+              })}
+              {isLast&&<div className="text-center text-xs text-gray-400 mt-6">— 태청야학 수학 학습 도우미 —</div>}
             </div>
           );
         })}
-        <div className="text-center text-xs text-gray-400 mt-6">— 태청야학 수학 학습 도우미 —</div>
       </div>
     </div>
   );

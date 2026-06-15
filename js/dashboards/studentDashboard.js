@@ -120,9 +120,10 @@ function StudentDashboard({userData,onLogout,onUpdate}){
               현재 상태 저장하기 💾
             </button>
             <button onClick={()=>{
+              localStorage.removeItem('yakHakSavedSession_'+userData.name);setHasSavedSession(false);
               setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
             }} className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
-              그만하기
+              그만두기
             </button>
             <button onClick={()=>setShowNavModal(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm">

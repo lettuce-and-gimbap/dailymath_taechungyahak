@@ -625,9 +625,9 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
               className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               현재 상태 저장하기 💾
             </button>
-            <button onClick={()=>{setShowExitModal(false);onBack();}}
+            <button onClick={()=>{localStorage.removeItem('yakHakSavedSession_'+userData.name);window.__yakHakActiveSession=null;setShowExitModal(false);onBack();}}
               className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
-              그만하기
+              그만두기
             </button>
             <button onClick={()=>setShowExitModal(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm">
