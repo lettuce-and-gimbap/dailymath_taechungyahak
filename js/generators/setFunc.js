@@ -947,7 +947,8 @@ function SessionPrintModal({log,studentName,onClose}){
         <div className="flex-1 font-black text-sm">📄 회차 문제·해설 인쇄</div>
         <button onClick={doPrint} className="px-4 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm">🖨️ 인쇄 / PDF 저장</button>
       </div>
-      <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ ‘인쇄 / PDF 저장’을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>‘PDF로 저장’</b>으로 선택하면 파일로 저장됩니다.</div>
+      <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ ‘인쇄 / PDF 저장’을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>’PDF로 저장’</b>으로 선택하면 파일로 저장됩니다.</div>
+      <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
 
       {/* 인쇄용 CSS: 3문제 단위 페이지 나누기 */}
       <style dangerouslySetInnerHTML={{__html:`
