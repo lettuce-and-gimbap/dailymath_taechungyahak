@@ -167,12 +167,16 @@ function GraphPreview({q}){
     const axXvis=axX>=4&&axX<=W-4;
     const axYvis=axY>=4&&axY<=H-4;
 
-    // 수선의 발 점선: 점 → x축, 점 → y축
-    const drawDropLines=(px2,py2,lineColor)=>{
+    // 수선의 발 점선 + 축 위 좌표 강조 라벨
+    const drawDropLines=(px2,py2,lineColor,mx,my)=>{
       if(!axYvis&&!axXvis)return null;
-      return(<g opacity={0.65}>
-        {axYvis&&<line x1={px2} y1={py2} x2={px2} y2={axY} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2"/>}
-        {axXvis&&<line x1={axX} y1={py2} x2={px2} y2={py2} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2"/>}
+      return(<g>
+        {axYvis&&<line x1={px2} y1={py2} x2={px2} y2={axY} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2" opacity={0.7}/>}
+        {axXvis&&<line x1={axX} y1={py2} x2={px2} y2={py2} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2" opacity={0.7}/>}
+        {/* x축 발 강조 */}
+        {axYvis&&mx!=null&&<text x={px2} y={Math.min(axY+13,H-2)} textAnchor="middle" fontSize={10} fill={lineColor} fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{mx}</text>}
+        {/* y축 발 강조 */}
+        {axXvis&&my!=null&&<text x={Math.max(axX-5,14)} y={py2+4} textAnchor="end" fontSize={10} fill={lineColor} fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{my}</text>}
       </g>);
     };
 
@@ -202,21 +206,20 @@ function GraphPreview({q}){
         {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke="#c7d2fe" strokeWidth={1.4}/>}
         {/* 포물선 구간(진하게) */}
         {rangePts.length>1&&<polyline points={rangePts.join(' ')} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"/>}
-        {/* 구간 시작점 수선의 발 + 점 (극값 아닌 경우) */}
+        {/* 구간 시작점 수선의 발 + 축 라벨 (극값 아닌 경우) */}
         {!isDsExtreme&&<g>
-          {drawDropLines(toQx(ds),toQy(yDs),'#6b7280')}
-          <circle cx={toQx(ds)} cy={toQy(yDs)} r={4} fill="white" stroke="#6b7280" strokeWidth={2}/>
+          {drawDropLines(toQx(ds),toQy(yDs),'#6b7280',ds,yDs)}
+          <circle cx={toQx(ds)} cy={toQy(yDs)} r={3.5} fill="white" stroke="#6b7280" strokeWidth={1.8}/>
         </g>}
-        {/* 구간 끝점 수선의 발 + 점 (극값 아닌 경우) */}
+        {/* 구간 끝점 수선의 발 + 축 라벨 (극값 아닌 경우) */}
         {!isDeExtreme&&<g>
-          {drawDropLines(toQx(de),toQy(yDe),'#6b7280')}
-          <circle cx={toQx(de)} cy={toQy(yDe)} r={4} fill="white" stroke="#6b7280" strokeWidth={2}/>
+          {drawDropLines(toQx(de),toQy(yDe),'#6b7280',de,yDe)}
+          <circle cx={toQx(de)} cy={toQy(yDe)} r={3.5} fill="white" stroke="#6b7280" strokeWidth={1.8}/>
         </g>}
-        {/* 꼭짓점이 구간 내이고 극값이 아닌 경우 */}
-        {vxInRange&&extremePt.x!==p&&<circle cx={toQx(p)} cy={toQy(vq)} r={3.5} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>}
-        {/* ★ 극값점: 수선의 발 + 크고 선명한 원 (좌표 텍스트 없음) */}
-        {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor)}
-        <circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={6} fill={extremeColor} stroke="white" strokeWidth={2.5}/>
+        {/* 꼭짓점이 구간 내이고 극값이 아닌 경우 (작은 점만) */}
+        {vxInRange&&extremePt.x!==p&&<circle cx={toQx(p)} cy={toQy(vq)} r={3} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>}
+        {/* ★ 극값점: 수선의 발 + 축 좌표 강조 (강조 원 없음) */}
+        {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor,extremePt.x,Math.round(extremePt.y*100)/100)}
       </svg>
     );
   }
@@ -800,6 +803,126 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 15. 절댓값 부등식 좌표평면 ──
+  if(g.type==='abs_ineq'){
+    const{center,r,lo,hi}=g;
+    const W=220,H=180,SC=22;
+    const xSpan=hi-lo, xPad=Math.max(1,xSpan*0.3);
+    const xLo=lo-xPad, xHi=hi+xPad;
+    const yHi=r+1.2, yLo=-0.5;
+    const marg=22;
+    const scX=(W-2*marg)/(xHi-xLo), scY=(H-2*marg)/(yHi-yLo);
+    const sc=Math.min(scX,scY,28);
+    const tx=x=>marg+(x-xLo)*sc, ty=y=>H-marg-(y-yLo)*sc;
+    const axY=ty(0), axX=tx(0);
+    const axYvis=axY>=4&&axY<=H-4, axXvis=axX>=4&&axX<=W-4;
+    // y=|x-center| 점 생성
+    const absPts=[];
+    for(let xi=xLo;xi<=xHi;xi+=0.1){
+      const yi=Math.abs(xi-center);
+      const sx=tx(xi),sy=ty(yi);
+      if(sy>=-2&&sy<=H+2)absPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);
+    }
+    // y=r 수평선 x 범위
+    const rLineX1=tx(xLo), rLineX2=tx(xHi);
+    const rY=ty(r);
+    // 해 구간 [lo,hi] 강조 (x축 위)
+    const solX1=tx(lo), solX2=tx(hi);
+    const xInts=[];for(let n=Math.ceil(xLo);n<=Math.floor(xHi);n++)xInts.push(n);
+    const yInts=[];for(let n=0;n<=Math.ceil(yHi);n++)yInts.push(n);
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 격자 */}
+        {xInts.map(n=><line key={'gx'+n} x1={tx(n)} y1={4} x2={tx(n)} y2={H-4} stroke="#eef1f6" strokeWidth={0.6}/>)}
+        {yInts.map(n=><line key={'gy'+n} x1={4} y1={ty(n)} x2={W-4} y2={ty(n)} stroke="#eef1f6" strokeWidth={0.6}/>)}
+        {/* x축 */}
+        {axYvis&&<line x1={4} y1={axY} x2={W-4} y2={axY} stroke="#374151" strokeWidth={1.8}/>}
+        {axYvis&&<polygon points={`${W-4},${axY} ${W-12},${axY-3} ${W-12},${axY+3}`} fill="#374151"/>}
+        {axYvis&&<text x={W-3} y={axY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>}
+        {/* y축 */}
+        {axXvis&&<line x1={axX} y1={4} x2={axX} y2={H-4} stroke="#374151" strokeWidth={1.8}/>}
+        {axXvis&&<polygon points={`${axX},4 ${axX-3},12 ${axX+3},12`} fill="#374151"/>}
+        {axXvis&&<text x={axX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>}
+        {/* 축 숫자 */}
+        {axYvis&&xInts.filter(n=>n!==0&&tx(n)>12&&tx(n)<W-10).map(n=>(
+          <text key={'lx'+n} x={tx(n)} y={Math.min(axY+12,H-2)} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
+        ))}
+        {axXvis&&yInts.filter(n=>n>0&&ty(n)>8&&ty(n)<H-4).map(n=>(
+          <text key={'ly'+n} x={Math.max(axX-5,12)} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
+        ))}
+        {/* 해 구간 강조 막대 (x축 위) */}
+        <line x1={solX1} y1={axY} x2={solX2} y2={axY} stroke="#6366f1" strokeWidth={4} strokeLinecap="round" opacity={0.45}/>
+        {/* y=r 수평선 */}
+        <line x1={rLineX1} y1={rY} x2={rLineX2} y2={rY} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5,3"/>
+        <text x={rLineX2-2} y={rY-4} textAnchor="end" fontSize={9} fill="#d97706" fontWeight="bold">y={r}</text>
+        {/* |x−center| 꺾인 그래프 */}
+        {absPts.length>1&&<polyline points={absPts.join(' ')} fill="none" stroke="#6366f1" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"/>}
+        {/* 꼭짓점 (center, 0) */}
+        <circle cx={tx(center)} cy={ty(0)} r={3.5} fill="#6366f1" stroke="white" strokeWidth={1.5}/>
+        {/* 교점 lo, hi */}
+        <circle cx={tx(lo)} cy={rY} r={3.5} fill="white" stroke="#6366f1" strokeWidth={2}/>
+        <circle cx={tx(hi)} cy={rY} r={3.5} fill="white" stroke="#6366f1" strokeWidth={2}/>
+        {/* lo, hi 라벨 */}
+        <text x={tx(lo)} y={axY+13} textAnchor="middle" fontSize={10} fill="#6366f1" fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{lo}</text>
+        <text x={tx(hi)} y={axY+13} textAnchor="middle" fontSize={10} fill="#6366f1" fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{hi}</text>
+      </svg>
+    );
+  }
+
+  // ── 16. 순열/조합 시각화 ──
+  if(g.type==='perm_comb'){
+    const{n,r,isPerm}=g;
+    const W=220,H=160;
+    const itemR=16, gap=8;
+    const totalW=n*(itemR*2+gap)-gap;
+    const startX=(W-totalW)/2;
+    const rowY=48;
+    const colors=['#6366f1','#059669','#ef4444','#f59e0b','#3b82f6','#a855f7'];
+    const icons=['A','B','C','D','E','F'].slice(0,n);
+    // 선택된 r개는 진한 색, 나머지 흐릿하게
+    const selIdxs=Array.from({length:r},(_,i)=>i);
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 제목 */}
+        <text x={W/2} y={20} textAnchor="middle" fontSize={11} fill="#374151" fontWeight="900">
+          {isPerm?`P(${n},${r}) = 순서 있게 ${r}개 선택`:`C(${n},${r}) = 순서 없이 ${r}개 선택`}
+        </text>
+        {/* n개 아이템 원형 */}
+        {icons.map((lbl,i)=>{
+          const cx=startX+i*(itemR*2+gap)+itemR;
+          const isSelected=i<r;
+          const col=isSelected?colors[i%colors.length]:'#d1d5db';
+          return(<g key={i}>
+            <circle cx={cx} cy={rowY} r={itemR} fill={col} opacity={isSelected?1:0.5}/>
+            <text x={cx} y={rowY+5} textAnchor="middle" fontSize={13} fill="white" fontWeight="900">{lbl}</text>
+          </g>);
+        })}
+        {/* 선택 구간 브라켓 */}
+        {r>0&&(<g>
+          <line x1={startX} y1={rowY+itemR+8} x2={startX+r*(itemR*2+gap)-gap} y2={rowY+itemR+8} stroke="#6366f1" strokeWidth={2}/>
+          <line x1={startX} y1={rowY+itemR+4} x2={startX} y2={rowY+itemR+12} stroke="#6366f1" strokeWidth={2}/>
+          <line x1={startX+r*(itemR*2+gap)-gap} y1={rowY+itemR+4} x2={startX+r*(itemR*2+gap)-gap} y2={rowY+itemR+12} stroke="#6366f1" strokeWidth={2}/>
+          <text x={(startX+(startX+r*(itemR*2+gap)-gap))/2} y={rowY+itemR+22} textAnchor="middle" fontSize={10} fill="#6366f1" fontWeight="900">{r}개 선택</text>
+        </g>)}
+        {/* 순열 화살표 (순서 표시) */}
+        {isPerm&&selIdxs.map((i,idx)=>{
+          if(idx===0)return null;
+          const x1=startX+(idx-1)*(itemR*2+gap)+itemR*2;
+          const x2=startX+idx*(itemR*2+gap);
+          const midX=(x1+x2)/2;
+          return(<g key={'arr'+idx}>
+            <line x1={x1} y1={rowY} x2={x2} y2={rowY} stroke="#6366f1" strokeWidth={1.5} markerEnd="url(#arr)"/>
+          </g>);
+        })}
+        {isPerm&&<defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#6366f1"/></marker></defs>}
+        {/* 조합 = 순서 없음 표시 */}
+        {!isPerm&&r>=2&&(
+          <text x={W/2} y={H-14} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">순서가 달라도 같은 선택 → r! 로 나눔</text>
+        )}
+      </svg>
+    );
+  }
+
   return null;
 }
 
@@ -1297,7 +1420,7 @@ function genMockProbStat(){
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
     const pSteps=[];let acc=1;for(let i=n;i>n-r;i--){pSteps.push(`${i}`);acc*=i;}
-    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,graph:{type:'perm_comb',n,r,isPerm:true},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[
         `순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,
         `P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,
@@ -1311,7 +1434,7 @@ function genMockProbStat(){
   const wrongs2=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(cnr),wrongs2);
   const cNum=[];const cDen=[];for(let i=0;i<r2;i++){cNum.push(n2-i);cDen.push(i+1);}
-  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,graph:{type:'perm_comb',n:n2,r:r2,isPerm:false},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
     sol:[
       `조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,
       `C(${n2},${r2}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cNum.reduce((a,b)=>a*b,1)} ÷ ${cDen.reduce((a,b)=>a*b,1)} = ${cnr}`,

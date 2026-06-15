@@ -1,4 +1,4 @@
-function DailyPracticeTab({userData,onUpdate}){
+function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   const[screen,setScreen]=useState('menu');// menu | session | done
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
@@ -8,6 +8,9 @@ function DailyPracticeTab({userData,onUpdate}){
   const[divMax,setDivMax]=useState(userData.divRangeMax||99);
   const[goal,setGoal]=useState(userData.goal||3);
 
+  const savedRaw=(() => { try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;} })();
+  const[savedData,setSavedData]=useState(savedRaw);
+
   const saveSettings=()=>{
   const upd={...userData,ver,
     rangeMin: rangeMin===''?1:Math.max(1,Number(rangeMin)),
@@ -16,9 +19,8 @@ function DailyPracticeTab({userData,onUpdate}){
     divRangeMax: divMax===''?2:Math.max(2,Number(divMax)),
     goal};
   saveUser(upd);onUpdate(upd);
-};  
+};
   const startSession=()=>{
-  // 빈 칸이면 자동 채움: 왼쪽=1, 오른쪽=왼쪽+1
   const effRMin = rangeMin===''||Number(rangeMin)<1 ? 1 : Math.floor(Number(rangeMin));
   const effRMax = rangeMax===''||Number(rangeMax)<=effRMin ? effRMin+1 : Math.floor(Number(rangeMax));
   const effDMin = divMin===''||Number(divMin)<1 ? 1 : Math.floor(Number(divMin));
@@ -28,17 +30,41 @@ function DailyPracticeTab({userData,onUpdate}){
   const divCountIdxs=[];while(divCountIdxs.length<2){const r=randInt(1,10);if(!divCountIdxs.includes(r))divCountIdxs.push(r)}
   setSession({qNum:1,correct:0,wrong:0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs,currentQ:null,selectedMC:null,fb:null,phase:'question'});
   setScreen('session');
+  onSessionActive?.(true);
 };
 
-  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v)}} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession}/>;
-  if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={rangeMin} rangeMax={rangeMax} divMin={divMin} divMax={divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');}} onBack={()=>setScreen('menu')}/>;
-  if(screen==='done')return<PracticeDone userData={userData} onAgain={startSession} onHome={()=>setScreen('menu')}/>;
+  const resumeSession=()=>{
+  if(!savedData)return;
+  setVer(savedData.ver);
+  setRangeMin(savedData.rangeMin); setRangeMax(savedData.rangeMax);
+  setDivMin(savedData.divMin);     setDivMax(savedData.divMax);
+  setSession({qNum:savedData.qNum||1,correct:savedData.correctCount||0,wrong:savedData.wrongCount||0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs:savedData.divCountIdxs||[3,7],currentQ:null,selectedMC:null,fb:null,phase:'question'});
+  setScreen('session');
+  onSessionActive?.(true);
+};
+
+  const handleBack=()=>{
+    setScreen('menu');
+    onSessionActive?.(false);
+    setSavedData(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}});
+  };
+
+  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v)}} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
+  if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={rangeMin} rangeMax={rangeMax} divMin={divMin} divMax={divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
+  if(screen==='done')return<PracticeDone userData={userData} onAgain={startSession} onHome={()=>{setScreen('menu');onSessionActive?.(false);}}/>;
   return null;
 }
 
-function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart}){
+function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume}){
   const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
   return(<div className="p-4 space-y-4 pb-36">
+    {savedData&&(<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+      <div className="text-3xl">📚</div>
+      <div className="flex-1">
+        <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
+        <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? ({savedData.correctCount||0}/10 완료) →</div>
+      </div>
+    </button>)}
     <div className="bg-indigo-600 rounded-3xl p-5 text-white mb-2">
       <div className="text-lg font-black">오늘 {todayLessons}번 완료! 더 풀어볼까요?</div>
       <div className="text-sm opacity-80 mt-1">10문제를 다 맞히면 레슨 1개 완료!</div>
@@ -289,18 +315,39 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   const[mcOpts,setMcOpts]=useState([]);
   // phase에 'reflection'(성찰) 단계가 추가되었습니다.
   const[phase,setPhase]=useState('question'); 
-  const[correctCount,setCorrectCount]=useState(0);
-  const[wrongCount,setWrongCount]=useState(0);
+  const[correctCount,setCorrectCount]=useState(session.correct||0);
+  const[wrongCount,setWrongCount]=useState(session.wrong||0);
   const[questions,setQuestions]=useState([]);
   const[startTime]=useState(Date.now());
   const[qStartTime,setQStartTime]=useState(Date.now());
   const[firstActionTime,setFirstActionTime]=useState(null); // 첫 입력 시각 추적
   const[showConfirm,setShowConfirm]=useState(false); // 제출 확인 모달
   const[activeField,setActiveField]=useState('Q');   // 숫자패드 활성 필드 ('Q'|'R')
+  const[showExitModal,setShowExitModal]=useState(false); // 이탈 확인 모달
 
   // 첫 입력 이벤트 핸들러 (one-at-a-time 형식이므로 진정한 망설임 시간 측정 가능)
   const handleFirstAction=()=>{
     if(firstActionTime===null)setFirstActionTime(Date.now());
+  };
+
+  // 이탈 시 저장 지원: window 전역 ref 갱신
+  useEffect(()=>{
+    window.__yakHakActiveSession={ver,rangeMin,rangeMax,divMin,divMax,
+      qNum:questions.length+1,divCountIdxs:session.divCountIdxs,
+      correctCount,wrongCount,savedAt:Date.now()};
+  },[correctCount,wrongCount,questions.length]);
+  useEffect(()=>()=>{window.__yakHakActiveSession=null;},[]);
+
+  const saveSession=()=>{
+    const data={ver,rangeMin,rangeMax,divMin,divMax,
+      qNum:questions.length+1,divCountIdxs:session.divCountIdxs,
+      correctCount,wrongCount,savedAt:Date.now()};
+    localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(data));
+  };
+
+  const handleBackAttempt=()=>{
+    if(phase==='done'||phase==='reflection'){onBack();return;}
+    setShowExitModal(true);
   };
 
   useEffect(()=>{buildMCOpts()},[q]);
@@ -428,6 +475,8 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,lastDate:today,activeDates:newActiveDates,logs:[log,...(userData.logs||[]).slice(0,49)]};
     
     await saveUser(upd);await saveLog(log);onUpdate(upd);
+    localStorage.removeItem('yakHakSavedSession_'+userData.name);
+    window.__yakHakActiveSession=null;
     setPhase('done');
   };
 
@@ -474,7 +523,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   const pct=(correctCount/10)*100;
   return(<div className="p-4 space-y-4 pb-36">
     <div className="flex items-center gap-3">
-      <button onClick={onBack} className="w-12 h-12 rounded-2xl bg-white shadow flex items-center justify-center text-xl font-bold text-gray-500">◀</button>
+      <button onClick={handleBackAttempt} className="w-12 h-12 rounded-2xl bg-white shadow flex items-center justify-center text-xl font-bold text-gray-500">◀</button>
       <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{width:`${pct}%`}}/></div>
       <div className="bg-indigo-100 text-indigo-700 font-black px-4 py-2 rounded-full text-base">✅ {correctCount}/10</div>
     </div>
@@ -558,6 +607,31 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
             <button onClick={()=>{setShowConfirm(false);check();}}
               className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               제출
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {showExitModal&&(
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
+          <div className="text-center mb-5">
+            <div className="text-4xl mb-3">📚</div>
+            <div className="text-xl font-black text-gray-800">문제풀이 중이에요!</div>
+            <div className="text-sm text-gray-500 mt-2">현재 <strong>{correctCount}/10</strong> 진행 중이에요.<br/>어떻게 할까요?</div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button onClick={()=>{saveSession();setShowExitModal(false);onBack();}}
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
+              현재 상태 저장하기 💾
+            </button>
+            <button onClick={()=>{setShowExitModal(false);onBack();}}
+              className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
+              그만하기
+            </button>
+            <button onClick={()=>setShowExitModal(false)}
+              className="w-full py-3 text-gray-400 font-bold text-sm">
+              계속 풀기
             </button>
           </div>
         </div>

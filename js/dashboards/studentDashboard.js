@@ -2,7 +2,26 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
   const[showFbModal,setShowFbModal]=useState(false);
+  const[sessionActive,setSessionActive]=useState(false);
+  const[showNavModal,setShowNavModal]=useState(false);
+  const[pendingTab,setPendingTab]=useState(null);
+  const[hasSavedSession,setHasSavedSession]=useState(()=>!!localStorage.getItem('yakHakSavedSession_'+userData.name));
   const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
+
+  const handleSessionActive=(active)=>{
+    setSessionActive(active);
+    if(!active) setHasSavedSession(!!localStorage.getItem('yakHakSavedSession_'+userData.name));
+  };
+
+  const handleTabClick=(k)=>{
+    if(k===tab)return;
+    if(sessionActive&&tab==='practice'){
+      setPendingTab(k);
+      setShowNavModal(true);
+    } else {
+      setTab(k);
+    }
+  };
 
   // ── 접속 heartbeat: 30초마다 Firestore onlineStatus 갱신 ──
   useEffect(()=>{
@@ -62,17 +81,57 @@ function StudentDashboard({userData,onLogout,onUpdate}){
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
     <div className="flex-1 overflow-auto scroll-body">
-      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')}/>}
-      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate}/>}
+      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession}/>}
+      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}/>}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks}/>}
     </div>
+    {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외 다른 탭에서 표시) */}
+    {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(
+      <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30 max-w-lg mx-auto pointer-events-none">
+        <button onClick={()=>setTab('practice')} className="pointer-events-auto bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all">
+          📚 하던 공부가 있어요! 마저 하시겠어요? →
+        </button>
+      </div>
+    )}
+
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-lg mx-auto">
-      <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>setTab(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 transition-all ${tab===t.k?'text-indigo-600':'text-gray-400'}`}><span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span></button>)}</div>
+      <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>handleTabClick(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 transition-all ${tab===t.k?'text-indigo-600':'text-gray-400'}`}><span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span></button>)}</div>
       <div className="text-center text-[10px] text-gray-300 font-semibold pb-1 tracking-wide">Made by 소명 🎓</div>
     </nav>
+
+    {/* 탭 이동 시 이탈 확인 모달 */}
+    {showNavModal&&(
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
+          <div className="text-center mb-5">
+            <div className="text-4xl mb-3">📚</div>
+            <div className="text-xl font-black text-gray-800">문제풀이 중이에요!</div>
+            <div className="text-sm text-gray-500 mt-2">다른 화면으로 이동할까요?</div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button onClick={()=>{
+              const d=window.__yakHakActiveSession;
+              if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);}
+              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+            }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
+              현재 상태 저장하기 💾
+            </button>
+            <button onClick={()=>{
+              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+            }} className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
+              그만하기
+            </button>
+            <button onClick={()=>setShowNavModal(false)}
+              className="w-full py-3 text-gray-400 font-bold text-sm">
+              계속 풀기
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* 피드백 도착 알림 모달 */}
     {showFbModal && (

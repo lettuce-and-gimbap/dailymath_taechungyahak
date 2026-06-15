@@ -254,16 +254,24 @@ function QuadraticModule({sz}){
       <line x1={cx+de*SC} y1={0} x2={cx+de*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       {dom.length>1&&<path d={`M ${dom.join(' L ')}`} fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round"/>}
       <Dot sx={cx+p*SC} sy={cy-q*SC} color="#16a34a" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
-      {/* 극점 이외에서 최대/최솟값이 발생하는 경우 강조 표시 */}
+      {/* 극점 이외에서 최대/최솟값이 발생하는 경우: 축 수선의 발 + 좌표 라벨 */}
       {(()=>{
         const extremeX=a>0?(extreme===a*(ds-p)**2+q?ds:de):(extreme===a*(ds-p)**2+q?ds:de);
         const isVertex=p>=ds&&p<=de&&extreme===q;
         if(isVertex)return null;
         const esx=cx+extremeX*SC,esy=cy-extreme*SC;
+        const col='#ef4444';
         return(<>
-          <circle cx={esx} cy={esy} r={14} fill="none" stroke="#ef4444" strokeWidth={3} strokeDasharray="5,3"/>
-          <circle cx={esx} cy={esy} r={6} fill="#ef4444" stroke="white" strokeWidth={2}/>
-          <text x={esx+14} y={esy-10} fontSize={13} fill="#ef4444" fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">{a>0?'최솟값':'최댓값'}: {Math.round(extreme)}</text>
+          {/* x축 수선의 발 */}
+          <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
+          {/* y축 수선의 발 */}
+          <line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
+          {/* x축 눈금 + 좌표 */}
+          <line x1={esx} y1={cy-8} x2={esx} y2={cy+8} stroke={col} strokeWidth={3.5}/>
+          <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{extremeX}</text>
+          {/* y축 눈금 + 좌표 */}
+          <line x1={cx-8} y1={esy} x2={cx+8} y2={esy} stroke={col} strokeWidth={3.5}/>
+          <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{Math.round(extreme)}</text>
         </>);
       })()}
     </svg>

@@ -657,7 +657,7 @@ function gen_abs_ineq(){
   const cStr=center===0?'|x|':center>0?`|x−${center}|`:`|x+${-center}|`;
   const{choices,answer}=makeChoices(String(hi),[hi+1,hi-1,hi+2].filter(w=>w!==hi).map(String));
   const cStr2=center===0?'x':center>0?`x−${center}`:`x+${-center}`;
-  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,graph:{type:'abs_ineq',center,r,lo,hi},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
       `|${cStr2}| ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,

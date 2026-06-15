@@ -80,7 +80,7 @@ function StudentSentFeedback({name,refreshSignal}){
   </div>);
 }
 
-function HomeTab({userData,onUpdate,onGoPractice}){
+function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession}){
   const{totalLessons,todayLessons,todayCorrect,todayWrong,goal=3,activeDates=[],currentWeekStart,stampArchive=[],name,logs=[]}=userData;
   
   // 1. 스탬프 및 진도율 계산 로직
@@ -205,6 +205,18 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
   return(<div className="p-4 space-y-5 pb-36">
     <div className="text-2xl font-black text-gray-800 mt-1">{name}님! 안녕하세요 👋</div>
+
+    {/* 저장된 세션 알림 배너 */}
+    {hasSavedSession&&(()=>{
+      let saved=null;try{saved=JSON.parse(localStorage.getItem('yakHakSavedSession_'+name));}catch{}
+      return(<button onClick={onGoPractice} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+        <div className="text-3xl">📚</div>
+        <div className="flex-1">
+          <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
+          <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? ({saved?.correctCount||0}/10 완료) →</div>
+        </div>
+      </button>);
+    })()}
 
     {/* 오늘의 달성도 (탭하면 바로 오늘 문제 풀기로 이동) */}
     <button onClick={onGoPractice} className={`w-full text-left bg-white rounded-3xl p-5 shadow-md active:scale-[0.98] transition-transform ${todayLessons>=goal?'goal-glow':''}`}>
