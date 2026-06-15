@@ -2759,7 +2759,61 @@ function SessionPrintModal({log,studentName,onClose}){
   if(!log)return null;
   const ORD=['①','②','③','④','⑤'];
   const qs=log.questions||[];
-  const doPrint=()=>{ window.print(); };
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const doPrint=()=>{
+    const pw=window.open('','_blank','width=900,height=1200');
+    if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
+    const total=Math.ceil(qs.length/3);
+    let pages='';
+    for(let pi=0;pi<total;pi++){
+      const pqs=qs.slice(pi*3,pi*3+3);
+      const isLast=pi===total-1;
+      const hdr=pi===0
+        ?`<div class="title-block"><div class="title">검정고시 연습 문제·해설지</div><div class="meta">${esc((studentName?studentName+' · ':'')+esc(log.type||'연습')+' · '+fmtDate(log.date)+' '+(log.time||'')+' · 점수 '+(log.score||''))}</div></div>`
+        :`<div class="cont-hdr">${esc(studentName||'연습')} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
+      const qsHtml=pqs.map((q,j)=>{
+        const i=pi*3+j;
+        const hasFull=q.qFull&&Array.isArray(q.choices);
+        const correct=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+        const choHtml=hasFull?`<div class="choices">${q.choices.map((c,jj)=>`<div class="${jj===q.answerIdx?'ch ok':'ch'}">${esc(ORD[jj]+' '+c)}${jj===q.answerIdx?' ✓':''}</div>`).join('')}</div>`:'';
+        const solHtml=Array.isArray(q.sol)&&q.sol.length
+          ?`<div class="sol"><span class="sol-hd">📖 풀이 과정</span><ol>${q.sol.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`
+          :(q.explanation?`<div class="sol"><span class="sol-hd">💡 해설 · </span>${esc(q.explanation)}</div>`:'');
+        const uHtml=!q.isOk&&q.uAns?` <span class="u-ans">(내 답: ${esc(q.uAns)})</span>`:'';
+        const topicHtml=q.topic?`<div class="topic">[${esc(q.topic)}]${q.examSource?' · 📌 '+esc(q.examSource):''}</div>`:'';
+        return`<div class="question"><div class="q-head"><span class="qn">${i+1}.</span><span class="qb">${esc(hasFull?q.qFull:q.qTxt)}</span><span class="qr ${q.isOk?'ok':'fail'}">${q.isOk?'O':'X'}</span></div>${topicHtml}${choHtml}<div class="ans">정답: ${esc(hasFull?ORD[q.answerIdx]+' ':'')}${esc(correct)}${uHtml}</div>${solHtml}</div>`;
+      }).join('');
+      pages+=`<div class="${isLast?'page':'page pb'}">${hdr}${qsHtml}${isLast?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
+    }
+    pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>검정고시 연습 문제·해설지</title><style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
+      .page{padding:14mm 16mm;}
+      .pb{break-after:page;page-break-after:always;}
+      .title-block{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:18px;}
+      .title{font-size:17px;font-weight:900;}
+      .meta{font-size:11px;color:#475569;margin-top:3px;font-weight:700;}
+      .cont-hdr{text-align:right;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:14px;}
+      .question{break-inside:avoid;page-break-inside:avoid;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;}
+      .q-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:3px;}
+      .qn{font-weight:900;color:#4f46e5;flex-shrink:0;min-width:18px;}
+      .qb{font-weight:700;line-height:1.65;flex:1;font-size:13px;}
+      .qr{font-weight:900;font-size:12px;flex-shrink:0;}
+      .qr.ok{color:#16a34a;}.qr.fail{color:#ef4444;}
+      .topic{margin-left:22px;font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px;}
+      .choices{margin-left:22px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin:5px 0;}
+      .ch{font-size:12px;color:#374151;line-height:1.5;}
+      .ch.ok{font-weight:900;color:#15803d;}
+      .ans{margin-left:22px;margin-top:4px;font-size:12px;font-weight:900;color:#15803d;}
+      .u-ans{color:#ef4444;font-weight:700;margin-left:8px;}
+      .sol{margin-left:22px;margin-top:6px;font-size:11.5px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 12px;line-height:1.7;}
+      .sol-hd{font-weight:900;color:#b45309;display:block;margin-bottom:3px;}
+      .sol ol{margin-left:16px;}.sol li{margin-bottom:2px;}
+      .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;}
+      @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.pb{break-after:page;page-break-after:always;}.question{break-inside:avoid;page-break-inside:avoid;}}
+    </style></head><body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`);
+    pw.document.close();
+  };
   return(
     <div className="session-print-area fixed inset-0 z-50 bg-white overflow-auto">
       {/* 상단 조작 바 (인쇄 시 숨김) */}
@@ -4216,7 +4270,7 @@ function AuthScreen({onLogin}){
         <p className="text-gray-500 text-base mt-2">배움엔 나이가 없어요!</p></div>
       <div className="space-y-5">
         <div><label className="block text-lg font-bold text-gray-700 mb-2">이름</label>
-          <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handle()}
+          <input type="text" lang="ko" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handle()}
             className="w-full border-2 border-gray-200 rounded-2xl px-5 py-4 text-xl font-bold focus:border-blue-400 outline-none" placeholder="예: 홍길동"/></div>
         <div><label className="block text-lg font-bold text-gray-700 mb-2">PIN 번호 (숫자 4자리)</label>
           <input type="number" value={pin} onChange={e=>setPin(e.target.value.slice(0,4))} onKeyDown={e=>e.key==='Enter'&&handle()}
@@ -4294,7 +4348,7 @@ function StudentSentFeedback({name,refreshSignal}){
         return(<div key={it.id} className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
           {editId===it.id?(
             <div className="space-y-2">
-              <textarea value={editText} onChange={e=>setEditText(e.target.value)} rows={2} className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2 text-sm font-medium resize-none outline-none focus:border-indigo-400"/>
+              <textarea lang="ko" value={editText} onChange={e=>setEditText(e.target.value)} rows={2} className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2 text-sm font-medium resize-none outline-none focus:border-indigo-400"/>
               <div className="flex gap-2">
                 <button onClick={()=>saveEdit(it.id)} className="flex-1 py-2 bg-indigo-500 text-white rounded-xl font-bold text-sm">저장</button>
                 <button onClick={()=>setEditId(null)} className="flex-1 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">취소</button>
@@ -4552,7 +4606,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     {/* 학생 의견 보내기 */}
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 선생님께 의견 보내기</div>
-      <textarea value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
+      <textarea lang="ko" value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
       <button onClick={sendStudentFeedback} className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black text-base active:scale-95 transition-transform">
         {fbSent?'✅ 전송되었어요!':'선생님께 보내기 📩'}
       </button>
@@ -6442,14 +6496,14 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       )}
 
       {!wsType.startsWith('mock_')&&<>
-        <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 이름 (예: 5월 1주차 수학)" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-bold mb-3 focus:border-indigo-400 outline-none"/>
+        <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 이름 (예: 5월 1주차 수학)" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-bold mb-3 focus:border-indigo-400 outline-none"/>
         <button onClick={create} disabled={loading} className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
           {loading?'생성 중...':'문제지 자동 생성 ✨'}
         </button>
       </>}
       {wsType==='geo'&&<div className="space-y-3">
         <div className="text-xs text-blue-600 font-bold bg-blue-50 rounded-xl p-3">📐 기하학 6개 파트에서 각 2문항씩 총 12문항 사지선다 생성</div>
-        <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-blue-400"/>
+        <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-blue-400"/>
         <button onClick={()=>{
           const GEO_GEN=[genMockGeometry];
           const SUBTYPES=['직선방정식','두점거리','내분점','원방정식','대칭이동','점직선거리'];
@@ -6498,7 +6552,7 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
             ))}
           </div>
         </div>
-        <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
+        <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
         <button onClick={createExamSheet} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">
           📝 {wsType==='mock_middle'?'중졸':'고졸'} 검정고시 문제지 생성 →
         </button>
@@ -6663,7 +6717,7 @@ function FeedbackTab(){
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 학생 피드백 & 기록</div>
       <div className="flex flex-col gap-2 mb-3">
-        <input type="text" value={sid} onChange={e=>setSid(e.target.value)} onKeyDown={e=>e.key==='Enter'&&search()} placeholder="학생 이름 입력" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-bold focus:border-indigo-400 outline-none"/>
+        <input type="text" lang="ko" value={sid} onChange={e=>setSid(e.target.value)} onKeyDown={e=>e.key==='Enter'&&search()} placeholder="학생 이름 입력" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-bold focus:border-indigo-400 outline-none"/>
         <button onClick={search} className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black text-base">{loading?'검색 중...':'🔍 학생 조회'}</button>
       </div>
       {student&&<div>
@@ -6701,7 +6755,7 @@ function FeedbackTab(){
           )}
           
           <div className="text-sm font-bold text-gray-600 mb-2">✍️ 피드백 메시지 작성</div>
-          <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={3} placeholder="예: 나눗셈 계산은 잘했어요! 약수 부분을 좀 더 연습해봐요 😊" className="w-full border-2 border-gray-200 rounded-xl p-4 text-base font-bold resize-none focus:border-indigo-400 outline-none mb-3"/>
+          <textarea lang="ko" value={msg} onChange={e=>setMsg(e.target.value)} rows={3} placeholder="예: 나눗셈 계산은 잘했어요! 약수 부분을 좀 더 연습해봐요 😊" className="w-full border-2 border-gray-200 rounded-xl p-4 text-base font-bold resize-none focus:border-indigo-400 outline-none mb-3"/>
           <button onClick={send} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">{sent?'✅ 전송완료!':'피드백 저장 및 전송 💌'}</button>
         </div>
         
@@ -6716,7 +6770,7 @@ function FeedbackTab(){
             {fb.relatedLog && <div className="text-[11px] text-indigo-600 font-black mb-2 inline-block bg-white px-2 py-1 rounded-lg border border-indigo-100 break-keep">관련: {fb.relatedLog}</div>}
             {editFbId===fb.id?(
               <div className="space-y-2">
-                <textarea value={editFbText} onChange={e=>setEditFbText(e.target.value)} rows={3} className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2 text-base font-bold resize-none outline-none focus:border-indigo-400"/>
+                <textarea lang="ko" value={editFbText} onChange={e=>setEditFbText(e.target.value)} rows={3} className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2 text-base font-bold resize-none outline-none focus:border-indigo-400"/>
                 <div className="flex gap-2">
                   <button onClick={()=>saveFbEdit(fb.id)} className="flex-1 py-2.5 bg-indigo-500 text-white rounded-xl font-bold text-sm">저장</button>
                   <button onClick={()=>setEditFbId(null)} className="flex-1 py-2.5 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">취소</button>

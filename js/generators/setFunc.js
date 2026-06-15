@@ -884,7 +884,61 @@ function SessionPrintModal({log,studentName,onClose}){
   if(!log)return null;
   const ORD=['①','②','③','④','⑤'];
   const qs=log.questions||[];
-  const doPrint=()=>{ window.print(); };
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const doPrint=()=>{
+    const pw=window.open('','_blank','width=900,height=1200');
+    if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
+    const total=Math.ceil(qs.length/3);
+    let pages='';
+    for(let pi=0;pi<total;pi++){
+      const pqs=qs.slice(pi*3,pi*3+3);
+      const isLast=pi===total-1;
+      const hdr=pi===0
+        ?`<div class="title-block"><div class="title">검정고시 연습 문제·해설지</div><div class="meta">${esc((studentName?studentName+' · ':'')+esc(log.type||'연습')+' · '+fmtDate(log.date)+' '+(log.time||'')+' · 점수 '+(log.score||''))}</div></div>`
+        :`<div class="cont-hdr">${esc(studentName||'연습')} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
+      const qsHtml=pqs.map((q,j)=>{
+        const i=pi*3+j;
+        const hasFull=q.qFull&&Array.isArray(q.choices);
+        const correct=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+        const choHtml=hasFull?`<div class="choices">${q.choices.map((c,jj)=>`<div class="${jj===q.answerIdx?'ch ok':'ch'}">${esc(ORD[jj]+' '+c)}${jj===q.answerIdx?' ✓':''}</div>`).join('')}</div>`:'';
+        const solHtml=Array.isArray(q.sol)&&q.sol.length
+          ?`<div class="sol"><span class="sol-hd">📖 풀이 과정</span><ol>${q.sol.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`
+          :(q.explanation?`<div class="sol"><span class="sol-hd">💡 해설 · </span>${esc(q.explanation)}</div>`:'');
+        const uHtml=!q.isOk&&q.uAns?` <span class="u-ans">(내 답: ${esc(q.uAns)})</span>`:'';
+        const topicHtml=q.topic?`<div class="topic">[${esc(q.topic)}]${q.examSource?' · 📌 '+esc(q.examSource):''}</div>`:'';
+        return`<div class="question"><div class="q-head"><span class="qn">${i+1}.</span><span class="qb">${esc(hasFull?q.qFull:q.qTxt)}</span><span class="qr ${q.isOk?'ok':'fail'}">${q.isOk?'O':'X'}</span></div>${topicHtml}${choHtml}<div class="ans">정답: ${esc(hasFull?ORD[q.answerIdx]+' ':'')}${esc(correct)}${uHtml}</div>${solHtml}</div>`;
+      }).join('');
+      pages+=`<div class="${isLast?'page':'page pb'}">${hdr}${qsHtml}${isLast?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
+    }
+    pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>검정고시 연습 문제·해설지</title><style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
+      .page{padding:14mm 16mm;}
+      .pb{break-after:page;page-break-after:always;}
+      .title-block{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:18px;}
+      .title{font-size:17px;font-weight:900;}
+      .meta{font-size:11px;color:#475569;margin-top:3px;font-weight:700;}
+      .cont-hdr{text-align:right;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:14px;}
+      .question{break-inside:avoid;page-break-inside:avoid;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;}
+      .q-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:3px;}
+      .qn{font-weight:900;color:#4f46e5;flex-shrink:0;min-width:18px;}
+      .qb{font-weight:700;line-height:1.65;flex:1;font-size:13px;}
+      .qr{font-weight:900;font-size:12px;flex-shrink:0;}
+      .qr.ok{color:#16a34a;}.qr.fail{color:#ef4444;}
+      .topic{margin-left:22px;font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px;}
+      .choices{margin-left:22px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin:5px 0;}
+      .ch{font-size:12px;color:#374151;line-height:1.5;}
+      .ch.ok{font-weight:900;color:#15803d;}
+      .ans{margin-left:22px;margin-top:4px;font-size:12px;font-weight:900;color:#15803d;}
+      .u-ans{color:#ef4444;font-weight:700;margin-left:8px;}
+      .sol{margin-left:22px;margin-top:6px;font-size:11.5px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 12px;line-height:1.7;}
+      .sol-hd{font-weight:900;color:#b45309;display:block;margin-bottom:3px;}
+      .sol ol{margin-left:16px;}.sol li{margin-bottom:2px;}
+      .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;}
+      @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.pb{break-after:page;page-break-after:always;}.question{break-inside:avoid;page-break-inside:avoid;}}
+    </style></head><body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`);
+    pw.document.close();
+  };
   return(
     <div className="session-print-area fixed inset-0 z-50 bg-white overflow-auto">
       {/* 상단 조작 바 (인쇄 시 숨김) */}

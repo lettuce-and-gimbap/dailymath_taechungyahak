@@ -46,7 +46,7 @@ function AuthScreen({onLogin}){
         <p className="text-gray-500 text-base mt-2">배움엔 나이가 없어요!</p></div>
       <div className="space-y-5">
         <div><label className="block text-lg font-bold text-gray-700 mb-2">이름</label>
-          <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handle()}
+          <input type="text" lang="ko" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handle()}
             className="w-full border-2 border-gray-200 rounded-2xl px-5 py-4 text-xl font-bold focus:border-blue-400 outline-none" placeholder="예: 홍길동"/></div>
         <div><label className="block text-lg font-bold text-gray-700 mb-2">PIN 번호 (숫자 4자리)</label>
           <input type="number" value={pin} onChange={e=>setPin(e.target.value.slice(0,4))} onKeyDown={e=>e.key==='Enter'&&handle()}

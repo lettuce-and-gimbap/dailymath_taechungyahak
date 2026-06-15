@@ -554,14 +554,14 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       )}
 
       {!wsType.startsWith('mock_')&&<>
-        <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 이름 (예: 5월 1주차 수학)" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-bold mb-3 focus:border-indigo-400 outline-none"/>
+        <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 이름 (예: 5월 1주차 수학)" className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-bold mb-3 focus:border-indigo-400 outline-none"/>
         <button onClick={create} disabled={loading} className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
           {loading?'생성 중...':'문제지 자동 생성 ✨'}
         </button>
       </>}
       {wsType==='geo'&&<div className="space-y-3">
         <div className="text-xs text-blue-600 font-bold bg-blue-50 rounded-xl p-3">📐 기하학 6개 파트에서 각 2문항씩 총 12문항 사지선다 생성</div>
-        <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-blue-400"/>
+        <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-blue-400"/>
         <button onClick={()=>{
           const GEO_GEN=[genMockGeometry];
           const SUBTYPES=['직선방정식','두점거리','내분점','원방정식','대칭이동','점직선거리'];
@@ -610,7 +610,7 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
             ))}
           </div>
         </div>
-        <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
+        <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
         <button onClick={createExamSheet} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">
           📝 {wsType==='mock_middle'?'중졸':'고졸'} 검정고시 문제지 생성 →
         </button>
@@ -629,7 +629,7 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
         <div className="mb-3">
           {editingWsId === ws.id ? (
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && renameWs(ws.id)} className="flex-1 min-w-[140px] border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-indigo-400" autoFocus />
+              <input type="text" lang="ko" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && renameWs(ws.id)} className="flex-1 min-w-[140px] border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-indigo-400" autoFocus />
               <button onClick={() => renameWs(ws.id)} className="text-xs bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-bold">저장</button>
               <button onClick={() => setEditingWsId(null)} className="text-xs bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-bold">취소</button>
             </div>

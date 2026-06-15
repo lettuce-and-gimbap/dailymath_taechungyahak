@@ -53,7 +53,7 @@ function StudentSentFeedback({name,refreshSignal}){
         return(<div key={it.id} className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
           {editId===it.id?(
             <div className="space-y-2">
-              <textarea value={editText} onChange={e=>setEditText(e.target.value)} rows={2} className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2 text-sm font-medium resize-none outline-none focus:border-indigo-400"/>
+              <textarea lang="ko" value={editText} onChange={e=>setEditText(e.target.value)} rows={2} className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2 text-sm font-medium resize-none outline-none focus:border-indigo-400"/>
               <div className="flex gap-2">
                 <button onClick={()=>saveEdit(it.id)} className="flex-1 py-2 bg-indigo-500 text-white rounded-xl font-bold text-sm">저장</button>
                 <button onClick={()=>setEditId(null)} className="flex-1 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">취소</button>
@@ -311,7 +311,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     {/* 학생 의견 보내기 */}
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 선생님께 의견 보내기</div>
-      <textarea value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
+      <textarea lang="ko" value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
       <button onClick={sendStudentFeedback} className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black text-base active:scale-95 transition-transform">
         {fbSent?'✅ 전송되었어요!':'선생님께 보내기 📩'}
       </button>
