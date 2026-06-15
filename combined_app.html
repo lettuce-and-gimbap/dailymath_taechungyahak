@@ -65,9 +65,11 @@ svg{touch-action:none}
   .ws-print-area{position:fixed!important;left:0!important;top:0!important;width:100%!important;padding:8mm!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:4mm!important;background:white!important}
   .ws-problem{page-break-inside:avoid!important;border:1px solid #333!important}
   /* 세션(회차) 문제+해설 인쇄 영역 */
+  .session-print-item{break-inside:avoid;page-break-inside:avoid}
+  .print-page-group{break-after:page;page-break-after:always}
+  .print-page-group:last-child{break-after:auto;page-break-after:auto}
   .session-print-area,.session-print-area *{visibility:visible!important}
-  .session-print-area{position:absolute!important;left:0!important;top:0!important;width:100%!important;padding:10mm!important;background:white!important}
-  .session-print-item{page-break-inside:avoid!important}
+  .session-print-area{position:static!important;width:100%!important;background:white!important;overflow:visible!important;height:auto!important;z-index:auto!important}
   .no-print{display:none!important}
   /* 인쇄 시 버튼 최소높이 강제 해제 (레이아웃 깨짐 방지) */
   button{min-height:0!important}
@@ -2770,61 +2772,72 @@ function SessionPrintModal({log,studentName,onClose}){
 
       {/* 인쇄 본문 */}
       <div className="px-6 py-5 max-w-3xl mx-auto">
-        <div className="text-center border-b-2 border-gray-800 pb-3 mb-5">
-          <div className="text-xl font-black text-gray-900">검정고시 연습 문제·해설지</div>
-          <div className="text-sm text-gray-600 mt-1 font-bold">
-            {studentName?`${studentName} · `:''}{log.type||'연습'} · {fmtDate(log.date)} {log.time||''} · 점수 {log.score||''}
-          </div>
-        </div>
-
-        {qs.map((q,i)=>{
-          const hasFull=q.qFull&&Array.isArray(q.choices);
-          const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+        {Array.from({length:Math.ceil(qs.length/3)},(_,pi)=>{
+          const pageQs=qs.slice(pi*3,pi*3+3);
+          const isLast=pi===Math.ceil(qs.length/3)-1;
           return(
-            <div key={i} className="session-print-item mb-6 pb-4 border-b border-gray-200">
-              <div className="flex items-start gap-2 mb-1">
-                <span className="font-black text-indigo-700">{i+1}.</span>
-                <span className="font-bold text-gray-900 leading-relaxed flex-1">{hasFull?q.qFull:q.qTxt}</span>
-                <span className={`text-xs font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
-              </div>
-              {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:''}</div>}
-              {!q.topic&&q.examSource&&<div className="ml-5 mb-1 text-xs text-blue-600 font-bold">📌 {q.examSource}</div>}
-
-              {/* 그림(SVG) */}
-              {q.graph&&<div className="my-2 flex justify-center"><GraphPreview q={q}/></div>}
-
-              {/* 선택지 */}
-              {hasFull&&(
-                <div className="ml-5 grid grid-cols-2 gap-x-4 gap-y-1 my-2">
-                  {q.choices.map((c,j)=>(
-                    <div key={j} className={`text-sm ${j===q.answerIdx?'font-black text-green-700':'text-gray-700'}`}>
-                      {ORD[j]} {String(c)}{j===q.answerIdx?' ✓':''}
-                    </div>
-                  ))}
+            <div key={pi} className={isLast?'':'print-page-group'}>
+              {pi===0?(
+                <div className="text-center border-b-2 border-gray-800 pb-3 mb-5">
+                  <div className="text-xl font-black text-gray-900">검정고시 연습 문제·해설지</div>
+                  <div className="text-sm text-gray-600 mt-1 font-bold">
+                    {studentName?`${studentName} · `:''}{log.type||'연습'} · {fmtDate(log.date)} {log.time||''} · 점수 {log.score||''}
+                  </div>
+                </div>
+              ):(
+                <div className="text-right text-xs text-gray-400 border-b border-gray-200 pb-1 mb-4">
+                  {studentName||'연습'} · {fmtDate(log.date)} ({pi+1}/{Math.ceil(qs.length/3)} 페이지)
                 </div>
               )}
 
-              {/* 정답 */}
-              <div className="ml-5 mt-1 text-sm font-black text-green-700">
-                정답: {hasFull?`${ORD[q.answerIdx]} `:''}{correctText}
-                {!q.isOk&&q.uAns?<span className="ml-3 text-red-500 font-bold">(내 답: {q.uAns})</span>:null}
-              </div>
+              {pageQs.map((q,j)=>{
+                const i=pi*3+j;
+                const hasFull=q.qFull&&Array.isArray(q.choices);
+                const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+                return(
+                  <div key={i} className="session-print-item mb-6 pb-4 border-b border-gray-200">
+                    <div className="flex items-start gap-2 mb-1">
+                      <span className="font-black text-indigo-700">{i+1}.</span>
+                      <span className="font-bold text-gray-900 leading-relaxed flex-1">{hasFull?q.qFull:q.qTxt}</span>
+                      <span className={`text-xs font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
+                    </div>
+                    {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:''}</div>}
+                    {!q.topic&&q.examSource&&<div className="ml-5 mb-1 text-xs text-blue-600 font-bold">📌 {q.examSource}</div>}
 
-              {/* 해설 */}
-              {Array.isArray(q.sol)&&q.sol.length?(
-                <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
-                  <ol className="list-decimal ml-5 space-y-0.5">{q.sol.map((s,k)=><li key={k}>{s}</li>)}</ol>
-                </div>
-              ):(q.explanation?(
-                <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <span className="font-black text-amber-700">💡 해설 · </span>{q.explanation}
-                </div>
-              ):null)}
+                    {q.graph&&<div className="my-2 flex justify-center"><GraphPreview q={q}/></div>}
+
+                    {hasFull&&(
+                      <div className="ml-5 grid grid-cols-2 gap-x-4 gap-y-1 my-2">
+                        {q.choices.map((c,jj)=>(
+                          <div key={jj} className={`text-sm ${jj===q.answerIdx?'font-black text-green-700':'text-gray-700'}`}>
+                            {ORD[jj]} {String(c)}{jj===q.answerIdx?' ✓':''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="ml-5 mt-1 text-sm font-black text-green-700">
+                      정답: {hasFull?`${ORD[q.answerIdx]} `:''}{correctText}
+                      {!q.isOk&&q.uAns?<span className="ml-3 text-red-500 font-bold">(내 답: {q.uAns})</span>:null}
+                    </div>
+
+                    {Array.isArray(q.sol)&&q.sol.length?(
+                      <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
+                        <ol className="list-decimal ml-5 space-y-0.5">{q.sol.map((s,k)=><li key={k}>{s}</li>)}</ol>
+                      </div>
+                    ):(q.explanation?(
+                      <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <span className="font-black text-amber-700">💡 해설 · </span>{q.explanation}
+                      </div>
+                    ):null)}
+                  </div>
+                );
+              })}
+              {isLast&&<div className="text-center text-xs text-gray-400 mt-6">— 태청야학 수학 학습 도우미 —</div>}
             </div>
           );
         })}
-        <div className="text-center text-xs text-gray-400 mt-6">— 태청야학 수학 학습 도우미 —</div>
       </div>
     </div>
   );
@@ -5696,14 +5709,17 @@ function MockExamTab({userData,onUpdate}){
       const fms=firstClickTimes[i]??null;
       return{
         qTxt:q.q.length>70?q.q.slice(0,70)+'…':q.q,
+        qFull:q.q,
+        choices:q.choices,
+        answerIdx:q.answer,
         uAns:sel[i]!==undefined?q.choices[sel[i]]:'미입력',
         cAns:q.choices[q.answer],
         isOk:sel[i]===q.answer,
-        // timeSec: 리스트 형식에서는 firstClickMs 환산값 사용 (균등배분 오류 수정)
         timeSec:fms!=null?Math.round(fms/1000):null,
-        firstClickMs:fms,            // 세션 시작~첫 선택 ms
-        revisionCount:revisionCounts[i]??0,  // 첫 선택 후 변경 횟수
-        qTopicHash:getTopicHash(q),  // 크로스-학생 집계용
+        firstClickMs:fms,
+        revisionCount:revisionCounts[i]??0,
+        qTopicHash:getTopicHash(q),
+        sol:Array.isArray(q.sol)&&q.sol.length?q.sol:null,
         explanation:easyExplanation(q),
         meta:q.meta
       };

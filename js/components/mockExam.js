@@ -80,14 +80,17 @@ function MockExamTab({userData,onUpdate}){
       const fms=firstClickTimes[i]??null;
       return{
         qTxt:q.q.length>70?q.q.slice(0,70)+'…':q.q,
+        qFull:q.q,
+        choices:q.choices,
+        answerIdx:q.answer,
         uAns:sel[i]!==undefined?q.choices[sel[i]]:'미입력',
         cAns:q.choices[q.answer],
         isOk:sel[i]===q.answer,
-        // timeSec: 리스트 형식에서는 firstClickMs 환산값 사용 (균등배분 오류 수정)
         timeSec:fms!=null?Math.round(fms/1000):null,
-        firstClickMs:fms,            // 세션 시작~첫 선택 ms
-        revisionCount:revisionCounts[i]??0,  // 첫 선택 후 변경 횟수
-        qTopicHash:getTopicHash(q),  // 크로스-학생 집계용
+        firstClickMs:fms,
+        revisionCount:revisionCounts[i]??0,
+        qTopicHash:getTopicHash(q),
+        sol:Array.isArray(q.sol)&&q.sol.length?q.sol:null,
         explanation:easyExplanation(q),
         meta:q.meta
       };
