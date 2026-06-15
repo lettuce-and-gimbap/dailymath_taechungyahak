@@ -62,7 +62,7 @@ function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divM
       <div className="text-3xl">📚</div>
       <div className="flex-1">
         <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
-        <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? ({savedData.correctCount||0}/10 완료) →</div>
+        <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? (정답 {savedData.correctCount||0}/10) →</div>
       </div>
     </button>)}
     <div className="bg-indigo-600 rounded-3xl p-5 text-white mb-2">
@@ -617,8 +617,8 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
         <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
           <div className="text-center mb-5">
             <div className="text-4xl mb-3">📚</div>
-            <div className="text-xl font-black text-gray-800">문제풀이 중이에요!</div>
-            <div className="text-sm text-gray-500 mt-2">현재 <strong>{correctCount}/10</strong> 진행 중이에요.<br/>어떻게 할까요?</div>
+            <div className="text-xl font-black text-gray-800">문제 풀이 중이에요!</div>
+            <div className="text-sm text-gray-500 mt-2">현재 정답 <strong>{correctCount}/10</strong>까지 왔어요.<br/>어떻게 할까요?</div>
           </div>
           <div className="flex flex-col gap-3">
             <button onClick={()=>{saveSession();setShowExitModal(false);onBack();}}

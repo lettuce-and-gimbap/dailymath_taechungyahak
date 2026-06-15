@@ -92,7 +92,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
     {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(
       <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30 max-w-lg mx-auto pointer-events-none">
         <button onClick={()=>setTab('practice')} className="pointer-events-auto bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all">
-          📚 하던 공부가 있어요! 마저 하시겠어요? →
+          📚 하던 공부가 있어요! 이어서 하시겠어요? →
         </button>
       </div>
     )}
@@ -108,8 +108,8 @@ function StudentDashboard({userData,onLogout,onUpdate}){
         <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
           <div className="text-center mb-5">
             <div className="text-4xl mb-3">📚</div>
-            <div className="text-xl font-black text-gray-800">문제풀이 중이에요!</div>
-            <div className="text-sm text-gray-500 mt-2">다른 화면으로 이동할까요?</div>
+            <div className="text-xl font-black text-gray-800">문제 풀이 중이에요!</div>
+            <div className="text-sm text-gray-500 mt-2">다른 화면으로 이동하시겠어요?</div>
           </div>
           <div className="flex flex-col gap-3">
             <button onClick={()=>{

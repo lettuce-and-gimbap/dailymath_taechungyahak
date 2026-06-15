@@ -869,59 +869,6 @@ function GraphPreview({q}){
     );
   }
 
-  // ── 16. 순열/조합 시각화 ──
-  if(g.type==='perm_comb'){
-    const{n,r,isPerm}=g;
-    const W=220,H=160;
-    const itemR=16, gap=8;
-    const totalW=n*(itemR*2+gap)-gap;
-    const startX=(W-totalW)/2;
-    const rowY=48;
-    const colors=['#6366f1','#059669','#ef4444','#f59e0b','#3b82f6','#a855f7'];
-    const icons=['A','B','C','D','E','F'].slice(0,n);
-    // 선택된 r개는 진한 색, 나머지 흐릿하게
-    const selIdxs=Array.from({length:r},(_,i)=>i);
-    return(
-      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
-        {/* 제목 */}
-        <text x={W/2} y={20} textAnchor="middle" fontSize={11} fill="#374151" fontWeight="900">
-          {isPerm?`P(${n},${r}) = 순서 있게 ${r}개 선택`:`C(${n},${r}) = 순서 없이 ${r}개 선택`}
-        </text>
-        {/* n개 아이템 원형 */}
-        {icons.map((lbl,i)=>{
-          const cx=startX+i*(itemR*2+gap)+itemR;
-          const isSelected=i<r;
-          const col=isSelected?colors[i%colors.length]:'#d1d5db';
-          return(<g key={i}>
-            <circle cx={cx} cy={rowY} r={itemR} fill={col} opacity={isSelected?1:0.5}/>
-            <text x={cx} y={rowY+5} textAnchor="middle" fontSize={13} fill="white" fontWeight="900">{lbl}</text>
-          </g>);
-        })}
-        {/* 선택 구간 브라켓 */}
-        {r>0&&(<g>
-          <line x1={startX} y1={rowY+itemR+8} x2={startX+r*(itemR*2+gap)-gap} y2={rowY+itemR+8} stroke="#6366f1" strokeWidth={2}/>
-          <line x1={startX} y1={rowY+itemR+4} x2={startX} y2={rowY+itemR+12} stroke="#6366f1" strokeWidth={2}/>
-          <line x1={startX+r*(itemR*2+gap)-gap} y1={rowY+itemR+4} x2={startX+r*(itemR*2+gap)-gap} y2={rowY+itemR+12} stroke="#6366f1" strokeWidth={2}/>
-          <text x={(startX+(startX+r*(itemR*2+gap)-gap))/2} y={rowY+itemR+22} textAnchor="middle" fontSize={10} fill="#6366f1" fontWeight="900">{r}개 선택</text>
-        </g>)}
-        {/* 순열 화살표 (순서 표시) */}
-        {isPerm&&selIdxs.map((i,idx)=>{
-          if(idx===0)return null;
-          const x1=startX+(idx-1)*(itemR*2+gap)+itemR*2;
-          const x2=startX+idx*(itemR*2+gap);
-          const midX=(x1+x2)/2;
-          return(<g key={'arr'+idx}>
-            <line x1={x1} y1={rowY} x2={x2} y2={rowY} stroke="#6366f1" strokeWidth={1.5} markerEnd="url(#arr)"/>
-          </g>);
-        })}
-        {isPerm&&<defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#6366f1"/></marker></defs>}
-        {/* 조합 = 순서 없음 표시 */}
-        {!isPerm&&r>=2&&(
-          <text x={W/2} y={H-14} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">순서가 달라도 같은 선택 → r! 로 나눔</text>
-        )}
-      </svg>
-    );
-  }
 
   return null;
 }
@@ -1394,24 +1341,24 @@ function genMockProbStat(){
   const isPermutation=Math.random()<0.5;
   // ─ 순열 문맥 풀 (검정고시 실제 그림 유형 반영)
   const pCtxs=[
-    (n,r)=>`그림과 같이 ${n}장의 글자 카드가 있다. 이 중에서 서로 다른 ${r}장의 카드를 택하여 일렬로 나열하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 경기 종목이 있다. 이 중에서 서로 다른 ${r}개의 종목을 택하여 순서대로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}장의 글자 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 경기 종목 중에서 ${r}개를 골라 순서대로 나열하는 경우의 수는?`,
     (n,r)=>`${n}명의 학생 중에서 ${r}명을 뽑아 일렬로 세우는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}점의 작품이 있다. 이 중에서 서로 다른 ${r}점의 작품을 택하여 일렬로 나열하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 채소 모종이 있다. 이 중에서 서로 다른 ${r}개를 택하여 화분 1과 화분 2에 각각 심는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}곳을 여행하려 할 때 여행 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
-    (n,r)=>`그림과 같이 ${n}종류의 한국 문화 카드가 각각 한 장씩 있다. 이 중에서 서로 다른 ${r}장의 카드를 택하여 일렬로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}점의 작품 중에서 ${r}점을 골라 일렬로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 채소 모종 중에서 ${r}개를 골라 화분 1과 화분 2에 각각 하나씩 심는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}곳을 여행하려 할 때, 여행할 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
+    (n,r)=>`서로 다른 ${n}장의 한국 문화 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
   ];
   // ─ 조합 문맥 풀
   const cCtxs=[
-    (n,r)=>`그림과 같이 ${n}개의 민속놀이가 있다. 이 중에서 서로 다른 ${r}개를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 민속놀이 중에서 ${r}개를 선택하는 경우의 수는?`,
     (n,r)=>`${n}종류의 꽃 중에서 서로 다른 ${r}종류를 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 정다면체가 있다. 이 중에서 서로 다른 ${r}개를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 정다면체 중에서 ${r}개를 선택하는 경우의 수는?`,
     (n,r)=>`${n}가지 방과 후 프로그램 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
     (n,r)=>`아이스크림 토핑 ${n}종류 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 수학 진로 과목이 있다. 이 중에서 서로 다른 ${r}과목을 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}종류의 잡곡이 있다. 이 중에서 서로 다른 ${r}종류를 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 문화 센터 프로그램이 있다. 이 중에서 서로 다른 ${r}개를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 수학 진로 과목 중에서 ${r}과목을 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}종류의 잡곡 중에서 ${r}종류를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 문화 센터 프로그램 중에서 ${r}개를 선택하는 경우의 수는?`,
   ];
   if(isPermutation){
     const safeOpts=[[3,2],[4,2],[5,2]]; // P값: 6,12,20
@@ -1420,7 +1367,7 @@ function genMockProbStat(){
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
     const pSteps=[];let acc=1;for(let i=n;i>n-r;i--){pSteps.push(`${i}`);acc*=i;}
-    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,graph:{type:'perm_comb',n,r,isPerm:true},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[
         `순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,
         `P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,
@@ -1434,7 +1381,7 @@ function genMockProbStat(){
   const wrongs2=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(cnr),wrongs2);
   const cNum=[];const cDen=[];for(let i=0;i<r2;i++){cNum.push(n2-i);cDen.push(i+1);}
-  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,graph:{type:'perm_comb',n:n2,r:r2,isPerm:false},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
     sol:[
       `조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,
       `C(${n2},${r2}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cNum.reduce((a,b)=>a*b,1)} ÷ ${cDen.reduce((a,b)=>a*b,1)} = ${cnr}`,

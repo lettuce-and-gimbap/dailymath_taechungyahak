@@ -213,7 +213,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
         <div className="text-3xl">📚</div>
         <div className="flex-1">
           <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
-          <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? ({saved?.correctCount||0}/10 완료) →</div>
+          <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? (정답 {saved?.correctCount||0}/10) →</div>
         </div>
       </button>);
     })()}

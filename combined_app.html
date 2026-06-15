@@ -1523,7 +1523,7 @@ function gen_abs_ineq(){
   const cStr=center===0?'|x|':center>0?`|x−${center}|`:`|x+${-center}|`;
   const{choices,answer}=makeChoices(String(hi),[hi+1,hi-1,hi+2].filter(w=>w!==hi).map(String));
   const cStr2=center===0?'x':center>0?`x−${center}`:`x+${-center}`;
-  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,graph:{type:'abs_ineq',center,r,lo,hi},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
       `|${cStr2}| ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,
@@ -2056,12 +2056,14 @@ function GraphPreview({q}){
     const axXvis=axX>=4&&axX<=W-4;
     const axYvis=axY>=4&&axY<=H-4;
 
-    // 수선의 발 점선: 점 → x축, 점 → y축
-    const drawDropLines=(px2,py2,lineColor)=>{
+    // 수선의 발 점선: 점 → x축, 점 → y축 (mx/my: 축 위 좌표 강조 텍스트)
+    const drawDropLines=(px2,py2,lineColor,mx,my)=>{
       if(!axYvis&&!axXvis)return null;
-      return(<g opacity={0.65}>
-        {axYvis&&<line x1={px2} y1={py2} x2={px2} y2={axY} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2"/>}
-        {axXvis&&<line x1={axX} y1={py2} x2={px2} y2={py2} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2"/>}
+      return(<g>
+        {axYvis&&<line x1={px2} y1={py2} x2={px2} y2={axY} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2" opacity={0.7}/>}
+        {axXvis&&<line x1={axX} y1={py2} x2={px2} y2={py2} stroke={lineColor} strokeWidth={1.1} strokeDasharray="3,2" opacity={0.7}/>}
+        {axYvis&&mx!=null&&<text x={px2} y={Math.min(axY+13,H-2)} textAnchor="middle" fontSize={10} fill={lineColor} fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{mx}</text>}
+        {axXvis&&my!=null&&<text x={Math.max(axX-5,14)} y={py2+4} textAnchor="end" fontSize={10} fill={lineColor} fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{my}</text>}
       </g>);
     };
 
@@ -2093,19 +2095,18 @@ function GraphPreview({q}){
         {rangePts.length>1&&<polyline points={rangePts.join(' ')} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"/>}
         {/* 구간 시작점 수선의 발 + 점 (극값 아닌 경우) */}
         {!isDsExtreme&&<g>
-          {drawDropLines(toQx(ds),toQy(yDs),'#6b7280')}
+          {drawDropLines(toQx(ds),toQy(yDs),'#6b7280',ds,yDs)}
           <circle cx={toQx(ds)} cy={toQy(yDs)} r={4} fill="white" stroke="#6b7280" strokeWidth={2}/>
         </g>}
         {/* 구간 끝점 수선의 발 + 점 (극값 아닌 경우) */}
         {!isDeExtreme&&<g>
-          {drawDropLines(toQx(de),toQy(yDe),'#6b7280')}
+          {drawDropLines(toQx(de),toQy(yDe),'#6b7280',de,yDe)}
           <circle cx={toQx(de)} cy={toQy(yDe)} r={4} fill="white" stroke="#6b7280" strokeWidth={2}/>
         </g>}
         {/* 꼭짓점이 구간 내이고 극값이 아닌 경우 */}
         {vxInRange&&extremePt.x!==p&&<circle cx={toQx(p)} cy={toQy(vq)} r={3.5} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>}
-        {/* ★ 극값점: 수선의 발 + 크고 선명한 원 (좌표 텍스트 없음) */}
-        {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor)}
-        <circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={6} fill={extremeColor} stroke="white" strokeWidth={2.5}/>
+        {/* ★ 극값점: 수선의 발 + 축 좌표 강조 (강조 원 없음) */}
+        {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor,extremePt.x,Math.round(extremePt.y*100)/100)}
       </svg>
     );
   }
@@ -2689,6 +2690,59 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 15. 절댓값 부등식 좌표평면 ──
+  if(g.type==='abs_ineq'){
+    const{center,r,lo,hi}=g;
+    const W=220,H=180,SC=22;
+    const xSpan=hi-lo, xPad=Math.max(1,xSpan*0.3);
+    const xLo=lo-xPad, xHi=hi+xPad;
+    const yHi=r+1.2, yLo=-0.5;
+    const marg=22;
+    const scX=(W-2*marg)/(xHi-xLo), scY=(H-2*marg)/(yHi-yLo);
+    const sc=Math.min(scX,scY,28);
+    const tx=x=>marg+(x-xLo)*sc, ty=y=>H-marg-(y-yLo)*sc;
+    const axY=ty(0), axX=tx(0);
+    const axYvis=axY>=4&&axY<=H-4, axXvis=axX>=4&&axX<=W-4;
+    const absPts=[];
+    for(let xi=xLo;xi<=xHi;xi+=0.1){
+      const yi=Math.abs(xi-center);
+      const sx=tx(xi),sy=ty(yi);
+      if(sy>=-2&&sy<=H+2)absPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);
+    }
+    const rLineX1=tx(xLo), rLineX2=tx(xHi);
+    const rY=ty(r);
+    const solX1=tx(lo), solX2=tx(hi);
+    const xInts=[];for(let n=Math.ceil(xLo);n<=Math.floor(xHi);n++)xInts.push(n);
+    const yInts=[];for(let n=0;n<=Math.ceil(yHi);n++)yInts.push(n);
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {xInts.map(n=><line key={'gx'+n} x1={tx(n)} y1={4} x2={tx(n)} y2={H-4} stroke="#eef1f6" strokeWidth={0.6}/>)}
+        {yInts.map(n=><line key={'gy'+n} x1={4} y1={ty(n)} x2={W-4} y2={ty(n)} stroke="#eef1f6" strokeWidth={0.6}/>)}
+        {axYvis&&<line x1={4} y1={axY} x2={W-4} y2={axY} stroke="#374151" strokeWidth={1.8}/>}
+        {axYvis&&<polygon points={`${W-4},${axY} ${W-12},${axY-3} ${W-12},${axY+3}`} fill="#374151"/>}
+        {axYvis&&<text x={W-3} y={axY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>}
+        {axXvis&&<line x1={axX} y1={4} x2={axX} y2={H-4} stroke="#374151" strokeWidth={1.8}/>}
+        {axXvis&&<polygon points={`${axX},4 ${axX-3},12 ${axX+3},12`} fill="#374151"/>}
+        {axXvis&&<text x={axX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>}
+        {axYvis&&xInts.filter(n=>n!==0&&tx(n)>12&&tx(n)<W-10).map(n=>(
+          <text key={'lx'+n} x={tx(n)} y={Math.min(axY+12,H-2)} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
+        ))}
+        {axXvis&&yInts.filter(n=>n>0&&ty(n)>8&&ty(n)<H-4).map(n=>(
+          <text key={'ly'+n} x={Math.max(axX-5,12)} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
+        ))}
+        <line x1={solX1} y1={axY} x2={solX2} y2={axY} stroke="#6366f1" strokeWidth={4} strokeLinecap="round" opacity={0.45}/>
+        <line x1={rLineX1} y1={rY} x2={rLineX2} y2={rY} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5,3"/>
+        <text x={rLineX2-2} y={rY-4} textAnchor="end" fontSize={9} fill="#d97706" fontWeight="bold">y={r}</text>
+        {absPts.length>1&&<polyline points={absPts.join(' ')} fill="none" stroke="#6366f1" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"/>}
+        <circle cx={tx(center)} cy={ty(0)} r={3.5} fill="#6366f1" stroke="white" strokeWidth={1.5}/>
+        <circle cx={tx(lo)} cy={rY} r={3.5} fill="white" stroke="#6366f1" strokeWidth={2}/>
+        <circle cx={tx(hi)} cy={rY} r={3.5} fill="white" stroke="#6366f1" strokeWidth={2}/>
+        <text x={tx(lo)} y={axY+13} textAnchor="middle" fontSize={10} fill="#6366f1" fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{lo}</text>
+        <text x={tx(hi)} y={axY+13} textAnchor="middle" fontSize={10} fill="#6366f1" fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">{hi}</text>
+      </svg>
+    );
+  }
+
   return null;
 }
 
@@ -3160,24 +3214,24 @@ function genMockProbStat(){
   const isPermutation=Math.random()<0.5;
   // ─ 순열 문맥 풀 (검정고시 실제 그림 유형 반영)
   const pCtxs=[
-    (n,r)=>`그림과 같이 ${n}장의 글자 카드가 있다. 이 중에서 서로 다른 ${r}장의 카드를 택하여 일렬로 나열하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 경기 종목이 있다. 이 중에서 서로 다른 ${r}개의 종목을 택하여 순서대로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}장의 글자 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 경기 종목 중에서 ${r}개를 골라 순서대로 나열하는 경우의 수는?`,
     (n,r)=>`${n}명의 학생 중에서 ${r}명을 뽑아 일렬로 세우는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}점의 작품이 있다. 이 중에서 서로 다른 ${r}점의 작품을 택하여 일렬로 나열하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 채소 모종이 있다. 이 중에서 서로 다른 ${r}개를 택하여 화분 1과 화분 2에 각각 심는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}곳을 여행하려 할 때 여행 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
-    (n,r)=>`그림과 같이 ${n}종류의 한국 문화 카드가 각각 한 장씩 있다. 이 중에서 서로 다른 ${r}장의 카드를 택하여 일렬로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}점의 작품 중에서 ${r}점을 골라 일렬로 나열하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 채소 모종 중에서 ${r}개를 골라 화분 1과 화분 2에 각각 하나씩 심는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}곳을 여행하려 할 때, 여행할 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
+    (n,r)=>`서로 다른 ${n}장의 한국 문화 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
   ];
   // ─ 조합 문맥 풀
   const cCtxs=[
-    (n,r)=>`그림과 같이 ${n}개의 민속놀이가 있다. 이 중에서 서로 다른 ${r}개를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 민속놀이 중에서 ${r}개를 선택하는 경우의 수는?`,
     (n,r)=>`${n}종류의 꽃 중에서 서로 다른 ${r}종류를 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 정다면체가 있다. 이 중에서 서로 다른 ${r}개를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 정다면체 중에서 ${r}개를 선택하는 경우의 수는?`,
     (n,r)=>`${n}가지 방과 후 프로그램 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
     (n,r)=>`아이스크림 토핑 ${n}종류 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 수학 진로 과목이 있다. 이 중에서 서로 다른 ${r}과목을 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}종류의 잡곡이 있다. 이 중에서 서로 다른 ${r}종류를 선택하는 경우의 수는?`,
-    (n,r)=>`그림과 같이 ${n}개의 문화 센터 프로그램이 있다. 이 중에서 서로 다른 ${r}개를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 수학 진로 과목 중에서 ${r}과목을 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}종류의 잡곡 중에서 ${r}종류를 선택하는 경우의 수는?`,
+    (n,r)=>`서로 다른 ${n}개의 문화 센터 프로그램 중에서 ${r}개를 선택하는 경우의 수는?`,
   ];
   if(isPermutation){
     const safeOpts=[[3,2],[4,2],[5,2]]; // P값: 6,12,20
@@ -3851,16 +3905,20 @@ function QuadraticModule({sz}){
       <line x1={cx+de*SC} y1={0} x2={cx+de*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       {dom.length>1&&<path d={`M ${dom.join(' L ')}`} fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round"/>}
       <Dot sx={cx+p*SC} sy={cy-q*SC} color="#16a34a" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
-      {/* 극점 이외에서 최대/최솟값이 발생하는 경우 강조 표시 */}
+      {/* 극점 이외에서 최대/최솟값이 발생하는 경우: 축 수선의 발 + 좌표 라벨 */}
       {(()=>{
         const extremeX=a>0?(extreme===a*(ds-p)**2+q?ds:de):(extreme===a*(ds-p)**2+q?ds:de);
         const isVertex=p>=ds&&p<=de&&extreme===q;
         if(isVertex)return null;
         const esx=cx+extremeX*SC,esy=cy-extreme*SC;
+        const col='#ef4444';
         return(<>
-          <circle cx={esx} cy={esy} r={14} fill="none" stroke="#ef4444" strokeWidth={3} strokeDasharray="5,3"/>
-          <circle cx={esx} cy={esy} r={6} fill="#ef4444" stroke="white" strokeWidth={2}/>
-          <text x={esx+14} y={esy-10} fontSize={13} fill="#ef4444" fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">{a>0?'최솟값':'최댓값'}: {Math.round(extreme)}</text>
+          <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
+          <line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
+          <line x1={esx} y1={cy-8} x2={esx} y2={cy+8} stroke={col} strokeWidth={3.5}/>
+          <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{extremeX}</text>
+          <line x1={cx-8} y1={esy} x2={cx+8} y2={esy} stroke={col} strokeWidth={3.5}/>
+          <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{Math.round(extreme)}</text>
         </>);
       })()}
     </svg>
@@ -4250,7 +4308,7 @@ function StudentSentFeedback({name,refreshSignal}){
   </div>);
 }
 
-function HomeTab({userData,onUpdate,onGoPractice}){
+function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession}){
   const{totalLessons,todayLessons,todayCorrect,todayWrong,goal=3,activeDates=[],currentWeekStart,stampArchive=[],name,logs=[]}=userData;
   
   // 1. 스탬프 및 진도율 계산 로직
@@ -4376,6 +4434,18 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
   return(<div className="p-4 space-y-5 pb-36">
     <div className="text-2xl font-black text-gray-800 mt-1">{name}님! 안녕하세요 👋</div>
 
+    {/* 저장된 세션 알림 배너 */}
+    {hasSavedSession&&(()=>{
+      let saved=null;try{saved=JSON.parse(localStorage.getItem('yakHakSavedSession_'+name));}catch{}
+      return(<button onClick={onGoPractice} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+        <div className="text-3xl">📚</div>
+        <div className="flex-1">
+          <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
+          <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? (정답 {saved?.correctCount||0}/10) →</div>
+        </div>
+      </button>);
+    })()}
+
     {/* 오늘의 달성도 (탭하면 바로 오늘 문제 풀기로 이동) */}
     <button onClick={onGoPractice} className={`w-full text-left bg-white rounded-3xl p-5 shadow-md active:scale-[0.98] transition-transform ${todayLessons>=goal?'goal-glow':''}`}>
       <div className="flex items-center justify-between mb-4">
@@ -4483,8 +4553,8 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 </script>
 <script type="text/babel">
 // === js/components/practice.js ===
-function DailyPracticeTab({userData,onUpdate}){
-  const[screen,setScreen]=useState('menu');// menu | session | done
+function DailyPracticeTab({userData,onUpdate,onSessionActive}){
+  const[screen,setScreen]=useState('menu');
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
   const[rangeMin,setRangeMin]=useState(userData.rangeMin||10);
@@ -4492,6 +4562,9 @@ function DailyPracticeTab({userData,onUpdate}){
   const[divMin,setDivMin]=useState(userData.divRangeMin||10);
   const[divMax,setDivMax]=useState(userData.divRangeMax||99);
   const[goal,setGoal]=useState(userData.goal||3);
+
+  const savedRaw=(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}})();
+  const[savedData,setSavedData]=useState(savedRaw);
 
   const saveSettings=()=>{
   const upd={...userData,ver,
@@ -4501,9 +4574,8 @@ function DailyPracticeTab({userData,onUpdate}){
     divRangeMax: divMax===''?2:Math.max(2,Number(divMax)),
     goal};
   saveUser(upd);onUpdate(upd);
-};  
+};
   const startSession=()=>{
-  // 빈 칸이면 자동 채움: 왼쪽=1, 오른쪽=왼쪽+1
   const effRMin = rangeMin===''||Number(rangeMin)<1 ? 1 : Math.floor(Number(rangeMin));
   const effRMax = rangeMax===''||Number(rangeMax)<=effRMin ? effRMin+1 : Math.floor(Number(rangeMax));
   const effDMin = divMin===''||Number(divMin)<1 ? 1 : Math.floor(Number(divMin));
@@ -4513,17 +4585,41 @@ function DailyPracticeTab({userData,onUpdate}){
   const divCountIdxs=[];while(divCountIdxs.length<2){const r=randInt(1,10);if(!divCountIdxs.includes(r))divCountIdxs.push(r)}
   setSession({qNum:1,correct:0,wrong:0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs,currentQ:null,selectedMC:null,fb:null,phase:'question'});
   setScreen('session');
+  onSessionActive?.(true);
 };
 
-  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v)}} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession}/>;
-  if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={rangeMin} rangeMax={rangeMax} divMin={divMin} divMax={divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');}} onBack={()=>setScreen('menu')}/>;
-  if(screen==='done')return<PracticeDone userData={userData} onAgain={startSession} onHome={()=>setScreen('menu')}/>;
+  const resumeSession=()=>{
+  if(!savedData)return;
+  setVer(savedData.ver);
+  setRangeMin(savedData.rangeMin); setRangeMax(savedData.rangeMax);
+  setDivMin(savedData.divMin);     setDivMax(savedData.divMax);
+  setSession({qNum:savedData.qNum||1,correct:savedData.correctCount||0,wrong:savedData.wrongCount||0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs:savedData.divCountIdxs||[3,7],currentQ:null,selectedMC:null,fb:null,phase:'question'});
+  setScreen('session');
+  onSessionActive?.(true);
+};
+
+  const handleBack=()=>{
+    setScreen('menu');
+    onSessionActive?.(false);
+    setSavedData(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}});
+  };
+
+  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v)}} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
+  if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={rangeMin} rangeMax={rangeMax} divMin={divMin} divMax={divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
+  if(screen==='done')return<PracticeDone userData={userData} onAgain={startSession} onHome={()=>{setScreen('menu');onSessionActive?.(false);}}/>;
   return null;
 }
 
-function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart}){
+function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume}){
   const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
   return(<div className="p-4 space-y-4 pb-36">
+    {savedData&&(<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+      <div className="text-3xl">📚</div>
+      <div className="flex-1">
+        <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
+        <div className="text-sm text-amber-700 font-bold mt-0.5">이어서 풀어볼까요? (정답 {savedData.correctCount||0}/10) →</div>
+      </div>
+    </button>)}
     <div className="bg-indigo-600 rounded-3xl p-5 text-white mb-2">
       <div className="text-lg font-black">오늘 {todayLessons}번 완료! 더 풀어볼까요?</div>
       <div className="text-sm opacity-80 mt-1">10문제를 다 맞히면 레슨 1개 완료!</div>
@@ -4766,26 +4862,44 @@ function NumPadInput({q,ans,setAns,activeField,setActiveField,onConfirmRequest,h
 }
 
 function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax,userData,onUpdate,onBack}){
-  const seenQKeysRef = React.useRef(new Set()); // 세션 내 출제된 문제 텍스트 추적
+  const seenQKeysRef = React.useRef(new Set());
   const[q,setQ]=useState(()=>makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current));
   const[ans,setAns]=useState({ansQ:'',ansR:'',ansDiv:'',ansCount:''});
   const[fb,setFb]=useState(null);
   const[selMC,setSelMC]=useState(null);
   const[mcOpts,setMcOpts]=useState([]);
-  // phase에 'reflection'(성찰) 단계가 추가되었습니다.
-  const[phase,setPhase]=useState('question'); 
-  const[correctCount,setCorrectCount]=useState(0);
-  const[wrongCount,setWrongCount]=useState(0);
+  const[phase,setPhase]=useState('question');
+  const[correctCount,setCorrectCount]=useState(session.correct||0);
+  const[wrongCount,setWrongCount]=useState(session.wrong||0);
   const[questions,setQuestions]=useState([]);
   const[startTime]=useState(Date.now());
   const[qStartTime,setQStartTime]=useState(Date.now());
-  const[firstActionTime,setFirstActionTime]=useState(null); // 첫 입력 시각 추적
-  const[showConfirm,setShowConfirm]=useState(false); // 제출 확인 모달
+  const[firstActionTime,setFirstActionTime]=useState(null);
+  const[showConfirm,setShowConfirm]=useState(false);
+  const[showExitModal,setShowExitModal]=useState(false);
   const[activeField,setActiveField]=useState('Q');   // 숫자패드 활성 필드 ('Q'|'R')
 
-  // 첫 입력 이벤트 핸들러 (one-at-a-time 형식이므로 진정한 망설임 시간 측정 가능)
   const handleFirstAction=()=>{
     if(firstActionTime===null)setFirstActionTime(Date.now());
+  };
+
+  useEffect(()=>{
+    window.__yakHakActiveSession={ver,rangeMin,rangeMax,divMin,divMax,
+      qNum:questions.length+1,divCountIdxs:session.divCountIdxs,
+      correctCount,wrongCount,savedAt:Date.now()};
+  },[correctCount,wrongCount,questions.length]);
+  useEffect(()=>()=>{window.__yakHakActiveSession=null;},[]);
+
+  const saveSession=()=>{
+    const data={ver,rangeMin,rangeMax,divMin,divMax,
+      qNum:questions.length+1,divCountIdxs:session.divCountIdxs,
+      correctCount,wrongCount,savedAt:Date.now()};
+    localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(data));
+  };
+
+  const handleBackAttempt=()=>{
+    if(phase==='done'||phase==='reflection'){onBack();return;}
+    setShowExitModal(true);
   };
 
   useEffect(()=>{buildMCOpts()},[q]);
@@ -4913,6 +5027,8 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,lastDate:today,activeDates:newActiveDates,logs:[log,...(userData.logs||[]).slice(0,49)]};
     
     await saveUser(upd);await saveLog(log);onUpdate(upd);
+    localStorage.removeItem('yakHakSavedSession_'+userData.name);
+    window.__yakHakActiveSession=null;
     setPhase('done');
   };
 
@@ -4959,7 +5075,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   const pct=(correctCount/10)*100;
   return(<div className="p-4 space-y-4 pb-36">
     <div className="flex items-center gap-3">
-      <button onClick={onBack} className="w-12 h-12 rounded-2xl bg-white shadow flex items-center justify-center text-xl font-bold text-gray-500">◀</button>
+      <button onClick={handleBackAttempt} className="w-12 h-12 rounded-2xl bg-white shadow flex items-center justify-center text-xl font-bold text-gray-500">◀</button>
       <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{width:`${pct}%`}}/></div>
       <div className="bg-indigo-100 text-indigo-700 font-black px-4 py-2 rounded-full text-base">✅ {correctCount}/10</div>
     </div>
@@ -5043,6 +5159,31 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
             <button onClick={()=>{setShowConfirm(false);check();}}
               className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               제출
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {showExitModal&&(
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
+          <div className="text-center mb-5">
+            <div className="text-4xl mb-3">📚</div>
+            <div className="text-xl font-black text-gray-800">문제 풀이 중이에요!</div>
+            <div className="text-sm text-gray-500 mt-2">현재 정답 <strong>{correctCount}/10</strong>까지 왔어요.<br/>어떻게 할까요?</div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button onClick={()=>{saveSession();setShowExitModal(false);onBack();}}
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
+              현재 상태 저장하기 💾
+            </button>
+            <button onClick={()=>{setShowExitModal(false);onBack();}}
+              className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
+              그만하기
+            </button>
+            <button onClick={()=>setShowExitModal(false)}
+              className="w-full py-3 text-gray-400 font-bold text-sm">
+              계속 풀기
             </button>
           </div>
         </div>
@@ -6668,7 +6809,26 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
   const[showFbModal,setShowFbModal]=useState(false);
+  const[sessionActive,setSessionActive]=useState(false);
+  const[showNavModal,setShowNavModal]=useState(false);
+  const[pendingTab,setPendingTab]=useState(null);
+  const[hasSavedSession,setHasSavedSession]=useState(()=>!!localStorage.getItem('yakHakSavedSession_'+userData.name));
   const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
+
+  const handleSessionActive=(active)=>{
+    setSessionActive(active);
+    if(!active) setHasSavedSession(!!localStorage.getItem('yakHakSavedSession_'+userData.name));
+  };
+
+  const handleTabClick=(k)=>{
+    if(k===tab)return;
+    if(sessionActive&&tab==='practice'){
+      setPendingTab(k);
+      setShowNavModal(true);
+    } else {
+      setTab(k);
+    }
+  };
 
   // ── 접속 heartbeat: 30초마다 Firestore onlineStatus 갱신 ──
   useEffect(()=>{
@@ -6728,17 +6888,57 @@ function StudentDashboard({userData,onLogout,onUpdate}){
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
     <div className="flex-1 overflow-auto scroll-body">
-      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')}/>}
-      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate}/>}
+      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession}/>}
+      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}/>}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks}/>}
     </div>
+    {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외) */}
+    {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(
+      <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30 max-w-lg mx-auto pointer-events-none">
+        <button onClick={()=>setTab('practice')} className="pointer-events-auto bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all">
+          📚 하던 공부가 있어요! 이어서 하시겠어요? →
+        </button>
+      </div>
+    )}
+
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-lg mx-auto">
-      <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>setTab(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 transition-all ${tab===t.k?'text-indigo-600':'text-gray-400'}`}><span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span></button>)}</div>
+      <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>handleTabClick(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 transition-all ${tab===t.k?'text-indigo-600':'text-gray-400'}`}><span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span></button>)}</div>
       <div className="text-center text-[10px] text-gray-300 font-semibold pb-1 tracking-wide">Made by 소명 🎓</div>
     </nav>
+
+    {/* 탭 이동 시 이탈 확인 모달 */}
+    {showNavModal&&(
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
+          <div className="text-center mb-5">
+            <div className="text-4xl mb-3">📚</div>
+            <div className="text-xl font-black text-gray-800">문제 풀이 중이에요!</div>
+            <div className="text-sm text-gray-500 mt-2">다른 화면으로 이동하시겠어요?</div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button onClick={()=>{
+              const d=window.__yakHakActiveSession;
+              if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);}
+              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+            }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
+              현재 상태 저장하기 💾
+            </button>
+            <button onClick={()=>{
+              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+            }} className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
+              그만하기
+            </button>
+            <button onClick={()=>setShowNavModal(false)}
+              className="w-full py-3 text-gray-400 font-bold text-sm">
+              계속 풀기
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* 피드백 도착 알림 모달 */}
     {showFbModal && (
@@ -7591,7 +7791,7 @@ function StudentDetail({student,onBack}){
 
       <!-- 헤더 배너 (연속 표시) -->
       <div style="background:linear-gradient(135deg,#3730a3,#6366f1);border-radius:10px;padding:14px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:14px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 2/2 페이지</div>
+        <div style="font-size:14px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트</div>
         <div style="font-size:13px;color:#c7d2fe;">${student.name} 학생 · 출력일: ${new Date().toLocaleDateString('ko-KR')}</div>
       </div>
 
@@ -7669,10 +7869,10 @@ function StudentDetail({student,onBack}){
     // ── 지표 상세해설 페이지 (page3) ──
     // 이 학생의 실제 값에 맞게 각 지표별 상세 해설 생성
     // ── 공통 헬퍼 ──
-    const pageHeader2 = (subtitle, pageNum) =>
+    const pageHeader2 = (subtitle) =>
       `<div style="background:linear-gradient(135deg,#0f172a,#3730a3);border-radius:10px;padding:13px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-size:13px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 지표 상세 해설 ${pageNum}</div>
+          <div style="font-size:13px;font-weight:900;color:white;">학생 맞춤형 학습 분석 리포트 — 지표 상세 해설</div>
           <div style="font-size:10px;color:#c7d2fe;margin-top:2px;">${subtitle}</div>
         </div>
         <div style="text-align:right;">
@@ -7881,7 +8081,7 @@ function StudentDetail({student,onBack}){
     const page3a = `
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('현황 지표 상세 해설', '3/5')}
+      ${pageHeader2('현황 지표 상세 해설')}
 
       ${sH2('📊','현황 지표')}
 
@@ -7909,7 +8109,7 @@ function StudentDetail({student,onBack}){
     const page3b_behavior = `
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('행동 패턴 지표 상세 해설', '4/5')}
+      ${pageHeader2('행동 패턴 지표 상세 해설')}
 
       ${sH2('🔍','행동 패턴 지표')}
 
@@ -7925,7 +8125,18 @@ function StudentDetail({student,onBack}){
         selfEffN > 0 ? `점검 필요 (${selfEffN}회)` : '✅ 양호', selfEffN > 0 ? '#d97706' : '#16a34a',
         selfEffFormula, selfEffTheory, selfEffStudent, selfEffAction, selfEffWarn)}
 
-      <div style="page-break-before:always;"></div>
+      <!-- 푸터 -->
+      <div style="border-top:1px solid #e2e8f0;padding-top:7px;margin-top:10px;text-align:center;color:#94a3b8;font-size:9px;">
+        본 리포트는 태청야학 수학반 AI 학습 분석 엔진에 의해 자동 생성되었습니다. · 출력일: ${new Date().toLocaleDateString('ko-KR')}
+      </div>
+    </div>
+
+    <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
+
+      ${pageHeader2('행동 패턴 지표 상세 해설 (계속)')}
+
+      ${sH2('🔍','행동 패턴 지표 (계속)')}
+
       ${dc('자기주도 탐색', '🔭 자기주도 탐색 (그래프 탐험)',
         !explore.has ? '데이터 없음' : `${explore.breadth}/6개 개념 · ${explore.activeMin}분`, !explore.has ? '#94a3b8' : explore.breadth >= 3 ? '#2563eb' : '#d97706',
         exploreFormula, exploreTheory, exploreStudent, exploreAction, exploreWarn)}
@@ -7942,7 +8153,7 @@ function StudentDetail({student,onBack}){
     const page3c = `
     <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
 
-      ${pageHeader2('영역별 성취도 상세 해설', '5/5')}
+      ${pageHeader2('영역별 성취도 상세 해설')}
 
       ${sH2('📈','영역별 성취도 상세 해설')}
 
@@ -8070,7 +8281,7 @@ function StudentDetail({student,onBack}){
                   <span className="text-lg">📊</span>
                   <div>
                     <div>학습 분석 리포트</div>
-                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">현황·패턴·성취도·피드백 (2쪽)</div>
+                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">현황·패턴·성취도·피드백</div>
                   </div>
                 </button>
                 <button onClick={()=>exportReport('detail')}
@@ -8078,15 +8289,15 @@ function StudentDetail({student,onBack}){
                   <span className="text-lg">📖</span>
                   <div>
                     <div>지표 상세 해설서</div>
-                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">이 학생 맞춤 지표 심층 해설 (3쪽)</div>
+                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">이 학생 맞춤 지표 심층 해설</div>
                   </div>
                 </button>
                 <button onClick={()=>exportReport('all')}
                   className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-700 flex items-start gap-2.5 transition-colors border-t border-gray-100">
                   <span className="text-lg">📦</span>
                   <div>
-                    <div>전체 묶음 (5쪽)</div>
-                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">리포트 + 해설서 합본 (5쪽)</div>
+                    <div>전체 묶음</div>
+                    <div className="text-[11px] font-normal text-gray-400 mt-0.5">리포트 + 해설서 합본</div>
                   </div>
                 </button>
               </div>
