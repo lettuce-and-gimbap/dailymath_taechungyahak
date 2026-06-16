@@ -1213,23 +1213,21 @@ function gen_poly_factor(){
     ]};
 }
 
-// 1-6. 조립제법 — 나머지 구하기  (기출 Q3 패턴C)
-// ※ 2023~2026년 기출 기준: 조립제법은 항상 '나머지'를 묻는 유형으로 출제
+// 1-6. 나머지 구하기 — 다양한 제수  (기출 Q3 패턴C)
 function gen_poly_synthetic(){
-  // x³+bx²+cx+d ÷ (x−1) → 나머지: f(1) = 1+b+c+d
+  const a=pick([1,2,-1,3,-2]);
   const b=randInt(-3,3),c=randInt(-3,3),d=randInt(-4,4);
-  const rem=1+b+c+d;
+  const rem=a**3+b*a**2+c*a+d;
   const bS=b>=0?`+${b}x²`:`${b}x²`,cS=c>=0?`+${c}x`:`${c}x`,dS=d>=0?`+${d}`:String(d);
+  const divStr=a>=0?`x−${a}`:`x+${-a}`;
   const wrongs=[rem+1,rem-1,rem+2,rem-2].filter(w=>w!==rem).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(rem),wrongs);
-  const s1=1+b, s2=s1+c, s3=s2+d;
-  return{topic:'조립제법',q:`다음은 조립제법을 이용하여 다항식 x³${bS}${cS}${dS}을 x−1로 나누는 과정이다. 이때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},synthetic:{b,c,d,rem},
+  const bv=b*a**2, cv=c*a;
+  return{topic:'나머지 정리',q:`다항식 x³${bS}${cS}${dS}을 ${divStr}로 나누었을 때의 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
     sol:[
-      `조립제법으로 x³${bS}${cS}${dS}을 (x−1)로 나눕니다. 나누는 값: x=1.`,
-      `계수를 차례대로 씁니다: 1 | ${b} | ${c} | ${d}`,
-      `1단계: 1을 내리고, 1×1=1 더하면 ${1}+${b}=${s1}`,
-      `2단계: ${s1}×1=${s1} 더하면 ${s1}+${c}=${s2}`,
-      `3단계: ${s2}×1=${s2} 더하면 ${s2}+${d}=${s3} → 이것이 나머지`,
+      `나머지 정리: f(x)를 x−a로 나눈 나머지 = f(a)`,
+      `f(x)=x³${bS}${cS}${dS}이므로 f(${a})를 구합니다.`,
+      `f(${a})=${a}³+${b}×${a}²+${c}×${a}+${d}=${a**3}+${bv}+${cv}+${d}=${rem}`,
       `따라서 나머지는 ${rem}입니다.`
     ]};
 }
@@ -1244,9 +1242,9 @@ function genMockPoly(){
    ② 방정식·부등식 영역 (11개 세부유형)
    ════════════════════════════════════════════════ */
 
-// 2-1. 복소수 사칙연산  (기출 Q5 패턴A)
+// 2-1. 복소수 등식 / 켤레복소수  (기출 Q5 패턴A)
 function gen_complex_calc(){
-  const t=pick([1,2,3]);
+  const t=pick([1,3]);
   if(t===1){ // (x−a)+yi=p+qi 꼴 → x,y 값
     const a=randInt(1,4),y0=randInt(1,5),p=randInt(1,5),q=randInt(1,5);
     const x0=p+a;
@@ -1259,19 +1257,6 @@ function gen_complex_calc(){
         `실수부: x−${a} = ${p} → x = ${p}+${a} = ${x0}`,
         `허수부: ${y0} = ${q} (이미 주어진 조건으로 y=${q})`,
         ask==='x'?`문제에서 x를 묻고 있으므로 정답은 ${x0}입니다.`:ask==='y'?`문제에서 y를 묻고 있으므로 정답은 ${q}입니다.`:`x+y = ${x0}+${q} = ${ans}입니다.`
-      ]};
-  }
-  if(t===2){ // i(a+bi)=c+di 형태 → a 구하기
-    const a=randInt(1,4),b=randInt(1,4);
-    // i(a+bi)=ai+bi²=−b+ai → real=−b, imag=a
-    const{choices,answer}=makeChoices(String(a),[a+1,a-1<1?a+2:a-1,-b].filter(w=>w!==a&&w!==undefined).slice(0,3).map(String));
-    return{topic:'복소수',q:`i(${a}+${b}i)=a+${a}i일 때, 실수 a의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
-      sol:[
-        `i를 분배법칙으로 곱합니다. i²=−1 을 이용합니다.`,
-        `i(${a}+${b}i) = ${a}i + ${b}i² = ${a}i + ${b}×(−1) = −${b} + ${a}i`,
-        `결과는 −${b} + ${a}i이고 이것이 a + ${a}i와 같아야 합니다.`,
-        `실수부 비교: a = −${b}입니다. 허수부는 이미 일치합니다.`,
-        `따라서 a = ${-b}이지만 문제의 형태에서 허수부 계수가 a이므로 a = ${a}입니다.`
       ]};
   }
   // 복소수 z=a+2i, z+z̄=b → 2a=b → a
@@ -1520,19 +1505,35 @@ function gen_system_ineq(){
 
 // 2-11. 절댓값 부등식 수직선 → a  (기출 Q10 패턴B)
 function gen_abs_ineq(){
-  const center=randInt(-2,3),r=randInt(1,4);
-  const lo=center-r,hi=center+r;
-  const cStr=center===0?'|x|':center>0?`|x−${center}|`:`|x+${-center}|`;
-  const{choices,answer}=makeChoices(String(hi),[hi+1,hi-1,hi+2].filter(w=>w!==hi).map(String));
-  const cStr2=center===0?'x':center>0?`x−${center}`:`x+${-center}`;
-  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,graph:{type:'abs_ineq',center,r,lo,hi},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+  const t=pick([1,2]);
+  if(t===1){ // |x−c|≤r → c−r ≤ x ≤ c+r, 수직선에서 왼쪽 끝 a를 구함
+    const c=randInt(-1,3),r=randInt(1,4);
+    const lo=c-r,hi=c+r;
+    const cStr=c===0?'|x|':c>0?`|x−${c}|`:`|x+${-c}|`;
+    const cStr2=c===0?'x':c>0?`x−${c}`:`x+${-c}`;
+    const{choices,answer}=makeChoices(String(lo),[lo-1,lo+1,lo-2,hi].filter(w=>w!==lo).slice(0,3).map(String));
+    return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타내면 그림과 같다. 상수 a의 값은?`,choices,answer,
+      graph:{type:'abs_numline',lo,hi,ge:false},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
+        `${cStr} ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,
+        c===0?`−${r} ≤ x ≤ ${r}`:`각 변에 ${c}를 더하면: ${lo} ≤ x ≤ ${hi}`,
+        `수직선에서 왼쪽 끝이 a이므로 a = ${lo}입니다.`
+      ]};
+  }
+  // |x−c|≥r → x≤c−r 또는 x≥c+r, 수직선에서 왼쪽 경계 a를 구함
+  const c=randInt(0,2),r=randInt(2,4);
+  const lo=c-r,hi=c+r;
+  const cStr=c===0?'|x|':c>0?`|x−${c}|`:`|x+${-c}|`;
+  const cStr2=c===0?'x':c>0?`x−${c}`:`x+${-c}`;
+  const{choices,answer}=makeChoices(String(lo),[lo-1,lo+1,hi,lo-2].filter(w=>w!==lo).slice(0,3).map(String));
+  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≥${r}의 해를 수직선 위에 나타내면 그림과 같다. 상수 a의 값은?`,choices,answer,
+    graph:{type:'abs_numline',lo,hi,ge:true},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
-      `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
-      `|${cStr2}| ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,
-      center===0
-        ?`−${r} ≤ x ≤ ${r}`
-        :`−${r}+${center} ≤ x ≤ ${r}+${center} → ${lo} ≤ x ≤ ${hi}`,
-      `수직선에서 오른쪽 끝이 a이므로 a = ${hi}입니다.`
+      `절댓값 부등식 |f(x)|≥r은 f(x)≤−r 또는 f(x)≥r으로 바꿉니다.`,
+      `${cStr} ≥ ${r} → ${cStr2} ≤ −${r} 또는 ${cStr2} ≥ ${r}`,
+      c===0?`x ≤ −${r} 또는 x ≥ ${r}`:`각 변에 ${c}를 더하면: x ≤ ${lo} 또는 x ≥ ${hi}`,
+      `수직선에서 왼쪽 경계가 a이므로 a = ${lo}입니다.`
     ]};
 }
 
@@ -1730,7 +1731,9 @@ function gen_circle_line_rel(){
   if(t===1){ // 직선 y=a와 원 x²+y²=r²이 한 점에서 만날 때
     const correct=String(r);
     const{choices,answer}=makeChoices(correct,[r-1,r+1,r+2].filter(w=>w!==r&&w>0).map(String));
-    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,
+      graph:{type:'circle_line',h:0,k:0,r,lineType:'h',lineVal:r},
+      meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
       sol:[
         `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 √${r*r}=${r}입니다.`,
         `직선 y=a와 원이 한 점에서 만난다 = 접한다 = 중심에서 직선까지의 거리 = 반지름`,
@@ -1742,7 +1745,9 @@ function gen_circle_line_rel(){
   const N=r+2;
   const aVal=r+1;
   const{choices,answer}=makeChoices(String(aVal),[aVal-1<r?aVal+1:aVal-1,aVal+1,r].filter(w=>w!==aVal&&w>0).slice(0,3).map(String));
-  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,
+    graph:{type:'circle_line',h:0,k:0,r,lineType:'v',lineVal:aVal},
+    meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
       `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 ${r}입니다.`,
       `직선 x=a와 원점 사이의 거리 = |a|입니다.`,
@@ -2745,6 +2750,87 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 16. 절댓값 부등식 수직선 (a 표시) ──
+  if(g.type==='abs_numline'){
+    const{lo,hi,ge}=g;
+    const W=260,H=80;
+    const pad=40, axY=H/2+8;
+    const span=hi-lo, ext=Math.max(span*0.5,2);
+    const xLo=lo-ext, xHi=hi+ext;
+    const sc=(W-2*pad)/(xHi-xLo);
+    const tx=x=>pad+(x-xLo)*sc;
+    const loX=tx(lo), hiX=tx(hi);
+    const arrowLen=pad-6;
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        <line x1={6} y1={axY} x2={W-6} y2={axY} stroke="#374151" strokeWidth={2}/>
+        <polygon points={`${W-6},${axY} ${W-14},${axY-3} ${W-14},${axY+3}`} fill="#374151"/>
+        <polygon points={`6,${axY} 14,${axY-3} 14,${axY+3}`} fill="#374151"/>
+        {!ge?(
+          <>
+            <rect x={loX} y={axY-7} width={hiX-loX} height={14} fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth={0}/>
+            <line x1={loX} y1={axY-9} x2={loX} y2={axY+9} stroke="#374151" strokeWidth={2.5}/>
+            <line x1={hiX} y1={axY-9} x2={hiX} y2={axY+9} stroke="#374151" strokeWidth={2.5}/>
+            <circle cx={loX} cy={axY} r={5} fill="#374151"/>
+            <circle cx={hiX} cy={axY} r={5} fill="#374151"/>
+            <text x={loX} y={axY+22} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="900">a</text>
+            <text x={hiX} y={axY+22} textAnchor="middle" fontSize={12} fill="#374151" fontWeight="900">{hi}</text>
+          </>
+        ):(
+          <>
+            <line x1={loX} y1={axY} x2={Math.max(6,loX-arrowLen)} y2={axY} stroke="#6366f1" strokeWidth={4} strokeLinecap="round"/>
+            <line x1={hiX} y1={axY} x2={Math.min(W-6,hiX+arrowLen)} y2={axY} stroke="#6366f1" strokeWidth={4} strokeLinecap="round"/>
+            <circle cx={loX} cy={axY} r={5} fill="#374151"/>
+            <circle cx={hiX} cy={axY} r={5} fill="#374151"/>
+            <text x={loX} y={axY+22} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="900">a</text>
+            <text x={hiX} y={axY+22} textAnchor="middle" fontSize={12} fill="#374151" fontWeight="900">{hi}</text>
+          </>
+        )}
+        <text x={W-4} y={axY-6} fontSize={10} fill="#374151" fontWeight="bold">x</text>
+      </svg>
+    );
+  }
+
+  // ── 17. 원과 직선 ──
+  if(g.type==='circle_line'){
+    const{h,k,r,lineType,lineVal}=g;
+    const W=220,H=200,SC=22;
+    const cx=W/2-h*SC*0.4, cy=H/2+k*SC*0.4;
+    const toSx=x=>cx+x*SC, toSy=y=>cy-y*SC;
+    const ticks=[-5,-4,-3,-2,-1,0,1,2,3,4,5];
+    const lColor='#f59e0b';
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {ticks.map(n=>(
+          <g key={n}>
+            <line x1={toSx(n)} y1={4} x2={toSx(n)} y2={H-4} stroke="#eef1f6" strokeWidth={0.6}/>
+            <line x1={4} y1={toSy(n)} x2={W-4} y2={toSy(n)} stroke="#eef1f6" strokeWidth={0.6}/>
+          </g>
+        ))}
+        <line x1={4} y1={cy} x2={W-4} y2={cy} stroke="#374151" strokeWidth={1.8}/>
+        <polygon points={`${W-4},${cy} ${W-12},${cy-3} ${W-12},${cy+3}`} fill="#374151"/>
+        <line x1={cx} y1={4} x2={cx} y2={H-4} stroke="#374151" strokeWidth={1.8}/>
+        <polygon points={`${cx},4 ${cx-3},12 ${cx+3},12`} fill="#374151"/>
+        <text x={W-3} y={cy+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
+        <text x={cx+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
+        <circle cx={toSx(h)} cy={toSy(k)} r={r*SC} fill="rgba(20,184,166,0.12)" stroke="#0d9488" strokeWidth={2}/>
+        {lineType==='h'&&(
+          <>
+            <line x1={4} y1={toSy(lineVal)} x2={W-4} y2={toSy(lineVal)} stroke={lColor} strokeWidth={2} strokeDasharray="6,3"/>
+            <text x={W-6} y={toSy(lineVal)-4} textAnchor="end" fontSize={10} fill={lColor} fontWeight="bold">y={lineVal}</text>
+          </>
+        )}
+        {lineType==='v'&&(
+          <>
+            <line x1={toSx(lineVal)} y1={4} x2={toSx(lineVal)} y2={H-4} stroke={lColor} strokeWidth={2} strokeDasharray="6,3"/>
+            <text x={toSx(lineVal)+4} y={14} fontSize={10} fill={lColor} fontWeight="bold">x={lineVal}</text>
+          </>
+        )}
+        <circle cx={toSx(h)} cy={toSy(k)} r={3} fill="#0d9488"/>
+      </svg>
+    );
+  }
+
   return null;
 }
 
@@ -3125,45 +3211,29 @@ function gen_composite_func(){
     ]};
 }
 
-// 4-9. 역함수 f⁻¹(a)  (기출 Q17 패턴B)
-// ※ t===1 화살표 그림형: 2023년 2회, 2025년 1·2회, 2026년 1회 기출
-// ※ t===2 공식형: 2024년 2회 기출
+// 4-9. 역함수 f⁻¹(a) — 화살표 그림형만  (기출 Q17 패턴B)
+// ※ 2023년 2회, 2025년 1·2회, 2026년 1회 기출: 항상 그림(다이어그램)형으로 출제
 function gen_inverse_func(){
-  const t=pick([1,2]);
-  if(t===1){
-    const domStart=randInt(1,3);
-    const X=[domStart,domStart+1,domStart+2,domStart+3];
-    const slope=pick([2,3]),intercept=pick([-1,0,1,2]);
-    const f=X.map(x=>[x,slope*x+intercept]);
-    const[xV,fxV]=pick(f);
-    const Yvals=f.map(([,y])=>y);
-    const{choices,answer}=makeChoices(String(xV),[xV+1,xV-1<domStart?xV+2:xV-1,fxV].filter(w=>w!==xV&&w>0).slice(0,3).map(String));
-    return{
-      topic:'역함수',
-      q:`함수 f : X → Y가 그림과 같을 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,
-      choices,answer,
-      meta:{category:'func',type:'집합과 함수',diff:'기초'},
-      graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV},
-      sol:[
-        `f⁻¹(${fxV})은 'f를 거치면 ${fxV}가 되는 x'를 거꾸로 찾으라는 뜻입니다.`,
-        `즉, f(x)=${fxV}가 되는 x를 그림에서 찾습니다. 화살표가 ${fxV}로 도착하는 출발점을 봅니다.`,
-        `${xV} → ${fxV}이므로 f(${xV})=${fxV}입니다.`,
-        `따라서 f⁻¹(${fxV})=${xV}입니다.`
-      ]
-    };
-  }
-  const a=pick([2,3,4]),b=randInt(-3,4);
-  const xVal=randInt(1,6);
-  const c=a*xVal+b;
-  const bStr=b>=0?`+${b}`:String(b);
-  const{choices,answer}=makeChoices(String(xVal),[xVal+1,xVal-1<0?xVal+2:xVal-1,c].filter(w=>w!==xVal).slice(0,3).map(String));
-  return{topic:'역함수(공식)',q:`함수 f(x)=${a}x${bStr}에 대하여 f⁻¹(${c})의 값은? (단, f⁻¹는 f의 역함수)`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+  const domStart=randInt(1,3);
+  const X=[domStart,domStart+1,domStart+2,domStart+3];
+  const slope=pick([2,3]),intercept=pick([-1,0,1,2]);
+  const f=X.map(x=>[x,slope*x+intercept]);
+  const[xV,fxV]=pick(f);
+  const Yvals=f.map(([,y])=>y);
+  const{choices,answer}=makeChoices(String(xV),[xV+1,xV-1<domStart?xV+2:xV-1,fxV].filter(w=>w!==xV&&w>0).slice(0,3).map(String));
+  return{
+    topic:'역함수',
+    q:`함수 f : X → Y가 그림과 같을 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,
+    choices,answer,
+    meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV},
     sol:[
-      `f⁻¹(${c})은 f(x)=${c}가 되는 x를 찾는 것입니다.`,
-      `f(x)=${a}x${bStr}=${c}로 놓고 x를 구합니다.`,
-      `${a}x=${c}${b>=0?`−${b}`:`+${-b}`}=${c-b}, 그러므로 x=${c-b}÷${a}=${xVal}`,
-      `따라서 f⁻¹(${c})=${xVal}입니다.`
-    ]};
+      `f⁻¹(${fxV})은 'f를 거치면 ${fxV}가 되는 x'를 거꾸로 찾으라는 뜻입니다.`,
+      `즉, f(x)=${fxV}가 되는 x를 그림에서 찾습니다. 화살표가 ${fxV}로 도착하는 출발점을 봅니다.`,
+      `${xV} → ${fxV}이므로 f(${xV})=${fxV}입니다.`,
+      `따라서 f⁻¹(${fxV})=${xV}입니다.`
+    ]
+  };
 }
 
 // 4-10. 유리함수 점근선 → 상수  (기출 Q18 패턴A: 2021-2, 2022-2, 2023-1, 2026-1)

@@ -869,6 +869,95 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 16. 절댓값 부등식 수직선 (a 표시) ──
+  if(g.type==='abs_numline'){
+    const{lo,hi,ge}=g;
+    const W=260,H=80;
+    const pad=40, axY=H/2+8;
+    const span=hi-lo, ext=Math.max(span*0.5,2);
+    const xLo=lo-ext, xHi=hi+ext;
+    const sc=(W-2*pad)/(xHi-xLo);
+    const tx=x=>pad+(x-xLo)*sc;
+    const loX=tx(lo), hiX=tx(hi);
+    const arrowLen=pad-6;
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 수직선 */}
+        <line x1={6} y1={axY} x2={W-6} y2={axY} stroke="#374151" strokeWidth={2}/>
+        <polygon points={`${W-6},${axY} ${W-14},${axY-3} ${W-14},${axY+3}`} fill="#374151"/>
+        <polygon points={`6,${axY} 14,${axY-3} 14,${axY+3}`} fill="#374151"/>
+        {!ge?(
+          /* ≤형: lo~hi 구간 색칠 */
+          <>
+            <rect x={loX} y={axY-7} width={hiX-loX} height={14} fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth={0}/>
+            <line x1={loX} y1={axY-9} x2={loX} y2={axY+9} stroke="#374151" strokeWidth={2.5}/>
+            <line x1={hiX} y1={axY-9} x2={hiX} y2={axY+9} stroke="#374151" strokeWidth={2.5}/>
+            <circle cx={loX} cy={axY} r={5} fill="#374151"/>
+            <circle cx={hiX} cy={axY} r={5} fill="#374151"/>
+            <text x={loX} y={axY+22} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="900">a</text>
+            <text x={hiX} y={axY+22} textAnchor="middle" fontSize={12} fill="#374151" fontWeight="900">{hi}</text>
+          </>
+        ):(
+          /* ≥형: 두 방향 화살표 */
+          <>
+            <line x1={loX} y1={axY} x2={Math.max(6,loX-arrowLen)} y2={axY} stroke="#6366f1" strokeWidth={4} strokeLinecap="round"/>
+            <line x1={hiX} y1={axY} x2={Math.min(W-6,hiX+arrowLen)} y2={axY} stroke="#6366f1" strokeWidth={4} strokeLinecap="round"/>
+            <circle cx={loX} cy={axY} r={5} fill="#374151"/>
+            <circle cx={hiX} cy={axY} r={5} fill="#374151"/>
+            <text x={loX} y={axY+22} textAnchor="middle" fontSize={12} fill="#6366f1" fontWeight="900">a</text>
+            <text x={hiX} y={axY+22} textAnchor="middle" fontSize={12} fill="#374151" fontWeight="900">{hi}</text>
+          </>
+        )}
+        {/* x 라벨 */}
+        <text x={W-4} y={axY-6} fontSize={10} fill="#374151" fontWeight="bold">x</text>
+      </svg>
+    );
+  }
+
+  // ── 17. 원과 직선 ──
+  if(g.type==='circle_line'){
+    const{h,k,r,lineType,lineVal}=g;
+    const W=220,H=200,SC=22;
+    const cx=W/2-h*SC*0.4, cy=H/2+k*SC*0.4;
+    const toSx=x=>cx+x*SC, toSy=y=>cy-y*SC;
+    const ticks=[-5,-4,-3,-2,-1,0,1,2,3,4,5];
+    const lColor='#f59e0b';
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {/* 격자 */}
+        {ticks.map(n=>(
+          <g key={n}>
+            <line x1={toSx(n)} y1={4} x2={toSx(n)} y2={H-4} stroke="#eef1f6" strokeWidth={0.6}/>
+            <line x1={4} y1={toSy(n)} x2={W-4} y2={toSy(n)} stroke="#eef1f6" strokeWidth={0.6}/>
+          </g>
+        ))}
+        {/* 축 */}
+        <line x1={4} y1={cy} x2={W-4} y2={cy} stroke="#374151" strokeWidth={1.8}/>
+        <polygon points={`${W-4},${cy} ${W-12},${cy-3} ${W-12},${cy+3}`} fill="#374151"/>
+        <line x1={cx} y1={4} x2={cx} y2={H-4} stroke="#374151" strokeWidth={1.8}/>
+        <polygon points={`${cx},4 ${cx-3},12 ${cx+3},12`} fill="#374151"/>
+        <text x={W-3} y={cy+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
+        <text x={cx+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
+        {/* 원 */}
+        <circle cx={toSx(h)} cy={toSy(k)} r={r*SC} fill="rgba(20,184,166,0.12)" stroke="#0d9488" strokeWidth={2}/>
+        {/* 직선 */}
+        {lineType==='h'&&(
+          <>
+            <line x1={4} y1={toSy(lineVal)} x2={W-4} y2={toSy(lineVal)} stroke={lColor} strokeWidth={2} strokeDasharray="6,3"/>
+            <text x={W-6} y={toSy(lineVal)-4} textAnchor="end" fontSize={10} fill={lColor} fontWeight="bold">y={lineVal}</text>
+          </>
+        )}
+        {lineType==='v'&&(
+          <>
+            <line x1={toSx(lineVal)} y1={4} x2={toSx(lineVal)} y2={H-4} stroke={lColor} strokeWidth={2} strokeDasharray="6,3"/>
+            <text x={toSx(lineVal)+4} y={14} fontSize={10} fill={lColor} fontWeight="bold">x={lineVal}</text>
+          </>
+        )}
+        {/* 원 중심 */}
+        <circle cx={toSx(h)} cy={toSy(k)} r={3} fill="#0d9488"/>
+      </svg>
+    );
+  }
 
   return null;
 }
@@ -1267,45 +1356,29 @@ function gen_composite_func(){
     ]};
 }
 
-// 4-9. 역함수 f⁻¹(a)  (기출 Q17 패턴B)
-// ※ t===1 화살표 그림형: 2023년 2회, 2025년 1·2회, 2026년 1회 기출
-// ※ t===2 공식형: 2024년 2회 기출
+// 4-9. 역함수 f⁻¹(a) — 화살표 그림형만  (기출 Q17 패턴B)
+// ※ 2023년 2회, 2025년 1·2회, 2026년 1회 기출: 항상 그림(다이어그램)형으로 출제
 function gen_inverse_func(){
-  const t=pick([1,2]);
-  if(t===1){
-    const domStart=randInt(1,3);
-    const X=[domStart,domStart+1,domStart+2,domStart+3];
-    const slope=pick([2,3]),intercept=pick([-1,0,1,2]);
-    const f=X.map(x=>[x,slope*x+intercept]);
-    const[xV,fxV]=pick(f);
-    const Yvals=f.map(([,y])=>y);
-    const{choices,answer}=makeChoices(String(xV),[xV+1,xV-1<domStart?xV+2:xV-1,fxV].filter(w=>w!==xV&&w>0).slice(0,3).map(String));
-    return{
-      topic:'역함수',
-      q:`함수 f : X → Y가 그림과 같을 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,
-      choices,answer,
-      meta:{category:'func',type:'집합과 함수',diff:'기초'},
-      graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV},
-      sol:[
-        `f⁻¹(${fxV})은 'f를 거치면 ${fxV}가 되는 x'를 거꾸로 찾으라는 뜻입니다.`,
-        `즉, f(x)=${fxV}가 되는 x를 그림에서 찾습니다. 화살표가 ${fxV}로 도착하는 출발점을 봅니다.`,
-        `${xV} → ${fxV}이므로 f(${xV})=${fxV}입니다.`,
-        `따라서 f⁻¹(${fxV})=${xV}입니다.`
-      ]
-    };
-  }
-  const a=pick([2,3,4]),b=randInt(-3,4);
-  const xVal=randInt(1,6);
-  const c=a*xVal+b;
-  const bStr=b>=0?`+${b}`:String(b);
-  const{choices,answer}=makeChoices(String(xVal),[xVal+1,xVal-1<0?xVal+2:xVal-1,c].filter(w=>w!==xVal).slice(0,3).map(String));
-  return{topic:'역함수(공식)',q:`함수 f(x)=${a}x${bStr}에 대하여 f⁻¹(${c})의 값은? (단, f⁻¹는 f의 역함수)`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+  const domStart=randInt(1,3);
+  const X=[domStart,domStart+1,domStart+2,domStart+3];
+  const slope=pick([2,3]),intercept=pick([-1,0,1,2]);
+  const f=X.map(x=>[x,slope*x+intercept]);
+  const[xV,fxV]=pick(f);
+  const Yvals=f.map(([,y])=>y);
+  const{choices,answer}=makeChoices(String(xV),[xV+1,xV-1<domStart?xV+2:xV-1,fxV].filter(w=>w!==xV&&w>0).slice(0,3).map(String));
+  return{
+    topic:'역함수',
+    q:`함수 f : X → Y가 그림과 같을 때, f⁻¹(${fxV})의 값은? (단, f⁻¹는 f의 역함수)`,
+    choices,answer,
+    meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    graph:{type:'inverse_map',X,Y:Yvals,f_map:f,ask_y:fxV,ans_x:xV},
     sol:[
-      `f⁻¹(${c})은 f(x)=${c}가 되는 x를 찾는 것입니다.`,
-      `f(x)=${a}x${bStr}=${c}로 놓고 x를 구합니다.`,
-      `${a}x=${c}${b>=0?`−${b}`:`+${-b}`}=${c-b}, 그러므로 x=${c-b}÷${a}=${xVal}`,
-      `따라서 f⁻¹(${c})=${xVal}입니다.`
-    ]};
+      `f⁻¹(${fxV})은 'f를 거치면 ${fxV}가 되는 x'를 거꾸로 찾으라는 뜻입니다.`,
+      `즉, f(x)=${fxV}가 되는 x를 그림에서 찾습니다. 화살표가 ${fxV}로 도착하는 출발점을 봅니다.`,
+      `${xV} → ${fxV}이므로 f(${xV})=${fxV}입니다.`,
+      `따라서 f⁻¹(${fxV})=${xV}입니다.`
+    ]
+  };
 }
 
 // 4-10. 유리함수 점근선 → 상수  (기출 Q18 패턴A: 2021-2, 2022-2, 2023-1, 2026-1)

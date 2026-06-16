@@ -345,23 +345,21 @@ function gen_poly_factor(){
     ]};
 }
 
-// 1-6. 조립제법 — 나머지 구하기  (기출 Q3 패턴C)
-// ※ 2023~2026년 기출 기준: 조립제법은 항상 '나머지'를 묻는 유형으로 출제
+// 1-6. 나머지 구하기 — 다양한 제수  (기출 Q3 패턴C)
 function gen_poly_synthetic(){
-  // x³+bx²+cx+d ÷ (x−1) → 나머지: f(1) = 1+b+c+d
+  const a=pick([1,2,-1,3,-2]);
   const b=randInt(-3,3),c=randInt(-3,3),d=randInt(-4,4);
-  const rem=1+b+c+d;
+  const rem=a**3+b*a**2+c*a+d;
   const bS=b>=0?`+${b}x²`:`${b}x²`,cS=c>=0?`+${c}x`:`${c}x`,dS=d>=0?`+${d}`:String(d);
+  const divStr=a>=0?`x−${a}`:`x+${-a}`;
   const wrongs=[rem+1,rem-1,rem+2,rem-2].filter(w=>w!==rem).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(rem),wrongs);
-  const s1=1+b, s2=s1+c, s3=s2+d;
-  return{topic:'조립제법',q:`다음은 조립제법을 이용하여 다항식 x³${bS}${cS}${dS}을 x−1로 나누는 과정이다. 이때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},synthetic:{b,c,d,rem},
+  const bv=b*a**2, cv=c*a;
+  return{topic:'나머지 정리',q:`다항식 x³${bS}${cS}${dS}을 ${divStr}로 나누었을 때의 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
     sol:[
-      `조립제법으로 x³${bS}${cS}${dS}을 (x−1)로 나눕니다. 나누는 값: x=1.`,
-      `계수를 차례대로 씁니다: 1 | ${b} | ${c} | ${d}`,
-      `1단계: 1을 내리고, 1×1=1 더하면 ${1}+${b}=${s1}`,
-      `2단계: ${s1}×1=${s1} 더하면 ${s1}+${c}=${s2}`,
-      `3단계: ${s2}×1=${s2} 더하면 ${s2}+${d}=${s3} → 이것이 나머지`,
+      `나머지 정리: f(x)를 x−a로 나눈 나머지 = f(a)`,
+      `f(x)=x³${bS}${cS}${dS}이므로 f(${a})를 구합니다.`,
+      `f(${a})=${a}³+${b}×${a}²+${c}×${a}+${d}=${a**3}+${bv}+${cv}+${d}=${rem}`,
       `따라서 나머지는 ${rem}입니다.`
     ]};
 }
@@ -376,9 +374,9 @@ function genMockPoly(){
    ② 방정식·부등식 영역 (11개 세부유형)
    ════════════════════════════════════════════════ */
 
-// 2-1. 복소수 사칙연산  (기출 Q5 패턴A)
+// 2-1. 복소수 등식 / 켤레복소수  (기출 Q5 패턴A)
 function gen_complex_calc(){
-  const t=pick([1,2,3]);
+  const t=pick([1,3]);
   if(t===1){ // (x−a)+yi=p+qi 꼴 → x,y 값
     const a=randInt(1,4),y0=randInt(1,5),p=randInt(1,5),q=randInt(1,5);
     const x0=p+a;
@@ -391,19 +389,6 @@ function gen_complex_calc(){
         `실수부: x−${a} = ${p} → x = ${p}+${a} = ${x0}`,
         `허수부: ${y0} = ${q} (이미 주어진 조건으로 y=${q})`,
         ask==='x'?`문제에서 x를 묻고 있으므로 정답은 ${x0}입니다.`:ask==='y'?`문제에서 y를 묻고 있으므로 정답은 ${q}입니다.`:`x+y = ${x0}+${q} = ${ans}입니다.`
-      ]};
-  }
-  if(t===2){ // i(a+bi)=c+di 형태 → a 구하기
-    const a=randInt(1,4),b=randInt(1,4);
-    // i(a+bi)=ai+bi²=−b+ai → real=−b, imag=a
-    const{choices,answer}=makeChoices(String(a),[a+1,a-1<1?a+2:a-1,-b].filter(w=>w!==a&&w!==undefined).slice(0,3).map(String));
-    return{topic:'복소수',q:`i(${a}+${b}i)=a+${a}i일 때, 실수 a의 값은? (단, i=√−1)`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
-      sol:[
-        `i를 분배법칙으로 곱합니다. i²=−1 을 이용합니다.`,
-        `i(${a}+${b}i) = ${a}i + ${b}i² = ${a}i + ${b}×(−1) = −${b} + ${a}i`,
-        `결과는 −${b} + ${a}i이고 이것이 a + ${a}i와 같아야 합니다.`,
-        `실수부 비교: a = −${b}입니다. 허수부는 이미 일치합니다.`,
-        `따라서 a = ${-b}이지만 문제의 형태에서 허수부 계수가 a이므로 a = ${a}입니다.`
       ]};
   }
   // 복소수 z=a+2i, z+z̄=b → 2a=b → a
@@ -652,19 +637,35 @@ function gen_system_ineq(){
 
 // 2-11. 절댓값 부등식 수직선 → a  (기출 Q10 패턴B)
 function gen_abs_ineq(){
-  const center=randInt(-2,3),r=randInt(1,4);
-  const lo=center-r,hi=center+r;
-  const cStr=center===0?'|x|':center>0?`|x−${center}|`:`|x+${-center}|`;
-  const{choices,answer}=makeChoices(String(hi),[hi+1,hi-1,hi+2].filter(w=>w!==hi).map(String));
-  const cStr2=center===0?'x':center>0?`x−${center}`:`x+${-center}`;
-  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타낼 때, 오른쪽 끝 a의 값은?`,choices,answer,graph:{type:'abs_ineq',center,r,lo,hi},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+  const t=pick([1,2]);
+  if(t===1){ // |x−c|≤r → c−r ≤ x ≤ c+r, 수직선에서 왼쪽 끝 a를 구함
+    const c=randInt(-1,3),r=randInt(1,4);
+    const lo=c-r,hi=c+r;
+    const cStr=c===0?'|x|':c>0?`|x−${c}|`:`|x+${-c}|`;
+    const cStr2=c===0?'x':c>0?`x−${c}`:`x+${-c}`;
+    const{choices,answer}=makeChoices(String(lo),[lo-1,lo+1,lo-2,hi].filter(w=>w!==lo).slice(0,3).map(String));
+    return{topic:'절댓값 부등식',q:`부등식 ${cStr}≤${r}의 해를 수직선 위에 나타내면 그림과 같다. 상수 a의 값은?`,choices,answer,
+      graph:{type:'abs_numline',lo,hi,ge:false},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+      sol:[
+        `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
+        `${cStr} ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,
+        c===0?`−${r} ≤ x ≤ ${r}`:`각 변에 ${c}를 더하면: ${lo} ≤ x ≤ ${hi}`,
+        `수직선에서 왼쪽 끝이 a이므로 a = ${lo}입니다.`
+      ]};
+  }
+  // |x−c|≥r → x≤c−r 또는 x≥c+r, 수직선에서 왼쪽 경계 a를 구함
+  const c=randInt(0,2),r=randInt(2,4);
+  const lo=c-r,hi=c+r;
+  const cStr=c===0?'|x|':c>0?`|x−${c}|`:`|x+${-c}|`;
+  const cStr2=c===0?'x':c>0?`x−${c}`:`x+${-c}`;
+  const{choices,answer}=makeChoices(String(lo),[lo-1,lo+1,hi,lo-2].filter(w=>w!==lo).slice(0,3).map(String));
+  return{topic:'절댓값 부등식',q:`부등식 ${cStr}≥${r}의 해를 수직선 위에 나타내면 그림과 같다. 상수 a의 값은?`,choices,answer,
+    graph:{type:'abs_numline',lo,hi,ge:true},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
-      `절댓값 부등식 |f(x)|≤r은 −r ≤ f(x) ≤ r으로 바꿉니다.`,
-      `|${cStr2}| ≤ ${r} → −${r} ≤ ${cStr2} ≤ ${r}`,
-      center===0
-        ?`−${r} ≤ x ≤ ${r}`
-        :`−${r}+${center} ≤ x ≤ ${r}+${center} → ${lo} ≤ x ≤ ${hi}`,
-      `수직선에서 오른쪽 끝이 a이므로 a = ${hi}입니다.`
+      `절댓값 부등식 |f(x)|≥r은 f(x)≤−r 또는 f(x)≥r으로 바꿉니다.`,
+      `${cStr} ≥ ${r} → ${cStr2} ≤ −${r} 또는 ${cStr2} ≥ ${r}`,
+      c===0?`x ≤ −${r} 또는 x ≥ ${r}`:`각 변에 ${c}를 더하면: x ≤ ${lo} 또는 x ≥ ${hi}`,
+      `수직선에서 왼쪽 경계가 a이므로 a = ${lo}입니다.`
     ]};
 }
 
@@ -862,7 +863,9 @@ function gen_circle_line_rel(){
   if(t===1){ // 직선 y=a와 원 x²+y²=r²이 한 점에서 만날 때
     const correct=String(r);
     const{choices,answer}=makeChoices(correct,[r-1,r+1,r+2].filter(w=>w!==r&&w>0).map(String));
-    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,
+      graph:{type:'circle_line',h:0,k:0,r,lineType:'h',lineVal:r},
+      meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
       sol:[
         `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 √${r*r}=${r}입니다.`,
         `직선 y=a와 원이 한 점에서 만난다 = 접한다 = 중심에서 직선까지의 거리 = 반지름`,
@@ -874,7 +877,9 @@ function gen_circle_line_rel(){
   const N=r+2;
   const aVal=r+1;
   const{choices,answer}=makeChoices(String(aVal),[aVal-1<r?aVal+1:aVal-1,aVal+1,r].filter(w=>w!==aVal&&w>0).slice(0,3).map(String));
-  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,
+    graph:{type:'circle_line',h:0,k:0,r,lineType:'v',lineVal:aVal},
+    meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
       `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 ${r}입니다.`,
       `직선 x=a와 원점 사이의 거리 = |a|입니다.`,
