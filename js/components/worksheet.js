@@ -25,6 +25,8 @@ function WorksheetTab(){
   const[studentList, setStudentList] = useState([]);
   const[selStudent, setSelStudent] = useState('');
   const[grades, setGrades] = useState({});
+  // 모의고사 문제지 저장 완료 여부
+  const[examSaved,setExamSaved]=useState(false);
 
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
@@ -155,7 +157,6 @@ function WorksheetTab(){
   };
 
   // 모의고사 문제지 Firestore 저장
-  const[examSaved,setExamSaved]=useState(false);
   const saveExamSheet=async()=>{
     if(!examSheet||examSaved)return;
     try{
