@@ -964,44 +964,74 @@ function GraphPreview({q}){
 
 /* ═══════════════════════════════════════════════════════════
    회차(세션) 문제 + 정답 + 해설 인쇄/PDF 모달
-   - 학생 기록·선생님 대시보드에서 공용 사용
-   - 브라우저 네이티브 인쇄(Ctrl+P / Save as PDF) → SVG 그림 그대로 출력
-   - log.questions[*] 에 qFull·choices·answerIdx·graph·sol 이 있으면 원문제 복원,
-     없으면(구버전 로그) 저장된 요약(qTxt·정답)만 출력
+   - 학생 기록·선생님 모드에서 공용 사용
+   - 선생님 코멘트·해설 수정 기능 포함 ($ 수식 $ 지원)
    ═══════════════════════════════════════════════════════════ */
 function SessionPrintModal({log,studentName,onClose}){
   if(!log)return null;
-  const ORD=['①','②','③','④','⑤'];
+  const ORD=[‘①’,’②’,’③’,’④’,’⑤’];
   const qs=log.questions||[];
-  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc=s=>String(s||’’).replace(/&/g,’&amp;’).replace(/</g,’&lt;’).replace(/>/g,’&gt;’);
+
+  // 선생님 편집 상태: {[i]: {solText, comment, editing}}
+  const[edits,setEdits]=useState(()=>{
+    const init={};
+    qs.forEach((q,i)=>{
+      const solDefault=Array.isArray(q.sol)&&q.sol.length?q.sol.join(‘\n’):(q.explanation||’’);
+      init[i]={solText:solDefault,comment:’’,editing:false};
+    });
+    return init;
+  });
+  const setEdit=(i,field,val)=>setEdits(prev=>({...prev,[i]:{...prev[i],[field]:val}}));
+  const toggleEditing=(i)=>setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
+
+  // $수식$ → KaTeX HTML (없으면 이탤릭 폴백)
+  const renderMathHtml=txt=>{
+    if(!txt)return’’;
+    const parts=String(txt).split(/(\$[^$\n]+\$)/g);
+    return parts.map(p=>{
+      if(/^\$[^$]+\$$/.test(p)){
+        const inner=p.slice(1,-1);
+        try{return window.katex?window.katex.renderToString(inner,{throwOnError:false,displayMode:false}):`<em>${esc(inner)}</em>`;}
+        catch(e){return`<em>${esc(inner)}</em>`;}
+      }
+      return esc(p);
+    }).join(‘’);
+  };
+
   const doPrint=()=>{
-    const pw=window.open('','_blank','width=900,height=1200');
-    if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
+    const pw=window.open(‘’,’_blank’,’width=900,height=1200’);
+    if(!pw){alert(‘팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.’);return;}
     const total=Math.ceil(qs.length/3);
-    let pages='';
+    let pages=’’;
     for(let pi=0;pi<total;pi++){
       const pqs=qs.slice(pi*3,pi*3+3);
       const isLast=pi===total-1;
       const hdr=pi===0
-        ?`<div class="title-block"><div class="title">검정고시 연습 문제·해설지</div><div class="meta">${esc((studentName?studentName+' · ':'')+esc(log.type||'연습')+' · '+fmtDate(log.date)+' '+(log.time||'')+' · 점수 '+(log.score||''))}</div></div>`
-        :`<div class="cont-hdr">${esc(studentName||'연습')} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
+        ?`<div class="title-block"><div class="title">검정고시 연습 문제·해설지</div><div class="meta">${esc((studentName?studentName+’ · ‘:’’)+esc(log.type||’연습’)+’ · ‘+fmtDate(log.date)+’ ‘+(log.time||’’)+’ · 점수 ‘+(log.score||’’))}</div></div>`
+        :`<div class="cont-hdr">${esc(studentName||’연습’)} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
       const qsHtml=pqs.map((q,j)=>{
         const i=pi*3+j;
+        const e=edits[i]||{};
         const hasFull=q.qFull&&Array.isArray(q.choices);
-        const correct=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
-        const choHtml=hasFull?`<div class="choices">${q.choices.map((c,jj)=>`<div class="${jj===q.answerIdx?'ch ok':'ch'}">${esc(ORD[jj]+' '+c)}${jj===q.answerIdx?' ✓':''}</div>`).join('')}</div>`:'';
-        const solHtml=Array.isArray(q.sol)&&q.sol.length
-          ?`<div class="sol"><span class="sol-hd">📖 풀이 과정</span><ol>${q.sol.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`
-          :(q.explanation?`<div class="sol"><span class="sol-hd">💡 해설 · </span>${esc(q.explanation)}</div>`:'');
-        const uHtml=!q.isOk&&q.uAns?` <span class="u-ans">(내 답: ${esc(q.uAns)})</span>`:'';
-        const topicHtml=q.topic?`<div class="topic">[${esc(q.topic)}]${q.examSource?' · 📌 '+esc(q.examSource):''}</div>`:'';
-        return`<div class="question"><div class="q-head"><span class="qn">${i+1}.</span><span class="qb">${esc(hasFull?q.qFull:q.qTxt)}</span><span class="qr ${q.isOk?'ok':'fail'}">${q.isOk?'O':'X'}</span></div>${topicHtml}${choHtml}<div class="ans">정답: ${esc(hasFull?ORD[q.answerIdx]+' ':'')}${esc(correct)}${uHtml}</div>${solHtml}</div>`;
-      }).join('');
-      pages+=`<div class="${isLast?'page':'page pb'}">${hdr}${qsHtml}${isLast?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
+        const correct=hasFull?q.choices[q.answerIdx]:(q.cAns||’’);
+        const choHtml=hasFull?`<div class="choices">${q.choices.map((c,jj)=>`<div class="${jj===q.answerIdx?’ch ok’:’ch’}">${esc(ORD[jj]+’ ‘+c)}${jj===q.answerIdx?’ ✓’:’’}</div>`).join(‘’)}</div>`:’’;
+        const solText=e.solText||’’;
+        const solHtml=solText
+          ?`<div class="sol"><span class="sol-hd">📖 풀이 과정</span><div style="line-height:1.8">${renderMathHtml(solText).replace(/\n/g,’<br>’)}</div></div>`
+          :’’;
+        const commentHtml=e.comment
+          ?`<div class="teacher-comment"><span class="tc-hd">👨‍🏫 선생님 코멘트</span><div style="line-height:1.8">${renderMathHtml(e.comment).replace(/\n/g,’<br>’)}</div></div>`
+          :’’;
+        const uHtml=!q.isOk&&q.uAns?` <span class="u-ans">(내 답: ${esc(q.uAns)})</span>`:’’;
+        const topicHtml=q.topic?`<div class="topic">[${esc(q.topic)}]${q.examSource?’ · 📌 ‘+esc(q.examSource):’’}</div>`:’’;
+        return`<div class="question"><div class="q-head"><span class="qn">${i+1}.</span><span class="qb">${esc(hasFull?q.qFull:q.qTxt)}</span><span class="qr ${q.isOk?’ok’:’fail’}">${q.isOk?’O’:’X’}</span></div>${topicHtml}${choHtml}<div class="ans">정답: ${esc(hasFull?ORD[q.answerIdx]+’ ‘:’’)}${esc(correct)}${uHtml}</div>${solHtml}${commentHtml}</div>`;
+      }).join(‘’);
+      pages+=`<div class="${isLast?’page’:’page pb’}">${hdr}${qsHtml}${isLast?’<div class="footer">— 태청야학 수학 학습 도우미 —</div>’:’’}</div>`;
     }
-    pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>검정고시 연습 문제·해설지</title><style>
+    pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>검정고시 연습 문제·해설지</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><style>
       *{box-sizing:border-box;margin:0;padding:0;}
-      body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
+      body{font-family:’Apple SD Gothic Neo’,’Malgun Gothic’,’맑은 고딕’,sans-serif;color:#1e293b;background:white;}
       .page{padding:14mm 16mm;}
       .pb{break-after:page;page-break-after:always;}
       .title-block{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:18px;}
@@ -1020,14 +1050,16 @@ function SessionPrintModal({log,studentName,onClose}){
       .ch.ok{font-weight:900;color:#15803d;}
       .ans{margin-left:22px;margin-top:4px;font-size:12px;font-weight:900;color:#15803d;}
       .u-ans{color:#ef4444;font-weight:700;margin-left:8px;}
-      .sol{margin-left:22px;margin-top:6px;font-size:11.5px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 12px;line-height:1.7;}
+      .sol{margin-left:22px;margin-top:6px;font-size:11.5px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 12px;}
       .sol-hd{font-weight:900;color:#b45309;display:block;margin-bottom:3px;}
-      .sol ol{margin-left:16px;}.sol li{margin-bottom:2px;}
+      .teacher-comment{margin-left:22px;margin-top:6px;font-size:11.5px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:7px 12px;}
+      .tc-hd{font-weight:900;color:#166534;display:block;margin-bottom:3px;}
       .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;}
       @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.pb{break-after:page;page-break-after:always;}.question{break-inside:avoid;page-break-inside:avoid;}}
     </style></head><body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`);
     pw.document.close();
   };
+
   return(
     <div className="session-print-area fixed inset-0 z-50 bg-white overflow-auto">
       {/* 상단 조작 바 (인쇄 시 숨김) */}
@@ -1038,8 +1070,9 @@ function SessionPrintModal({log,studentName,onClose}){
       </div>
       <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ ‘인쇄 / PDF 저장’을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>’PDF로 저장’</b>으로 선택하면 파일로 저장됩니다.</div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
+      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [코멘트 추가] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요.</div>
 
-      {/* 인쇄용 CSS: 3문제 단위 페이지 나누기 */}
+      {/* 인쇄용 CSS */}
       <style dangerouslySetInnerHTML={{__html:`
         @media print {
           .no-print { display: none !important; }
@@ -1056,66 +1089,97 @@ function SessionPrintModal({log,studentName,onClose}){
           const pageQs=qs.slice(pi*3,pi*3+3);
           const isLast=pi===Math.ceil(qs.length/3)-1;
           return(
-            <div key={pi} className={isLast?'':'print-page-group'}>
-              {/* 페이지 상단 헤더 (1페이지만 큰 제목, 이후는 작은 이음 헤더) */}
+            <div key={pi} className={isLast?’’:’print-page-group’}>
               {pi===0?(
                 <div className="text-center border-b-2 border-gray-800 pb-3 mb-5 print-page-header">
                   <div className="text-xl font-black text-gray-900">검정고시 연습 문제·해설지</div>
                   <div className="text-sm text-gray-600 mt-1 font-bold">
-                    {studentName?`${studentName} · `:''}{log.type||'연습'} · {fmtDate(log.date)} {log.time||''} · 점수 {log.score||''}
+                    {studentName?`${studentName} · `:’’}{log.type||’연습’} · {fmtDate(log.date)} {log.time||’’} · 점수 {log.score||’’}
                   </div>
                 </div>
               ):(
                 <div className="text-right text-xs text-gray-400 border-b border-gray-200 pb-1 mb-4 print-page-header">
-                  {studentName||'연습'} · {fmtDate(log.date)} ({pi+1}/{Math.ceil(qs.length/3)} 페이지)
+                  {studentName||’연습’} · {fmtDate(log.date)} ({pi+1}/{Math.ceil(qs.length/3)} 페이지)
                 </div>
               )}
 
               {pageQs.map((q,j)=>{
                 const i=pi*3+j;
+                const e=edits[i]||{};
                 const hasFull=q.qFull&&Array.isArray(q.choices);
-                const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
+                const correctText=hasFull?q.choices[q.answerIdx]:(q.cAns||’’);
                 return(
                   <div key={i} className="session-print-item mb-6 pb-4 border-b border-gray-200">
                     <div className="flex items-start gap-2 mb-1">
                       <span className="font-black text-indigo-700">{i+1}.</span>
                       <span className="font-bold text-gray-900 leading-relaxed flex-1">{hasFull?q.qFull:q.qTxt}</span>
-                      <span className={`text-xs font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
+                      <span className={`text-xs font-black ${q.isOk?’text-green-600’:’text-red-500’}`}>{q.isOk?’O’:’X’}</span>
                     </div>
-                    {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:''}</div>}
+                    {q.topic&&<div className="ml-5 mb-1 text-xs text-gray-500 font-bold">[{q.topic}]{q.examSource?` · 📌 ${q.examSource}`:’’}</div>}
                     {!q.topic&&q.examSource&&<div className="ml-5 mb-1 text-xs text-blue-600 font-bold">📌 {q.examSource}</div>}
-
-                    {/* 그림(SVG) */}
                     {q.graph&&<div className="my-2 flex justify-center"><GraphPreview q={q}/></div>}
-
-                    {/* 선택지 */}
                     {hasFull&&(
                       <div className="ml-5 grid grid-cols-2 gap-x-4 gap-y-1 my-2">
                         {q.choices.map((c,jj)=>(
-                          <div key={jj} className={`text-sm ${jj===q.answerIdx?'font-black text-green-700':'text-gray-700'}`}>
-                            {ORD[jj]} {String(c)}{jj===q.answerIdx?' ✓':''}
+                          <div key={jj} className={`text-sm ${jj===q.answerIdx?’font-black text-green-700’:’text-gray-700’}`}>
+                            {ORD[jj]} {String(c)}{jj===q.answerIdx?’ ✓’:’’}
                           </div>
                         ))}
                       </div>
                     )}
-
-                    {/* 정답 */}
                     <div className="ml-5 mt-1 text-sm font-black text-green-700">
-                      정답: {hasFull?`${ORD[q.answerIdx]} `:''}{correctText}
+                      정답: {hasFull?`${ORD[q.answerIdx]} `:’’}{correctText}
                       {!q.isOk&&q.uAns?<span className="ml-3 text-red-500 font-bold">(내 답: {q.uAns})</span>:null}
                     </div>
 
-                    {/* 해설 */}
-                    {Array.isArray(q.sol)&&q.sol.length?(
+                    {/* 해설 (편집 가능) */}
+                    {e.solText?(
                       <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                         <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
-                        <ol className="list-decimal ml-5 space-y-0.5">{q.sol.map((s,k)=><li key={k}>{s}</li>)}</ol>
+                        <div className="space-y-0.5 leading-relaxed" dangerouslySetInnerHTML={{__html:renderMathHtml(e.solText).replace(/\n/g,’<br/>’)}}/>
                       </div>
-                    ):(q.explanation?(
-                      <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        <span className="font-black text-amber-700">💡 해설 · </span>{q.explanation}
+                    ):null}
+
+                    {/* 선생님 코멘트 (있으면 표시) */}
+                    {e.comment?(
+                      <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <div className="font-black text-green-700 mb-1">👨‍🏫 선생님 코멘트</div>
+                        <div className="leading-relaxed" dangerouslySetInnerHTML={{__html:renderMathHtml(e.comment).replace(/\n/g,’<br/>’)}}/>
                       </div>
-                    ):null)}
+                    ):null}
+
+                    {/* 선생님 편집 UI (인쇄 시 숨김) */}
+                    <div className="no-print ml-5 mt-2">
+                      {e.editing?(
+                        <div className="border border-dashed border-indigo-300 rounded-xl p-3 bg-indigo-50/60 space-y-2">
+                          <div>
+                            <div className="text-xs font-black text-amber-700 mb-1">📖 해설 수정 <span className="font-normal text-gray-500">($ 수식 $ 형식으로 수학식 입력 가능)</span></div>
+                            <textarea
+                              value={e.solText||’’}
+                              onChange={ev=>setEdit(i,’solText’,ev.target.value)}
+                              rows={4}
+                              className="w-full text-sm border border-amber-200 rounded-lg p-2 font-mono resize-y bg-white"
+                              placeholder="풀이 과정을 입력하세요. 여러 줄로 쓸 수 있습니다."
+                            />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $ 입력 가능)</span></div>
+                            <textarea
+                              value={e.comment||’’}
+                              onChange={ev=>setEdit(i,’comment’,ev.target.value)}
+                              rows={2}
+                              className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white"
+                              placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."
+                            />
+                          </div>
+                          <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">완료 ✓</button>
+                        </div>
+                      ):(
+                        <button onClick={()=>toggleEditing(i)} className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200">
+                          ✏️ {e.comment?’코멘트 수정’:’코멘트 추가’}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

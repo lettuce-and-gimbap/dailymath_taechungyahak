@@ -4,7 +4,7 @@ function TeacherDashboard({userData,onLogout,onUpdate}){
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-md">
       <div className="text-2xl">👨‍🏫</div>
-      <h1 className="text-lg font-black flex-1">선생님 대시보드</h1>
+      <h1 className="text-lg font-black flex-1">선생님 모드</h1>
       <span className="text-sm font-bold opacity-80">{userData.name}</span>
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-white/70 font-bold px-2 py-1 rounded-lg bg-white/10">로그아웃</button>
