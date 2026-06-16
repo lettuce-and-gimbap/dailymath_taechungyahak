@@ -1,5 +1,4 @@
-function DailyPracticeTab({userData,onUpdate,onSessionActive}){
-  const[screen,setScreen]=useState('menu');// menu | session | done
+  const[screen,setScreen]=useState('menu');
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
   const[rangeMin,setRangeMin]=useState(userData.rangeMin||10);
@@ -8,7 +7,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   const[divMax,setDivMax]=useState(userData.divRangeMax||99);
   const[goal,setGoal]=useState(userData.goal||3);
 
-  const savedRaw=(() => { try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;} })();
+  const savedRaw=(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}})();
   const[savedData,setSavedData]=useState(savedRaw);
 
   const saveSettings=()=>{
@@ -307,30 +306,27 @@ function NumPadInput({q,ans,setAns,activeField,setActiveField,onConfirmRequest,h
 }
 
 function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax,userData,onUpdate,onBack}){
-  const seenQKeysRef = React.useRef(new Set()); // 세션 내 출제된 문제 텍스트 추적
+  const seenQKeysRef = React.useRef(new Set());
   const[q,setQ]=useState(()=>makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current));
   const[ans,setAns]=useState({ansQ:'',ansR:'',ansDiv:'',ansCount:''});
   const[fb,setFb]=useState(null);
   const[selMC,setSelMC]=useState(null);
   const[mcOpts,setMcOpts]=useState([]);
-  // phase에 'reflection'(성찰) 단계가 추가되었습니다.
-  const[phase,setPhase]=useState('question'); 
+  const[phase,setPhase]=useState('question');
   const[correctCount,setCorrectCount]=useState(session.correct||0);
   const[wrongCount,setWrongCount]=useState(session.wrong||0);
   const[questions,setQuestions]=useState([]);
   const[startTime]=useState(Date.now());
   const[qStartTime,setQStartTime]=useState(Date.now());
-  const[firstActionTime,setFirstActionTime]=useState(null); // 첫 입력 시각 추적
-  const[showConfirm,setShowConfirm]=useState(false); // 제출 확인 모달
+  const[firstActionTime,setFirstActionTime]=useState(null);
+  const[showConfirm,setShowConfirm]=useState(false);
+  const[showExitModal,setShowExitModal]=useState(false);
   const[activeField,setActiveField]=useState('Q');   // 숫자패드 활성 필드 ('Q'|'R')
-  const[showExitModal,setShowExitModal]=useState(false); // 이탈 확인 모달
 
-  // 첫 입력 이벤트 핸들러 (one-at-a-time 형식이므로 진정한 망설임 시간 측정 가능)
   const handleFirstAction=()=>{
     if(firstActionTime===null)setFirstActionTime(Date.now());
   };
 
-  // 이탈 시 저장 지원: window 전역 ref 갱신
   useEffect(()=>{
     window.__yakHakActiveSession={ver,rangeMin,rangeMax,divMin,divMax,
       qNum:questions.length+1,divCountIdxs:session.divCountIdxs,
@@ -625,9 +621,9 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
               className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               현재 상태 저장하기 💾
             </button>
-            <button onClick={()=>{localStorage.removeItem('yakHakSavedSession_'+userData.name);window.__yakHakActiveSession=null;setShowExitModal(false);onBack();}}
+            <button onClick={()=>{setShowExitModal(false);onBack();}}
               className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
-              그만두기
+              그만하기
             </button>
             <button onClick={()=>setShowExitModal(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm">
@@ -663,7 +659,6 @@ function StudentLearningReport({userData,onClose}){
   const correct=allQs.filter(q=>q.isOk).length;
   const pct=total>0?Math.round(correct/total*100):0;
 
-  // 영역별 집계
   const catMap={};
   allQs.forEach(q=>{
     const cat=q.meta?.type||(q.topic?q.topic:'기타');
@@ -718,7 +713,6 @@ function StudentLearningReport({userData,onClose}){
   return(
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto fade-in">
-        {/* 헤더 */}
         <div className="bg-indigo-600 text-white px-5 py-4 rounded-t-3xl flex items-center gap-3">
           <div className="text-2xl">📊</div>
           <div className="flex-1">
@@ -733,14 +727,11 @@ function StudentLearningReport({userData,onClose}){
             <div className="text-center py-10 text-gray-400 text-lg font-bold">아직 풀이 기록이 없어요.<br/>문제를 풀어보세요!</div>
           ):(
             <>
-              {/* 전체 정답률 */}
               <div className="text-center py-4 bg-gray-50 rounded-2xl">
                 <div className={`text-6xl font-black ${pct>=80?'text-green-600':pct>=60?'text-blue-600':'text-red-500'}`}>{pct}%</div>
                 <div className="text-sm text-gray-500 mt-1 font-bold">전체 정답률 ({correct}/{total}문제)</div>
               </div>
-              {/* 격려 메시지 */}
               <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl px-4 py-3 text-base font-bold text-yellow-900 leading-relaxed">{encourage}</div>
-              {/* 영역별 정답률 */}
               <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                 <div className="font-black text-gray-800 mb-3">📈 영역별 정답률</div>
                 {cats.length===0?<div className="text-gray-400 text-sm">데이터가 부족합니다.</div>:cats.map(c=>(
@@ -753,7 +744,6 @@ function StudentLearningReport({userData,onClose}){
                   </div>
                 ))}
               </div>
-              {/* 취약 영역 */}
               {weak.length>0&&(
                 <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
                   <div className="font-black text-red-700 mb-2">📌 더 연습하면 좋은 부분</div>
@@ -762,7 +752,6 @@ function StudentLearningReport({userData,onClose}){
                   ))}
                 </div>
               )}
-              {/* 잘하는 영역 */}
               {strong.length>0&&(
                 <div className="bg-green-50 border border-green-100 rounded-2xl p-4">
                   <div className="font-black text-green-700 mb-2">🌟 잘하고 있는 부분</div>
@@ -784,18 +773,16 @@ function HistoryTab({userData, feedbacks}){
   const allLogs=userData.logs||[];
   const fbs = feedbacks || [];
   const[open,setOpen]=useState(null);
-  const[showFbs, setShowFbs] = useState(false); // 피드백 보관함 열기/닫기
-  const[showAll,setShowAll]=useState(false);     // 5일 지난 기록까지 모두 보기
-  const[printLog,setPrintLog]=useState(null);    // 인쇄/PDF 대상 회차
+  const[showFbs, setShowFbs] = useState(false);
+  const[showAll,setShowAll]=useState(false);
+  const[printLog,setPrintLog]=useState(null);
   const[showReport,setShowReport]=useState(false);
-  // 5일 이내 기록만 기본 표시, '더보기'로 전체 표시
   const recentLogs=allLogs.filter(isRecentLog);
   const olderCount=allLogs.length-recentLogs.length;
   const logs=showAll?allLogs:recentLogs;
 
   return(<div className="p-4 pb-36 space-y-3">
     
-    {/* 선생님 피드백 보관함 (받은 피드백이 있을 때만 표시) */}
     {fbs.length > 0 && (
       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-2 shadow-sm">
         <div className="flex justify-between items-center mb-1">
@@ -825,7 +812,7 @@ function HistoryTab({userData, feedbacks}){
       </div>
     </div>
     {allLogs.length===0&&<div className="text-center text-gray-400 py-12 text-base font-bold">아직 완료한 레슨이 없어요.<br/>문제를 풀어보세요!</div>}
-    {allLogs.length>0&&logs.length===0&&<div className="text-center text-gray-400 py-8 text-sm font-bold">최근 5일간 학습 기록이 없어요.<br/>아래 ‘더보기’로 지난 기록을 볼 수 있어요.</div>}
+    {allLogs.length>0&&logs.length===0&&<div className="text-center text-gray-400 py-8 text-sm font-bold">최근 5일간 학습 기록이 없어요.<br/>아래 '더보기'로 지난 기록을 볼 수 있어요.</div>}
     {logs.map((log,i)=>{const isOpen=open===i;return(<div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 p-4 border-b border-gray-100">
         <div className="flex-1"><div className="font-bold text-gray-800 text-base">{fmtDate(log.date)} {log.time}</div>
@@ -847,5 +834,6 @@ function HistoryTab({userData, feedbacks}){
     {showReport&&<StudentLearningReport userData={userData} onClose={()=>setShowReport(false)}/>}
   </div>);
 }
-
 /* ===== GEOMETRY TAB ===== */
+
+</script>

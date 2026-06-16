@@ -65,3 +65,5 @@ function AuthScreen({onLogin}){
 }
 
 /* ===== STREAK CALCULATOR ===== */
+
+</script>

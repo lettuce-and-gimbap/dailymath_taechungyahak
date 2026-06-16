@@ -88,7 +88,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks}/>}
     </div>
-    {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외 다른 탭에서 표시) */}
+    {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외) */}
     {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(
       <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30 max-w-lg mx-auto pointer-events-none">
         <button onClick={()=>setTab('practice')} className="pointer-events-auto bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all">
@@ -120,10 +120,9 @@ function StudentDashboard({userData,onLogout,onUpdate}){
               현재 상태 저장하기 💾
             </button>
             <button onClick={()=>{
-              localStorage.removeItem('yakHakSavedSession_'+userData.name);setHasSavedSession(false);
               setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
             }} className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
-              그만두기
+              그만하기
             </button>
             <button onClick={()=>setShowNavModal(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm">
@@ -360,3 +359,5 @@ function analyzeStudent(sData){
 }
 var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 전`;
 
+
+</script>

@@ -332,3 +332,5 @@ function GeometryQuiz({userData, onUpdate}){
 }
 
 /* ===== MOCK EXAM TAB ===== */
+
+</script>

@@ -321,3 +321,5 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 }
 
 /* ===== DAILY PRACTICE TAB ===== */
+
+</script>

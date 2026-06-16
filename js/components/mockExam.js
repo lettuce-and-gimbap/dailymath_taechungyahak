@@ -253,3 +253,5 @@ function MockExamTab({userData,onUpdate}){
 }
 
 /* ===== STUDENT DASHBOARD ===== */
+
+</script>

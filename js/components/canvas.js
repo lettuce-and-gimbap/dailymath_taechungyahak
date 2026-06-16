@@ -262,14 +262,10 @@ function QuadraticModule({sz}){
         const esx=cx+extremeX*SC,esy=cy-extreme*SC;
         const col='#ef4444';
         return(<>
-          {/* x축 수선의 발 */}
           <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
-          {/* y축 수선의 발 */}
           <line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
-          {/* x축 눈금 + 좌표 */}
           <line x1={esx} y1={cy-8} x2={esx} y2={cy+8} stroke={col} strokeWidth={3.5}/>
           <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{extremeX}</text>
-          {/* y축 눈금 + 좌표 */}
           <line x1={cx-8} y1={esy} x2={cx+8} y2={esy} stroke={col} strokeWidth={3.5}/>
           <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{Math.round(extreme)}</text>
         </>);
@@ -504,3 +500,5 @@ function QText({v}){
 }
 
 /* ===== AUTH SCREEN ===== */
+
+</script>

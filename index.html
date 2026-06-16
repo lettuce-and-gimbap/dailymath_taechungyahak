@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>태청야학 수학 학습 도우미 🎓</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -62,20 +62,16 @@ svg{touch-action:none}
 .fade-in{animation:fadeIn .25s ease}
 .ring-fill{transition:stroke-dashoffset .7s cubic-bezier(.4,0,.2,1)}
 @media print{
-  /* 최상위 높이 제한·스크롤 숨김 해제 → 다중 페이지 인쇄 핵심 */
-  html,body,#root{width:auto!important;height:auto!important;min-height:auto!important;max-height:none!important;overflow:visible!important}
-  *{overflow:visible!important}
   body *{visibility:hidden!important}
   .ws-print-area,.ws-print-area *{visibility:visible!important}
   .ws-print-area{position:fixed!important;left:0!important;top:0!important;width:100%!important;padding:8mm!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:4mm!important;background:white!important}
   .ws-problem{page-break-inside:avoid!important;border:1px solid #333!important}
   /* 세션(회차) 문제+해설 인쇄 영역 */
-  .session-print-area,.session-print-area *{visibility:visible!important;overflow:visible!important}
-  /* position:static 유지 + margin-top으로 상단 빈 공간 제거 (absolute 사용 시 크롬에서 1페이지 버그 발생) */
-  .session-print-area{position:static!important;width:100%!important;padding:10mm!important;background:white!important;height:auto!important;margin-top:-60px!important}
-  .session-print-item{page-break-inside:avoid!important;break-inside:avoid!important}
-  .print-page-group{page-break-after:always!important;break-after:page!important}
-  .print-page-group:last-child{page-break-after:auto!important;break-after:auto!important}
+  .session-print-item{break-inside:avoid;page-break-inside:avoid}
+  .print-page-group{break-after:page;page-break-after:always}
+  .print-page-group:last-child{break-after:auto;page-break-after:auto}
+  .session-print-area,.session-print-area *{visibility:visible!important}
+  .session-print-area{position:static!important;width:100%!important;background:white!important;overflow:visible!important;height:auto!important;z-index:auto!important}
   .no-print{display:none!important}
   /* 인쇄 시 버튼 최소높이 강제 해제 (레이아웃 깨짐 방지) */
   button{min-height:0!important}
@@ -197,8 +193,10 @@ try{if(localStorage.getItem('yakHakTheme')==='dark')document.body.classList.add(
 <script type="text/babel" src="js/generators/highschool.js"></script>
 <script type="text/babel" src="js/generators/setFunc.js"></script>
 
-<!-- ===== UI 컴포넌트 ===== -->
+<!-- ===== 캔버스 ===== -->
 <script type="text/babel" src="js/components/canvas.js"></script>
+
+<!-- ===== 컴포넌트 ===== -->
 <script type="text/babel" src="js/components/auth.js"></script>
 <script type="text/babel" src="js/components/home.js"></script>
 <script type="text/babel" src="js/components/practice.js"></script>

@@ -629,7 +629,7 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
         <div className="mb-3">
           {editingWsId === ws.id ? (
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <input type="text" lang="ko" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && renameWs(ws.id)} className="flex-1 min-w-[140px] border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-indigo-400" autoFocus />
+              <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && renameWs(ws.id)} className="flex-1 min-w-[140px] border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-indigo-400" autoFocus />
               <button onClick={() => renameWs(ws.id)} className="text-xs bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-bold">저장</button>
               <button onClick={() => setEditingWsId(null)} className="text-xs bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-bold">취소</button>
             </div>
@@ -654,3 +654,5 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
   </div>);
 }
 
+
+</script>

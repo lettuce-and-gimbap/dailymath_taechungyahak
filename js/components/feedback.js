@@ -267,3 +267,7 @@ var QUOTE_BGS=[
   'linear-gradient(135deg,#84fab0 0%,#8fd3f4 100%)'
 ];
 
+
+</script>
+
+<!-- ===== 대시보드 ===== -->
