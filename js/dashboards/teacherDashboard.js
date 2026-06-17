@@ -1043,18 +1043,6 @@ function StudentDetail({student,onBack}){
         corrTotal===0?'#94a3b8':corrRate>=70?'#16a34a':corrRate>=40?'#d97706':'#dc2626',
         corrFormula, corrTheory, corrStudent, corrAction, corrWarn)}
 
-      <!-- 푸터 -->
-      <div style="border-top:1px solid #e2e8f0;padding-top:7px;margin-top:10px;text-align:center;color:#94a3b8;font-size:9px;">
-        본 리포트는 태청야학 수학반 AI 학습 분석 엔진에 의해 자동 생성되었습니다. · 출력일: ${new Date().toLocaleDateString('ko-KR')}
-      </div>
-    </div>
-
-    <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
-
-      ${pageHeader2('행동 패턴 지표 상세 해설 (계속)')}
-
-      ${sH2('🔍','행동 패턴 지표 (계속)')}
-
       ${dc('자기주도 탐색', '🔭 자기주도 탐색 (그래프 탐험)',
         !explore.has ? '데이터 없음' : `${explore.breadth}/6개 개념 · ${explore.activeMin}분`, !explore.has ? '#94a3b8' : explore.breadth >= 3 ? '#2563eb' : '#d97706',
         exploreFormula, exploreTheory, exploreStudent, exploreAction, exploreWarn)}
