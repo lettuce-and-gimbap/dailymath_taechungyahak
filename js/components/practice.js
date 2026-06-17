@@ -672,54 +672,52 @@ function StudentLearningReport({userData,onClose}){
 
   const encourage=pct>=80?'정말 잘하고 계세요! 꾸준히 하면 반드시 합격할 수 있습니다 😊':pct>=60?'잘 하고 계세요! 조금만 더 노력하면 더욱 좋아질 거예요 💪':'걱정하지 마세요. 천천히 꾸준히 하다 보면 반드시 늘게 됩니다 🌱';
 
-  const doPrint=()=>{
-    const pw=window.open('','_blank','width=800,height=1000');
-    if(!pw){alert('팝업이 차단되어 있습니다.');return;}
-    const catsHtml=cats.map(c=>`<div class="cat-row"><span class="cat-name">${c.name}</span><div class="bar-bg"><div class="bar-fill" style="width:${c.pct}%;background:${c.pct>=80?'#16a34a':c.pct>=60?'#2563eb':'#ef4444'}"></div></div><span class="cat-pct">${c.pct}%</span></div>`).join('');
-    const weakHtml=weak.length?weak.map(c=>`<li><b>${c.name}</b> (정답률 ${c.pct}%) — 이 부분을 집중적으로 연습해 보세요.</li>`).join(''):'<li>현재 특별히 취약한 영역이 없습니다. 좋아요!</li>';
-    pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>나의 학습 리포트</title><style>
-      *{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#1e293b;background:white;padding:16mm;}
-      h1{font-size:22px;font-weight:900;text-align:center;margin-bottom:6px;}
-      .sub{text-align:center;font-size:13px;color:#64748b;margin-bottom:24px;}
-      .card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:18px;}
-      .card-title{font-size:15px;font-weight:900;color:#1e293b;margin-bottom:12px;}
-      .score-big{font-size:52px;font-weight:900;text-align:center;color:${pct>=80?'#16a34a':pct>=60?'#2563eb':'#ef4444'};line-height:1;}
-      .score-label{text-align:center;font-size:13px;color:#64748b;margin-top:4px;}
-      .encourage{background:#fefce8;border:2px solid #fde047;border-radius:10px;padding:14px 18px;font-size:14px;font-weight:700;color:#713f12;margin-bottom:18px;line-height:1.7;}
-      .cat-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-      .cat-name{font-size:12px;font-weight:700;min-width:110px;color:#374151;}
-      .bar-bg{flex:1;height:14px;background:#e2e8f0;border-radius:7px;overflow:hidden;}
-      .bar-fill{height:100%;border-radius:7px;transition:width .3s;}
-      .cat-pct{font-size:12px;font-weight:900;min-width:36px;text-align:right;}
-      ul{margin-left:18px;line-height:2;}li{font-size:13px;}
-      .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:24px;}
-      @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
-    </style></head><body>
-      <h1>📊 나의 학습 리포트</h1>
-      <div class="sub">${userData.name}님 · 총 ${total}문제 풀이 · 생성일 ${new Date().toLocaleDateString('ko-KR')}</div>
-      <div class="card" style="text-align:center">
-        <div class="score-big">${pct}%</div>
-        <div class="score-label">전체 정답률 (${correct}/${total})</div>
-      </div>
-      <div class="encourage">${encourage}</div>
-      <div class="card"><div class="card-title">📈 영역별 정답률</div>${catsHtml}</div>
-      <div class="card"><div class="card-title">📌 더 연습하면 좋은 부분</div><ul>${weakHtml}</ul></div>
-      <div class="footer">— 태청야학 수학 학습 도우미 —</div>
-      <script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
-    </body></html>`);
-    pw.document.close();
+  const reportRef=useRef(null);
+  const[saving,setSaving]=useState(false);
+  const saveAsPNG=async()=>{
+    if(!window.html2canvas){alert('html2canvas를 불러오지 못했습니다.');return;}
+    const el=reportRef.current;
+    if(!el)return;
+    setSaving(true);
+    try{
+      const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#fff',useCORS:true,scrollY:0});
+      const pageH=2400; // 1200px logical × scale 2
+      const totalH=canvas.height;
+      const pageCount=Math.min(3,Math.ceil(totalH/pageH));
+      if(pageCount<=1){
+        const a=document.createElement('a');
+        a.href=canvas.toDataURL('image/png');
+        a.download=`학습보고서_${userData.name}.png`;
+        a.click();
+      }else{
+        for(let p=0;p<pageCount;p++){
+          const segH=Math.ceil(totalH/pageCount);
+          const startY=p*segH;
+          const actualH=Math.min(segH,totalH-startY);
+          const seg=document.createElement('canvas');
+          seg.width=canvas.width;seg.height=actualH;
+          seg.getContext('2d').drawImage(canvas,0,-startY);
+          const a=document.createElement('a');
+          a.href=seg.toDataURL('image/png');
+          a.download=`학습보고서_${userData.name}_${p+1}.png`;
+          a.click();
+          await new Promise(r=>setTimeout(r,200));
+        }
+      }
+    }catch(err){alert('PNG 저장 실패: '+err.message);}
+    finally{setSaving(false);}
   };
 
   return(
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto fade-in">
+      <div ref={reportRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto fade-in">
         <div className="bg-indigo-600 text-white px-5 py-4 rounded-t-3xl flex items-center gap-3">
           <div className="text-2xl">📊</div>
           <div className="flex-1">
             <div className="font-black text-lg">나의 학습 리포트</div>
             <div className="text-xs text-indigo-200 font-semibold">{userData.name}님 · 총 {total}문제</div>
           </div>
-          <button onClick={doPrint} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm">🖨️ 저장</button>
+          <button onClick={saveAsPNG} disabled={saving} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm disabled:opacity-60">{saving?'저장 중…':'💾 PNG 저장'}</button>
           <button onClick={onClose} className="px-3 py-1.5 bg-white/20 rounded-xl font-bold text-sm">✕</button>
         </div>
         <div className="p-5 space-y-4">

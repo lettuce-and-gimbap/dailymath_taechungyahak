@@ -262,8 +262,9 @@ function StudentDetail({student,onBack}){
   const[qStats,setQStats]=useState({});
   const[qStatsLoading,setQStatsLoading]=useState(false);
   const[isExporting,setIsExporting]=useState(false);
-  const[showAllSessions,setShowAllSessions]=useState(false); // 5일 지난 세션까지 보기
-  const[printLog,setPrintLog]=useState(null);                // 회차 인쇄/PDF 대상
+  const[showAllSessions,setShowAllSessions]=useState(false);
+  const[printLog,setPrintLog]=useState(null);
+  const[correctionData,setCorrectionData]=useState({totalWrong:0,corrected:0,rate:0,loaded:false});
   const logs=student.logs||[]; // ※ 분석 엔진은 전체 로그 사용 (필터 금지)
   const a=analyzeStudent(student);
   const LIGHT_CLS={'light-red':'bg-red-50 text-red-700 border border-red-200','light-yel':'bg-yellow-50 text-yellow-700 border border-yellow-200','light-grn':'bg-green-50 text-green-700 border border-green-200'};
@@ -276,6 +277,27 @@ function StudentDetail({student,onBack}){
   const activeTime=useMemo(()=>buildActiveTimeSummary(logs),[logs]);
   const explore=useMemo(()=>buildExploreSummary(student),[student]);
   const relativeMastery=useMemo(()=>buildRelativeMastery(logs,qStats),[logs,qStats]);
+
+  // 오답 수정 데이터 로드 (sessionEdits prefix query)
+  useEffect(()=>{
+    if(!student.id||logs.length===0)return;
+    const totalWrong=logs.flatMap(l=>l.questions||[]).filter(q=>!q.isOk).length;
+    if(totalWrong===0){setCorrectionData({totalWrong:0,corrected:0,rate:0,loaded:true});return;}
+    db.collection('sessionEdits')
+      .orderBy(firebase.firestore.FieldPath.documentId())
+      .startAt(student.id+'_')
+      .endAt(student.id+'_')
+      .get()
+      .then(snap=>{
+        let corrected=0;
+        snap.forEach(doc=>{
+          const data=doc.data()||{};
+          Object.keys(data).forEach(k=>{if(k.startsWith('corrected_q')&&data[k]===true)corrected++;});
+        });
+        setCorrectionData({totalWrong,corrected,rate:Math.round(corrected/totalWrong*100),loaded:true});
+      })
+      .catch(()=>setCorrectionData({totalWrong,corrected:0,rate:0,loaded:true}));
+  },[student.id]);
 
   // qStats 비동기 로드 (토픽-레벨 크로스-학생 난이도)
   useEffect(()=>{
@@ -533,6 +555,39 @@ function StudentDetail({student,onBack}){
               : '자기효능감이 높을수록 학습 지속성이 향상됩니다. 계속 격려하세요.'}
           </td>
         </tr>
+        <!-- 교사 개입 오답 수정율 -->
+        <tr style="background:#f0fdf4;page-break-inside:avoid;">
+          <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
+            오답 수정율
+            <div style="font-size:9px;color:#94a3b8;margin-top:3px;font-weight:400;">📌 교사 개입 후 재풀이에서 오답을 수정한 비율</div>
+          </td>
+          <td style="padding:7px 9px;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
+            ${!correctionData.loaded
+              ? badge('로딩 중','#f1f5f9','#94a3b8','#e2e8f0')
+              : correctionData.totalWrong===0
+              ? badge('해당 없음','#f1f5f9','#94a3b8','#e2e8f0')
+              : correctionData.rate >= 70
+              ? badge(`${correctionData.rate}%·양호`,'#dcfce7','#16a34a','#86efac')
+              : correctionData.rate >= 40
+              ? badge(`${correctionData.rate}%·보통`,'#fef9c3','#d97706','#fde68a')
+              : badge(`${correctionData.rate}%·주의`,'#fee2e2','#dc2626','#fca5a5')}
+          </td>
+          <td style="padding:7px 9px;border:1px solid #e2e8f0;vertical-align:top;line-height:1.5;">
+            ${!correctionData.loaded
+              ? '오답 수정 데이터를 로딩 중입니다.'
+              : correctionData.totalWrong===0
+              ? '오답이 없어 해당 지표가 산출되지 않습니다.'
+              : `총 오답 <b>${correctionData.totalWrong}문항</b> 중 교사 개입 후 <b>${correctionData.corrected}문항</b> 수정 완료 (${correctionData.rate}%). `
+                + (correctionData.rate >= 70 ? '개입 효과가 높습니다. 교사 피드백이 학습 전이로 이어지고 있습니다.'
+                   : correctionData.rate >= 40 ? '일부 오개념이 남아 있습니다. 미수정 문항을 중심으로 추가 확인이 필요합니다.'
+                   : '개입 효과가 낮습니다. 오개념의 근본 원인을 재파악하고 접근 방식을 변경해 보세요.')}
+          </td>
+          <td style="padding:7px 9px;border:1px solid #e2e8f0;vertical-align:top;font-size:10px;color:#475569;line-height:1.6;">
+            ${correctionData.rate < 70 && correctionData.totalWrong > 0
+              ? '미수정 오답을 다시 풀게 하거나, 풀이 과정을 구두로 설명하게 해보세요.'
+              : '오답 수정이 잘 이루어지고 있습니다. 수정 습관을 계속 유지하도록 격려하세요.'}
+          </td>
+        </tr>
       </table>
 
     </div>
@@ -671,6 +726,7 @@ function StudentDetail({student,onBack}){
           ['오개념 고착','수정 없이 동일 오답 반복 (revisionCount=0, isOk=false)','가장 위험한 패턴. 학생 스스로 틀린 것을 모르거나 무기력해진 상태일 수 있음. 즉시 개입.'],
           ['자기효능감','정답임에도 답 수정 반복 (revisionCount>1, isOk=true)','실력은 있으나 자신감 부족. 언어적 칭찬과 구체적 성취 확인이 효과적인 개입 방법.'],
           ['🔭 자기주도 탐색','그래프 탐험의 조작 횟수·유휴 보정 활동 시간·탐색 개념 폭(체류 시간 아님)','성취가 아닌 참여·호기심 지표. 탐색이 많은 개념의 퀴즈 정답률이 함께 오르는지로 실효성 판단.'],
+          ['교사 개입 오답 수정율','교사 체크 오답 수정 완료 수 ÷ 총 오답 수 × 100','수정율 70%↑: 교사 개입 효과 높음. 40~70%: 일부 오개념 잔존. 40%↓: 개입 방식 재검토 필요. SRL 평가(Evaluation) 단계 및 교사 피드백 전이 효과를 반영.'],
           ['영역별 성취율','해당 토픽 문항의 정답 수 ÷ 전체 풀이 수','풀이 문항이 적을수록 신뢰도 낮음. 최소 5문항 이상 축적 후 해석 권장.'],
           ['전체 평균 대비 %p','이 학생 성취율 − 전체 학생 동일 문항 평균','양수=또래 평균 이상, 음수=또래 평균 이하. 전체 학생 수가 적을수록 비교 신뢰도 낮음.'],
         ].map((r,i)=>`<tr style="background:${i%2===0?'white':'#f8fafc'};page-break-inside:avoid;">
@@ -836,6 +892,28 @@ function StudentDetail({student,onBack}){
       : `현재의 자신감 있는 풀이 태도를 칭찬하고 더 어려운 문제에도 같은 방식으로 도전하도록 권장하세요.`;
     const selfEffWarn = `자기효능감 지표 역시 <b>모의고사·기하 문제지 세션</b>에서만 수집됩니다. 데이터 수가 적을 때는 해석에 주의하세요.`;
 
+    // 교사 개입 오답 수정율
+    const corrRate=correctionData.rate;
+    const corrN=correctionData.corrected;
+    const corrTotal=correctionData.totalWrong;
+    const corrFormula=corrTotal===0
+      ?'오답 수가 없어 산출 불가'
+      :`오답 수정율 = 교사 체크 수정 완료 문항 수 ÷ 총 오답 문항 수 × 100<br/><b>${corrN} ÷ ${corrTotal} × 100 = ${corrRate}%</b><br/>교사가 세션 기록에서 "오답 수정 체크"를 누른 문항만 집계`;
+    const corrTheory=`<b>① Ch.8 자기조절학습(SRL) — COPES 모델:</b> 오답 수정은 학습 주기의 <b>평가(Evaluation) 단계</b>가 성공적으로 완료되었음을 나타낸다. 오류 인식 → 교사 피드백 수용 → 재풀이 성공의 전 과정이 메타인지 활동의 직접적 행동 흔적이다.<br/><b>② Ch.7 시간적 분석:</b> 오류→피드백→수정의 시간적 패턴은 학습 궤적(learning trajectory)의 긍정적 방향 전환 신호다.<br/><b>③ Ch.13 교사-학생 대면 분석:</b> 수정율은 교사 개입의 실효성을 측정하는 가장 직접적인 지표다.`;
+    const corrStudent=corrTotal===0
+      ?'오답이 없어 이 지표가 산출되지 않습니다.'
+      :corrRate>=70
+      ?`<b style="color:#16a34a;">오답 수정율 ${corrRate}%</b> — 교사 개입 효과가 높습니다. ${corrN}/${corrTotal}문항이 재풀이에서 수정되었으며, 피드백이 실제 학습 전이로 이어지고 있음을 나타냅니다.`
+      :corrRate>=40
+      ?`<b style="color:#d97706;">오답 수정율 ${corrRate}%</b> — 일부 오개념이 잔존합니다. ${corrN}/${corrTotal}문항 수정. 미수정 ${corrTotal-corrN}문항에 대한 추가 확인이 필요합니다.`
+      :`<b style="color:#dc2626;">오답 수정율 ${corrRate}%</b> — 교사 개입 효과가 낮습니다. ${corrN}/${corrTotal}문항만 수정됨. 현재 피드백 방식이 이 학생에게 맞지 않을 수 있으므로 접근 방식을 재검토하세요.`;
+    const corrAction=corrTotal===0
+      ?'오답이 발생하면 오답 수정 체크 기능을 활용하세요.'
+      :corrRate>=70
+      ?'현재 피드백 방식이 효과적입니다. 수정 습관을 유지하되 미수정 문항의 오류 유형을 기록해두세요.'
+      :'미수정 오답을 다시 함께 풀어보고, 구두로 "왜 이 답을 골랐는지" 확인하세요. 단계를 더 잘게 쪼갠 힌트를 제공하는 방식이 효과적일 수 있습니다.';
+    const corrWarn=`이 지표는 교사가 직접 "오답 수정 체크"를 한 문항만 집계합니다. 체크를 하지 않은 세션은 수정 완료로 간주되지 않으므로 실제보다 낮게 나올 수 있습니다. 체계적으로 활용하려면 세션마다 체크하는 습관이 필요합니다.`;
+
     // 자기주도 탐색 (그래프 탐험)
     const exploreFormula = `탐색량 = 그래프 직접 조작(드래그·슬라이더·개념 전환) 횟수의 누적<br/>실질 활동 시간 = 상호작용 간격 중 <b>60초 미만 구간만</b> 합산(유휴 제외)<br/>탐색 폭 = 학생이 건드린 서로 다른 함수 개념 수(0~6)<br/>※ <b>체류 시간은 측정에서 의도적으로 제외</b>한다.`;
     const exploreTheory  = `정답이 없는 탐험형 학습은 '얼마나 오래 머물렀나'로 측정할 수 없다. 체류 시간은 진지한 탐색·막힘·유휴(배경 노출)를 구분하지 못해 <b>구인타당도(construct validity)</b>가 낮기 때문이다. 대신 <b>능동적 행동 흔적</b>(조작 횟수·유휴 보정 활동 시간·탐색한 개념 폭)으로 자기주도성과 호기심을 측정한다. 다만 탐색량 자체는 <b>성취가 아니라 학습의 선행(antecedent) 변수</b>이므로, 동일 개념의 퀴즈 정답률과 연계해 '탐색이 실제 실력 향상으로 이어졌는지' 검증해야 비로소 학습 신호로서 의미를 갖는다.`;
@@ -952,6 +1030,11 @@ function StudentDetail({student,onBack}){
       ${dc('자기효능감', '자기효능감',
         selfEffN > 0 ? `점검 필요 (${selfEffN}회)` : '✅ 양호', selfEffN > 0 ? '#d97706' : '#16a34a',
         selfEffFormula, selfEffTheory, selfEffStudent, selfEffAction, selfEffWarn)}
+
+      ${dc('오답 수정율', '교사 개입 오답 수정율',
+        corrTotal===0?'해당 없음':corrRate>=70?`✅ ${corrRate}% (양호)`:corrRate>=40?`⚡ ${corrRate}% (보통)`:`⚠️ ${corrRate}% (주의)`,
+        corrTotal===0?'#94a3b8':corrRate>=70?'#16a34a':corrRate>=40?'#d97706':'#dc2626',
+        corrFormula, corrTheory, corrStudent, corrAction, corrWarn)}
 
       <!-- 푸터 -->
       <div style="border-top:1px solid #e2e8f0;padding-top:7px;margin-top:10px;text-align:center;color:#94a3b8;font-size:9px;">
