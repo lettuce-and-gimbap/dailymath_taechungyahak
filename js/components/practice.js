@@ -1,3 +1,5 @@
+// === js/components/practice.js ===
+function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   const[screen,setScreen]=useState('menu');
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
@@ -215,13 +217,28 @@ function SolutionBox({q}){
   }
   if(q.category==='div'){
     const divs=q.divisors||[];
+    const tgt=q.target;
+    /* 짝 목록 계산 (공통 로직) */
+    const pairRows=[];
+    const half=Math.ceil(divs.length/2);
+    for(let i=0;i<half;i++){
+      const a=divs[i],b=divs[divs.length-1-i];
+      const isSelf=(a===b);
+      pairRows.push({a,b,isSelf});
+    }
     if(q.divQType==='count'){
       return(
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 fade-in">
           <div className="text-xs font-black text-amber-600 mb-3 tracking-wide">📖 풀이 과정</div>
-          <div className="space-y-2">
-            <Row step="약수 목록">{q.target}의 약수: {divs.join(', ')}</Row>
-            <Row step="개수"><span className="text-green-700">모두 {divs.length}개</span></Row>
+          <div className="space-y-1">
+            <div className="text-xs text-gray-500 font-bold mb-1">곱해서 {tgt}이(가) 되는 짝을 찾아요</div>
+            {pairRows.map(({a,b,isSelf},i)=>(
+              <div key={i} className="text-sm font-bold text-indigo-600">
+                {isSelf?`${a} × ${a} = ${tgt}  (${a}는 자기 자신과 짝)`:`${a} × ${b} = ${tgt}`}
+              </div>
+            ))}
+            <div className="mt-2 text-xs text-gray-500 font-bold">약수 목록: {divs.join(', ')}</div>
+            <div className="mt-1 text-sm font-bold text-green-700">약수의 개수 = <span className="text-green-800">{divs.length}개</span></div>
           </div>
         </div>
       );
@@ -229,22 +246,29 @@ function SolutionBox({q}){
       return(
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 fade-in">
           <div className="text-xs font-black text-amber-600 mb-3 tracking-wide">📖 풀이 과정</div>
-          <div className="space-y-2">
-            <Row step="약수 목록">{q.target}의 약수: {divs.join(', ')}</Row>
-            <Row step="판별"><span className="text-red-600">위 목록에 없는 수 → 약수가 아닌 것</span></Row>
+          <div className="space-y-1">
+            <div className="text-xs text-gray-500 font-bold mb-1">곱해서 {tgt}이(가) 되는 짝을 찾아요</div>
+            {pairRows.map(({a,b,isSelf},i)=>(
+              <div key={i} className="text-sm font-bold text-indigo-600">
+                {isSelf?`${a} × ${a} = ${tgt}  (${a}는 자기 자신과 짝)`:`${a} × ${b} = ${tgt}`}
+              </div>
+            ))}
+            <div className="mt-2 text-xs text-gray-500 font-bold">약수 목록: {divs.join(', ')}</div>
+            <div className="mt-1 text-sm font-bold text-red-600">위 목록에 없는 수 → 약수가 아닌 것</div>
           </div>
         </div>
       );
     }else{
-      const pairs=[];
-      const half=Math.ceil(divs.length/2);
-      for(let i=0;i<half;i++){const a=divs[i],b=divs[divs.length-1-i];if(a<=b)pairs.push(`${a} × ${b} = ${q.target}`);}
       return(
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 fade-in">
           <div className="text-xs font-black text-amber-600 mb-3 tracking-wide">📖 풀이 과정</div>
           <div className="space-y-1">
-            <div className="text-xs text-gray-400 font-bold mb-2">곱셈 짝으로 찾기</div>
-            {pairs.map((p,i)=><div key={i} className="text-sm font-bold text-indigo-600">{p}</div>)}
+            <div className="text-xs text-gray-500 font-bold mb-1">곱해서 {tgt}이(가) 되는 짝을 찾아요</div>
+            {pairRows.map(({a,b,isSelf},i)=>(
+              <div key={i} className="text-sm font-bold text-indigo-600">
+                {isSelf?`${a} × ${a} = ${tgt}  (${a}는 자기 자신과 짝)`:`${a} × ${b} = ${tgt}`}
+              </div>
+            ))}
             <div className="mt-2 text-sm font-bold text-green-700">약수: {divs.join(', ')}</div>
           </div>
         </div>
@@ -681,7 +705,7 @@ function StudentLearningReport({userData,onClose}){
     setSaving(true);
     try{
       const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#fff',useCORS:true,scrollY:0});
-      const pageH=2400; // 1200px logical × scale 2
+      const pageH=2400;
       const totalH=canvas.height;
       const pageCount=Math.min(3,Math.ceil(totalH/pageH));
       if(pageCount<=1){
@@ -832,6 +856,3 @@ function HistoryTab({userData, feedbacks}){
     {showReport&&<StudentLearningReport userData={userData} onClose={()=>setShowReport(false)}/>}
   </div>);
 }
-/* ===== GEOMETRY TAB ===== */
-
-</script>

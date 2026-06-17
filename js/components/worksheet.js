@@ -1,3 +1,4 @@
+// === js/components/worksheet.js ===
 function WorksheetTab(){
   const[wsType,setWsType]=useState('div');
   const[title,setTitle]=useState('');
@@ -656,4 +657,3 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
 }
 
 
-</script>

@@ -1,3 +1,4 @@
+// === js/app.js ===
 function QuoteSplash({onDone}){
   const DURATION=4500;
   // 접속할 때마다 다음 글귀가 나오도록 인덱스 회전
@@ -125,3 +126,4 @@ function App(){
 
 var root=ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
+

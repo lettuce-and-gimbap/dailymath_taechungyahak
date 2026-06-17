@@ -1,3 +1,4 @@
+// === js/components/geometry.js ===
 function GeometryTab({userData, onUpdate}){
   const[subTab,setSubTab]=useState('learn');
   const sz=useCanvasSize();
@@ -330,7 +331,3 @@ function GeometryQuiz({userData, onUpdate}){
     </div>
   </div>);
 }
-
-/* ===== MOCK EXAM TAB ===== */
-
-</script>

@@ -1,3 +1,4 @@
+// === js/dashboards/teacherDashboard.js ===
 function TeacherDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('analysis');
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생현황'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'feedback',icon:'💬',lbl:'피드백'}];
@@ -278,7 +279,7 @@ function StudentDetail({student,onBack}){
   const explore=useMemo(()=>buildExploreSummary(student),[student]);
   const relativeMastery=useMemo(()=>buildRelativeMastery(logs,qStats),[logs,qStats]);
 
-  // 오답 수정 데이터 로드 (sessionEdits prefix query)
+  // 오답 수정 데이터 로드
   useEffect(()=>{
     if(!student.id||logs.length===0)return;
     const totalWrong=logs.flatMap(l=>l.questions||[]).filter(q=>!q.isOk).length;
@@ -1607,6 +1608,3 @@ function StudentDetail({student,onBack}){
 }
 
 
-</script>
-
-<!-- ===== 앱 진입점 ===== -->

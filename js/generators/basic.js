@@ -1,3 +1,4 @@
+// === js/generators/basic.js ===
 /* ===== MATH PROBLEM GENERATORS ===== */
 function genDivBasic(mn,mx){
   let pairs=[];
@@ -331,5 +332,3 @@ function generateStoryWorksheet(counts, ratios) {
 
   return shuffle(qs);
 }
-
-/* ===== GEOMETRY GENERATORS ===== */

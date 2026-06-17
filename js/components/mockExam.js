@@ -1,3 +1,4 @@
+// === js/components/mockExam.js ===
 function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
@@ -251,7 +252,3 @@ function MockExamTab({userData,onUpdate}){
   }
   return null;
 }
-
-/* ===== STUDENT DASHBOARD ===== */
-
-</script>

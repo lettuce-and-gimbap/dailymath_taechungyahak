@@ -1,3 +1,4 @@
+// === js/dashboards/studentDashboard.js ===
 function StudentDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
@@ -360,4 +361,3 @@ function analyzeStudent(sData){
 var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 전`;
 
 
-</script>

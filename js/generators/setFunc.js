@@ -1,3 +1,4 @@
+// === js/generators/setFunc.js ===
 function MathExpr({v}){
   if(v==null) return null;
   const s=String(v);
@@ -815,13 +816,10 @@ function GraphPreview({q}){
         <text x={W-8} y={CY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
         <text x={CX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
         {ticks.map(n=>(<g key={'t'+n}><text x={tx(n)} y={CY+12} textAnchor="middle" fontSize={9} fill="#9ca3af">{n}</text><text x={CX-5} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af">{n}</text></g>))}
-        {/* 이동 화살표 */}
         <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#6366f1"/></marker></defs>
         <line x1={tx(px)} y1={ty(py)} x2={tx(rx)} y2={ty(ry)} stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4,3" markerEnd="url(#arr)"/>
-        {/* P 점 */}
         <circle cx={tx(px)} cy={ty(py)} r={5} fill="#6b7280" stroke="white" strokeWidth={2}/>
         <text x={tx(px)+(px>0?7:-7)} y={ty(py)-6} textAnchor={px>0?'start':'end'} fontSize={10} fill="#6b7280" fontWeight="900">P({px},{py})</text>
-        {/* Q 점 */}
         <circle cx={tx(rx)} cy={ty(ry)} r={5} fill="#6366f1" stroke="white" strokeWidth={2}/>
         <text x={tx(rx)+(rx>0?7:-7)} y={ty(ry)-6} textAnchor={rx>0?'start':'end'} fontSize={10} fill="#6366f1" fontWeight="900">Q({rx},{ry})</text>
       </svg>
@@ -841,17 +839,13 @@ function GraphPreview({q}){
         <text x={W-8} y={CY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
         <text x={CX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
         {ticks.map(n=>(<g key={'t'+n}><text x={tx(n)} y={CY+12} textAnchor="middle" fontSize={9} fill="#9ca3af">{n}</text><text x={CX-5} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af">{n}</text></g>))}
-        {/* 대칭축 */}
         {sym==='x축'&&<line x1={6} y1={CY} x2={W-6} y2={CY} stroke="#f59e0b" strokeWidth={2} strokeDasharray="5,3"/>}
         {sym==='y축'&&<line x1={CX} y1={6} x2={CX} y2={H-6} stroke="#f59e0b" strokeWidth={2} strokeDasharray="5,3"/>}
         {sym==='원점'&&<circle cx={CX} cy={CY} r={6} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3,2"/>}
         <text x={W/2} y={H-3} textAnchor="middle" fontSize={9} fill="#f59e0b" fontWeight="bold">{sym} 대칭</text>
-        {/* 연결선 */}
         <line x1={tx(px)} y1={ty(py)} x2={tx(rx)} y2={ty(ry)} stroke="#d1d5db" strokeWidth={1} strokeDasharray="3,2"/>
-        {/* P 점 */}
         <circle cx={tx(px)} cy={ty(py)} r={5} fill="#6b7280" stroke="white" strokeWidth={2}/>
         <text x={tx(px)+(px>=0?7:-7)} y={ty(py)-6} textAnchor={px>=0?'start':'end'} fontSize={10} fill="#6b7280" fontWeight="900">P({px},{py})</text>
-        {/* Q 점 */}
         <circle cx={tx(rx)} cy={ty(ry)} r={5} fill="#6366f1" stroke="white" strokeWidth={2}/>
         <text x={tx(rx)+(rx>=0?7:-7)} y={ty(ry)-6} textAnchor={rx>=0?'start':'end'} fontSize={10} fill="#6366f1" fontWeight="900">Q({rx},{ry})</text>
       </svg>
@@ -1012,10 +1006,9 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
 
   const[topicOverrides,setTopicOverrides]=useState({});
   const[overrideSaved,setOverrideSaved]=useState({});
-  // 세션별 저장된 편집: {0:{solText,comment}, 1:{...}, ...}
   const[savedEditsMap,setSavedEditsMap]=useState({});
   const[sessionLoaded,setSessionLoaded]=useState(false);
-  const[corrected,setCorrected]=useState({});  // 오답 수정 체크: {0:true, 2:true, ...}
+  const[corrected,setCorrected]=useState({});
 
   const[edits,setEdits]=useState(()=>{
     const init={};
@@ -1068,11 +1061,10 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     setEdits(prev=>{
       const updated={...prev};
       qs.forEach((q,i)=>{
-        if(savedEditsMap[i])return; // 이미 세션별 저장 편집이 있으면 건너뜀
+        if(savedEditsMap[i])return;
         const topic=String(q.topic||q.meta?.type||'');
         const override=topicOverrides[topic];
         if(!override)return;
-        // 하위 호환: 이전엔 string, 지금은 {solText,comment} 객체
         const solText=typeof override==='object'?(override.solText||''):override;
         const comment=typeof override==='object'?(override.comment||''):'';
         if(solText||comment){
@@ -1097,17 +1089,16 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       setSavedEditsMap(prev=>({...prev,[i]:{solText:e.solText||'',comment:e.comment||''}}));
     }catch(err){
       alert('세션 저장 실패: '+err.message);
-      console.warn('세션 저장 실패:',err.message);
     }
   };
 
   const toggleEditing=(i)=>{
     const e=edits[i]||{};
-    if(e.editing)saveSessionEdit(i); // 완료 누를 때 저장
+    if(e.editing)saveSessionEdit(i);
     setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
   };
 
-  // 다음 해설에 반영: solText + comment 모두 저장 (코멘트 없어도 가능)
+  // 다음 해설에 반영: 코멘트 없어도 solText만으로 저장 가능
   const saveOverride=async(i)=>{
     const q=qs[i];
     const e=edits[i]||{};
@@ -1117,12 +1108,10 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     const topic=String(q.topic||q.meta?.type||'');
     if(!topic){alert('이 문제에는 topic 정보가 없어 저장할 수 없습니다.');return;}
     try{
-      // 세션 편집도 함께 저장
       await saveSessionEdit(i);
       const overrideVal={solText,comment,updatedAt:Date.now()};
       await db.collection('teacherSettings').doc('explanationOverrides').set(
-        {[topic]:overrideVal,updatedAt:Date.now()},
-        {merge:true}
+        {[topic]:overrideVal,updatedAt:Date.now()},{merge:true}
       );
       setTopicOverrides(prev=>({...prev,[topic]:overrideVal}));
       setOverrideSaved(prev=>({...prev,[i]:true}));
@@ -1134,7 +1123,6 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     if(!txt)return'';
     const result=[];
     const s=String(txt);
-    // $$...$$ = display(블록), $...$ = inline 순으로 우선 매칭
     const re=/(\$\$[\s\S]*?\$\$|\$[^\$\n]+\$)/g;
     let lastIdx=0,m;
     while((m=re.exec(s))!==null){
@@ -1143,7 +1131,6 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       const isDisplay=token.startsWith('$$');
       const inner=isDisplay?token.slice(2,-2).trim():token.slice(1,-1);
       try{
-        // output:'mathml' → SVG를 전혀 사용하지 않아 Tailwind svg{display:block} 충돌 없음
         const rendered=window.katex
           ?window.katex.renderToString(inner,{throwOnError:false,displayMode:isDisplay,strict:false,output:'mathml'})
           :isDisplay?`<div style="font-style:italic;text-align:center;margin:.4em 0">${esc(inner)}</div>`:`<em>${esc(inner)}</em>`;
@@ -1157,29 +1144,23 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     return result.join('');
   };
 
-  // mode: 'student' | 'teacher-large' | 'teacher'
   const doPrint=(mode='teacher')=>{
     const isStudent=mode==='student';
-    const isLarge=mode==='teacher-large'||mode==='student';
-    const showSol=!isStudent; // 학생용은 해설·정답 숨김
     const pw=window.open('','_blank','width=900,height=1200');
     if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
+    const isLarge=mode==='teacher-large'||mode==='student';
+    const showSol=!isStudent;
     const docTitle=isStudent?'검정고시 연습 문제지':mode==='teacher-large'?'검정고시 연습 문제·해설지 (큰글씨)':'검정고시 연습 문제·해설지';
-
-    // 모든 모드: 페이지당 3문제 고정
     const pageGroups=[];
     for(let i=0;i<qs.length;i+=3)pageGroups.push({startIdx:i,items:qs.slice(i,i+3)});
     const total=pageGroups.length;
-
-    // 모드별 CSS 폰트 크기
     const sz=isLarge
       ?{qb:'19px',ch:'17px',qn:'17px',ans:'15px',sol:'14px',meta:'12px',topic:'11px',title:'18px',footer:'12px',cont:'11px'}
       :{qb:'13px',ch:'12px',qn:'13px',ans:'12px',sol:'11.5px',meta:'11px',topic:'10px',title:'17px',footer:'11px',cont:'10px'};
-
     let pages='';
     for(let pi=0;pi<total;pi++){
       const{startIdx,items:pqs}=pageGroups[pi];
-      const isLastPage=pi===total-1;
+      const isLast=pi===total-1;
       const hdr=pi===0
         ?`<div class="title-block"><div class="title">${docTitle}</div><div class="meta">${esc((studentName?studentName+' · ':'')+esc(log.type||'연습')+' · '+fmtDate(log.date)+' '+(log.time||''))}</div></div>`
         :`<div class="cont-hdr">${esc(studentName||'연습')} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
@@ -1202,7 +1183,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         const topicHtml=(showSol&&q.topic)?`<div class="topic">[${esc(q.topic)}]${q.examSource?' · 📌 '+esc(q.examSource):''}</div>`:'';
         return`<div class="question"><div class="q-head"><span class="qn">${i+1}.</span><span class="qb">${esc(hasFull?q.qFull:q.qTxt)}</span>${qrHtml}</div>${topicHtml}${choHtml}${ansHtml}${solHtml}${commentHtml}</div>`;
       }).join('');
-      pages+=`<div class="${isLastPage?'page':'page pb'}">${hdr}${qsHtml}${isLastPage?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
+      pages+=`<div class="${isLast?'page':'page pb'}">${hdr}${qsHtml}${isLast?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
     }
     pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${docTitle}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><style>
       *{box-sizing:border-box;margin:0;padding:0;}
@@ -1264,7 +1245,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         📄 <b>학생 제공용</b>: 정답·해설 없이 문제만 (큰 글씨) &nbsp;|&nbsp; 🔡 <b>큰글씨 보기</b>: 해설 포함, 학생이 읽기 쉬운 큰 글씨 &nbsp;|&nbsp; 📋 <b>기본</b>: 정답·해설 포함 기본 크기
       </div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
-      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [코멘트 추가] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>📚 다음 해설에 반영</b> 버튼을 누르면 같은 유형의 다음 학생 해설에 이 풀이방식이 자동 적용됩니다.</div>
+      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
 
       <style dangerouslySetInnerHTML={{__html:`
         @media print {
@@ -1375,7 +1356,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
                         </div>
                       ):(
                         <button onClick={()=>toggleEditing(i)} className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg">
-                          ✏️ {e.comment?'코멘트 수정':'코멘트 추가'}
+                          ✏️ {e.solText||e.comment?'해설 수정':'해설 추가'}
                         </button>
                       )}
                     </div>
@@ -2225,9 +2206,3 @@ function genMiddleMock(domain){
   const key=domain||pick(Object.keys(MID_DOMAIN_GENS));
   return MID_DOMAIN_GENS[key]();
 }
-
-/* ===== SVG BASE COMPONENTS ===== */
-
-</script>
-
-<!-- ===== UI 컴포넌트 ===== -->

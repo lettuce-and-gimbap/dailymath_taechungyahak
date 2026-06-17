@@ -1,3 +1,4 @@
+// === js/components/home.js ===
 function calcStreak(activeDates){
   if(!activeDates?.length)return{total:0,streak:0};
   const u=[...new Set(activeDates)].sort((a,b)=>b.localeCompare(a));const total=u.length;
@@ -319,7 +320,3 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     </div>
   </div>);
 }
-
-/* ===== DAILY PRACTICE TAB ===== */
-
-</script>

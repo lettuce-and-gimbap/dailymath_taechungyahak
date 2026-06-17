@@ -1,3 +1,4 @@
+// === js/components/feedback.js ===
 function StudentFeedbackPanel(){
   const[msgs,setMsgs]=React.useState([]);const[loading,setLoading]=React.useState(false);
   const load=async()=>{setLoading(true);try{const snap=await db.collection('studentFeedback').orderBy('sentAt','desc').limit(30).get();const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setMsgs(arr);}catch(e){}setLoading(false);};
@@ -268,6 +269,3 @@ var QUOTE_BGS=[
 ];
 
 
-</script>
-
-<!-- ===== 대시보드 ===== -->

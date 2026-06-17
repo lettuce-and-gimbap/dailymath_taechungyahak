@@ -1,3 +1,4 @@
+// === js/generators/highschool.js ===
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);
@@ -1023,4 +1024,3 @@ function genMockGeometry(){
    ③ 유리함수 선지 "y=−3/(x−2)+2"  → VF 세로분수
    ④ 기타(좌표, 정수, 방정식 등)    → 텍스트 그대로 */
 
-</script>

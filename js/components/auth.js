@@ -1,3 +1,4 @@
+// === js/components/auth.js ===
 function DarkToggle({className}){
   const[dark,setDark]=React.useState(()=>typeof document!=='undefined'&&document.body.classList.contains('dark'));
   const toggle=()=>{
@@ -63,7 +64,3 @@ function AuthScreen({onLogin}){
     </div>
   </div>);
 }
-
-/* ===== STREAK CALCULATOR ===== */
-
-</script>

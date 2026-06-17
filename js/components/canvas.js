@@ -1,3 +1,4 @@
+// === js/components/canvas.js ===
 function Grid({W,H,SC,cx,cy}){
   // cx/cy: 원점의 픽셀 위치 (팬 이동 반영됨), 범위 ±12까지 확장
   const rX=Math.min(12,Math.ceil(Math.max(cx,W-cx)/SC)+1);
@@ -498,7 +499,3 @@ function QText({v}){
     return <VF key={i} n={num.replace('−','-')} d="x"/>;
   })}</>;
 }
-
-/* ===== AUTH SCREEN ===== */
-
-</script>

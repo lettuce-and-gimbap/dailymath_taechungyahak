@@ -1,3 +1,4 @@
+// === js/constants.js ===
 var {useState,useRef,useCallback,useEffect,useMemo}=React;
 var db=window._db;
 
@@ -332,4 +333,5 @@ var weekDatesFrom=monday=>{
 var saveUser=async(data)=>{try{await db.collection('users').doc(data.name).set(data,{merge:true})}catch(e){console.error(e)}};
 var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).get();return d.exists?d.data():null}catch(e){return null}};
 var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
+
 
