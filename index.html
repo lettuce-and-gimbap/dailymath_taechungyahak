@@ -44,8 +44,8 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;padding:0}
 .tab-scroll>*{max-width:none}
 .tab-scroll::-webkit-scrollbar{display:none}
 svg{touch-action:none}
-/* Tailwind Preflight가 svg{display:block}을 강제해 KaTeX 수식 기호(√,∫ 등)가 깨지는 문제 수정 */
-.katex svg{display:inline!important;vertical-align:middle}
+/* MathML <msqrt> 등 기호 렌더링: 브라우저 내장 수학 폰트 지정 (KaTeX_Main엔 MATH 테이블 없음) */
+math{font-family:math,'Cambria Math','Latin Modern Math','STIX Two Math',serif}
 .katex{line-height:1.2}
 .katex-display{display:block;text-align:center;margin:.5em 0}
 /* 세로 스크롤바만 얇게, 가로 스크롤바는 완전 숨김 */

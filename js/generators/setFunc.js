@@ -950,8 +950,8 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   // 세션 고유 ID: Firestore에 편집 내용 저장/로드에 사용
-  const sessionId=studentId&&log.date
-    ?`${studentId}_${log.date}_${(log.time||'').replace(/[^0-9]/g,'')}`
+  const sessionId=studentId
+    ?`${studentId}_${(log.date||'nd')}_${(log.time||'').replace(/[^0-9]/g,'')}`
     :null;
 
   const[topicOverrides,setTopicOverrides]=useState({});
