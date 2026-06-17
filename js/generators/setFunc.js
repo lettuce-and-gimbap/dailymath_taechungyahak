@@ -943,20 +943,22 @@ function GraphPreview({q}){
    - 학생 기록·선생님 모드에서 공용 사용
    - 선생님 코멘트·해설 수정 기능 포함 ($ 수식 $ 지원)
    ═══════════════════════════════════════════════════════════ */
-function SessionPrintModal({log,studentName,onClose}){
+function SessionPrintModal({log,studentName,studentId,onClose}){
   if(!log)return null;
   const ORD=['①','②','③','④','⑤'];
   const qs=log.questions||[];
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+  // 세션 고유 ID: Firestore에 편집 내용 저장/로드에 사용
+  const sessionId=studentId&&log.date
+    ?`${studentId}_${log.date}_${(log.time||'').replace(/[^0-9]/g,'')}`
+    :null;
+
   const[topicOverrides,setTopicOverrides]=useState({});
   const[overrideSaved,setOverrideSaved]=useState({});
-
-  useEffect(()=>{
-    db.collection('teacherSettings').doc('explanationOverrides').get()
-      .then(snap=>{if(snap.exists)setTopicOverrides(snap.data()||{});})
-      .catch(()=>{});
-  },[]);
+  // 세션별 저장된 편집: {0:{solText,comment}, 1:{...}, ...}
+  const[savedEditsMap,setSavedEditsMap]=useState({});
+  const[sessionLoaded,setSessionLoaded]=useState(false);
 
   const[edits,setEdits]=useState(()=>{
     const init={};
@@ -967,16 +969,52 @@ function SessionPrintModal({log,studentName,onClose}){
     return init;
   });
 
-  // 오버라이드가 로드되면 topic이 일치하고 solText가 비어 있는 문제에만 적용
+  // 1단계: 이 세션에 저장된 편집 내용 로드
+  useEffect(()=>{
+    if(!sessionId){setSessionLoaded(true);return;}
+    db.collection('sessionEdits').doc(sessionId).get()
+      .then(snap=>{
+        if(snap.exists){
+          const data=snap.data()||{};
+          const map={};
+          qs.forEach((_,i)=>{if(data[`q${i}`])map[i]=data[`q${i}`];});
+          setSavedEditsMap(map);
+          setEdits(prev=>{
+            const updated={...prev};
+            Object.entries(map).forEach(([idx,saved])=>{
+              const i=Number(idx);
+              updated[i]={...updated[i],...saved};
+            });
+            return updated;
+          });
+        }
+        setSessionLoaded(true);
+      })
+      .catch(()=>setSessionLoaded(true));
+  },[sessionId]);
+
+  // 2단계: 세션 편집 로드 완료 후 topic 오버라이드 로드
+  useEffect(()=>{
+    if(!sessionLoaded)return;
+    db.collection('teacherSettings').doc('explanationOverrides').get()
+      .then(snap=>{if(snap.exists)setTopicOverrides(snap.data()||{});})
+      .catch(()=>{});
+  },[sessionLoaded]);
+
+  // topic 오버라이드를 세션 편집이 없는 문제에만 적용
   useEffect(()=>{
     if(Object.keys(topicOverrides).length===0)return;
     setEdits(prev=>{
       const updated={...prev};
       qs.forEach((q,i)=>{
+        if(savedEditsMap[i])return; // 이미 세션별 저장 편집이 있으면 건너뜀
         const topic=String(q.topic||q.meta?.type||'');
         const override=topicOverrides[topic];
-        if(override&&!updated[i].solText){
-          updated[i]={...updated[i],solText:override,overrideApplied:true};
+        if(!override)return;
+        // 하위 호환: 이전엔 string, 지금은 {solText,comment} 객체
+        const solText=typeof override==='object'?(override.solText||''):override;
+        if(solText){
+          updated[i]={...updated[i],solText,overrideApplied:true};
         }
       });
       return updated;
@@ -984,8 +1022,27 @@ function SessionPrintModal({log,studentName,onClose}){
   },[topicOverrides]);
 
   const setEdit=(i,field,val)=>setEdits(prev=>({...prev,[i]:{...prev[i],[field]:val}}));
-  const toggleEditing=(i)=>setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
 
+  // 편집 패널 닫을 때 Firestore에 저장
+  const saveSessionEdit=async(i)=>{
+    if(!sessionId)return;
+    const e=edits[i]||{};
+    try{
+      await db.collection('sessionEdits').doc(sessionId).set(
+        {[`q${i}`]:{solText:e.solText||'',comment:e.comment||''},updatedAt:Date.now()},
+        {merge:true}
+      );
+      setSavedEditsMap(prev=>({...prev,[i]:{solText:e.solText||'',comment:e.comment||''}}));
+    }catch(err){console.warn('세션 저장 실패:',err.message);}
+  };
+
+  const toggleEditing=(i)=>{
+    const e=edits[i]||{};
+    if(e.editing)saveSessionEdit(i); // 완료 누를 때 저장
+    setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
+  };
+
+  // 다음 해설에 반영: solText + comment 모두 저장
   const saveOverride=async(i)=>{
     const q=qs[i];
     const e=edits[i]||{};
@@ -993,11 +1050,12 @@ function SessionPrintModal({log,studentName,onClose}){
     const topic=String(q.topic||q.meta?.type||'');
     if(!topic){alert('이 문제에는 topic 정보가 없어 저장할 수 없습니다.');return;}
     try{
+      const overrideVal={solText:e.solText||'',comment:e.comment.trim()};
       await db.collection('teacherSettings').doc('explanationOverrides').set(
-        {[topic]:e.comment.trim(),updatedAt:Date.now()},
+        {[topic]:overrideVal,updatedAt:Date.now()},
         {merge:true}
       );
-      setTopicOverrides(prev=>({...prev,[topic]:e.comment.trim()}));
+      setTopicOverrides(prev=>({...prev,[topic]:overrideVal}));
       setOverrideSaved(prev=>({...prev,[i]:true}));
       setTimeout(()=>setOverrideSaved(prev=>({...prev,[i]:false})),2500);
     }catch(err){alert('저장 실패: '+err.message);}
@@ -1160,7 +1218,8 @@ function SessionPrintModal({log,studentName,onClose}){
                       <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-black text-amber-700">📖 풀이 과정</span>
-                          {e.overrideApplied&&<span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full">📚 선생님 등록 풀이방식</span>}
+                          {savedEditsMap[i]&&<span className="text-[10px] font-bold bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full">💾 저장됨</span>}
+                          {e.overrideApplied&&!savedEditsMap[i]&&<span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full">📚 이전 수업 풀이방식</span>}
                         </div>
                         <div className="space-y-0.5 leading-relaxed" dangerouslySetInnerHTML={{__html:renderMathHtml(e.solText).replace(/\n/g,'<br/>')}}/>
                       </div>
@@ -1183,7 +1242,7 @@ function SessionPrintModal({log,studentName,onClose}){
                             <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={3} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
-                            <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">완료 ✓</button>
+                            <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">{sessionId?'💾 저장 & 완료':'완료 ✓'}</button>
                             <button
                               onClick={()=>saveOverride(i)}
                               disabled={!e.comment.trim()}

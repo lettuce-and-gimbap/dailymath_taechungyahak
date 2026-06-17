@@ -1519,7 +1519,7 @@ function StudentDetail({student,onBack}){
       })}
     </div>);
     })()}
-    {printLog&&<SessionPrintModal log={printLog} studentName={student.name} onClose={()=>setPrintLog(null)}/>}
+    {printLog&&<SessionPrintModal log={printLog} studentName={student.name} studentId={student.id} onClose={()=>setPrintLog(null)}/>}
   </div>);
 }
 
