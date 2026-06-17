@@ -55,6 +55,7 @@ function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
 
 function VF({n,d}){return(<span style={{display:'inline-flex',flexDirection:'column',alignItems:'center',lineHeight:1.05,fontSize:'0.78em',verticalAlign:'middle',margin:'0 1px'}}><span style={{borderBottom:'1.5px solid currentColor',padding:'0 3px'}}>{n}</span><span style={{padding:'0 3px'}}>{d}</span></span>)}
 function SqR({s='',sz=15}){return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',fontSize:sz+'px',lineHeight:1}}><span style={{fontSize:(sz*1.3)+'px',lineHeight:0.85,fontFamily:"Georgia,'Times New Roman',serif",marginRight:'1px',display:'inline-block'}}>√</span><span style={{borderTop:'1.8px solid currentColor',padding:'1px 2px 0',display:'inline-block',lineHeight:1.15,minWidth:'6px'}}>{s}</span></span>)}
+function KF({tex,block}){return<span dangerouslySetInnerHTML={{__html:autoMathHtml(block?`$$${tex}$$`:`$${tex}$`)}}/>;}
 
 /* ===== CUSTOM HOOKS ===== */
 function useCanvasSize(){
@@ -143,7 +144,8 @@ function RadicalModule({sz}){
       원점에서 x축 방향으로 <strong>{p}</strong>만큼, y축 방향으로 <strong>{q}</strong>만큼 <strong>평행이동</strong>했어요!
     </div>
     <div className="text-center font-bold text-blue-700 bg-blue-50 rounded-2xl py-3 text-base border border-blue-200">
-      y = {aStr}<SqR s={innerStr} sz={16}/>{eqSg(q)} <span className="text-gray-300 mx-2">|</span> 시작점: ({p}, {q})
+      <KF tex={`y=${a===1?'':a===-1?'-':a}\\sqrt{${p===0?'x':p>0?`x-${p}`:`x+${-p}`}}${q===0?'':q>0?`+${q}`:String(q)}`}/>
+      <span className="text-gray-300 mx-2">|</span> 시작점: ({p}, {q})
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
@@ -179,7 +181,8 @@ function RationalModule({sz}){
       원점에서 x축 방향으로 <strong>{p}</strong>만큼, y축 방향으로 <strong>{q}</strong>만큼 <strong>평행이동</strong>했어요!
     </div>
     <div className="text-center font-bold text-purple-700 bg-purple-50 rounded-2xl py-3 text-base border border-purple-200">
-      y = <VF n={k} d={p===0?'x':`x${eqSh(p)}`}/>{eqSg(q)} <span className="text-gray-300 mx-2">|</span> 점근선: x={p}, y={q}
+      <KF tex={`y={${k}\\over ${p===0?'x':p>0?`x-${p}`:`x+${-p}`}}${q===0?'':q>0?`+${q}`:String(q)}`}/>
+      <span className="text-gray-300 mx-2">|</span> 점근선: x={p}, y={q}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
@@ -243,7 +246,8 @@ function QuadraticModule({sz}){
     </div>
     
     <div className="text-center font-bold text-emerald-700 bg-emerald-50 rounded-2xl py-3 text-sm border border-emerald-200">
-      y = {aStr}(x{eqSh(p)})²{eqSg(q)} <span className="text-gray-300 mx-2">|</span> {a>0?'최솟값':'최댓값'}: {Math.round(extreme)} (x∈[{ds},{de}])
+      <KF tex={`y=${a===-1?'-':a===1?'':a}(x${p===0?'':p>0?`-${p}`:`+${-p}`})^{2}${q===0?'':q>0?`+${q}`:String(q)}`}/>
+      <span className="text-gray-300 mx-2">|</span> {a>0?'최솟값':'최댓값'}: {Math.round(extreme)} (x∈[{ds},{de}])
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
@@ -295,43 +299,40 @@ function DistanceModule({sz}){
   else if(Math.abs(la)>0.001){const mx=-lc/la;le.push([cx+mx*SC,0],[cx+mx*SC,H])}
   const sqPerfect=Math.round(Math.sqrt(denSq))**2===denSq;
   
-  const Stepper=({label,val,onMinus,onPlus})=>(<div className="flex items-center gap-1.5 bg-white border border-orange-100 rounded-2xl px-2 py-1.5 shadow-sm">
-    <span className="text-base font-black text-gray-700 whitespace-nowrap" style={{minWidth:'1.6rem',textAlign:'center'}}>{label} =</span>
-    <button onClick={onMinus} className="w-9 h-9 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xl flex-shrink-0">−</button>
-    <span className="w-7 text-center text-lg font-black text-gray-800">{val}</span>
-    <button onClick={onPlus} className="w-9 h-9 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xl flex-shrink-0">+</button>
+  const Stepper=({label,val,onMinus,onPlus})=>(<div className="flex flex-col items-center bg-white border border-orange-100 rounded-2xl px-3 py-2 shadow-sm gap-1">
+    <span className="text-sm font-black text-orange-600">{label}</span>
+    <button onClick={onPlus} className="w-10 h-10 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-2xl">+</button>
+    <span className="w-8 text-center text-xl font-black text-gray-800">{val}</span>
+    <button onClick={onMinus} className="w-10 h-10 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-2xl">−</button>
   </div>);
 
-  // 시각적 표현을 위한 문자열 생성
-  const nStr = `|(${la}×${ptX}) + (${lb<0?`(${lb})`:lb}×${ptY}) + (${lc<0?`(${lc})`:lc})|`;
-  const dStr = `√(${la<0?`(${la})`:la}² + ${lb<0?`(${lb})`:lb}²)`;
   const nCalc = Math.abs(nV);
   const dCalc = sqPerfect ? Math.round(Math.sqrt(denSq)) : `√${denSq}`;
-  
-  // 분자가 0인 경우에도 최종 결과(= 0)가 뜨도록 조건 추가
   const showFinal = (String(nCalc) !== distStr && String(nCalc)+'/'+String(dCalc) !== distStr) || nCalc === 0;
 
+  // KaTeX 수식 생성
+  const laS=la<0?`(${la})`:String(la),lbS=lb<0?`(${lb})`:String(lb),lcS=lc<0?`(${lc})`:String(lc);
+  const distToLatex=s=>{if(!s.includes('/'))return s;const[n,d]=s.split('/');return`\\dfrac{${n}}{${d.startsWith('√')?`\\sqrt{${d.slice(1)}}`:d}}`};
+  const denTex=sqPerfect?String(Math.round(dV)):`\\sqrt{${denSq}}`;
+  const formulaTex=`d=\\dfrac{|${laS}\\times${ptX}+${lbS}\\times${ptY}+${lcS}|}{\\sqrt{${laS}^{2}+${lbS}^{2}}}=\\dfrac{${nCalc}}{${denTex}}${showFinal?`=${distToLatex(distStr)}`:''}`;
+
   return(<div className="space-y-3">
-    <div className="flex flex-wrap gap-3 items-center justify-center">
+    <div className="grid grid-cols-3 gap-2">
       <Stepper label="a" val={la} onMinus={()=>setLA(v=>Math.max(-10,v-1))} onPlus={()=>setLA(v=>Math.min(10,v+1))}/>
       <Stepper label="b" val={lb} onMinus={()=>setLB(v=>Math.max(-10,v-1))} onPlus={()=>setLB(v=>Math.min(10,v+1))}/>
       <Stepper label="c" val={lc} onMinus={()=>setLC(v=>Math.max(-10,v-1))} onPlus={()=>setLC(v=>Math.min(10,v+1))}/>
     </div>
-    
+
     <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded-xl p-3 shadow-sm text-left">
-      <div className="font-bold text-gray-800 mb-1">직선: {la}x {lb>=0?`+${lb}`:lb}y {lc>=0?`+${lc}`:lc} = 0, 점: ({ptX}, {ptY})</div>
+      <div className="font-bold text-gray-800 mb-1">직선: <KF tex={`${la}x${lb>=0?`+${lb}`:lb}y${lc>=0?`+${lc}`:lc}=0`}/>, 점: ({ptX}, {ptY})</div>
       <ul className="list-disc pl-4 space-y-0.5">
-        <li><span className="font-bold">분자</span>: 직선 식의 x, y 자리에 점의 좌표(x, y)를 대입하고 계산한 값의 절댓값</li>
-        <li><span className="font-bold">분모</span>: √((x 앞의 숫자)² + (y 앞의 숫자)²)</li>
+        <li><span className="font-bold">분자</span>: x, y 자리에 점의 좌표 대입 후 절댓값</li>
+        <li><span className="font-bold">분모</span>: <KF tex={`\\sqrt{(x\\text{ 앞})^2+(y\\text{ 앞})^2}`}/></li>
       </ul>
     </div>
 
-    <div className="flex items-center justify-center font-bold text-orange-700 bg-orange-50 rounded-2xl py-3 text-sm border border-orange-200">
-      <span className="mr-2">거리 =</span>
-      <VF n={nStr} d={dStr}/>
-      <span className="mx-2">=</span>
-      <VF n={nCalc} d={dCalc}/>
-      {showFinal && <><span className="mx-2">=</span><span className="text-base text-red-600">{distStr}</span></>}
+    <div className="font-bold text-orange-700 bg-orange-50 rounded-2xl py-3 px-3 border border-orange-200 text-center">
+      <KF block tex={formulaTex}/>
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
@@ -350,6 +351,9 @@ function DistanceModule({sz}){
 function CircleModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[h,setH]=useState(0),[k,setK]=useState(0),[r,setR]=useState(3);
+  const[lineEnabled,setLineEnabled]=useState(false);
+  const[lineDir,setLineDir]=useState('h'); // 'h'=수평(y=n), 'v'=수직(x=n)
+  const[linePos,setLinePos]=useState(0);
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setH(mx);setK(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -358,21 +362,58 @@ function CircleModule({sz}){
   const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r2=ref.current?.getBoundingClientRect();if(!r2)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r2.left-(cx+h*SC),ey-r2.top-(cy-k*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
+
+  // 원-직선 교점 판정
+  const lineDist=lineEnabled?(lineDir==='h'?Math.abs(linePos-k):Math.abs(linePos-h)):null;
+  const lineStatus=lineDist===null?null:lineDist<r?'meet':lineDist===r?'tangent':'apart';
+
+  const circleTex=`(x${h===0?'':h>0?`-${h}`:`+${-h}`})^{2}+(y${k===0?'':k>0?`-${k}`:`+${-k}`})^{2}=${r}^{2}`;
+
   return(<div className="space-y-3">
-    <div className="flex flex-wrap gap-3 items-center">
-      <label className="flex items-center gap-2 text-base font-bold text-gray-700">반지름 r:
-        <input type="range" min={1} max={6} value={r} onChange={e=>setR(+e.target.value)} className="w-28 accent-teal-500"/>
+    <div className="flex flex-wrap gap-2 items-center">
+      <label className="flex items-center gap-2 text-base font-bold text-gray-700">r:
+        <input type="range" min={1} max={6} value={r} onChange={e=>setR(+e.target.value)} className="w-24 accent-teal-500"/>
         <span className="font-bold text-teal-600 w-5">{r}</span>
       </label>
-      <span className="text-sm bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">🟢 중심점 드래그 · 배경 길게 누르면 이동</span>
+      <span className="text-xs bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">🟢 중심 드래그 · 배경 길게 누르면 이동</span>
     </div>
+
+    {/* 직선 추가 UI */}
+    <div className="flex flex-wrap gap-2 items-center">
+      <button onClick={()=>{setLineEnabled(!lineEnabled);setLinePos(0);}}
+        className={`px-3 py-2 rounded-xl font-bold text-sm border-2 ${lineEnabled?'bg-rose-500 text-white border-rose-500':'bg-white text-rose-600 border-rose-300'}`}>
+        {lineEnabled?'직선 제거 ✕':'➕ 직선 추가'}
+      </button>
+      {lineEnabled&&<>
+        <button onClick={()=>setLineDir('h')} className={`px-3 py-2 rounded-xl font-bold text-sm border-2 ${lineDir==='h'?'bg-rose-100 text-rose-700 border-rose-400':'bg-white text-gray-500 border-gray-200'}`}>수평 y=k</button>
+        <button onClick={()=>setLineDir('v')} className={`px-3 py-2 rounded-xl font-bold text-sm border-2 ${lineDir==='v'?'bg-rose-100 text-rose-700 border-rose-400':'bg-white text-gray-500 border-gray-200'}`}>수직 x=k</button>
+      </>}
+    </div>
+    {lineEnabled&&<div className="flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-2">
+      <span className="text-base font-black text-rose-700">{lineDir==='h'?'y':'x'} =</span>
+      <button onClick={()=>setLinePos(v=>Math.max(-12,v-1))} className="w-10 h-10 rounded-full bg-rose-200 text-rose-700 font-bold flex items-center justify-center text-2xl">−</button>
+      <span className="w-8 text-center text-xl font-black text-gray-800">{linePos}</span>
+      <button onClick={()=>setLinePos(v=>Math.min(12,v+1))} className="w-10 h-10 rounded-full bg-rose-200 text-rose-700 font-bold flex items-center justify-center text-2xl">+</button>
+      <span className={`ml-2 text-sm font-bold px-3 py-1 rounded-full ${lineStatus==='meet'?'bg-green-100 text-green-700':lineStatus==='tangent'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-600'}`}>
+        {lineStatus==='meet'?'✓ 2점에서 만남':lineStatus==='tangent'?'◎ 접선 (1점)':'✗ 만나지 않음'}
+      </span>
+    </div>}
+
     <div className="text-center font-bold text-teal-700 bg-teal-50 rounded-2xl py-3 text-sm border border-teal-200">
-      (x{eqSh(h)})² + (y{eqSh(k)})² = {r}² <span className="text-gray-300 mx-2">|</span> 중심: ({h},{k}), r={r}
+      <KF tex={circleTex}/> <span className="text-gray-300 mx-2">|</span> 중심: ({h},{k}), r={r}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      {lineEnabled&&(lineDir==='h'
+        ?<line x1={0} y1={cy-linePos*SC} x2={W} y2={cy-linePos*SC} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
+        :<line x1={cx+linePos*SC} y1={0} x2={cx+linePos*SC} y2={H} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
+      )}
+      {lineEnabled&&(lineDir==='h'
+        ?<text x={8} y={Math.max(16,cy-linePos*SC-6)} fontSize={14} fill="#e11d48" fontWeight="bold">y={linePos}</text>
+        :<text x={Math.min(cx+linePos*SC+6,W-44)} y={16} fontSize={14} fill="#e11d48" fontWeight="bold">x={linePos}</text>
+      )}
       <circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="rgba(20,184,166,0.1)" stroke="#0d9488" strokeWidth={2.5}/>
       <line x1={cx+h*SC} y1={cy-k*SC} x2={cx+(h+r)*SC} y2={cy-k*SC} stroke="#0d9488" strokeWidth={1.5} strokeDasharray="5,3"/>
       <text x={(cx+h*SC+cx+(h+r)*SC)/2} y={cy-k*SC-7} textAnchor="middle" fontSize={11} fill="#0d9488" fontWeight="bold">r={r}</text>
