@@ -88,7 +88,7 @@ function ExplanationBox({q,className=''}) {
       <ol className="space-y-1">
         {q.sol.map((s,i)=>(<li key={i} className="flex gap-1.5">
           <span className="shrink-0 font-black text-amber-600">{i+1===q.sol.length?'➡':`${i+1}.`}</span>
-          <span>{s}</span>
+          <span dangerouslySetInnerHTML={{__html:autoMathHtml(s)}}/>
         </li>))}
       </ol>
     </div>;

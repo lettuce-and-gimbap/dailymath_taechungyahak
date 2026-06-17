@@ -184,7 +184,7 @@ function SolutionBox({q}){
       <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 fade-in">
         <div className="text-xs font-black text-amber-600 mb-3 tracking-wide">📖 풀이 과정 (천천히 따라오세요)</div>
         <div className="space-y-2">
-          {q.sol.map((s,i)=><Row key={i} step={i+1===q.sol.length?'정답':`${i+1}단계`}>{s}</Row>)}
+          {q.sol.map((s,i)=><Row key={i} step={i+1===q.sol.length?'정답':`${i+1}단계`}><span dangerouslySetInnerHTML={{__html:autoMathHtml(s)}}/></Row>)}
         </div>
       </div>
     );
@@ -846,8 +846,8 @@ function HistoryTab({userData, feedbacks}){
         {log.questions.map((q,j)=><div key={j} className={`rounded-xl p-3 text-sm ${q.isOk?'bg-green-50':'bg-red-50'}`}>
           <div className="flex gap-2"><span className="font-bold text-gray-500">Q{j+1}.</span><span className="font-bold text-gray-800 flex-1">{q.qTxt}</span><span className={`font-black ${q.isOk?'text-green-600':'text-red-500'}`}>{q.isOk?'O':'X'}</span></div>
           {q.examSource&&<div className="mt-1 pl-6 text-xs text-blue-500 font-bold">📌 {q.examSource}</div>}
-          {!q.isOk&&<div className="mt-1 pl-6 text-xs text-gray-500">내 답: {q.uAns} → 정답: <span className="text-indigo-600 font-bold">{q.cAns}</span></div>}
-          {q.explanation&&<div className="mt-2 pl-6 text-xs text-amber-800 leading-relaxed">💡 {q.explanation}</div>}
+          {!q.isOk&&<div className="mt-1 pl-6 text-xs text-gray-500">내 답: <span dangerouslySetInnerHTML={{__html:autoMathHtml(String(q.uAns??''))}}/> → 정답: <span className="text-indigo-600 font-bold" dangerouslySetInnerHTML={{__html:autoMathHtml(String(q.cAns??''))}}/></div>}
+          {q.explanation&&<div className="mt-2 pl-6 text-xs text-amber-800 leading-relaxed">💡 <span dangerouslySetInnerHTML={{__html:autoMathHtml(q.explanation)}}/></div>}
           {q.timeSec!==undefined&&<div className="mt-0.5 pl-6 text-xs text-indigo-400 font-bold">⏱️ {q.timeSec}초</div>}
         </div>)}
       </div>)}
