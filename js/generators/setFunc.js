@@ -1105,17 +1105,38 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     const isStudent=mode==='student';
     const pw=window.open('','_blank','width=900,height=1200');
     if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
-    const total=Math.ceil(qs.length/3);
     const docTitle=isStudent?'검정고시 연습 문제지':'검정고시 연습 문제·해설지';
+
+    // 학생용: 그래프 수에 따라 페이지당 문제 수 동적 조정 (5 → 4 → 3)
+    // 교사용: 고정 3문제
+    const buildPages=(arr)=>{
+      if(!isStudent){
+        const pages=[];
+        for(let i=0;i<arr.length;i+=3)pages.push({startIdx:i,items:arr.slice(i,i+3)});
+        return pages;
+      }
+      const pages=[];let idx=0;
+      while(idx<arr.length){
+        const MAX=5;
+        const cands=arr.slice(idx,idx+MAX);
+        const gc=cands.filter(q=>q.graph).length;
+        const size=gc>=2?3:gc===1?4:5;
+        pages.push({startIdx:idx,items:arr.slice(idx,idx+size)});
+        idx+=size;
+      }
+      return pages;
+    };
+    const pageGroups=buildPages(qs);
+    const total=pageGroups.length;
     let pages='';
     for(let pi=0;pi<total;pi++){
-      const pqs=qs.slice(pi*3,pi*3+3);
+      const{startIdx,items:pqs}=pageGroups[pi];
       const isLast=pi===total-1;
       const hdr=pi===0
         ?`<div class="title-block"><div class="title">${docTitle}</div><div class="meta">${esc((studentName?studentName+' · ':'')+esc(log.type||'연습')+' · '+fmtDate(log.date)+' '+(log.time||''))}</div></div>`
         :`<div class="cont-hdr">${esc(studentName||'연습')} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
       const qsHtml=pqs.map((q,j)=>{
-        const i=pi*3+j;
+        const i=startIdx+j;
         const e=edits[i]||{};
         const hasFull=q.qFull&&Array.isArray(q.choices);
         const correct=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
