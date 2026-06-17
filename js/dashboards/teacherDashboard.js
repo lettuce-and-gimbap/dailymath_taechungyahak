@@ -556,19 +556,6 @@ function StudentDetail({student,onBack}){
               : '자기효능감이 높을수록 학습 지속성이 향상됩니다. 계속 격려하세요.'}
           </td>
         </tr>
-      </table>
-    </div>
-
-    <div style="width:794px;background:white;padding:36px 42px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
-      ${sectionHead('🔍','행동 및 학습 패턴 분석 (계속)')}
-      <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px;">
-        <colgroup><col style="width:110px"/><col style="width:64px"/><col/><col style="width:150px"/></colgroup>
-        <tr style="background:#3730a3;color:white;">
-          <th style="padding:7px 10px;text-align:center;font-size:11px;">분석 항목</th>
-          <th style="padding:7px 10px;text-align:center;font-size:11px;">상태</th>
-          <th style="padding:7px 10px;text-align:left;font-size:11px;">상세 시사점</th>
-          <th style="padding:7px 10px;text-align:left;font-size:11px;">교수자 제언</th>
-        </tr>
         <!-- 교사 개입 오답 수정률 -->
         <tr style="background:#f0fdf4;page-break-inside:avoid;">
           <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
@@ -1045,7 +1032,12 @@ function StudentDetail({student,onBack}){
         selfEffN > 0 ? `점검 필요 (${selfEffN}회)` : '✅ 양호', selfEffN > 0 ? '#d97706' : '#16a34a',
         selfEffFormula, selfEffTheory, selfEffStudent, selfEffAction, selfEffWarn)}
 
-      <div style="page-break-before:always;break-before:page"></div>
+    </div>
+
+    <div style="width:794px;background:white;padding:34px 40px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#1e293b;page-break-after:always;">
+
+      ${pageHeader2('행동 패턴 지표 상세 해설 (계속)')}
+
       ${dc('오답 수정률', '교사 개입 오답 수정률',
         corrTotal===0?'해당 없음':corrRate>=70?`✅ ${corrRate}% (양호)`:corrRate>=40?`⚡ ${corrRate}% (보통)`:`⚠️ ${corrRate}% (주의)`,
         corrTotal===0?'#94a3b8':corrRate>=70?'#16a34a':corrRate>=40?'#d97706':'#dc2626',
