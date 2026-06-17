@@ -1003,10 +1003,6 @@ function SessionPrintModal({log,studentName,onClose}){
     }catch(err){alert('저장 실패: '+err.message);}
   };
 
-  // Tailwind CDN Preflight의 svg{display:block} 충돌을 피하기 위해
-  // KaTeX 렌더 결과의 <svg>에 직접 inline style 삽입
-  const fixKatexSvg=html=>html.replace(/<svg /g,'<svg style="display:inline!important;vertical-align:middle;overflow:visible" ');
-
   const renderMathHtml=txt=>{
     if(!txt)return'';
     const result=[];
@@ -1020,8 +1016,9 @@ function SessionPrintModal({log,studentName,onClose}){
       const isDisplay=token.startsWith('$$');
       const inner=isDisplay?token.slice(2,-2).trim():token.slice(1,-1);
       try{
+        // output:'mathml' → SVG를 전혀 사용하지 않아 Tailwind svg{display:block} 충돌 없음
         const rendered=window.katex
-          ?fixKatexSvg(window.katex.renderToString(inner,{throwOnError:false,displayMode:isDisplay,strict:false}))
+          ?window.katex.renderToString(inner,{throwOnError:false,displayMode:isDisplay,strict:false,output:'mathml'})
           :isDisplay?`<div style="font-style:italic;text-align:center;margin:.4em 0">${esc(inner)}</div>`:`<em>${esc(inner)}</em>`;
         result.push(isDisplay?`<div style="text-align:center;margin:.4em 0">${rendered}</div>`:rendered);
       }catch(e){
