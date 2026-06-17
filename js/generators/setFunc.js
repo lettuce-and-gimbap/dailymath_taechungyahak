@@ -1013,8 +1013,9 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         if(!override)return;
         // 하위 호환: 이전엔 string, 지금은 {solText,comment} 객체
         const solText=typeof override==='object'?(override.solText||''):override;
-        if(solText){
-          updated[i]={...updated[i],solText,overrideApplied:true};
+        const comment=typeof override==='object'?(override.comment||''):'';
+        if(solText||comment){
+          updated[i]={...updated[i],...(solText&&{solText}),...(comment&&{comment}),overrideApplied:true};
         }
       });
       return updated;
@@ -1033,7 +1034,10 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         {merge:true}
       );
       setSavedEditsMap(prev=>({...prev,[i]:{solText:e.solText||'',comment:e.comment||''}}));
-    }catch(err){console.warn('세션 저장 실패:',err.message);}
+    }catch(err){
+      alert('세션 저장 실패: '+err.message);
+      console.warn('세션 저장 실패:',err.message);
+    }
   };
 
   const toggleEditing=(i)=>{
@@ -1042,15 +1046,19 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
   };
 
-  // 다음 해설에 반영: solText + comment 모두 저장
+  // 다음 해설에 반영: solText + comment 모두 저장 (코멘트 없어도 가능)
   const saveOverride=async(i)=>{
     const q=qs[i];
     const e=edits[i]||{};
-    if(!e.comment.trim()){alert('코멘트를 먼저 입력해주세요.');return;}
+    const solText=e.solText||'';
+    const comment=(e.comment||'').trim();
+    if(!solText&&!comment){alert('해설 또는 코멘트를 먼저 입력해주세요.');return;}
     const topic=String(q.topic||q.meta?.type||'');
     if(!topic){alert('이 문제에는 topic 정보가 없어 저장할 수 없습니다.');return;}
     try{
-      const overrideVal={solText:e.solText||'',comment:e.comment.trim()};
+      // 세션 편집도 함께 저장
+      await saveSessionEdit(i);
+      const overrideVal={solText,comment,updatedAt:Date.now()};
       await db.collection('teacherSettings').doc('explanationOverrides').set(
         {[topic]:overrideVal,updatedAt:Date.now()},
         {merge:true}
@@ -1245,12 +1253,12 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
                             <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">{sessionId?'💾 저장 & 완료':'완료 ✓'}</button>
                             <button
                               onClick={()=>saveOverride(i)}
-                              disabled={!e.comment.trim()}
+                              disabled={!e.solText?.trim()&&!e.comment?.trim()}
                               className={`px-4 py-1.5 rounded-lg text-sm font-black transition-all ${overrideSaved[i]?'bg-green-500 text-white':'bg-amber-500 text-white disabled:opacity-40 active:scale-95'}`}
                             >
                               {overrideSaved[i]?'✅ 반영 완료!':'📚 다음 해설에 반영'}
                             </button>
-                            {e.comment.trim()&&<span className="text-[10px] text-gray-400">같은 유형 문제의 풀이방식으로 저장됩니다</span>}
+                            {(e.solText?.trim()||e.comment?.trim())&&<span className="text-[10px] text-gray-400">같은 유형 문제의 풀이방식으로 저장됩니다</span>}
                           </div>
                         </div>
                       ):(

@@ -2845,34 +2845,150 @@ function GraphPreview({q}){
    - 학생 기록·선생님 모드에서 공용 사용
    - 선생님 코멘트·해설 수정 기능 포함 ($ 수식 $ 지원)
    ═══════════════════════════════════════════════════════════ */
-function SessionPrintModal({log,studentName,onClose}){
+function SessionPrintModal({log,studentName,studentId,onClose}){
   if(!log)return null;
   const ORD=['①','②','③','④','⑤'];
   const qs=log.questions||[];
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+  // 세션 고유 ID: Firestore에 편집 내용 저장/로드에 사용
+  const sessionId=studentId
+    ?`${studentId}_${(log.date||'nd')}_${(log.time||'').replace(/[^0-9]/g,'')}`
+    :null;
+
+  const[topicOverrides,setTopicOverrides]=useState({});
+  const[overrideSaved,setOverrideSaved]=useState({});
+  const[savedEditsMap,setSavedEditsMap]=useState({});
+  const[sessionLoaded,setSessionLoaded]=useState(false);
+
   const[edits,setEdits]=useState(()=>{
     const init={};
     qs.forEach((q,i)=>{
       const solDefault=Array.isArray(q.sol)&&q.sol.length?q.sol.join('\n'):(q.explanation||'');
-      init[i]={solText:solDefault,comment:'',editing:false};
+      init[i]={solText:solDefault,comment:'',editing:false,overrideApplied:false};
     });
     return init;
   });
+
+  // 1단계: 이 세션에 저장된 편집 내용 로드
+  useEffect(()=>{
+    if(!sessionId){setSessionLoaded(true);return;}
+    db.collection('sessionEdits').doc(sessionId).get()
+      .then(snap=>{
+        if(snap.exists){
+          const data=snap.data()||{};
+          const map={};
+          qs.forEach((_,i)=>{if(data[`q${i}`])map[i]=data[`q${i}`];});
+          setSavedEditsMap(map);
+          setEdits(prev=>{
+            const updated={...prev};
+            Object.entries(map).forEach(([idx,saved])=>{
+              const i=Number(idx);
+              updated[i]={...updated[i],...saved};
+            });
+            return updated;
+          });
+        }
+        setSessionLoaded(true);
+      })
+      .catch(()=>setSessionLoaded(true));
+  },[sessionId]);
+
+  // 2단계: 세션 편집 로드 완료 후 topic 오버라이드 로드
+  useEffect(()=>{
+    if(!sessionLoaded)return;
+    db.collection('teacherSettings').doc('explanationOverrides').get()
+      .then(snap=>{if(snap.exists)setTopicOverrides(snap.data()||{});})
+      .catch(()=>{});
+  },[sessionLoaded]);
+
+  // topic 오버라이드를 세션 편집이 없는 문제에만 적용
+  useEffect(()=>{
+    if(Object.keys(topicOverrides).length===0)return;
+    setEdits(prev=>{
+      const updated={...prev};
+      qs.forEach((q,i)=>{
+        if(savedEditsMap[i])return;
+        const topic=String(q.topic||q.meta?.type||'');
+        const override=topicOverrides[topic];
+        if(!override)return;
+        const solText=typeof override==='object'?(override.solText||''):override;
+        const comment=typeof override==='object'?(override.comment||''):'';
+        if(solText||comment){
+          updated[i]={...updated[i],...(solText&&{solText}),...(comment&&{comment}),overrideApplied:true};
+        }
+      });
+      return updated;
+    });
+  },[topicOverrides]);
+
   const setEdit=(i,field,val)=>setEdits(prev=>({...prev,[i]:{...prev[i],[field]:val}}));
-  const toggleEditing=(i)=>setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
+
+  // 편집 패널 닫을 때 Firestore에 저장
+  const saveSessionEdit=async(i)=>{
+    if(!sessionId)return;
+    const e=edits[i]||{};
+    try{
+      await db.collection('sessionEdits').doc(sessionId).set(
+        {[`q${i}`]:{solText:e.solText||'',comment:e.comment||''},updatedAt:Date.now()},
+        {merge:true}
+      );
+      setSavedEditsMap(prev=>({...prev,[i]:{solText:e.solText||'',comment:e.comment||''}}));
+    }catch(err){
+      alert('세션 저장 실패: '+err.message);
+    }
+  };
+
+  const toggleEditing=(i)=>{
+    const e=edits[i]||{};
+    if(e.editing)saveSessionEdit(i);
+    setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
+  };
+
+  // 다음 해설에 반영: 코멘트 없어도 solText만으로 저장 가능
+  const saveOverride=async(i)=>{
+    const q=qs[i];
+    const e=edits[i]||{};
+    const solText=e.solText||'';
+    const comment=(e.comment||'').trim();
+    if(!solText&&!comment){alert('해설 또는 코멘트를 먼저 입력해주세요.');return;}
+    const topic=String(q.topic||q.meta?.type||'');
+    if(!topic){alert('이 문제에는 topic 정보가 없어 저장할 수 없습니다.');return;}
+    try{
+      await saveSessionEdit(i);
+      const overrideVal={solText,comment,updatedAt:Date.now()};
+      await db.collection('teacherSettings').doc('explanationOverrides').set(
+        {[topic]:overrideVal,updatedAt:Date.now()},{merge:true}
+      );
+      setTopicOverrides(prev=>({...prev,[topic]:overrideVal}));
+      setOverrideSaved(prev=>({...prev,[i]:true}));
+      setTimeout(()=>setOverrideSaved(prev=>({...prev,[i]:false})),2500);
+    }catch(err){alert('저장 실패: '+err.message);}
+  };
 
   const renderMathHtml=txt=>{
     if(!txt)return'';
-    const parts=String(txt).split(/(\$[^$\n]+\$)/g);
-    return parts.map(p=>{
-      if(/^\$[^$]+\$$/.test(p)){
-        const inner=p.slice(1,-1);
-        try{return window.katex?window.katex.renderToString(inner,{throwOnError:false,displayMode:false}):`<em>${esc(inner)}</em>`;}
-        catch(e){return`<em>${esc(inner)}</em>`;}
+    const result=[];
+    const s=String(txt);
+    const re=/(\$\$[\s\S]*?\$\$|\$[^\$\n]+\$)/g;
+    let lastIdx=0,m;
+    while((m=re.exec(s))!==null){
+      if(m.index>lastIdx)result.push(esc(s.slice(lastIdx,m.index)));
+      const token=m[1];
+      const isDisplay=token.startsWith('$$');
+      const inner=isDisplay?token.slice(2,-2).trim():token.slice(1,-1);
+      try{
+        const rendered=window.katex
+          ?window.katex.renderToString(inner,{throwOnError:false,displayMode:isDisplay,strict:false,output:'mathml'})
+          :isDisplay?`<div style="font-style:italic;text-align:center;margin:.4em 0">${esc(inner)}</div>`:`<em>${esc(inner)}</em>`;
+        result.push(isDisplay?`<div style="text-align:center;margin:.4em 0">${rendered}</div>`:rendered);
+      }catch(e){
+        result.push(isDisplay?`<div style="font-style:italic;text-align:center;margin:.4em 0">${esc(inner)}</div>`:`<em>${esc(inner)}</em>`);
       }
-      return esc(p);
-    }).join('');
+      lastIdx=m.index+m[0].length;
+    }
+    if(lastIdx<s.length)result.push(esc(s.slice(lastIdx)));
+    return result.join('');
   };
 
   const doPrint=()=>{
@@ -2903,6 +3019,7 @@ function SessionPrintModal({log,studentName,onClose}){
     }
     pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>검정고시 연습 문제·해설지</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><style>
       *{box-sizing:border-box;margin:0;padding:0;}
+      .katex svg{display:inline!important;vertical-align:middle}.katex{line-height:1.2}.katex-display{display:block;text-align:center;margin:.5em 0}
       body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
       .page{padding:14mm 16mm;}
       .pb{break-after:page;page-break-after:always;}
@@ -2941,7 +3058,7 @@ function SessionPrintModal({log,studentName,onClose}){
       </div>
       <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ '인쇄 / PDF 저장'을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>'PDF로 저장'</b>으로 선택하면 파일로 저장됩니다.</div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
-      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [코멘트 추가] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요.</div>
+      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
 
       <style dangerouslySetInnerHTML={{__html:`
         @media print {
@@ -3002,7 +3119,11 @@ function SessionPrintModal({log,studentName,onClose}){
                     </div>
                     {e.solText?(
                       <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-black text-amber-700">📖 풀이 과정</span>
+                          {savedEditsMap[i]&&<span className="text-[10px] font-bold bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full">💾 저장됨</span>}
+                          {e.overrideApplied&&!savedEditsMap[i]&&<span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full">📚 이전 수업 풀이방식</span>}
+                        </div>
                         <div className="space-y-0.5 leading-relaxed" dangerouslySetInnerHTML={{__html:renderMathHtml(e.solText).replace(/\n/g,'<br/>')}}/>
                       </div>
                     ):null}
@@ -3021,13 +3142,23 @@ function SessionPrintModal({log,studentName,onClose}){
                           </div>
                           <div>
                             <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $ 입력 가능)</span></div>
-                            <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={2} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
+                            <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={3} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
                           </div>
-                          <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">완료 ✓</button>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">{sessionId?'💾 저장 & 완료':'완료 ✓'}</button>
+                            <button
+                              onClick={()=>saveOverride(i)}
+                              disabled={!e.solText?.trim()&&!e.comment?.trim()}
+                              className={`px-4 py-1.5 rounded-lg text-sm font-black transition-all ${overrideSaved[i]?'bg-green-500 text-white':'bg-amber-500 text-white disabled:opacity-40 active:scale-95'}`}
+                            >
+                              {overrideSaved[i]?'✅ 반영 완료!':'📚 다음 해설에 반영'}
+                            </button>
+                            {(e.solText?.trim()||e.comment?.trim())&&<span className="text-[10px] text-gray-400">같은 유형 문제의 풀이방식으로 저장됩니다</span>}
+                          </div>
                         </div>
                       ):(
                         <button onClick={()=>toggleEditing(i)} className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg">
-                          ✏️ {e.comment?'코멘트 수정':'코멘트 추가'}
+                          ✏️ {e.solText||e.comment?'해설 수정':'해설 추가'}
                         </button>
                       )}
                     </div>
@@ -9010,7 +9141,7 @@ function StudentDetail({student,onBack}){
       })}
     </div>);
     })()}
-    {printLog&&<SessionPrintModal log={printLog} studentName={student.name} onClose={()=>setPrintLog(null)}/>}
+    {printLog&&<SessionPrintModal log={printLog} studentName={student.name} studentId={student.id} onClose={()=>setPrintLog(null)}/>}
   </div>);
 }
 
