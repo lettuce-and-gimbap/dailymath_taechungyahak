@@ -801,6 +801,62 @@ function GraphPreview({q}){
     );
   }
 
+  // ── 14b. 평행이동 (P → Q 두 점) ──
+  if(g.type==='translate_point'){
+    const{px,py,rx,ry}=g;
+    const W=200,H=200,SC=18,CX=W/2,CY=H/2;
+    const tx=x=>CX+x*SC,ty=y=>CY-y*SC;
+    const ticks=[-4,-2,2,4];
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {ticks.map(n=>(<g key={'g'+n}><line x1={tx(n)} y1={6} x2={tx(n)} y2={H-6} stroke="#eef1f6" strokeWidth={0.6}/><line x1={6} y1={ty(n)} x2={W-6} y2={ty(n)} stroke="#eef1f6" strokeWidth={0.6}/></g>))}
+        <line x1={6} y1={CY} x2={W-6} y2={CY} stroke="#374151" strokeWidth={1.6}/>
+        <line x1={CX} y1={6} x2={CX} y2={H-6} stroke="#374151" strokeWidth={1.6}/>
+        <text x={W-8} y={CY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
+        <text x={CX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
+        {ticks.map(n=>(<g key={'t'+n}><text x={tx(n)} y={CY+12} textAnchor="middle" fontSize={9} fill="#9ca3af">{n}</text><text x={CX-5} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af">{n}</text></g>))}
+        {/* 이동 화살표 */}
+        <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#6366f1"/></marker></defs>
+        <line x1={tx(px)} y1={ty(py)} x2={tx(rx)} y2={ty(ry)} stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4,3" markerEnd="url(#arr)"/>
+        {/* P 점 */}
+        <circle cx={tx(px)} cy={ty(py)} r={5} fill="#6b7280" stroke="white" strokeWidth={2}/>
+        <text x={tx(px)+(px>0?7:-7)} y={ty(py)-6} textAnchor={px>0?'start':'end'} fontSize={10} fill="#6b7280" fontWeight="900">P({px},{py})</text>
+        {/* Q 점 */}
+        <circle cx={tx(rx)} cy={ty(ry)} r={5} fill="#6366f1" stroke="white" strokeWidth={2}/>
+        <text x={tx(rx)+(rx>0?7:-7)} y={ty(ry)-6} textAnchor={rx>0?'start':'end'} fontSize={10} fill="#6366f1" fontWeight="900">Q({rx},{ry})</text>
+      </svg>
+    );
+  }
+  // ── 14c. 대칭이동 (P → Q 두 점 + 대칭축) ──
+  if(g.type==='symmetry_point'){
+    const{px,py,rx,ry,sym}=g;
+    const W=200,H=200,SC=18,CX=W/2,CY=H/2;
+    const tx=x=>CX+x*SC,ty=y=>CY-y*SC;
+    const ticks=[-4,-2,2,4];
+    return(
+      <svg width={W} height={H} className="border border-gray-200 rounded-xl bg-white my-2 block mx-auto">
+        {ticks.map(n=>(<g key={'g'+n}><line x1={tx(n)} y1={6} x2={tx(n)} y2={H-6} stroke="#eef1f6" strokeWidth={0.6}/><line x1={6} y1={ty(n)} x2={W-6} y2={ty(n)} stroke="#eef1f6" strokeWidth={0.6}/></g>))}
+        <line x1={6} y1={CY} x2={W-6} y2={CY} stroke="#374151" strokeWidth={1.6}/>
+        <line x1={CX} y1={6} x2={CX} y2={H-6} stroke="#374151" strokeWidth={1.6}/>
+        <text x={W-8} y={CY+12} fontSize={9} fill="#374151" fontWeight="bold">x</text>
+        <text x={CX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>
+        {ticks.map(n=>(<g key={'t'+n}><text x={tx(n)} y={CY+12} textAnchor="middle" fontSize={9} fill="#9ca3af">{n}</text><text x={CX-5} y={ty(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af">{n}</text></g>))}
+        {/* 대칭축 */}
+        {sym==='x축'&&<line x1={6} y1={CY} x2={W-6} y2={CY} stroke="#f59e0b" strokeWidth={2} strokeDasharray="5,3"/>}
+        {sym==='y축'&&<line x1={CX} y1={6} x2={CX} y2={H-6} stroke="#f59e0b" strokeWidth={2} strokeDasharray="5,3"/>}
+        {sym==='원점'&&<circle cx={CX} cy={CY} r={6} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3,2"/>}
+        <text x={W/2} y={H-3} textAnchor="middle" fontSize={9} fill="#f59e0b" fontWeight="bold">{sym} 대칭</text>
+        {/* 연결선 */}
+        <line x1={tx(px)} y1={ty(py)} x2={tx(rx)} y2={ty(ry)} stroke="#d1d5db" strokeWidth={1} strokeDasharray="3,2"/>
+        {/* P 점 */}
+        <circle cx={tx(px)} cy={ty(py)} r={5} fill="#6b7280" stroke="white" strokeWidth={2}/>
+        <text x={tx(px)+(px>=0?7:-7)} y={ty(py)-6} textAnchor={px>=0?'start':'end'} fontSize={10} fill="#6b7280" fontWeight="900">P({px},{py})</text>
+        {/* Q 점 */}
+        <circle cx={tx(rx)} cy={ty(ry)} r={5} fill="#6366f1" stroke="white" strokeWidth={2}/>
+        <text x={tx(rx)+(rx>=0?7:-7)} y={ty(ry)-6} textAnchor={rx>=0?'start':'end'} fontSize={10} fill="#6366f1" fontWeight="900">Q({rx},{ry})</text>
+      </svg>
+    );
+  }
   // ── 15. 절댓값 부등식 좌표평면 ──
   if(g.type==='abs_ineq'){
     const{center,r,lo,hi}=g;
@@ -1707,7 +1763,7 @@ function genMockProbStat(){
     (n,r)=>`${n}명의 학생 중에서 ${r}명을 뽑아 일렬로 세우는 경우의 수는?`,
     (n,r)=>`서로 다른 ${n}점의 작품 중에서 ${r}점을 골라 일렬로 나열하는 경우의 수는?`,
     (n,r)=>`서로 다른 ${n}개의 채소 모종 중에서 ${r}개를 골라 화분 1과 화분 2에 각각 하나씩 심는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}곳을 여행하려 할 때, 여행할 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
+    (n,r)=>`서로 다른 ${n}곳 중에서 ${r}곳을 골라 여행할 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
     (n,r)=>`서로 다른 ${n}장의 한국 문화 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
   ];
   // ─ 조합 문맥 풀
@@ -2118,10 +2174,50 @@ function genMidFrequency(){
       `따라서 20분 이상인 학생 수는 ${ans}명입니다.`
     ]};
 }
+function genMidTranslate(){
+  const px=pick([-3,-2,-1,1,2,3]),py=pick([-3,-2,-1,1,2,3]);
+  const dx=pick([-3,-2,-1,1,2,3]),dy=pick([-3,-2,-1,1,2,3]);
+  const rx=px+dx,ry=py+dy;
+  const askX=Math.random()<0.5;
+  const ans=askX?rx:ry;
+  const wrong=[ans+1,ans-1,ans+2].filter(w=>w!==ans).slice(0,3).map(String);
+  const{choices,answer}=makeChoices(String(ans),wrong);
+  const dxStr=dx>=0?`+${dx}`:String(dx),dyStr=dy>=0?`+${dy}`:String(dy);
+  return{topic:'좌표평면 — 평행이동',q:`좌표평면 위의 점 P(${px}, ${py})를 x축 방향으로 ${dx}만큼, y축 방향으로 ${dy}만큼 평행이동한 점의 ${askX?'x':'y'}좌표는?`,choices,answer,
+    meta:middleMeta('mid_func','함수'),
+    graph:{type:'translate_point',px,py,dx,dy,rx,ry},
+    sol:[
+      `평행이동: x좌표에 x방향 이동량, y좌표에 y방향 이동량을 더합니다.`,
+      `P(${px}, ${py}) → (${px}${dxStr}, ${py}${dyStr}) = (${rx}, ${ry})`,
+      `따라서 이동한 점의 ${askX?'x':'y'}좌표는 ${ans}입니다.`
+    ]};
+}
+function genMidSymmetryPoint(){
+  const px=pick([-3,-2,-1,1,2,3]),py=pick([-3,-2,-1,1,2,3]);
+  const sym=pick(['x축','y축','원점']);
+  let rx,ry;
+  if(sym==='x축'){rx=px;ry=-py;}
+  else if(sym==='y축'){rx=-px;ry=py;}
+  else{rx=-px;ry=-py;}
+  const askX=Math.random()<0.5;
+  const ans=askX?rx:ry;
+  const wrong=[ans+1,ans-1,ans+2].filter(w=>w!==ans).slice(0,3).map(String);
+  const{choices,answer}=makeChoices(String(ans),wrong);
+  return{topic:'좌표평면 — 대칭이동',q:`좌표평면 위의 점 P(${px}, ${py})를 ${sym}에 대하여 대칭이동한 점의 ${askX?'x':'y'}좌표는?`,choices,answer,
+    meta:middleMeta('mid_func','함수'),
+    graph:{type:'symmetry_point',px,py,rx,ry,sym},
+    sol:[
+      sym==='x축'?`x축 대칭: x좌표는 그대로, y좌표의 부호를 바꿉니다.`:
+      sym==='y축'?`y축 대칭: y좌표는 그대로, x좌표의 부호를 바꿉니다.`:
+      `원점 대칭: x좌표와 y좌표 모두 부호를 바꿉니다.`,
+      `P(${px}, ${py}) → (${rx}, ${ry})`,
+      `따라서 대칭이동한 점의 ${askX?'x':'y'}좌표는 ${ans}입니다.`
+    ]};
+}
 var MID_DOMAIN_GENS={
   '수와 연산':()=>weightedGen([[genMidPrime,4],[genMidNumber,3],[genMidRepeating,3],[genMidExponent,3]]),
   '문자와 식':()=>weightedGen([[genMidLinearEq,4],[genMidSystem,4],[genMidInequality,3],[genMidSubstitute,3],[genMidWordExpr,3],[genMidRadical,4],[genMidQuadraticEq,4]]),
-  '함수':()=>weightedGen([[genMidLinearFunc,5],[genMidQuadraticDesc,5],[genMidQuadrant,3]]),
+  '함수':()=>weightedGen([[genMidLinearFunc,5],[genMidQuadraticDesc,5],[genMidQuadrant,3],[genMidTranslate,3],[genMidSymmetryPoint,3]]),
   '기하':()=>weightedGen([[genMidIsosceles,4],[genMidSimilarity,4],[genMidTrig,5],[genMidCircleAngle,4],[genMidParallel,4]]),
   '확률과 통계':()=>weightedGen([[genMidProbability,5],[genMidCounting,4],[genMidRepresentative,5],[genMidFrequency,3]])
 };
