@@ -1003,17 +1003,34 @@ function SessionPrintModal({log,studentName,onClose}){
     }catch(err){alert('저장 실패: '+err.message);}
   };
 
+  // Tailwind CDN Preflight의 svg{display:block} 충돌을 피하기 위해
+  // KaTeX 렌더 결과의 <svg>에 직접 inline style 삽입
+  const fixKatexSvg=html=>html.replace(/<svg /g,'<svg style="display:inline!important;vertical-align:middle;overflow:visible" ');
+
   const renderMathHtml=txt=>{
     if(!txt)return'';
-    const parts=String(txt).split(/(\$[^$\n]+\$)/g);
-    return parts.map(p=>{
-      if(/^\$[^$]+\$$/.test(p)){
-        const inner=p.slice(1,-1);
-        try{return window.katex?window.katex.renderToString(inner,{throwOnError:false,displayMode:false}):`<em>${esc(inner)}</em>`;}
-        catch(e){return`<em>${esc(inner)}</em>`;}
+    const result=[];
+    const s=String(txt);
+    // $$...$$ = display(블록), $...$ = inline 순으로 우선 매칭
+    const re=/(\$\$[\s\S]*?\$\$|\$[^\$\n]+\$)/g;
+    let lastIdx=0,m;
+    while((m=re.exec(s))!==null){
+      if(m.index>lastIdx)result.push(esc(s.slice(lastIdx,m.index)));
+      const token=m[1];
+      const isDisplay=token.startsWith('$$');
+      const inner=isDisplay?token.slice(2,-2).trim():token.slice(1,-1);
+      try{
+        const rendered=window.katex
+          ?fixKatexSvg(window.katex.renderToString(inner,{throwOnError:false,displayMode:isDisplay,strict:false}))
+          :isDisplay?`<div style="font-style:italic;text-align:center;margin:.4em 0">${esc(inner)}</div>`:`<em>${esc(inner)}</em>`;
+        result.push(isDisplay?`<div style="text-align:center;margin:.4em 0">${rendered}</div>`:rendered);
+      }catch(e){
+        result.push(isDisplay?`<div style="font-style:italic;text-align:center;margin:.4em 0">${esc(inner)}</div>`:`<em>${esc(inner)}</em>`);
       }
-      return esc(p);
-    }).join('');
+      lastIdx=m.index+m[0].length;
+    }
+    if(lastIdx<s.length)result.push(esc(s.slice(lastIdx)));
+    return result.join('');
   };
 
   const doPrint=()=>{
@@ -1044,6 +1061,7 @@ function SessionPrintModal({log,studentName,onClose}){
     }
     pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>검정고시 연습 문제·해설지</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><style>
       *{box-sizing:border-box;margin:0;padding:0;}
+      .katex svg{display:inline!important;vertical-align:middle}.katex{line-height:1.2}.katex-display{display:block;text-align:center;margin:.5em 0}
       body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
       .page{padding:14mm 16mm;}
       .pb{break-after:page;page-break-after:always;}
