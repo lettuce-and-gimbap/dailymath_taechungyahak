@@ -556,10 +556,10 @@ function StudentDetail({student,onBack}){
               : '자기효능감이 높을수록 학습 지속성이 향상됩니다. 계속 격려하세요.'}
           </td>
         </tr>
-        <!-- 교사 개입 오답 수정율 -->
-        <tr style="background:#f0fdf4;page-break-inside:avoid;">
+        <!-- 교사 개입 오답 수정률 -->
+        <tr style="background:#f0fdf4;page-break-inside:avoid;page-break-before:always;break-before:page;">
           <td style="padding:7px 9px;font-weight:700;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
-            오답 수정율
+            오답 수정률
             <div style="font-size:9px;color:#94a3b8;margin-top:3px;font-weight:400;">📌 교사 개입 후 재풀이에서 오답을 수정한 비율</div>
           </td>
           <td style="padding:7px 9px;text-align:center;border:1px solid #e2e8f0;vertical-align:top;">
@@ -727,7 +727,7 @@ function StudentDetail({student,onBack}){
           ['오개념 고착','수정 없이 동일 오답 반복 (revisionCount=0, isOk=false)','가장 위험한 패턴. 학생 스스로 틀린 것을 모르거나 무기력해진 상태일 수 있음. 즉시 개입.'],
           ['자기효능감','정답임에도 답 수정 반복 (revisionCount>1, isOk=true)','실력은 있으나 자신감 부족. 언어적 칭찬과 구체적 성취 확인이 효과적인 개입 방법.'],
           ['🔭 자기주도 탐색','그래프 탐험의 조작 횟수·유휴 보정 활동 시간·탐색 개념 폭(체류 시간 아님)','성취가 아닌 참여·호기심 지표. 탐색이 많은 개념의 퀴즈 정답률이 함께 오르는지로 실효성 판단.'],
-          ['교사 개입 오답 수정율','교사 체크 오답 수정 완료 수 ÷ 총 오답 수 × 100','수정율 70%↑: 교사 개입 효과 높음. 40~70%: 일부 오개념 잔존. 40%↓: 개입 방식 재검토 필요. SRL 평가(Evaluation) 단계 및 교사 피드백 전이 효과를 반영.'],
+          ['교사 개입 오답 수정률','교사 체크 오답 수정 완료 수 ÷ 총 오답 수 × 100','수정률 70%↑: 교사 개입 효과 높음. 40~70%: 일부 오개념 잔존. 40%↓: 개입 방식 재검토 필요. SRL 평가(Evaluation) 단계 및 교사 피드백 전이 효과를 반영.'],
           ['영역별 성취율','해당 토픽 문항의 정답 수 ÷ 전체 풀이 수','풀이 문항이 적을수록 신뢰도 낮음. 최소 5문항 이상 축적 후 해석 권장.'],
           ['전체 평균 대비 %p','이 학생 성취율 − 전체 학생 동일 문항 평균','양수=또래 평균 이상, 음수=또래 평균 이하. 전체 학생 수가 적을수록 비교 신뢰도 낮음.'],
         ].map((r,i)=>`<tr style="background:${i%2===0?'white':'#f8fafc'};page-break-inside:avoid;">
@@ -893,21 +893,21 @@ function StudentDetail({student,onBack}){
       : `현재의 자신감 있는 풀이 태도를 칭찬하고 더 어려운 문제에도 같은 방식으로 도전하도록 권장하세요.`;
     const selfEffWarn = `자기효능감 지표 역시 <b>모의고사·기하 문제지 세션</b>에서만 수집됩니다. 데이터 수가 적을 때는 해석에 주의하세요.`;
 
-    // 교사 개입 오답 수정율
+    // 교사 개입 오답 수정률
     const corrRate=correctionData.rate;
     const corrN=correctionData.corrected;
     const corrTotal=correctionData.totalWrong;
     const corrFormula=corrTotal===0
       ?'오답 수가 없어 산출 불가'
-      :`오답 수정율 = 교사 체크 수정 완료 문항 수 ÷ 총 오답 문항 수 × 100<br/><b>${corrN} ÷ ${corrTotal} × 100 = ${corrRate}%</b><br/>교사가 세션 기록에서 "오답 수정 체크"를 누른 문항만 집계`;
-    const corrTheory=`<b>① Ch.8 자기조절학습(SRL) — COPES 모델:</b> 오답 수정은 학습 주기의 <b>평가(Evaluation) 단계</b>가 성공적으로 완료되었음을 나타낸다. 오류 인식 → 교사 피드백 수용 → 재풀이 성공의 전 과정이 메타인지 활동의 직접적 행동 흔적이다.<br/><b>② Ch.7 시간적 분석:</b> 오류→피드백→수정의 시간적 패턴은 학습 궤적(learning trajectory)의 긍정적 방향 전환 신호다.<br/><b>③ Ch.13 교사-학생 대면 분석:</b> 수정율은 교사 개입의 실효성을 측정하는 가장 직접적인 지표다.`;
+      :`오답 수정률 = 교사 체크 수정 완료 문항 수 ÷ 총 오답 문항 수 × 100<br/><b>${corrN} ÷ ${corrTotal} × 100 = ${corrRate}%</b><br/>교사가 세션 기록에서 "오답 수정 체크"를 누른 문항만 집계`;
+    const corrTheory=`<b>① Ch.8 자기조절학습(SRL) — COPES 모델:</b> 오답 수정은 학습 주기의 <b>평가(Evaluation) 단계</b>가 성공적으로 완료되었음을 나타낸다. 오류 인식 → 교사 피드백 수용 → 재풀이 성공의 전 과정이 메타인지 활동의 직접적 행동 흔적이다.<br/><b>② Ch.7 시간적 분석:</b> 오류→피드백→수정의 시간적 패턴은 학습 궤적(learning trajectory)의 긍정적 방향 전환 신호다.<br/><b>③ Ch.13 교사-학생 대면 분석:</b> 수정률은 교사 개입의 실효성을 측정하는 가장 직접적인 지표다.`;
     const corrStudent=corrTotal===0
       ?'오답이 없어 이 지표가 산출되지 않습니다.'
       :corrRate>=70
-      ?`<b style="color:#16a34a;">오답 수정율 ${corrRate}%</b> — 교사 개입 효과가 높습니다. ${corrN}/${corrTotal}문항이 재풀이에서 수정되었으며, 피드백이 실제 학습 전이로 이어지고 있음을 나타냅니다.`
+      ?`<b style="color:#16a34a;">오답 수정률 ${corrRate}%</b> — 교사 개입 효과가 높습니다. ${corrN}/${corrTotal}문항이 재풀이에서 수정되었으며, 피드백이 실제 학습 전이로 이어지고 있음을 나타냅니다.`
       :corrRate>=40
-      ?`<b style="color:#d97706;">오답 수정율 ${corrRate}%</b> — 일부 오개념이 잔존합니다. ${corrN}/${corrTotal}문항 수정. 미수정 ${corrTotal-corrN}문항에 대한 추가 확인이 필요합니다.`
-      :`<b style="color:#dc2626;">오답 수정율 ${corrRate}%</b> — 교사 개입 효과가 낮습니다. ${corrN}/${corrTotal}문항만 수정됨. 현재 피드백 방식이 이 학생에게 맞지 않을 수 있으므로 접근 방식을 재검토하세요.`;
+      ?`<b style="color:#d97706;">오답 수정률 ${corrRate}%</b> — 일부 오개념이 잔존합니다. ${corrN}/${corrTotal}문항 수정. 미수정 ${corrTotal-corrN}문항에 대한 추가 확인이 필요합니다.`
+      :`<b style="color:#dc2626;">오답 수정률 ${corrRate}%</b> — 교사 개입 효과가 낮습니다. ${corrN}/${corrTotal}문항만 수정됨. 현재 피드백 방식이 이 학생에게 맞지 않을 수 있으므로 접근 방식을 재검토하세요.`;
     const corrAction=corrTotal===0
       ?'오답이 발생하면 오답 수정 체크 기능을 활용하세요.'
       :corrRate>=70
@@ -1032,7 +1032,8 @@ function StudentDetail({student,onBack}){
         selfEffN > 0 ? `점검 필요 (${selfEffN}회)` : '✅ 양호', selfEffN > 0 ? '#d97706' : '#16a34a',
         selfEffFormula, selfEffTheory, selfEffStudent, selfEffAction, selfEffWarn)}
 
-      ${dc('오답 수정율', '교사 개입 오답 수정율',
+      <div style="page-break-before:always;break-before:page"></div>
+      ${dc('오답 수정률', '교사 개입 오답 수정률',
         corrTotal===0?'해당 없음':corrRate>=70?`✅ ${corrRate}% (양호)`:corrRate>=40?`⚡ ${corrRate}% (보통)`:`⚠️ ${corrRate}% (주의)`,
         corrTotal===0?'#94a3b8':corrRate>=70?'#16a34a':corrRate>=40?'#d97706':'#dc2626',
         corrFormula, corrTheory, corrStudent, corrAction, corrWarn)}
