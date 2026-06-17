@@ -1101,37 +1101,29 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     return result.join('');
   };
 
+  // mode: 'student' | 'teacher-large' | 'teacher'
   const doPrint=(mode='teacher')=>{
     const isStudent=mode==='student';
+    const isLarge=mode==='teacher-large'||mode==='student';
+    const showSol=!isStudent; // 학생용은 해설·정답 숨김
     const pw=window.open('','_blank','width=900,height=1200');
     if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
-    const docTitle=isStudent?'검정고시 연습 문제지':'검정고시 연습 문제·해설지';
+    const docTitle=isStudent?'검정고시 연습 문제지':mode==='teacher-large'?'검정고시 연습 문제·해설지 (큰글씨)':'검정고시 연습 문제·해설지';
 
-    // 학생용: 그래프 수에 따라 페이지당 문제 수 동적 조정 (5 → 4 → 3)
-    // 교사용: 고정 3문제
-    const buildPages=(arr)=>{
-      if(!isStudent){
-        const pages=[];
-        for(let i=0;i<arr.length;i+=3)pages.push({startIdx:i,items:arr.slice(i,i+3)});
-        return pages;
-      }
-      const pages=[];let idx=0;
-      while(idx<arr.length){
-        const MAX=5;
-        const cands=arr.slice(idx,idx+MAX);
-        const gc=cands.filter(q=>q.graph).length;
-        const size=gc>=2?3:gc===1?4:5;
-        pages.push({startIdx:idx,items:arr.slice(idx,idx+size)});
-        idx+=size;
-      }
-      return pages;
-    };
-    const pageGroups=buildPages(qs);
+    // 모든 모드: 페이지당 3문제 고정
+    const pageGroups=[];
+    for(let i=0;i<qs.length;i+=3)pageGroups.push({startIdx:i,items:qs.slice(i,i+3)});
     const total=pageGroups.length;
+
+    // 모드별 CSS 폰트 크기
+    const sz=isLarge
+      ?{qb:'19px',ch:'17px',qn:'17px',ans:'15px',sol:'14px',meta:'12px',topic:'11px',title:'18px',footer:'12px',cont:'11px'}
+      :{qb:'13px',ch:'12px',qn:'13px',ans:'12px',sol:'11.5px',meta:'11px',topic:'10px',title:'17px',footer:'11px',cont:'10px'};
+
     let pages='';
     for(let pi=0;pi<total;pi++){
       const{startIdx,items:pqs}=pageGroups[pi];
-      const isLast=pi===total-1;
+      const isLastPage=pi===total-1;
       const hdr=pi===0
         ?`<div class="title-block"><div class="title">${docTitle}</div><div class="meta">${esc((studentName?studentName+' · ':'')+esc(log.type||'연습')+' · '+fmtDate(log.date)+' '+(log.time||''))}</div></div>`
         :`<div class="cont-hdr">${esc(studentName||'연습')} · ${fmtDate(log.date)} (${pi+1}/${total} 페이지)</div>`;
@@ -1140,50 +1132,49 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         const e=edits[i]||{};
         const hasFull=q.qFull&&Array.isArray(q.choices);
         const correct=hasFull?q.choices[q.answerIdx]:(q.cAns||'');
-        // 학생용: 정답 강조 없이 선택지만, 교사용: 정답 표시
         const choHtml=hasFull
           ?isStudent
             ?`<div class="choices">${q.choices.map((c,jj)=>`<div class="ch">${esc(ORD[jj]+' '+c)}</div>`).join('')}</div>`
             :`<div class="choices">${q.choices.map((c,jj)=>`<div class="${jj===q.answerIdx?'ch ok':'ch'}">${esc(ORD[jj]+' '+c)}${jj===q.answerIdx?' ✓':''}</div>`).join('')}</div>`
           :'';
         const solText=e.solText||'';
-        const solHtml=(!isStudent&&solText)?`<div class="sol"><span class="sol-hd">📖 풀이 과정</span><div style="line-height:1.8">${renderMathHtml(solText).replace(/\n/g,'<br>')}</div></div>`:'';
-        const commentHtml=(!isStudent&&e.comment)?`<div class="teacher-comment"><span class="tc-hd">👨‍🏫 선생님 코멘트</span><div style="line-height:1.8">${renderMathHtml(e.comment).replace(/\n/g,'<br>')}</div></div>`:'';
+        const solHtml=(showSol&&solText)?`<div class="sol"><span class="sol-hd">📖 풀이 과정</span><div style="line-height:1.8">${renderMathHtml(solText).replace(/\n/g,'<br>')}</div></div>`:'';
+        const commentHtml=(showSol&&e.comment)?`<div class="teacher-comment"><span class="tc-hd">👨‍🏫 선생님 코멘트</span><div style="line-height:1.8">${renderMathHtml(e.comment).replace(/\n/g,'<br>')}</div></div>`:'';
         const qrHtml=isStudent?'':` <span class="qr ${q.isOk?'ok':'fail'}">${q.isOk?'O':'X'}</span>`;
-        const uHtml=(!isStudent&&!q.isOk&&q.uAns)?` <span class="u-ans">(내 답: ${esc(q.uAns)})</span>`:'';
+        const uHtml=(showSol&&!q.isOk&&q.uAns)?` <span class="u-ans">(내 답: ${esc(q.uAns)})</span>`:'';
         const ansHtml=isStudent?'':`<div class="ans">정답: ${esc(hasFull?ORD[q.answerIdx]+' ':'')}${esc(correct)}${uHtml}</div>`;
-        const topicHtml=(!isStudent&&q.topic)?`<div class="topic">[${esc(q.topic)}]${q.examSource?' · 📌 '+esc(q.examSource):''}</div>`:'';
+        const topicHtml=(showSol&&q.topic)?`<div class="topic">[${esc(q.topic)}]${q.examSource?' · 📌 '+esc(q.examSource):''}</div>`:'';
         return`<div class="question"><div class="q-head"><span class="qn">${i+1}.</span><span class="qb">${esc(hasFull?q.qFull:q.qTxt)}</span>${qrHtml}</div>${topicHtml}${choHtml}${ansHtml}${solHtml}${commentHtml}</div>`;
       }).join('');
-      pages+=`<div class="${isLast?'page':'page pb'}">${hdr}${qsHtml}${isLast?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
+      pages+=`<div class="${isLastPage?'page':'page pb'}">${hdr}${qsHtml}${isLastPage?'<div class="footer">— 태청야학 수학 학습 도우미 —</div>':''}</div>`;
     }
     pw.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${docTitle}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"><style>
       *{box-sizing:border-box;margin:0;padding:0;}
       .katex svg{display:inline!important;vertical-align:middle}.katex{line-height:1.2}.katex-display{display:block;text-align:center;margin:.5em 0}
       body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
-      .page{padding:14mm 16mm;}
+      .page{padding:12mm 15mm;}
       .pb{break-after:page;page-break-after:always;}
       .title-block{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:18px;}
-      .title{font-size:17px;font-weight:900;}
-      .meta{font-size:11px;color:#475569;margin-top:3px;font-weight:700;}
-      .cont-hdr{text-align:right;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:14px;}
-      .question{break-inside:avoid;page-break-inside:avoid;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;}
-      .q-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:3px;}
-      .qn{font-weight:900;color:#4f46e5;flex-shrink:0;min-width:18px;}
-      .qb{font-weight:700;line-height:1.65;flex:1;font-size:13px;}
-      .qr{font-weight:900;font-size:12px;flex-shrink:0;}
+      .title{font-size:${sz.title};font-weight:900;}
+      .meta{font-size:${sz.meta};color:#475569;margin-top:3px;font-weight:700;}
+      .cont-hdr{text-align:right;font-size:${sz.cont};color:#94a3b8;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:14px;}
+      .question{break-inside:avoid;page-break-inside:avoid;margin-bottom:${isLarge?'26px':'20px'};padding-bottom:${isLarge?'18px':'14px'};border-bottom:1px solid #e2e8f0;}
+      .q-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:4px;}
+      .qn{font-weight:900;color:#4f46e5;flex-shrink:0;min-width:22px;font-size:${sz.qn};}
+      .qb{font-weight:700;line-height:1.7;flex:1;font-size:${sz.qb};}
+      .qr{font-weight:900;font-size:${sz.ch};flex-shrink:0;}
       .qr.ok{color:#16a34a;}.qr.fail{color:#ef4444;}
-      .topic{margin-left:22px;font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px;}
-      .choices{margin-left:22px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin:5px 0;}
-      .ch{font-size:12px;color:#374151;line-height:1.5;}
+      .topic{margin-left:26px;font-size:${sz.topic};color:#64748b;font-weight:700;margin-bottom:3px;}
+      .choices{margin-left:26px;display:grid;grid-template-columns:1fr 1fr;gap:${isLarge?'6px 16px':'2px 14px'};margin:${isLarge?'8px 0':'5px 0'};}
+      .ch{font-size:${sz.ch};color:#374151;line-height:${isLarge?'1.7':'1.5'};}
       .ch.ok{font-weight:900;color:#15803d;}
-      .ans{margin-left:22px;margin-top:4px;font-size:12px;font-weight:900;color:#15803d;}
+      .ans{margin-left:26px;margin-top:5px;font-size:${sz.ans};font-weight:900;color:#15803d;}
       .u-ans{color:#ef4444;font-weight:700;margin-left:8px;}
-      .sol{margin-left:22px;margin-top:6px;font-size:11.5px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 12px;}
-      .sol-hd{font-weight:900;color:#b45309;display:block;margin-bottom:3px;}
-      .teacher-comment{margin-left:22px;margin-top:6px;font-size:11.5px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:7px 12px;}
-      .tc-hd{font-weight:900;color:#166534;display:block;margin-bottom:3px;}
-      .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;}
+      .sol{margin-left:26px;margin-top:8px;font-size:${sz.sol};background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 14px;}
+      .sol-hd{font-weight:900;color:#b45309;display:block;margin-bottom:4px;}
+      .teacher-comment{margin-left:26px;margin-top:8px;font-size:${sz.sol};background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px 14px;}
+      .tc-hd{font-weight:900;color:#166534;display:block;margin-bottom:4px;}
+      .footer{text-align:center;font-size:${sz.footer};color:#94a3b8;margin-top:20px;}
       @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.pb{break-after:page;page-break-after:always;}.question{break-inside:avoid;page-break-inside:avoid;}}
     </style></head><body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>`);
     pw.document.close();
@@ -1209,11 +1200,12 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       <div className="no-print sticky top-0 bg-indigo-600 text-white px-4 py-3 flex items-center gap-3 shadow-md flex-wrap">
         <button onClick={onClose} className="px-3 py-1.5 bg-white/20 rounded-xl font-bold text-sm">← 닫기</button>
         <div className="flex-1 font-black text-sm">📄 회차 문제·해설 인쇄</div>
-        <button onClick={()=>doPrint('student')} className="px-4 py-1.5 bg-sky-400 text-white rounded-xl font-black text-sm">📄 학생 제공용</button>
-        <button onClick={()=>doPrint('teacher')} className="px-4 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm">📋 교사 제공용</button>
+        <button onClick={()=>doPrint('student')} className="px-3 py-1.5 bg-sky-400 text-white rounded-xl font-black text-sm">📄 학생 제공용</button>
+        <button onClick={()=>doPrint('teacher-large')} className="px-3 py-1.5 bg-emerald-500 text-white rounded-xl font-black text-sm">🔡 큰글씨 보기</button>
+        <button onClick={()=>doPrint('teacher')} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm">📋 기본</button>
       </div>
       <div className="no-print px-4 pt-2 pb-1 bg-sky-50 mx-4 rounded-lg mt-2 text-xs text-sky-700 font-semibold">
-        📄 <b>학생 제공용</b>: 정답·해설 없이 문제+선택지만 인쇄 — 학생에게 나눠주세요 &nbsp;|&nbsp; 📋 <b>교사 제공용</b>: 정답·해설·코멘트 모두 포함 — 수업 참고용
+        📄 <b>학생 제공용</b>: 정답·해설 없이 문제만 (큰 글씨) &nbsp;|&nbsp; 🔡 <b>큰글씨 보기</b>: 해설 포함, 학생이 읽기 쉬운 큰 글씨 &nbsp;|&nbsp; 📋 <b>기본</b>: 정답·해설 포함 기본 크기
       </div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
       <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [코멘트 추가] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>📚 다음 해설에 반영</b> 버튼을 누르면 같은 유형의 다음 학생 해설에 이 풀이방식이 자동 적용됩니다.</div>
