@@ -949,16 +949,59 @@ function SessionPrintModal({log,studentName,onClose}){
   const qs=log.questions||[];
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+  const[topicOverrides,setTopicOverrides]=useState({});
+  const[overrideSaved,setOverrideSaved]=useState({});
+
+  useEffect(()=>{
+    db.collection('teacherSettings').doc('explanationOverrides').get()
+      .then(snap=>{if(snap.exists)setTopicOverrides(snap.data()||{});})
+      .catch(()=>{});
+  },[]);
+
   const[edits,setEdits]=useState(()=>{
     const init={};
     qs.forEach((q,i)=>{
       const solDefault=Array.isArray(q.sol)&&q.sol.length?q.sol.join('\n'):(q.explanation||'');
-      init[i]={solText:solDefault,comment:'',editing:false};
+      init[i]={solText:solDefault,comment:'',editing:false,overrideApplied:false};
     });
     return init;
   });
+
+  // 오버라이드가 로드되면 topic이 일치하고 solText가 비어 있는 문제에만 적용
+  useEffect(()=>{
+    if(Object.keys(topicOverrides).length===0)return;
+    setEdits(prev=>{
+      const updated={...prev};
+      qs.forEach((q,i)=>{
+        const topic=String(q.topic||q.meta?.type||'');
+        const override=topicOverrides[topic];
+        if(override&&!updated[i].solText){
+          updated[i]={...updated[i],solText:override,overrideApplied:true};
+        }
+      });
+      return updated;
+    });
+  },[topicOverrides]);
+
   const setEdit=(i,field,val)=>setEdits(prev=>({...prev,[i]:{...prev[i],[field]:val}}));
   const toggleEditing=(i)=>setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
+
+  const saveOverride=async(i)=>{
+    const q=qs[i];
+    const e=edits[i]||{};
+    if(!e.comment.trim()){alert('코멘트를 먼저 입력해주세요.');return;}
+    const topic=String(q.topic||q.meta?.type||'');
+    if(!topic){alert('이 문제에는 topic 정보가 없어 저장할 수 없습니다.');return;}
+    try{
+      await db.collection('teacherSettings').doc('explanationOverrides').set(
+        {[topic]:e.comment.trim(),updatedAt:Date.now()},
+        {merge:true}
+      );
+      setTopicOverrides(prev=>({...prev,[topic]:e.comment.trim()}));
+      setOverrideSaved(prev=>({...prev,[i]:true}));
+      setTimeout(()=>setOverrideSaved(prev=>({...prev,[i]:false})),2500);
+    }catch(err){alert('저장 실패: '+err.message);}
+  };
 
   const renderMathHtml=txt=>{
     if(!txt)return'';
@@ -1039,7 +1082,7 @@ function SessionPrintModal({log,studentName,onClose}){
       </div>
       <div className="no-print px-4 pt-2 text-xs text-gray-400">＊ '인쇄 / PDF 저장'을 누른 뒤, 인쇄 대화상자에서 <b>대상</b>을 <b>'PDF로 저장'</b>으로 선택하면 파일로 저장됩니다.</div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
-      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [코멘트 추가] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요.</div>
+      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [코멘트 추가] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>📚 다음 해설에 반영</b> 버튼을 누르면 같은 유형의 다음 학생 해설에 이 풀이방식이 자동 적용됩니다.</div>
 
       <style dangerouslySetInnerHTML={{__html:`
         @media print {
@@ -1100,7 +1143,10 @@ function SessionPrintModal({log,studentName,onClose}){
                     </div>
                     {e.solText?(
                       <div className="ml-5 mt-1.5 text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        <div className="font-black text-amber-700 mb-1">📖 풀이 과정</div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-black text-amber-700">📖 풀이 과정</span>
+                          {e.overrideApplied&&<span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full">📚 선생님 등록 풀이방식</span>}
+                        </div>
                         <div className="space-y-0.5 leading-relaxed" dangerouslySetInnerHTML={{__html:renderMathHtml(e.solText).replace(/\n/g,'<br/>')}}/>
                       </div>
                     ):null}
@@ -1119,9 +1165,19 @@ function SessionPrintModal({log,studentName,onClose}){
                           </div>
                           <div>
                             <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $ 입력 가능)</span></div>
-                            <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={2} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
+                            <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={3} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
                           </div>
-                          <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">완료 ✓</button>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">완료 ✓</button>
+                            <button
+                              onClick={()=>saveOverride(i)}
+                              disabled={!e.comment.trim()}
+                              className={`px-4 py-1.5 rounded-lg text-sm font-black transition-all ${overrideSaved[i]?'bg-green-500 text-white':'bg-amber-500 text-white disabled:opacity-40 active:scale-95'}`}
+                            >
+                              {overrideSaved[i]?'✅ 반영 완료!':'📚 다음 해설에 반영'}
+                            </button>
+                            {e.comment.trim()&&<span className="text-[10px] text-gray-400">같은 유형 문제의 풀이방식으로 저장됩니다</span>}
+                          </div>
                         </div>
                       ):(
                         <button onClick={()=>toggleEditing(i)} className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg">
