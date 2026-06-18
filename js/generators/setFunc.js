@@ -988,6 +988,31 @@ function GraphPreview({q}){
   return null;
 }
 
+// 그래프 데이터에서 sol 재생성 — 틀 적용 시 새 문제의 올바른 값으로 계산
+function genSolFromGraph(q){
+  if(Array.isArray(q.sol)&&q.sol.length)return q.sol.join('\n');
+  const g=q?.graph;
+  if(!g)return null;
+  if(g.type==='distance'){
+    const{la,lb,lc,ptX,ptY}=g;
+    if(la==null||lb==null||lc==null||ptX==null||ptY==null)return null;
+    const num=Math.abs(la*ptX+lb*ptY+lc);
+    if(num===0)return null;
+    const denSq=la**2+lb**2;
+    const correct=typeof distFracStr==='function'?distFracStr(num,denSq):`${num}/√${denSq}`;
+    const p=v=>v<0?`(${v})`:String(v);
+    const t1=la*ptX,t2=lb*ptY,t2s=t2>=0?`+${t2}`:String(t2),lcs=lc>=0?`+${lc}`:String(lc);
+    return[
+      `점과 직선 거리 공식: 직선 ax+by+c=0과 점(x₀,y₀) → 거리 = |ax₀+by₀+c| ÷ √(a²+b²)`,
+      `a=${la}, b=${lb}, c=${lc}, 점=(${ptX}, ${ptY}) 대입`,
+      `분자: |${la}×${p(ptX)}+${lb}×${p(ptY)}+${p(lc)}| = |${t1}${t2s}${lcs}| = ${num}`,
+      `분모: √(${la}²+${lb}²) = √(${la**2}+${lb**2}) = √${denSq}`,
+      `거리 = ${num}/√${denSq} = ${correct}`
+    ].join('\n');
+  }
+  return null;
+}
+
 /* ═══════════════════════════════════════════════════════════
    회차(세션) 문제 + 정답 + 해설 인쇄/PDF 모달
    - 학생 기록·선생님 모드에서 공용 사용
@@ -1056,6 +1081,8 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
   },[sessionLoaded]);
 
   // topic 오버라이드를 세션 편집이 없는 문제에만 적용
+  // 우선순위: ①이 문제 자체의 sol(정확한 값) ②그래프에서 재생성 ③저장된 틀 텍스트
+  // comment는 다음 문제에 전파하지 않음 (각 문제별 선생님 코멘트와 별개)
   useEffect(()=>{
     if(Object.keys(topicOverrides).length===0)return;
     setEdits(prev=>{
@@ -1065,10 +1092,11 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         const topic=String(q.topic||q.meta?.type||'');
         const override=topicOverrides[topic];
         if(!override)return;
-        const solText=typeof override==='object'?(override.solText||''):override;
-        const comment=typeof override==='object'?(override.comment||''):'';
-        if(solText||comment){
-          updated[i]={...updated[i],...(solText&&{solText}),...(comment&&{comment}),overrideApplied:true};
+        const generatedSol=genSolFromGraph(q);
+        const storedSol=typeof override==='object'?(override.solText||''):override;
+        const solText=generatedSol||storedSol;
+        if(solText){
+          updated[i]={...updated[i],solText,overrideApplied:true};
         }
       });
       return updated;
@@ -1098,18 +1126,18 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     setEdits(prev=>({...prev,[i]:{...prev[i],editing:!prev[i]?.editing}}));
   };
 
-  // 다음 해설에 반영: 코멘트 없어도 solText만으로 저장 가능
+  // 다음 해설에 반영: 해설 풀이 틀(solText)만 저장, 코멘트는 전파하지 않음
   const saveOverride=async(i)=>{
     const q=qs[i];
     const e=edits[i]||{};
     const solText=e.solText||'';
-    const comment=(e.comment||'').trim();
-    if(!solText&&!comment){alert('해설 또는 코멘트를 먼저 입력해주세요.');return;}
+    if(!solText.trim()){alert('해설(풀이 과정)을 먼저 입력해주세요.\n코멘트는 다음 문제에 반영되지 않습니다.');return;}
     const topic=String(q.topic||q.meta?.type||'');
     if(!topic){alert('이 문제에는 topic 정보가 없어 저장할 수 없습니다.');return;}
     try{
       await saveSessionEdit(i);
-      const overrideVal={solText,comment,updatedAt:Date.now()};
+      // comment는 포함하지 않음 — 해설 풀이 틀(solText)만 다음 문제에 반영
+      const overrideVal={solText,graphType:q.graph?.type||null,questionRef:q.q||q.qTxt||'',updatedAt:Date.now()};
       await db.collection('teacherSettings').doc('explanationOverrides').set(
         {[topic]:overrideVal,updatedAt:Date.now()},{merge:true}
       );
@@ -1346,12 +1374,12 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
                             <button onClick={()=>toggleEditing(i)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black">{sessionId?'💾 저장 & 완료':'완료 ✓'}</button>
                             <button
                               onClick={()=>saveOverride(i)}
-                              disabled={!e.solText?.trim()&&!e.comment?.trim()}
+                              disabled={!e.solText?.trim()}
                               className={`px-4 py-1.5 rounded-lg text-sm font-black transition-all ${overrideSaved[i]?'bg-green-500 text-white':'bg-amber-500 text-white disabled:opacity-40 active:scale-95'}`}
                             >
                               {overrideSaved[i]?'✅ 반영 완료!':'📚 다음 해설에 반영'}
                             </button>
-                            {(e.solText?.trim()||e.comment?.trim())&&<span className="text-[10px] text-gray-400">같은 유형 문제의 풀이방식으로 저장됩니다</span>}
+                            {e.solText?.trim()&&<span className="text-[10px] text-gray-400">같은 유형 문제의 풀이 틀로 저장됩니다 (코멘트 제외)</span>}
                           </div>
                         </div>
                       ):(

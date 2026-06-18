@@ -157,9 +157,26 @@ function genDistanceQ(){
     if(wrongs.length<3)continue;
     const{choices,answer}=makeChoices(correct,wrongs);
     const lbD=lb>=0?`+${lb}`:String(lb),lcD=lc>=0?`+${lc}`:String(lc);
-    return{topic:'점과 직선 거리',q:`점 (${x0}, ${y0})에서 직선 ${la}x${lbD}y${lcD} = 0까지의 거리는?`,choices,answer,graph:{type:'distance',ptX:x0,ptY:y0,la,lb,lc}};
+    const p=v=>v<0?`(${v})`:String(v);
+    const t1=la*x0,t2=lb*y0,t2s=t2>=0?`+${t2}`:String(t2),lcs=lc>=0?`+${lc}`:String(lc);
+    const sol=[
+      `점과 직선 거리 공식: 직선 ax+by+c=0과 점(x₀,y₀) → 거리 = |ax₀+by₀+c| ÷ √(a²+b²)`,
+      `a=${la}, b=${lb}, c=${lc}, 점=(${x0}, ${y0}) 대입`,
+      `분자: |${la}×${p(x0)}+${lb}×${p(y0)}+${p(lc)}| = |${t1}${t2s}${lcs}| = ${num}`,
+      `분모: √(${la}²+${lb}²) = √(${la**2}+${lb**2}) = √${denSq}`,
+      `거리 = ${num}/√${denSq} = ${correct}`
+    ];
+    return{topic:'점과 직선 거리',q:`점 (${x0}, ${y0})에서 직선 ${la}x${lbD}y${lcD} = 0까지의 거리는?`,choices,answer,graph:{type:'distance',ptX:x0,ptY:y0,la,lb,lc},sol};
   }
-  return{topic:'점과 직선 거리',q:'점 (3, 1)에서 직선 3x − 4y + 5 = 0까지의 거리는?',choices:['2','8/5','3','12/5'],answer:0,graph:{type:'distance',ptX:3,ptY:1,la:3,lb:-4,lc:5}};
+  return{topic:'점과 직선 거리',q:'점 (3, 1)에서 직선 3x − 4y + 5 = 0까지의 거리는?',choices:['2','8/5','3','12/5'],answer:0,
+    graph:{type:'distance',ptX:3,ptY:1,la:3,lb:-4,lc:5},
+    sol:[
+      `점과 직선 거리 공식: 직선 ax+by+c=0과 점(x₀,y₀) → 거리 = |ax₀+by₀+c| ÷ √(a²+b²)`,
+      `a=3, b=−4, c=5, 점=(3, 1) 대입`,
+      `분자: |3×3+(−4)×1+5| = |9−4+5| = 10`,
+      `분모: √(3²+(−4)²) = √(9+16) = √25 = 5`,
+      `거리 = 10 ÷ 5 = 2`
+    ]};
 }
 function genCircleQ(){
   const h=randInt(-3,3),k=randInt(-3,3),r=randInt(1,4),r2=r*r;
