@@ -6215,8 +6215,10 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     setFb({ok:isOk,msg:isOk?'✅ 정답입니다! 잘했어요!':`❌ 아쉬워요! 정답은 ${cAns} 입니다.`});
     setPhase('feedback');
     
-    // 10문제 달성 시 바로 끝내지 않고 '감정 성찰(reflection)' 단계로 넘어감
-    if(newCorrect>=10){
+    // 검정고시: 총 10문제, 나눗셈/약수: 정답 10개
+    const isExam=ver>=5;
+    const shouldEnd=isExam?(questions.length+1>=10):(newCorrect>=10);
+    if(shouldEnd){
       setTimeout(()=>setPhase('reflection'), 1200);
     }
   };
@@ -6227,7 +6229,8 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     const typeMap=['기본 나눗셈','심화 나눗셈','혼합 나눗셈','약수 구하기','약수(하드)','중졸 검정고시 연습','고졸 검정고시 연습'];
     
     // feeling(난이도 체감) 데이터 포함 저장
-    const log={studentName:userData.name,date:today,time:timeStr(),type:typeMap[ver]||'나눗셈',score:`10 / ${questions.length}`,questions:questions,totalSec, feeling};
+    const score=ver>=5?`${correctCount} / ${questions.length}`:`10 / ${questions.length}`;
+    const log={studentName:userData.name,date:today,time:timeStr(),type:typeMap[ver]||'나눗셈',score,questions:questions,totalSec, feeling};
     const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,lastDate:today,activeDates:newActiveDates,logs:[log,...(userData.logs||[]).slice(0,49)]};
     
     await saveUser(upd);await saveLog(log);onUpdate(upd);
@@ -6237,7 +6240,8 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   };
 
   const nextQ=()=>{
-    if(phase==='done'||phase==='reflection'||correctCount>=10)return;
+    const isExam=ver>=5;
+    if(phase==='done'||phase==='reflection'||(isExam?questions.length>=10:correctCount>=10))return;
     const nNum=questions.length+1;
     // ── 세션 내 중복 방지: 이미 출제된 문제 키 수집 ──
     const seenKeys=new Set(questions.map(pq=>{
@@ -6258,7 +6262,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setPhase('question');setQStartTime(Date.now());setFirstActionTime(null);setShowConfirm(false);setActiveField('Q');
   };
 
-  if(phase==='done')return<PracticeDone userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
+  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
 
   // 🔥 감정 성찰 (메타인지) 화면 렌더링 🔥
   if(phase==='reflection') {
@@ -6396,11 +6400,12 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   </div>);
 }
 
-function PracticeDone({userData,correct,wrong,onAgain,onHome}){
+function PracticeDone({ver,userData,correct,wrong,onAgain,onHome}){
+  const isExam=ver>=5;
   return(<div className="p-4 pb-36 flex flex-col items-center justify-center min-h-screen text-center">
     <div className="text-8xl mb-4">🎉</div>
     <h2 className="text-3xl font-black text-gray-800 mb-2">레슨 완료!</h2>
-    <p className="text-gray-500 text-lg mb-6">10문제를 모두 맞혔어요!</p>
+    <p className="text-gray-500 text-lg mb-6">{isExam?`10문제 완료! 정답 ${correct}개`:'10문제를 모두 맞혔어요!'}</p>
     <div className="bg-white rounded-3xl p-6 shadow-md w-full max-w-xs mb-6">
       <div className="text-6xl font-black text-green-500 mb-1">{correct}</div>
       <div className="text-gray-500 font-bold">정답</div>
