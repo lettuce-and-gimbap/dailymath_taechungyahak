@@ -81,8 +81,31 @@ function StudentSentFeedback({name,refreshSignal}){
   </div>);
 }
 
-function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession}){
+function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework}){
   const{totalLessons,todayLessons,todayCorrect,todayWrong,goal=3,activeDates=[],currentWeekStart,stampArchive=[],name,logs=[]}=userData;
+  const[notices,setNotices]=React.useState([]);
+  const[pendingHomework,setPendingHomework]=React.useState(null);
+  React.useEffect(()=>{
+    const now=new Date();
+    db.collection('notices').get().then(snap=>{
+      const arr=[];snap.forEach(d=>{
+        const n={id:d.id,...d.data()};
+        const exp=n.expiresAt?.toDate?n.expiresAt.toDate():new Date(n.expiresAt||0);
+        if(exp>now)arr.push(n);
+      });
+      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));
+      setNotices(arr);
+    }).catch(()=>{});
+    db.collection('homework').where('active','==',true).get().then(snap=>{
+      const arr=[];snap.forEach(d=>{
+        const h={id:d.id,...d.data()};
+        const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);
+        if(exp>now&&!(h.completedBy||[]).includes(name))arr.push(h);
+      });
+      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));
+      if(arr.length>0)setPendingHomework(arr[0]);
+    }).catch(()=>{});
+  },[name]);
   
   // 1. 스탬프 및 진도율 계산 로직
   const weekDates=weekDatesFrom(currentWeekStart||getKSTMonday());
@@ -206,6 +229,25 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
   return(<div className="p-4 space-y-5 pb-36">
     <div className="text-2xl font-black text-gray-800 mt-1">{name}님! 안녕하세요 👋</div>
+
+    {/* 전체공지 배너 */}
+    {notices.map(n=>(
+      <div key={n.id} className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 shadow-sm">
+        <div className="font-black text-blue-800 text-sm mb-1">📢 선생님 공지</div>
+        <p className="text-sm text-blue-700 font-medium leading-relaxed break-keep">{n.text}</p>
+      </div>
+    ))}
+
+    {/* 숙제 배너 */}
+    {pendingHomework&&(
+      <button onClick={()=>onStartHomework&&onStartHomework(pendingHomework)} className="w-full text-left bg-green-50 border-2 border-green-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+        <div className="text-3xl">📝</div>
+        <div className="flex-1">
+          <div className="font-black text-green-800 text-base">선생님의 숙제가 있어요!</div>
+          <div className="text-sm text-green-700 font-bold mt-0.5">풀어보시겠어요? ({pendingHomework.title}) →</div>
+        </div>
+      </button>
+    )}
 
     {/* 저장된 세션 알림 배너 */}
     {hasSavedSession&&(()=>{

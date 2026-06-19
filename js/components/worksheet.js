@@ -169,6 +169,21 @@ function WorksheetTab(){
     }catch(e){showToast('❌ 저장 실패. 인터넷을 확인하세요.');}
   };
 
+  // 숙제로 내기
+  const assignAsHomework=async()=>{
+    if(!examSheet)return;
+    if(!window.confirm(`"${examSheet.title}"\n을 전체 학생에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
+    try{
+      const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
+      await db.collection('homework').add({
+        title:examSheet.title,level:examSheet.level||'고졸',
+        questions:examSheet.questions,
+        active:true,createdAt:now,expiresAt:exp,completedBy:[]
+      });
+      showToast('✅ 숙제로 등록되었습니다! 학생 홈 화면에 표시됩니다.');
+    }catch(e){showToast('❌ 숙제 등록 실패');}
+  };
+
   useEffect(()=>{setSelectedDomains([]);},[wsType]);
 
   useEffect(()=>{
@@ -293,6 +308,9 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       </div>
       <button onClick={saveExamSheet} disabled={examSaved} className={`w-full py-3 rounded-2xl font-black text-sm transition-all ${examSaved?'bg-green-100 text-green-700 border-2 border-green-300 cursor-default':'bg-emerald-500 text-white active:scale-95'}`}>
         {examSaved?'✅ 저장 완료 (저장된 문제지에서 확인)':'💾 문제집 폴더에 저장하기'}
+      </button>
+      <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
+        📝 학생에게 숙제로 내기
       </button>
       {examSheet.questions.map((q,i)=>(
         <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

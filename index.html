@@ -5458,9 +5458,22 @@ function StudentSentFeedback({name,refreshSignal}){
   </div>);
 }
 
-function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession}){
+function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework}){
   const{totalLessons,todayLessons,todayCorrect,todayWrong,goal=3,activeDates=[],currentWeekStart,stampArchive=[],name,logs=[]}=userData;
-  
+  const[notices,setNotices]=React.useState([]);
+  const[pendingHomework,setPendingHomework]=React.useState(null);
+  React.useEffect(()=>{
+    const now=new Date();
+    db.collection('notices').get().then(snap=>{
+      const arr=[];snap.forEach(d=>{const n={id:d.id,...d.data()};const exp=n.expiresAt?.toDate?n.expiresAt.toDate():new Date(n.expiresAt||0);if(exp>now)arr.push(n);});
+      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));setNotices(arr);
+    }).catch(()=>{});
+    db.collection('homework').where('active','==',true).get().then(snap=>{
+      const arr=[];snap.forEach(d=>{const h={id:d.id,...d.data()};const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);if(exp>now&&!(h.completedBy||[]).includes(name))arr.push(h);});
+      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));if(arr.length>0)setPendingHomework(arr[0]);
+    }).catch(()=>{});
+  },[name]);
+
   // 1. 스탬프 및 진도율 계산 로직
   const weekDates=weekDatesFrom(currentWeekStart||getKSTMonday());
   const pct=Math.min((todayLessons/goal)*100,100);const circ=226.2;const offset=circ-(circ*pct/100);
@@ -5584,6 +5597,23 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
   return(<div className="p-4 space-y-5 pb-36">
     <div className="text-2xl font-black text-gray-800 mt-1">{name}님! 안녕하세요 👋</div>
 
+    {notices.map(n=>(
+      <div key={n.id} className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 shadow-sm">
+        <div className="font-black text-blue-800 text-sm mb-1">📢 선생님 공지</div>
+        <p className="text-sm text-blue-700 font-medium leading-relaxed break-keep">{n.text}</p>
+      </div>
+    ))}
+
+    {pendingHomework&&(
+      <button onClick={()=>onStartHomework&&onStartHomework(pendingHomework)} className="w-full text-left bg-green-50 border-2 border-green-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+        <div className="text-3xl">📝</div>
+        <div className="flex-1">
+          <div className="font-black text-green-800 text-base">선생님의 숙제가 있어요!</div>
+          <div className="text-sm text-green-700 font-bold mt-0.5">풀어보시겠어요? ({pendingHomework.title}) →</div>
+        </div>
+      </button>
+    )}
+
     {/* 저장된 세션 알림 배너 */}
     {hasSavedSession&&(()=>{
       let saved=null;try{saved=JSON.parse(localStorage.getItem('yakHakSavedSession_'+name));}catch{}
@@ -5705,6 +5735,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   const[screen,setScreen]=useState('menu');
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
+  const[verTopic,setVerTopic]=useState(null);
   const[rangeMin,setRangeMin]=useState(userData.rangeMin||10);
   const[rangeMax,setRangeMax]=useState(userData.rangeMax||99);
   const[divMin,setDivMin]=useState(userData.divRangeMin||10);
@@ -5731,7 +5762,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   setRangeMin(effRMin); setRangeMax(effRMax);
   setDivMin(effDMin);   setDivMax(effDMax);
   const divCountIdxs=[];while(divCountIdxs.length<2){const r=randInt(1,10);if(!divCountIdxs.includes(r))divCountIdxs.push(r)}
-  setSession({qNum:1,correct:0,wrong:0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs,currentQ:null,selectedMC:null,fb:null,phase:'question'});
+  setSession({qNum:1,correct:0,wrong:0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs,currentQ:null,selectedMC:null,fb:null,phase:'question',verTopic:verTopic||null});
   setScreen('session');
   onSessionActive?.(true);
 };
@@ -5741,7 +5772,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   setVer(savedData.ver);
   setRangeMin(savedData.rangeMin); setRangeMax(savedData.rangeMax);
   setDivMin(savedData.divMin);     setDivMax(savedData.divMax);
-  setSession({qNum:savedData.qNum||1,correct:savedData.correctCount||0,wrong:savedData.wrongCount||0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs:savedData.divCountIdxs||[3,7],currentQ:null,selectedMC:null,fb:null,phase:'question'});
+  setSession({qNum:savedData.qNum||1,correct:savedData.correctCount||0,wrong:savedData.wrongCount||0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs:savedData.divCountIdxs||[3,7],currentQ:null,selectedMC:null,fb:null,phase:'question',verTopic:null});
   setScreen('session');
   onSessionActive?.(true);
 };
@@ -5752,14 +5783,17 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
     setSavedData(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}});
   };
 
-  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v)}} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
+  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v);setVerTopic(null);}} verTopic={verTopic} setVerTopic={setVerTopic} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
   if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={rangeMin} rangeMax={rangeMax} divMin={divMin} divMax={divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
   if(screen==='done')return<PracticeDone userData={userData} onAgain={startSession} onHome={()=>{setScreen('menu');onSessionActive?.(false);}}/>;
   return null;
 }
 
-function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume}){
+function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume}){
   const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
+  const MID_DOMAINS=['전체(혼합)','수와 연산','문자와 식','함수','기하','확률과 통계'];
+  const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','집합과 함수','확률과 통계'];
+  const domainList=ver===5?MID_DOMAINS:HIGH_DOMAINS;
   return(<div className="p-4 space-y-4 pb-36">
     {savedData&&(<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
       <div className="text-3xl">📚</div>
@@ -5821,14 +5855,17 @@ function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divM
       <button onClick={onSave} className="w-full mt-3 py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold text-sm">설정 저장</button>
     </div>}
     {ver>=5&&<div className="bg-indigo-50 rounded-3xl p-5 shadow-sm border-2 border-indigo-100">
-      <div className="text-base font-black text-indigo-700 mb-2">📚 {ver===5?'중졸':'고졸'} 검정고시 연습이란?</div>
-      <div className="space-y-2 text-sm font-semibold text-indigo-600">
-        {(ver===5
-          ?['수와 연산','문자와 식','함수','기하','확률과 통계']
-          :['다항식 계산','방정식과 부등식','도형과 기하','집합과 함수','확률과 통계']
-        ).map((t,i)=><div key={t} className="flex items-start gap-2"><span>{['🔢','✏️','📈','📐','🎲'][i]}</span><span><b>{t}</b></span></div>)}
+      <div className="text-base font-black text-indigo-700 mb-3">🗂️ {ver===5?'중졸':'고졸'} 검정고시 — 영역 선택</div>
+      <div className="grid grid-cols-2 gap-2">
+        {domainList.map(d=>{
+          const selected=(verTopic||'전체(혼합)')===d;
+          return(<button key={d} onClick={()=>setVerTopic(d==='전체(혼합)'?null:d)}
+            className={`py-3 px-2 rounded-2xl border-2 font-bold text-sm transition-all text-center leading-tight ${selected?'border-indigo-500 bg-indigo-100 text-indigo-800':'border-gray-200 bg-white text-gray-600'}`}>
+            {d}
+          </button>);
+        })}
       </div>
-      <div className="mt-3 text-xs text-indigo-400 font-bold">최근 출제 유형을 더 자주 만나며, 10문제 완료 시 성취도에 반영됩니다.</div>
+      <div className="mt-3 text-xs text-indigo-400 font-bold">선택한 영역만 집중적으로 연습합니다. 10문제 완료 시 성취도에 반영됩니다.</div>
     </div>}
     <button onClick={onStart} className="w-full py-5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-3xl text-2xl font-black shadow-xl active:scale-95 transition-transform">
       문제 풀기 시작 ✏️
@@ -5836,7 +5873,7 @@ function PracticeMenu({ver,setVer,rangeMin,setRangeMin,rangeMax,setRangeMax,divM
   </div>);
 }
 
-function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=null){
+function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=null,domain=null){
   let qType=ver;if(qType===2)qType=Math.random()<0.5?0:1;
   const isMC=Math.random()<0.25;
   if(qType===3||qType===4){
@@ -5850,9 +5887,21 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
     const midLabels=Object.keys(MID_DOMAIN_GENS);
     const highLabels=['다항식 계산','방정식과 부등식','도형과 기하','집합과 함수','확률과 통계'];
     const highGens=[genMockPoly,genMockEqInequal,genMockGeometry,genMockSetFunc,genMockProbStat];
-    const areaLabels=qType===5?midLabels:highLabels;
-    const areaIdx=(qNum-1)%areaLabels.length;
-    const gen=qType===5?()=>genMiddleMock(areaLabels[areaIdx]):highGens[areaIdx];
+    let areaLabel,gen;
+    if(domain){
+      areaLabel=domain;
+      if(qType===5){
+        gen=()=>genMiddleMock(domain);
+      } else {
+        const dIdx=highLabels.indexOf(domain);
+        gen=dIdx>=0?highGens[dIdx]:highGens[Math.floor(Math.random()*highGens.length)];
+      }
+    } else {
+      const areaLabels=qType===5?midLabels:highLabels;
+      const areaIdx=(qNum-1)%areaLabels.length;
+      areaLabel=areaLabels[areaIdx];
+      gen=qType===5?()=>genMiddleMock(areaLabel):highGens[areaIdx];
+    }
     let q=null;let tries=0;
     // seenSet이 있으면 문제 텍스트 중복 방지
     while(tries<12){
@@ -5865,7 +5914,7 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
     if(!q){try{q=qType===5?genMiddleMock():genMockProbStat();}catch(e){}}
     if(!q)q={topic:'확률',q:'3명 중 2명을 순서대로 뽑는 경우의 수는?',choices:['3','6','9','12'],answer:1,meta:{category:'stat',type:'확률과 통계',diff:'기초'}};
     return{...q,category:'exam5',isMC:true,
-      qLogTxt:q.q?.slice(0,30)||q.topic||areaLabels[areaIdx]};
+      qLogTxt:q.q?.slice(0,30)||q.topic||areaLabel};
   }
   if(qType===0){const q=genDivBasic(rangeMin,rangeMax);return{...q,category:'math',isMC}}
   return{...genDivRemainder(rangeMin,rangeMax),category:'math',isMC};
@@ -6033,7 +6082,8 @@ function NumPadInput({q,ans,setAns,activeField,setActiveField,onConfirmRequest,h
 
 function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax,userData,onUpdate,onBack}){
   const seenQKeysRef = React.useRef(new Set());
-  const[q,setQ]=useState(()=>makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current));
+  const verTopic=session.verTopic||null;
+  const[q,setQ]=useState(()=>makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current,verTopic));
   const[ans,setAns]=useState({ansQ:'',ansR:'',ansDiv:'',ansCount:''});
   const[fb,setFb]=useState(null);
   const[selMC,setSelMC]=useState(null);
@@ -6252,7 +6302,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     }));
     let nQ=null;let tries=0;
     while(tries<8){
-      nQ=makeQ(ver,nNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current);
+      nQ=makeQ(ver,nNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current,verTopic);
       const newKey=nQ.category==='exam5'? (nQ.q?.slice(0,20)||nQ.topic)
                  : nQ.category==='div' ? String(nQ.target)
                  : nQ.qLogTxt||`${nQ.a}-${nQ.b}`;
@@ -6262,7 +6312,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setPhase('question');setQStartTime(Date.now());setFirstActionTime(null);setShowConfirm(false);setActiveField('Q');
   };
 
-  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
+  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,null,verTopic);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
 
   // 🔥 감정 성찰 (메타인지) 화면 렌더링 🔥
   if(phase==='reflection') {
@@ -7363,6 +7413,13 @@ function WorksheetTab(){
       loadWsList();
     }catch(e){showToast('❌ 저장 실패. 인터넷을 확인하세요.');}
   };
+  const assignAsHomework=async()=>{
+    if(!examSheet)return;
+    if(!window.confirm(`"${examSheet.title}"\n을 전체 학생에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
+    try{const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
+    await db.collection('homework').add({title:examSheet.title,level:examSheet.level||'고졸',questions:examSheet.questions,active:true,createdAt:now,expiresAt:exp,completedBy:[]});
+    showToast('✅ 숙제로 등록되었습니다! 학생 홈 화면에 표시됩니다.');}catch(e){showToast('❌ 숙제 등록 실패');}
+  };
 
   useEffect(()=>{setSelectedDomains([]);},[wsType]);
 
@@ -7488,6 +7545,9 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       </div>
       <button onClick={saveExamSheet} disabled={examSaved} className={`w-full py-3 rounded-2xl font-black text-sm transition-all ${examSaved?'bg-green-100 text-green-700 border-2 border-green-300 cursor-default':'bg-emerald-500 text-white active:scale-95'}`}>
         {examSaved?'✅ 저장 완료 (저장된 문제지에서 확인)':'💾 문제집 폴더에 저장하기'}
+      </button>
+      <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
+        📝 학생에게 숙제로 내기
       </button>
       {examSheet.questions.map((q,i)=>(
         <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -8138,6 +8198,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   const[showNavModal,setShowNavModal]=useState(false);
   const[pendingTab,setPendingTab]=useState(null);
   const[hasSavedSession,setHasSavedSession]=useState(()=>!!localStorage.getItem('yakHakSavedSession_'+userData.name));
+  const[activeHomework,setActiveHomework]=useState(null);
   const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
 
   const handleSessionActive=(active)=>{
@@ -8204,6 +8265,10 @@ function StudentDashboard({userData,onLogout,onUpdate}){
     setShowFbModal(false);
   };
 
+  if(activeHomework){
+    return<HomeworkSession homework={activeHomework} userData={userData} onUpdate={onUpdate} onDone={()=>setActiveHomework(null)}/>;
+  }
+
   return(<div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50 relative" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
       <div className="text-2xl">🎓</div>
@@ -8213,7 +8278,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
     <div className="flex-1 overflow-auto scroll-body">
-      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession}/>}
+      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
       {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}/>}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
@@ -8491,6 +8556,91 @@ function analyzeStudent(sData){
 }
 var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 전`;
 
+function HomeworkSession({homework,userData,onUpdate,onDone}){
+  const ORD=['①','②','③','④'];
+  const[idx,setIdx]=useState(0);
+  const[selected,setSelected]=useState(null);
+  const[phase,setPhase]=useState('question');
+  const[results,setResults]=useState([]);
+  const[correctCount,setCorrectCount]=useState(0);
+  const[startTime]=useState(Date.now());
+  const q=homework.questions[idx];
+  const total=homework.questions.length;
+  const check=()=>{
+    if(selected===null)return;
+    const isOk=selected===q.answer;
+    const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
+    setResults(newRes);
+    const newCorrect=correctCount+(isOk?1:0);
+    setCorrectCount(newCorrect);
+    if(idx+1>=total){finishHomework(newRes,newCorrect);setPhase('done');}
+    else{setPhase('feedback');}
+  };
+  const nextQ=()=>{setIdx(i=>i+1);setSelected(null);setPhase('question');};
+  const finishHomework=async(res,correct)=>{
+    try{
+      await db.collection('homework').doc(homework.id).update({completedBy:firebase.firestore.FieldValue.arrayUnion(userData.name)});
+      const log={studentName:userData.name,date:todayStr(),time:timeStr(),type:`숙제: ${homework.title}`,score:`${correct}/${total}`,questions:res,totalSec:Math.round((Date.now()-startTime)/1000),feeling:null};
+      await saveLog(log);
+      const upd={...userData,logs:[log,...(userData.logs||[]).slice(0,49)]};
+      await saveUser(upd);onUpdate(upd);
+    }catch(e){}
+  };
+  if(phase==='done'){
+    const pct=Math.round(correctCount/total*100);
+    return(<div className="flex flex-col min-h-screen items-center justify-center p-6 text-center bg-gray-50 max-w-lg mx-auto">
+      <div className="text-8xl mb-4">🎉</div>
+      <h2 className="text-3xl font-black text-gray-800 mb-2">숙제 완료!</h2>
+      <p className="text-gray-500 text-lg mb-2 font-bold">{homework.title}</p>
+      <div className="bg-white rounded-3xl p-6 shadow-md w-full max-w-xs mb-4">
+        <div className="text-6xl font-black text-green-500 mb-1">{correctCount}<span className="text-2xl text-gray-400">/{total}</span></div>
+        <div className="text-gray-500 font-bold mb-3">정답</div>
+        <div className={`text-2xl font-black ${pct>=80?'text-green-600':pct>=60?'text-amber-500':'text-red-500'}`}>{pct}점</div>
+      </div>
+      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 text-white mb-6 w-full max-w-xs">
+        <div className="text-2xl mb-2">🌟</div>
+        <div className="font-black text-lg mb-1">{pct>=90?'완벽해요! 정말 대단해요! 👏':pct>=70?'정말 잘했어요! 훌륭합니다! 💪':'끝까지 풀어줘서 고마워요! 다음엔 더 잘할 거예요! 🌈'}</div>
+        <div className="text-sm opacity-90">선생님이 기록을 확인하실 거예요!</div>
+      </div>
+      <button onClick={onDone} className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-black text-xl active:scale-95 transition-transform">홈으로 🏠</button>
+    </div>);
+  }
+  const pgPct=Math.round((idx/total)*100);
+  return(<div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50" style={{overflowX:'hidden'}}>
+    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
+      <div className="text-lg font-black text-indigo-700 flex-1 truncate">📝 {homework.title}</div>
+      <div className="text-sm font-bold text-gray-400">{idx+1}/{total}</div>
+    </header>
+    <div className="flex-1 p-4 space-y-4 pb-36">
+      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500" style={{width:`${pgPct}%`}}/>
+      </div>
+      <div className="bg-white rounded-3xl p-5 shadow-md">
+        <div className="inline-block bg-indigo-100 text-indigo-700 text-xs font-black px-3 py-1 rounded-full mb-3">{q.topic||homework.level||'검정고시'}</div>
+        {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>}
+        <div className="text-base font-bold text-gray-800 leading-relaxed">{q.q}</div>
+        {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3"><GraphPreview q={q}/></div>}
+      </div>
+      {phase==='question'&&(<div className="flex flex-col gap-3">
+        {q.choices.map((c,i)=>(<button key={i} onClick={()=>setSelected(i)}
+          className={`p-4 rounded-2xl border-2 text-base font-bold transition-all text-left leading-relaxed ${selected===i?'border-indigo-500 bg-indigo-50 text-indigo-700':'border-gray-200 bg-white text-gray-700'}`}>
+          <span className="text-indigo-900 mr-1">{ORD[i]}</span> <MathText v={c}/>
+        </button>))}
+        <button onClick={check} disabled={selected===null} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg disabled:opacity-40 active:scale-95 transition-all mt-2">제출하기 ✓</button>
+      </div>)}
+      {phase==='feedback'&&(<div className="space-y-3">
+        <div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 ${selected===q.answer?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>
+          {selected===q.answer?'✅ 정답입니다! 잘했어요!':` ❌ 아쉬워요! 정답은 ${ORD[q.answer]} ${q.choices[q.answer]}입니다.`}
+        </div>
+        {Array.isArray(q.sol)&&q.sol.length>0&&(<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+          <div className="text-xs font-black text-amber-600 mb-2">📖 풀이</div>
+          <div className="space-y-1">{q.sol.map((s,si)=><div key={si} className="text-sm text-gray-700 font-medium">{s}</div>)}</div>
+        </div>)}
+        <button onClick={nextQ} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">다음 문제 →</button>
+      </div>)}
+    </div>
+  </div>);
+}
 
 
 
@@ -8498,7 +8648,7 @@ var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 �
 // === js/dashboards/teacherDashboard.js ===
 function TeacherDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('analysis');
-  const TABS=[{k:'analysis',icon:'📊',lbl:'학생현황'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'feedback',icon:'💬',lbl:'피드백'}];
+  const TABS=[{k:'analysis',icon:'📊',lbl:'학생현황'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'feedback',icon:'💬',lbl:'피드백'}];
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-md">
       <div className="text-2xl">👨‍🏫</div>
@@ -8510,6 +8660,7 @@ function TeacherDashboard({userData,onLogout,onUpdate}){
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='analysis'&&<StudentAnalysisTab/>}
       {tab==='worksheets'&&<WorksheetTab/>}
+      {tab==='notices'&&<NoticeTab/>}
       {tab==='feedback'&&<FeedbackTab/>}
     </div>
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-2xl mx-auto">
@@ -8517,6 +8668,62 @@ function TeacherDashboard({userData,onLogout,onUpdate}){
         <span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span>
       </button>)}</div>
     </nav>
+  </div>);
+}
+
+function NoticeTab(){
+  const[noticeText,setNoticeText]=useState('');
+  const[notices,setNotices]=useState([]);
+  const[homeworks,setHomeworks]=useState([]);
+  const[posting,setPosting]=useState(false);
+  const loadAll=async()=>{
+    try{
+      const nSnap=await db.collection('notices').orderBy('createdAt','desc').limit(30).get();
+      const nArr=[];nSnap.forEach(d=>nArr.push({id:d.id,...d.data()}));setNotices(nArr);
+      const hSnap=await db.collection('homework').orderBy('createdAt','desc').limit(20).get();
+      const hArr=[];hSnap.forEach(d=>hArr.push({id:d.id,...d.data()}));setHomeworks(hArr);
+    }catch(e){}
+  };
+  useEffect(()=>{loadAll();},[]);
+  const postNotice=async()=>{
+    if(!noticeText.trim())return;setPosting(true);
+    try{const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+3);
+    await db.collection('notices').add({text:noticeText.trim(),createdAt:now,expiresAt:exp});
+    setNoticeText('');loadAll();}catch(e){alert('등록 실패');}setPosting(false);
+  };
+  const deleteNotice=async(id)=>{if(!window.confirm('공지를 삭제할까요?'))return;try{await db.collection('notices').doc(id).delete();loadAll();}catch(e){}};
+  const deleteHomework=async(id)=>{if(!window.confirm('숙제를 삭제(비활성화)할까요?'))return;try{await db.collection('homework').doc(id).set({active:false},{merge:true});loadAll();}catch(e){}};
+  const fmt=ts=>{if(!ts)return'';const d=ts.toDate?ts.toDate():new Date(ts);return d.toLocaleDateString('ko-KR');};
+  const isExpired=ts=>{if(!ts)return true;const d=ts.toDate?ts.toDate():new Date(ts);return d<new Date();};
+  return(<div className="p-4 space-y-5 pb-36">
+    <div className="bg-white rounded-2xl p-5 shadow-sm">
+      <div className="text-sm font-black text-gray-600 mb-3">📢 전체 공지 작성</div>
+      <div className="text-xs text-gray-400 mb-3">등록 후 3일간 모든 학생의 홈 화면에 표시됩니다.</div>
+      <textarea value={noticeText} onChange={e=>setNoticeText(e.target.value)} placeholder="모든 학생에게 전달할 내용을 입력하세요" rows={4} className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm resize-none outline-none focus:border-indigo-400 mb-3"/>
+      <button onClick={postNotice} disabled={posting||!noticeText.trim()} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm disabled:opacity-40 active:scale-95 transition-all">
+        {posting?'등록 중...':'전체 공지 등록 📢'}
+      </button>
+    </div>
+    <div>
+      <div className="text-sm font-black text-gray-500 mb-2 px-1">등록된 공지 ({notices.length})</div>
+      {notices.length===0&&<div className="text-center text-gray-400 py-6 text-sm">등록된 공지가 없습니다</div>}
+      <div className="space-y-3">{notices.map(n=>{const expired=isExpired(n.expiresAt);return(<div key={n.id} className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${expired?'border-gray-300 opacity-60':'border-indigo-400'}`}>
+        <div className="flex items-center gap-2 mb-2">{expired?<span className="text-xs bg-gray-200 text-gray-500 font-bold px-2 py-0.5 rounded-full">만료됨</span>:<span className="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">표시 중</span>}<span className="text-xs text-gray-400 ml-auto">만료: {fmt(n.expiresAt)}</span></div>
+        <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep mb-3">{n.text}</p>
+        <button onClick={()=>deleteNotice(n.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>
+      </div>);})}</div>
+    </div>
+    <div>
+      <div className="text-sm font-black text-gray-500 mb-2 px-1">📝 등록된 숙제 ({homeworks.length})</div>
+      <div className="text-xs text-gray-400 mb-3 px-1">숙제는 학습지 탭 → 모의고사 생성 후 "숙제로 내기" 버튼으로 추가합니다.</div>
+      {homeworks.length===0&&<div className="text-center text-gray-400 py-6 text-sm">등록된 숙제가 없습니다</div>}
+      <div className="space-y-3">{homeworks.map(h=>{const expired=isExpired(h.expiresAt)||h.active===false;const done=(h.completedBy||[]).length;return(<div key={h.id} className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${expired?'border-gray-300 opacity-60':'border-green-400'}`}>
+        <div className="flex items-center gap-2 mb-2">{expired?<span className="text-xs bg-gray-200 text-gray-500 font-bold px-2 py-0.5 rounded-full">비활성</span>:<span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">진행 중</span>}<span className="text-xs text-gray-400 ml-auto">완료: {done}명</span></div>
+        <div className="font-bold text-gray-800 text-sm mb-1">{h.title}</div>
+        <div className="text-xs text-gray-500 mb-3">{h.level||''} · {h.questions?.length||0}문항 · 만료: {fmt(h.expiresAt)}</div>
+        {!expired&&<button onClick={()=>deleteHomework(h.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>}
+      </div>);})}</div>
+    </div>
   </div>);
 }
 
