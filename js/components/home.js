@@ -100,7 +100,8 @@ function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework
       const arr=[];snap.forEach(d=>{
         const h={id:d.id,...d.data()};
         const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);
-        if(exp>now&&!(h.completedBy||[]).includes(name))arr.push(h);
+        const forMe=!h.assignedTo||h.assignedTo===name;
+        if(exp>now&&forMe&&!(h.completedBy||[]).includes(name))arr.push(h);
       });
       arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));
       if(arr.length>0)setPendingHomework(arr[0]);

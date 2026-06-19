@@ -28,6 +28,8 @@ function WorksheetTab(){
   const[grades, setGrades] = useState({});
   // 모의고사 문제지 저장 완료 여부
   const[examSaved,setExamSaved]=useState(false);
+  // 숙제 대상 학생
+  const[homeworkTarget,setHomeworkTarget]=useState('전체');
 
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
@@ -172,15 +174,17 @@ function WorksheetTab(){
   // 숙제로 내기
   const assignAsHomework=async()=>{
     if(!examSheet)return;
-    if(!window.confirm(`"${examSheet.title}"\n을 전체 학생에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
+    const targetLabel=homeworkTarget==='전체'?'전체 학생':`${homeworkTarget} 학생`;
+    if(!window.confirm(`"${examSheet.title}"\n을 ${targetLabel}에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
       await db.collection('homework').add({
         title:examSheet.title,level:examSheet.level||'고졸',
         questions:examSheet.questions,
-        active:true,createdAt:now,expiresAt:exp,completedBy:[]
+        active:true,createdAt:now,expiresAt:exp,completedBy:[],
+        assignedTo:homeworkTarget==='전체'?null:homeworkTarget
       });
-      showToast('✅ 숙제로 등록되었습니다! 학생 홈 화면에 표시됩니다.');
+      showToast(`✅ ${targetLabel}에게 숙제로 등록되었습니다!`);
     }catch(e){showToast('❌ 숙제 등록 실패');}
   };
 
@@ -309,9 +313,18 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       <button onClick={saveExamSheet} disabled={examSaved} className={`w-full py-3 rounded-2xl font-black text-sm transition-all ${examSaved?'bg-green-100 text-green-700 border-2 border-green-300 cursor-default':'bg-emerald-500 text-white active:scale-95'}`}>
         {examSaved?'✅ 저장 완료 (저장된 문제지에서 확인)':'💾 문제집 폴더에 저장하기'}
       </button>
-      <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
-        📝 학생에게 숙제로 내기
-      </button>
+      <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-3">
+        <div className="text-sm font-black text-amber-800">📝 숙제 대상 학생 선택</div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={()=>setHomeworkTarget('전체')} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${homeworkTarget==='전체'?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>전체 학생</button>
+          {studentList.map(s=>(
+            <button key={s.name} onClick={()=>setHomeworkTarget(s.name)} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${homeworkTarget===s.name?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>{s.name}</button>
+          ))}
+        </div>
+        <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
+          📝 {homeworkTarget==='전체'?'전체 학생':''+homeworkTarget+' 학생'}에게 숙제로 내기
+        </button>
+      </div>
       {examSheet.questions.map((q,i)=>(
         <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
