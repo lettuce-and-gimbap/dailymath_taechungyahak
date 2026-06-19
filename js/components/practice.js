@@ -346,17 +346,51 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   const[showConfirm,setShowConfirm]=useState(false);
   const[showExitModal,setShowExitModal]=useState(false);
   const[activeField,setActiveField]=useState('Q');   // 숫자패드 활성 필드 ('Q'|'R')
+  const phaseRef=React.useRef(phase);
+  const saveDataRef=React.useRef({});
 
   const handleFirstAction=()=>{
     if(firstActionTime===null)setFirstActionTime(Date.now());
   };
 
+  useEffect(()=>{phaseRef.current=phase;},[phase]);
   useEffect(()=>{
-    window.__yakHakActiveSession={ver,rangeMin,rangeMax,divMin,divMax,
-      qNum:questions.length+1,divCountIdxs:session.divCountIdxs,
-      correctCount,wrongCount,savedAt:Date.now()};
+    const d={ver,rangeMin,rangeMax,divMin,divMax,qNum:questions.length+1,divCountIdxs:session.divCountIdxs,correctCount,wrongCount};
+    window.__yakHakActiveSession={...d,savedAt:Date.now()};
+    saveDataRef.current=d;
   },[correctCount,wrongCount,questions.length]);
   useEffect(()=>()=>{window.__yakHakActiveSession=null;},[]);
+
+  // 홈 버튼 / 비정상 종료 시 자동 저장
+  useEffect(()=>{
+    const autoSave=()=>{
+      if(phaseRef.current==='done'||phaseRef.current==='reflection')return;
+      const d=saveDataRef.current;
+      if(!d||(!d.correctCount&&!d.wrongCount))return;
+      localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify({...d,savedAt:Date.now()}));
+    };
+    const onVis=()=>{if(document.hidden)autoSave();};
+    document.addEventListener('visibilitychange',onVis);
+    window.addEventListener('pagehide',autoSave);
+    window.addEventListener('beforeunload',autoSave);
+    return()=>{
+      document.removeEventListener('visibilitychange',onVis);
+      window.removeEventListener('pagehide',autoSave);
+      window.removeEventListener('beforeunload',autoSave);
+    };
+  },[]);
+
+  // 모바일 뒤로가기 버튼 가로채기
+  useEffect(()=>{
+    history.pushState({practiceSession:true},'');
+    const onPop=()=>{
+      if(phaseRef.current==='done'||phaseRef.current==='reflection'){onBack();return;}
+      history.pushState({practiceSession:true},'');
+      setShowExitModal(true);
+    };
+    window.addEventListener('popstate',onPop);
+    return()=>window.removeEventListener('popstate',onPop);
+  },[]);
 
   const saveSession=()=>{
     const data={ver,rangeMin,rangeMax,divMin,divMax,
