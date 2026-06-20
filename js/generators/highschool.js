@@ -1016,7 +1016,7 @@ function genMockLine(){return gen_line_eq();}
 function genMockGeometry(){
   const gens=[
     [gen_two_point_dist,4],[gen_internal_1d,2],[gen_internal_2d,4],
-    [gen_line_eq,4],[gen_parallel_perp_line,5],[gen_translation,5],
+    [gen_line_eq,4],[gen_parallel_perp_line,5],
     [()=>({...genDistanceQ(),meta:{category:'geometry',type:'도형과 기하',diff:'기하'}}),2],
     [gen_circle_eq_mock,5],[gen_circle_line_rel,2],[gen_symmetry_pt,5],
     [gen_circle_diameter_pts,3],[gen_circle_sym_move,2],[gen_origin_line_dist,2]

@@ -554,7 +554,7 @@ var autoMathHtml=(text)=>{
 /* ===== FIREBASE HELPERS ===== */
 var saveUser=async(data)=>{try{await db.collection('users').doc(data.name).set(data,{merge:true})}catch(e){console.error(e)}};
 var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).get();return d.exists?d.data():null}catch(e){return null}};
-var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
+var saveLog=async(log)=>{try{await db.collection('math_logs').add({...log,createdAt:new Date()})}catch(e){console.error(e)}};
 
 
 
@@ -1915,7 +1915,7 @@ function genMockLine(){return gen_line_eq();}
 function genMockGeometry(){
   const gens=[
     [gen_two_point_dist,4],[gen_internal_1d,2],[gen_internal_2d,4],
-    [gen_line_eq,4],[gen_parallel_perp_line,5],[gen_translation,5],
+    [gen_line_eq,4],[gen_parallel_perp_line,5],
     [()=>({...genDistanceQ(),meta:{category:'geometry',type:'도형과 기하',diff:'기하'}}),2],
     [gen_circle_eq_mock,5],[gen_circle_line_rel,2],[gen_symmetry_pt,5],
     [gen_circle_diameter_pts,3],[gen_circle_sym_move,2],[gen_origin_line_dist,2]
@@ -5469,7 +5469,7 @@ function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework
       arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));setNotices(arr);
     }).catch(()=>{});
     db.collection('homework').where('active','==',true).get().then(snap=>{
-      const arr=[];snap.forEach(d=>{const h={id:d.id,...d.data()};const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);const forMe=!h.assignedTo||h.assignedTo===name;if(exp>now&&forMe&&!(h.completedBy||[]).includes(name))arr.push(h);});
+      const arr=[];snap.forEach(d=>{const h={id:d.id,...d.data()};const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);const forMe=!h.assignedTo||(Array.isArray(h.assignedTo)?h.assignedTo.includes(name):h.assignedTo===name);if(exp>now&&forMe&&!(h.completedBy||[]).includes(name))arr.push(h);});
       arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));if(arr.length>0)setPendingHomework(arr[0]);
     }).catch(()=>{});
   },[name]);
@@ -7273,7 +7273,7 @@ function WorksheetTab(){
   const[grades, setGrades] = useState({});
   // 모의고사 문제지 저장 완료 여부
   const[examSaved,setExamSaved]=useState(false);
-  const[homeworkTarget,setHomeworkTarget]=useState('전체');
+  const[homeworkTargets,setHomeworkTargets]=useState([]);
 
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
@@ -7416,10 +7416,10 @@ function WorksheetTab(){
   };
   const assignAsHomework=async()=>{
     if(!examSheet)return;
-    const targetLabel=homeworkTarget==='전체'?'전체 학생':`${homeworkTarget} 학생`;
+    const targetLabel=homeworkTargets.length===0?'전체 학생':homeworkTargets.map(n=>n+' 학생').join(', ');
     if(!window.confirm(`"${examSheet.title}"\n을 ${targetLabel}에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
     try{const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
-    await db.collection('homework').add({title:examSheet.title,level:examSheet.level||'고졸',questions:examSheet.questions,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:homeworkTarget==='전체'?null:homeworkTarget});
+    await db.collection('homework').add({title:examSheet.title,level:examSheet.level||'고졸',questions:examSheet.questions,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:homeworkTargets.length===0?null:homeworkTargets});
     showToast(`✅ ${targetLabel}에게 숙제로 등록되었습니다!`);}catch(e){showToast('❌ 숙제 등록 실패');}
   };
 
@@ -7550,14 +7550,19 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       </button>
       <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-3">
         <div className="text-sm font-black text-amber-800">📝 숙제 대상 학생 선택</div>
+        <div className="text-xs text-amber-600">아무도 선택 안 하면 전체 학생에게 표시됩니다. 여러 명 동시 선택 가능.</div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={()=>setHomeworkTarget('전체')} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${homeworkTarget==='전체'?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>전체 학생</button>
-          {studentList.map(s=>(
-            <button key={s.name} onClick={()=>setHomeworkTarget(s.name)} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${homeworkTarget===s.name?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>{s.name}</button>
-          ))}
+          {studentList.map(s=>{
+            const on=homeworkTargets.includes(s.name);
+            return(<button key={s.name} onClick={()=>setHomeworkTargets(prev=>on?prev.filter(n=>n!==s.name):[...prev,s.name])}
+              className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center gap-1.5 ${on?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>
+              {on?'✓ ':''}{s.name}
+            </button>);
+          })}
         </div>
+        {homeworkTargets.length>0&&<button onClick={()=>setHomeworkTargets([])} className="text-xs text-amber-600 font-bold underline">전체 해제 (전체 학생에게)</button>}
         <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
-          📝 {homeworkTarget==='전체'?'전체 학생':`${homeworkTarget} 학생`}에게 숙제로 내기
+          📝 {homeworkTargets.length===0?'전체 학생':homeworkTargets.join(', ')+' 학생'}에게 숙제로 내기
         </button>
       </div>
       {examSheet.questions.map((q,i)=>(
@@ -7969,7 +7974,7 @@ function FeedbackTab(){
   const[recentSessions,setRecentSessions]=useState([]);
 
   useEffect(()=>{
-    db.collection('math_logs').orderBy('createdAt','desc').limit(10).get().then(snap=>{
+    db.collection('math_logs').orderBy('date','desc').limit(10).get().then(snap=>{
       const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
       setRecentSessions(arr);
     }).catch(()=>{});
@@ -8068,22 +8073,19 @@ function FeedbackTab(){
     {recentSessions.length>0&&<div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">🕐 최근 학습 세션 (클릭 → 바로 조회)</div>
       <div className="space-y-2">
-        {recentSessions.map((s,i)=>{
-          const ts=s.createdAt?.toDate?s.createdAt.toDate():new Date(s.createdAt||0);
-          const dateStr=ts.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'});
-          const timeStr2=ts.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-          return(<button key={s.id||i} onClick={()=>jumpToStudent(s.studentName)} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
+        {recentSessions.map((s,i)=>(
+          <button key={s.id||i} onClick={()=>jumpToStudent(s.studentName)} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
             <div className="flex-1 min-w-0">
               <div className="font-black text-gray-800 text-sm">{s.studentName||'?'}</div>
               <div className="text-xs text-gray-500 font-semibold truncate">{s.type||'학습'} · 점수: {s.score||'-'}</div>
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-xs text-gray-400 font-bold">{dateStr}</div>
-              <div className="text-xs text-gray-400">{timeStr2}</div>
+              <div className="text-xs text-gray-400 font-bold">{s.date||''}</div>
+              <div className="text-xs text-gray-400">{s.time||''}</div>
             </div>
-          </button>);
-        })}
+          </button>
+        ))}
       </div>
     </div>}
     <div className="bg-white rounded-3xl p-5 shadow-md">

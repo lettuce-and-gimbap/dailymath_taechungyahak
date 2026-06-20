@@ -28,8 +28,8 @@ function WorksheetTab(){
   const[grades, setGrades] = useState({});
   // 모의고사 문제지 저장 완료 여부
   const[examSaved,setExamSaved]=useState(false);
-  // 숙제 대상 학생
-  const[homeworkTarget,setHomeworkTarget]=useState('전체');
+  // 숙제 대상 학생 (빈 배열 = 전체/지정 안 함, 비어있지 않으면 해당 학생들만)
+  const[homeworkTargets,setHomeworkTargets]=useState([]);
 
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
@@ -174,7 +174,7 @@ function WorksheetTab(){
   // 숙제로 내기
   const assignAsHomework=async()=>{
     if(!examSheet)return;
-    const targetLabel=homeworkTarget==='전체'?'전체 학생':`${homeworkTarget} 학생`;
+    const targetLabel=homeworkTargets.length===0?'전체 학생':homeworkTargets.map(n=>n+' 학생').join(', ');
     if(!window.confirm(`"${examSheet.title}"\n을 ${targetLabel}에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
@@ -182,7 +182,7 @@ function WorksheetTab(){
         title:examSheet.title,level:examSheet.level||'고졸',
         questions:examSheet.questions,
         active:true,createdAt:now,expiresAt:exp,completedBy:[],
-        assignedTo:homeworkTarget==='전체'?null:homeworkTarget
+        assignedTo:homeworkTargets.length===0?null:homeworkTargets
       });
       showToast(`✅ ${targetLabel}에게 숙제로 등록되었습니다!`);
     }catch(e){showToast('❌ 숙제 등록 실패');}
@@ -315,14 +315,19 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       </button>
       <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-3">
         <div className="text-sm font-black text-amber-800">📝 숙제 대상 학생 선택</div>
+        <div className="text-xs text-amber-600">아무도 선택 안 하면 전체 학생에게 표시됩니다. 여러 명 동시 선택 가능.</div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={()=>setHomeworkTarget('전체')} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${homeworkTarget==='전체'?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>전체 학생</button>
-          {studentList.map(s=>(
-            <button key={s.name} onClick={()=>setHomeworkTarget(s.name)} className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${homeworkTarget===s.name?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>{s.name}</button>
-          ))}
+          {studentList.map(s=>{
+            const on=homeworkTargets.includes(s.name);
+            return(<button key={s.name} onClick={()=>setHomeworkTargets(prev=>on?prev.filter(n=>n!==s.name):[...prev,s.name])}
+              className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center gap-1.5 ${on?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>
+              {on?'✓ ':''}{s.name}
+            </button>);
+          })}
         </div>
+        {homeworkTargets.length>0&&<button onClick={()=>setHomeworkTargets([])} className="text-xs text-amber-600 font-bold underline">전체 해제 (전체 학생에게)</button>}
         <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
-          📝 {homeworkTarget==='전체'?'전체 학생':''+homeworkTarget+' 학생'}에게 숙제로 내기
+          📝 {homeworkTargets.length===0?'전체 학생':homeworkTargets.join(', ')+' 학생'}에게 숙제로 내기
         </button>
       </div>
       {examSheet.questions.map((q,i)=>(
