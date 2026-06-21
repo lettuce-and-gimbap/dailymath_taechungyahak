@@ -1611,6 +1611,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
   const[savedEditsMap,setSavedEditsMap]=useState({});
   const[sessionLoaded,setSessionLoaded]=useState(false);
   const[corrected,setCorrected]=useState({});
+  const[printCols,setPrintCols]=useState(1);
 
   const[edits,setEdits]=useState(()=>{
     const init={};
@@ -1751,6 +1752,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
 
   const doPrint=(mode='teacher')=>{
     const isStudent=mode==='student';
+    const cols=printCols||1;
     const pw=window.open('','_blank','width=900,height=1200');
     if(!pw){alert('팝업이 차단되어 있습니다. 팝업을 허용한 후 다시 시도해주세요.');return;}
     const isLarge=mode==='teacher-large'||mode==='student';
@@ -1796,7 +1798,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       *{box-sizing:border-box;margin:0;padding:0;}
       .katex svg{display:inline!important;vertical-align:middle}.katex{line-height:1.2}.katex-display{display:block;text-align:center;margin:.5em 0}
       body{font-family:'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;color:#1e293b;background:white;}
-      .page{padding:12mm 15mm;}
+      .page{padding:12mm 15mm;${cols===2?'columns:2;column-gap:24px;':''}}
       .pb{break-after:page;page-break-after:always;}
       .title-block{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:18px;}
       .title{font-size:${sz.title};font-weight:900;}
@@ -1844,6 +1846,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       <div className="no-print sticky top-0 bg-indigo-600 text-white px-4 py-3 flex items-center gap-3 shadow-md flex-wrap">
         <button onClick={onClose} className="px-3 py-1.5 bg-white/20 rounded-xl font-bold text-sm">← 닫기</button>
         <div className="flex-1 font-black text-sm">📄 회차 문제·해설 인쇄</div>
+        {[1,2].map(n=><button key={n} onClick={()=>setPrintCols(n)} className={`px-2 py-1 rounded-lg text-xs font-bold border ${printCols===n?'bg-white text-indigo-700 border-white':'bg-white/20 text-white border-white/40'}`}>{n}열</button>)}
         <button onClick={()=>doPrint('student')} className="px-3 py-1.5 bg-sky-400 text-white rounded-xl font-black text-sm">📄 학생 제공용</button>
         <button onClick={()=>doPrint('teacher-large')} className="px-3 py-1.5 bg-emerald-500 text-white rounded-xl font-black text-sm">🔡 큰글씨 보기</button>
         <button onClick={()=>doPrint('teacher')} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm">📋 기본</button>
@@ -1851,7 +1854,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       <div className="no-print px-4 pt-2 pb-1 bg-sky-50 mx-4 rounded-lg mt-2 text-xs text-sky-700 font-semibold">
         📄 <b>학생 제공용</b>: 정답·해설 없이 문제만 (큰 글씨) &nbsp;|&nbsp; 🔡 <b>큰글씨 보기</b>: 해설 포함, 학생이 읽기 쉬운 큰 글씨 &nbsp;|&nbsp; 📋 <b>기본</b>: 정답·해설 포함 기본 크기
       </div>
-      <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">⚠️ Microsoft Edge로 인쇄 시 페이지 잘림 현상이 있습니다. Chrome 등 다른 브라우저를 사용해주세요 :)</div>
+      <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">- 잘림 현상이 있을 수 있습니다. 원활한 인쇄를 위해 Chrome 등 다른 브라우저를 사용해주세요 :) -</div>
       <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
 
       <style dangerouslySetInnerHTML={{__html:`

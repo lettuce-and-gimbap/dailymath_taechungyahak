@@ -30,6 +30,7 @@ function WorksheetTab(){
   const[examSaved,setExamSaved]=useState(false);
   // 숙제 대상 학생 (빈 배열 = 전체/지정 안 함, 비어있지 않으면 해당 학생들만)
   const[homeworkTargets,setHomeworkTargets]=useState([]);
+  const[examPrintCols,setExamPrintCols]=useState(1);
 
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
@@ -127,24 +128,26 @@ function WorksheetTab(){
   };
 
   // 모의고사 문제지 인쇄 (브라우저 프린트)
-  const printExamSheet=(showAns)=>{
+  const printExamSheet=(showAns,cols=1)=>{
     if(!examSheet)return;
     const ORD=['①','②','③','④'];
     let html=`<html><head><style>
       body{font-family:'Noto Sans KR',sans-serif;padding:32px;color:#111;}
       h1{text-align:center;font-size:22px;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:6px;}
       .meta{text-align:center;font-size:12px;color:#666;margin-bottom:24px;}
-      .q{margin-bottom:22px;page-break-inside:avoid;}
+      .q-grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:20px;}
+      .q{margin-bottom:22px;page-break-inside:avoid;break-inside:avoid;}
       .qnum{font-weight:900;color:#4338ca;margin-right:6px;}
       .qtag{font-size:11px;background:#eef2ff;color:#4338ca;padding:2px 8px;border-radius:20px;margin-left:6px;font-weight:700;}
       .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;margin-left:16px;}
       .choice{font-size:13px;padding:4px 0;}
       .ans{margin-top:6px;margin-left:16px;font-size:12px;color:#dc2626;font-weight:700;display:${showAns?'block':'none'};}
       .exp{margin-top:6px;margin-left:16px;padding:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:11px;line-height:1.55;color:#78350f;display:${showAns?'block':'none'};}
-      @media print{body{padding:16px;} .q{margin-bottom:16px;}}
+      @media print{body{padding:16px;} .q{margin-bottom:16px;page-break-inside:avoid;break-inside:avoid;}}
     </style></head><body>
     <h1>${examSheet.title}</h1>
-    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 10문항 · 검정고시 기출 변형</div>`;
+    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 10문항 · 검정고시 기출 변형</div>
+    <div class="q-grid">`;
     examSheet.questions.forEach((q,i)=>{
       html+=`<div class="q">
         <div><span class="qnum">${i+1}.</span>${q.q}<span class="qtag">${q.topic}</span></div>
@@ -153,7 +156,7 @@ function WorksheetTab(){
         <div class="exp"><b>쉬운 해설:</b> ${easyExplanation(q)}</div>
       </div>`;
     });
-    html+=`</body></html>`;
+    html+=`</div></body></html>`;
     const w=window.open('','_blank','width=800,height=900');
     w.document.write(html);w.document.close();
     setTimeout(()=>w.print(),400);
@@ -306,9 +309,13 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
         <div className="font-black text-lg mb-1">{examSheet.title}</div>
         <div className="text-xs opacity-80">출제 방식: {examSheet.mode} · 총 10문항</div>
       </div>
+      <div className="flex gap-2 mb-2">
+        <span className="text-xs text-gray-500 font-bold self-center">인쇄 열:</span>
+        {[1,2].map(n=><button key={n} onClick={()=>setExamPrintCols(n)} className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 ${examPrintCols===n?'border-indigo-500 bg-indigo-500 text-white':'border-gray-200 bg-white text-gray-600'}`}>{n}열</button>)}
+      </div>
       <div className="flex gap-2">
-        <button onClick={()=>printExamSheet(false)} className="flex-1 py-3 bg-white border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">🖨️ 문제지 인쇄</button>
-        <button onClick={()=>printExamSheet(true)} className="flex-1 py-3 bg-indigo-100 border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">📋 답지 포함 인쇄</button>
+        <button onClick={()=>printExamSheet(false,examPrintCols)} className="flex-1 py-3 bg-white border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">🖨️ 문제지 인쇄</button>
+        <button onClick={()=>printExamSheet(true,examPrintCols)} className="flex-1 py-3 bg-indigo-100 border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">📋 답지 포함 인쇄</button>
       </div>
       <button onClick={saveExamSheet} disabled={examSaved} className={`w-full py-3 rounded-2xl font-black text-sm transition-all ${examSaved?'bg-green-100 text-green-700 border-2 border-green-300 cursor-default':'bg-emerald-500 text-white active:scale-95'}`}>
         {examSaved?'✅ 저장 완료 (저장된 문제지에서 확인)':'💾 문제집 폴더에 저장하기'}

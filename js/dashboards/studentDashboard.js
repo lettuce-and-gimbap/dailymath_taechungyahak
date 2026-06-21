@@ -64,6 +64,14 @@ function StudentDashboard({userData,onLogout,onUpdate}){
     fetchFb();
   },[userData.name]);
 
+  const deleteFeedback=async(id)=>{
+    if(!confirm('이 피드백을 삭제하시겠어요?'))return;
+    try{
+      await db.collection('feedback').doc(id).delete();
+      setFeedbacks(prev=>prev.filter(f=>f.id!==id));
+    }catch(e){alert('삭제 실패');}
+  };
+
   // 확인 버튼 누르면 모두 읽음 처리
   const markAllAsRead = async () => {
     const unreads = feedbacks.filter(f => !f.read);
@@ -92,7 +100,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
-      {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks}/>}
+      {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks} onDeleteFeedback={deleteFeedback}/>}
     </div>
     {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외) */}
     {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(

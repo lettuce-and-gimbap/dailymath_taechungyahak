@@ -1,6 +1,7 @@
 // === js/components/feedback.js ===
 function StudentFeedbackPanel(){
   const[msgs,setMsgs]=React.useState([]);const[loading,setLoading]=React.useState(false);
+  const[collapsed,setCollapsed]=React.useState(false);
   const load=async()=>{setLoading(true);try{const snap=await db.collection('studentFeedback').orderBy('sentAt','desc').limit(30).get();const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setMsgs(arr);}catch(e){}setLoading(false);};
   React.useEffect(()=>{load();},[]);
   const fmtTime=ts=>{if(!ts)return'';const d=ts.toDate?ts.toDate():new Date(ts);return d.toLocaleDateString('ko-KR')+' '+d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});};
@@ -9,8 +10,12 @@ function StudentFeedbackPanel(){
   return(<div className="bg-white rounded-3xl p-5 shadow-md mb-4">
     <div className="flex items-center justify-between mb-3">
       <div className="text-sm font-bold text-gray-400 uppercase">💬 학생 의견 수신함</div>
-      <button onClick={load} className="text-xs px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold">새로고침</button>
+      <div className="flex gap-2">
+        <button onClick={load} className="text-xs px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold">새로고침</button>
+        <button onClick={()=>setCollapsed(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{collapsed?'펼치기 ▼':'접기 ▲'}</button>
+      </div>
     </div>
+    {!collapsed&&<>
     {loading&&<div className="text-center text-gray-400 py-4">로딩 중...</div>}
     {!loading&&msgs.length===0&&<div className="text-center text-gray-400 py-4 text-sm">받은 의견이 없어요.</div>}
     {msgs.map(m=><div key={m.id} className={`border rounded-2xl p-3.5 mb-2.5 ${m.read?'border-gray-100 bg-gray-50':'border-indigo-200 bg-indigo-50'}`}>
@@ -25,19 +30,49 @@ function StudentFeedbackPanel(){
         <button onClick={()=>del(m.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>
       </div>
     </div>)}
+    </>}
   </div>);
 }
 function FeedbackTab(){
   const[showStudentFb,setShowStudentFb]=useState(true);
+  const[showRecentSessions,setShowRecentSessions]=useState(true);
+  const[showFbList,setShowFbList]=useState(true);
+  const[wrongQSel,setWrongQSel]=useState(new Set());
+  const[wrongQShowAns,setWrongQShowAns]=useState(false);
+  const[wrongQOpen,setWrongQOpen]=useState(false);
   const[sid,setSid]=useState('');
   const[student,setStudent]=useState(null);
   const[msg,setMsg]=useState('');
-  const[relatedLogIdx,setRelatedLogIdx]=useState(''); // index로 관리하여 데이터 접근 용이하게 함
+  const[relatedLogIdx,setRelatedLogIdx]=useState('');
   const[loading,setLoading]=useState(false);
   const[feedbacks,setFeedbacks]=useState([]);
   const[sent,setSent]=useState(false);
   const[editFbId,setEditFbId]=useState(null);
   const[editFbText,setEditFbText]=useState('');
+  const[recentSessions,setRecentSessions]=useState([]);
+
+  useEffect(()=>{
+    db.collection('math_logs').orderBy('date','desc').limit(10).get().then(snap=>{
+      const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
+      setRecentSessions(arr);
+    }).catch(()=>{});
+  },[]);
+
+  const jumpToStudent=async(name)=>{
+    setSid(name);
+    setLoading(true);
+    try{
+      const doc=await db.collection('users').doc(name).get();
+      if(doc.exists&&doc.data().role!=='admin'){
+        setStudent(doc.data());
+        const fbSnap=await db.collection('feedback').where('studentName','==',name).get();
+        let arr=[];fbSnap.forEach(d=>arr.push({id:d.id,...d.data()}));
+        arr.sort((a,b)=>{const tA=a.createdAt?.toDate?a.createdAt.toDate().getTime():new Date(a.createdAt).getTime();const tB=b.createdAt?.toDate?b.createdAt.toDate().getTime():new Date(b.createdAt).getTime();return tB-tA;});
+        setFeedbacks(arr.slice(0,10));setRelatedLogIdx('');
+      }
+    }catch(e){}
+    setLoading(false);
+  };
 
   const search=async()=>{
     if(!sid.trim())return;
@@ -55,7 +90,7 @@ function FeedbackTab(){
           return timeB - timeA;
         });
         setFeedbacks(arr.slice(0, 10));
-        setRelatedLogIdx(''); 
+        setRelatedLogIdx('');
       }else{
         alert('해당 학생을 찾을 수 없거나 선생님 계정입니다.');
       }
@@ -76,13 +111,13 @@ function FeedbackTab(){
       await db.collection('feedback').add({
         studentName: sid.trim(),
         message: msg.trim(),
-        relatedLog: logStr, // 텍스트 꼬리표로 저장
-        read: false, 
+        relatedLog: logStr,
+        read: false,
         createdAt: new Date()
       });
       setMsg(''); setRelatedLogIdx(''); setSent(true);
       setTimeout(()=>setSent(false), 2000);
-      search(); 
+      search();
     }catch(e){
       alert('피드백 저장 실패: ' + e.message);
     }
@@ -92,13 +127,12 @@ function FeedbackTab(){
     if(!confirm('이 피드백을 정말 삭제하시겠습니까?')) return;
     try{
       await db.collection('feedback').doc(id).delete();
-      search(); 
+      search();
     }catch(e){
       alert('삭제 실패: ' + e.message);
     }
   };
 
-  // 학생이 아직 읽지 않은 피드백만 수정 가능
   const startFbEdit=(fb)=>{setEditFbId(fb.id);setEditFbText(fb.message);};
   const saveFbEdit=async(id)=>{
     if(!editFbText.trim())return;
@@ -110,9 +144,31 @@ function FeedbackTab(){
   };
 
   const selLog = relatedLogIdx !== '' ? student?.logs?.[relatedLogIdx] : null;
+  const allWrongQs=React.useMemo(()=>(student?.logs||[]).flatMap((l,li)=>(l.questions||[]).filter(q=>!q.isOk).map(q=>({...q,_logDate:l.date,_logType:l.type,_logIdx:li}))),[student]);
 
   return(<div className="p-4 pb-36 space-y-4">
     <StudentFeedbackPanel/>
+    {recentSessions.length>0&&<div className="bg-white rounded-3xl p-5 shadow-md">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-bold text-gray-400 uppercase">🕐 최근 학습 세션 (클릭 → 바로 조회)</div>
+        <button onClick={()=>setShowRecentSessions(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{showRecentSessions?'접기 ▲':'펼치기 ▼'}</button>
+      </div>
+      {showRecentSessions&&<div className="space-y-2">
+        {recentSessions.map((s,i)=>(
+          <button key={s.id||i} onClick={()=>jumpToStudent(s.studentName)} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
+            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-black text-gray-800 text-sm">{s.studentName||'?'}</div>
+              <div className="text-xs text-gray-500 font-semibold truncate">{s.type||'학습'} · 점수: {s.score||'-'}</div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="text-xs text-gray-400 font-bold">{s.date||''}</div>
+              <div className="text-xs text-gray-400">{s.time||''}</div>
+            </div>
+          </button>
+        ))}
+      </div>}
+    </div>}
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 학생 피드백 & 기록</div>
       <div className="flex flex-col gap-2 mb-3">
@@ -124,7 +180,76 @@ function FeedbackTab(){
           <div className="font-black text-indigo-800 text-lg mb-1">👤 {student.name} 학생</div>
           <div className="text-sm text-indigo-600">총 레슨: {student.logs?.length||0}회 · 최근 접속: {student.lastLoginAt||student.lastDate||'없음'}</div>
         </div>
-        
+
+        {allWrongQs.length>0&&<div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-black text-red-700">🔴 오답 문제지 생성 ({allWrongQs.length}개 오답)</div>
+            <button onClick={()=>setWrongQOpen(v=>!v)} className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-lg font-bold">{wrongQOpen?'접기 ▲':'펼치기 ▼'}</button>
+          </div>
+          {wrongQOpen&&<>
+            <div className="text-xs text-red-500 mb-3">선택한 오답 문제만 모아 인쇄합니다. 중복 선택 가능.</div>
+            <div className="space-y-1.5 max-h-60 overflow-y-auto mb-3">
+              {allWrongQs.map((q,i)=>{
+                const on=wrongQSel.has(i);
+                return(<label key={i} className={`flex items-start gap-2 p-2.5 rounded-xl border-2 cursor-pointer ${on?'border-red-400 bg-red-100':'border-gray-200 bg-white'}`}>
+                  <input type="checkbox" checked={on} onChange={()=>setWrongQSel(prev=>{const s=new Set(prev);on?s.delete(i):s.add(i);return s;})} className="mt-0.5 flex-shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-black text-gray-400 mb-0.5">{q._logDate} · {q._logType}</div>
+                    <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{q.qTxt||q.q||'(문제 없음)'}</div>
+                    {q.cAns&&<div className="text-xs text-indigo-600 mt-0.5">정답: {q.cAns}</div>}
+                  </div>
+                </label>);
+              })}
+            </div>
+            <div className="flex gap-2 mb-3">
+              <button onClick={()=>setWrongQSel(new Set(allWrongQs.map((_,i)=>i)))} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold">전체 선택</button>
+              <button onClick={()=>setWrongQSel(new Set())} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold">전체 해제</button>
+              <label className="flex items-center gap-1.5 ml-auto text-xs font-bold text-gray-600">
+                <input type="checkbox" checked={wrongQShowAns} onChange={e=>setWrongQShowAns(e.target.checked)}/>해설 포함
+              </label>
+            </div>
+            {wrongQSel.size>0&&<div className="flex flex-col gap-2">
+              <button onClick={()=>{
+                const qs=Array.from(wrongQSel).map(i=>allWrongQs[i]);
+                const ORD=['①','②','③','④'];
+                const showAns=wrongQShowAns;
+                let html=`<html><head><style>
+                  body{font-family:'Noto Sans KR',sans-serif;padding:32px;color:#111;}
+                  h1{text-align:center;font-size:20px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:16px;}
+                  .q{margin-bottom:20px;page-break-inside:avoid;}
+                  .qnum{font-weight:900;color:#dc2626;}
+                  .choices{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;margin-left:14px;}
+                  .choice{font-size:13px;padding:3px 0;}
+                  .ans{margin-top:5px;margin-left:14px;font-size:12px;color:#dc2626;font-weight:700;display:${showAns?'block':'none'};}
+                  .exp{margin-top:4px;margin-left:14px;padding:6px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:11px;color:#78350f;display:${showAns?'block':'none'};}
+                </style></head><body>
+                <h1>${student.name} 학생 — 오답 문제지</h1>`;
+                qs.forEach((q,i)=>{
+                  const choicesHtml=Array.isArray(q.choices)?`<div class="choices">${q.choices.map((c,j)=>`<div class="choice">${ORD[j]||String(j+1)} ${c}</div>`).join('')}</div>`:'';
+                  const ansText=q.cAns||(Array.isArray(q.choices)&&q.answer!=null?q.choices[q.answer]:'');
+                  html+=`<div class="q"><span class="qnum">${i+1}.</span> ${q.qTxt||q.q||''}${choicesHtml}<div class="ans">정답: ${ansText}</div><div class="exp">${q.explanation||''}</div></div>`;
+                });
+                html+=`</body></html>`;
+                const w=window.open('','_blank','width=800,height=900');
+                w.document.write(html);w.document.close();setTimeout(()=>w.print(),400);
+              }} className="w-full py-3 bg-red-500 text-white rounded-2xl font-black text-sm active:scale-95">
+                🖨️ 선택 오답 {wrongQSel.size}개 인쇄 ({wrongQShowAns?'해설 포함':'문제만'})
+              </button>
+              <button onClick={async()=>{
+                const qs=Array.from(wrongQSel).map(i=>allWrongQs[i]);
+                if(!confirm(`오답 ${qs.length}문제를 ${student.name} 학생에게 숙제로 내시겠어요?`))return;
+                try{
+                  const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
+                  const hwQs=qs.map(q=>({q:q.qTxt||q.q||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
+                  await db.collection('homework').add({title:`${student.name} 학생 오답 문제지`,level:'오답',questions:hwQs,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:[student.name]});
+                  alert('✅ 숙제로 등록되었습니다!');
+                }catch(e){alert('등록 실패');}
+              }} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95">
+                📝 선택 오답 {wrongQSel.size}개 → {student.name} 학생에게 숙제로 내기
+              </button>
+            </div>}
+          </>}
+        </div>}
         <div className="bg-white border-2 border-gray-100 rounded-2xl p-4 mb-4">
           <div className="text-sm font-bold text-gray-600 mb-2">📌 어떤 문제에 대한 피드백인가요? (선택사항)</div>
           <select value={relatedLogIdx} onChange={e=>setRelatedLogIdx(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl p-3 text-sm font-bold focus:border-indigo-400 outline-none mb-3 bg-gray-50 text-gray-700">
@@ -134,7 +259,6 @@ function FeedbackTab(){
             ))}
           </select>
 
-          {/* 🔥 선택된 학습 기록의 정오표 렌더링 🔥 */}
           {selLog && selLog.questions && (
              <div className="mb-4 bg-gray-50 border border-gray-200 rounded-xl p-3 max-h-48 overflow-y-auto">
                <div className="text-xs font-black text-indigo-600 mb-2">📊 해당 학습의 정오표 (틀린 문제 위주로 확인해보세요)</div>
@@ -152,14 +276,18 @@ function FeedbackTab(){
                </div>
              </div>
           )}
-          
+
           <div className="text-sm font-bold text-gray-600 mb-2">✍️ 피드백 메시지 작성</div>
           <textarea lang="ko" value={msg} onChange={e=>setMsg(e.target.value)} rows={3} placeholder="예: 나눗셈 계산은 잘했어요! 약수 부분을 좀 더 연습해봐요 😊" className="w-full border-2 border-gray-200 rounded-xl p-4 text-base font-bold resize-none focus:border-indigo-400 outline-none mb-3"/>
           <button onClick={send} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">{sent?'✅ 전송완료!':'피드백 저장 및 전송 💌'}</button>
         </div>
-        
-        {feedbacks.length>0&&<div className="mt-6"><div className="text-sm font-bold text-gray-600 mb-3">📬 보낸 피드백 기록</div>
-          {feedbacks.map((fb,i)=><div key={fb.id} className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-3">
+
+        {feedbacks.length>0&&<div className="mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-bold text-gray-600">📬 보낸 피드백 기록</div>
+            <button onClick={()=>setShowFbList(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{showFbList?'접기 ▲':'펼치기 ▼'}</button>
+          </div>
+          {showFbList&&feedbacks.map((fb,i)=><div key={fb.id} className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-3">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
                {fb.read
                  ? <span className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">학생이 읽음</span>
