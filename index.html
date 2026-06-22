@@ -6498,36 +6498,48 @@ function StudentLearningReport({userData,onClose}){
     const el=reportRef.current;
     if(!el)return;
     setSaving(true);
-    // fixed 모달 내부 위치 오류 방지: body에 클론을 붙여서 캡처
-    const W=el.offsetWidth;
-    const wrapper=document.createElement('div');
-    Object.assign(wrapper.style,{position:'absolute',top:'0',left:'-9999px',width:W+'px',zIndex:'-1',background:'white'});
-    const clone=el.cloneNode(true);
-    Object.assign(clone.style,{maxHeight:'none',overflow:'visible',width:W+'px',boxShadow:'none'});
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    const prevMaxHeight=el.style.maxHeight;
+    const prevOverflow=el.style.overflow;
+    const prevHeight=el.style.height;
+    el.style.maxHeight='none';
+    el.style.overflow='visible';
+    el.style.height='auto';
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     try{
-      await new Promise(r=>setTimeout(r,150));
-      const canvas=await window.html2canvas(clone,{
-        scale:2,
-        backgroundColor:'#ffffff',
-        useCORS:true,
-        scrollX:0,
-        scrollY:0,
-        width:W,
-        height:clone.scrollHeight,
-        windowWidth:W,
-        windowHeight:clone.scrollHeight,
-      });
-      const a=document.createElement('a');
-      a.href=canvas.toDataURL('image/png');
-      a.download=`학습보고서_${userData.name}.png`;
-      a.click();
-    }catch(err){alert('PNG 저장 실패: '+err.message);}
-    finally{
-      document.body.removeChild(wrapper);
-      setSaving(false);
+      const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#fff',useCORS:true,scrollY:0,windowHeight:el.scrollHeight,height:el.scrollHeight});
+      el.style.maxHeight=prevMaxHeight;
+      el.style.overflow=prevOverflow;
+      el.style.height=prevHeight;
+      const pageH=2400;
+      const totalH=canvas.height;
+      const pageCount=Math.min(3,Math.ceil(totalH/pageH));
+      if(pageCount<=1){
+        const a=document.createElement('a');
+        a.href=canvas.toDataURL('image/png');
+        a.download=`학습보고서_${userData.name}.png`;
+        a.click();
+      }else{
+        for(let p=0;p<pageCount;p++){
+          const segH=Math.ceil(totalH/pageCount);
+          const startY=p*segH;
+          const actualH=Math.min(segH,totalH-startY);
+          const seg=document.createElement('canvas');
+          seg.width=canvas.width;seg.height=actualH;
+          seg.getContext('2d').drawImage(canvas,0,-startY);
+          const a=document.createElement('a');
+          a.href=seg.toDataURL('image/png');
+          a.download=`학습보고서_${userData.name}_${p+1}.png`;
+          a.click();
+          await new Promise(r=>setTimeout(r,200));
+        }
+      }
+    }catch(err){
+      el.style.maxHeight=prevMaxHeight;
+      el.style.overflow=prevOverflow;
+      el.style.height=prevHeight;
+      alert('PNG 저장 실패: '+err.message);
     }
+    finally{setSaving(false);}
   };
 
   return(
