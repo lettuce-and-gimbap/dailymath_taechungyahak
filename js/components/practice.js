@@ -763,33 +763,31 @@ function StudentLearningReport({userData,onClose}){
     const el=reportRef.current;
     if(!el)return;
     setSaving(true);
+    // overflow 제약 해제 → 전체 콘텐츠 캡처
+    const prevMaxH=el.style.maxHeight;
+    const prevOverflow=el.style.overflow;
+    el.style.maxHeight='none';
+    el.style.overflow='visible';
     try{
-      const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#fff',useCORS:true,scrollY:0});
-      const pageH=2400;
-      const totalH=canvas.height;
-      const pageCount=Math.min(3,Math.ceil(totalH/pageH));
-      if(pageCount<=1){
-        const a=document.createElement('a');
-        a.href=canvas.toDataURL('image/png');
-        a.download=`학습보고서_${userData.name}.png`;
-        a.click();
-      }else{
-        for(let p=0;p<pageCount;p++){
-          const segH=Math.ceil(totalH/pageCount);
-          const startY=p*segH;
-          const actualH=Math.min(segH,totalH-startY);
-          const seg=document.createElement('canvas');
-          seg.width=canvas.width;seg.height=actualH;
-          seg.getContext('2d').drawImage(canvas,0,-startY);
-          const a=document.createElement('a');
-          a.href=seg.toDataURL('image/png');
-          a.download=`학습보고서_${userData.name}_${p+1}.png`;
-          a.click();
-          await new Promise(r=>setTimeout(r,200));
-        }
-      }
+      await new Promise(r=>setTimeout(r,50)); // 레이아웃 재계산 대기
+      const canvas=await window.html2canvas(el,{
+        scale:2,
+        backgroundColor:'#ffffff',
+        useCORS:true,
+        scrollX:0,
+        scrollY:-window.scrollY,
+        windowWidth:document.documentElement.scrollWidth,
+      });
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png');
+      a.download=`학습보고서_${userData.name}.png`;
+      a.click();
     }catch(err){alert('PNG 저장 실패: '+err.message);}
-    finally{setSaving(false);}
+    finally{
+      el.style.maxHeight=prevMaxH;
+      el.style.overflow=prevOverflow;
+      setSaving(false);
+    }
   };
 
   return(

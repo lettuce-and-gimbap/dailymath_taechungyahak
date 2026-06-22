@@ -255,18 +255,19 @@ function StudentAnalysisTab(){
     {/* ── 최근 학습 세션 ── */}
     {recentSessions.length>0&&<div className="bg-white rounded-2xl p-4 shadow-sm">
       <div className="text-xs font-black text-gray-400 uppercase mb-2">🕐 최근 학습 세션</div>
-      <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {recentSessions.map((s,i)=>(
           <button key={s.id||i}
             onClick={()=>{const found=students.find(st=>st.name===s.studentName||st.id===s.studentName);if(found)setSelected(found);}}
-            className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
-            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
-            <div className="flex-1 min-w-0">
-              <div className="font-black text-gray-800 text-xs">{s.studentName||'?'}</div>
-              <div className="text-[10px] text-gray-500 truncate">{s.type||'학습'} · 점수: {s.score||'-'}</div>
+            className="text-left flex flex-col gap-1 px-2.5 py-2 rounded-xl border border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-[10px] flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
+              <div className="font-black text-gray-800 text-xs truncate">{s.studentName||'?'}</div>
             </div>
-            <div className="text-right flex-shrink-0">
-              <div className="text-[10px] text-gray-400 font-bold">{s.date||''}</div>
+            <div className="text-[9px] text-gray-500 truncate">{s.type||'학습'}</div>
+            <div className="flex justify-between">
+              <span className="text-[9px] text-gray-400">점수: {s.score||'-'}</span>
+              <span className="text-[9px] text-gray-400">{(s.date||'').slice(5)}</span>
             </div>
           </button>
         ))}
@@ -448,7 +449,11 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
   const[showAllSessions,setShowAllSessions]=useState(false);
   const[printLog,setPrintLog]=useState(null);
   const[correctionData,setCorrectionData]=useState({totalWrong:0,corrected:0,rate:0,loaded:false});
+  const[wrongQOpen,setWrongQOpen]=useState(false);
+  const[wrongQSel,setWrongQSel]=useState(new Set());
+  const[wrongQShowAns,setWrongQShowAns]=useState(false);
   const logs=student.logs||[]; // ※ 분석 엔진은 전체 로그 사용 (필터 금지)
+  const allWrongQs=useMemo(()=>logs.flatMap((l,li)=>(l.questions||[]).filter(q=>!q.isOk).map(q=>({...q,_logDate:l.date,_logType:l.type,_logIdx:li}))),[logs]);
   const a=analyzeStudent(student);
   const LIGHT_CLS={'light-red':'bg-red-50 text-red-700 border border-red-200','light-yel':'bg-yellow-50 text-yellow-700 border border-yellow-200','light-grn':'bg-green-50 text-green-700 border border-green-200'};
   const ORD=['①','②','③','④'];
@@ -1449,14 +1454,14 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
           )}
         </div>
         {chartData.length > 1 ? (() => {
-          const VW=320, VH=80, PL=28, PR=12, PT=10, PB=18;
+          const VW=320, VH=130, PL=28, PR=12, PT=12, PB=22;
           const W=VW-PL-PR, H=VH-PT-PB;
           const n=chartData.length;
           const xOf=i=>PL + (n===1?W/2:i*(W/(n-1)));
           const yOf=v=>PT + H*(1 - v/100);
           const pts=chartData.map((d,i)=>`${xOf(i)},${yOf(d.acc)}`).join(' ');
           return(
-            <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" height="90" style={{display:'block'}}>
+            <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" height="140" style={{display:'block'}}>
               <defs>
                 <linearGradient id="cGrad" x1="0" x2="0" y1="0" y2="1">
                   <stop offset="0%" stopColor="#6366f1" stopOpacity="0.2"/>
@@ -1725,6 +1730,15 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
         <div className="text-base font-black text-gray-700 mb-2">세션 상세 기록</div>
       )}
     </div>
+
+    {/* ── 오답 문제지 ── */}
+    {allWrongQs.length>0&&<div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-black text-red-700">🔴 오답 문제지 ({allWrongQs.length}개 오답)</div>
+        <button onClick={()=>setWrongQOpen(v=>!v)} className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-lg font-bold">{wrongQOpen?'접기 ▲':'펼치기 ▼'}</button>
+      </div>
+      {wrongQOpen&&React.createElement(WrongQCategoryPanel,{allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,setWrongQShowAns,studentName:student.name})}
+    </div>}
 
     {/* 세션 기록 (탭 4 또는 항상 표시) — 5일 이내만 기본 표시, 더보기로 전체 */}
     {tab==='sessions'&&(()=>{

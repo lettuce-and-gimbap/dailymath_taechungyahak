@@ -31,7 +31,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
   },[allWrongQs]);
 
   const cats=WRONG_Q_CATEGORY_ORDER.filter(c=>grouped[c]);
-  const [openCats,setOpenCats]=React.useState(()=>new Set(cats)); // 기본 전부 열림
+  const [openCats,setOpenCats]=React.useState(new Set()); // 기본 전부 접힘
 
   const toggleCat=cat=>setOpenCats(prev=>{const s=new Set(prev);s.has(cat)?s.delete(cat):s.add(cat);return s;});
 
@@ -150,7 +150,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
 function StudentFeedbackPanel(){
   const[msgs,setMsgs]=React.useState([]);
   const[loading,setLoading]=React.useState(false);
-  const[collapsed,setCollapsed]=React.useState(false);
+  const[collapsed,setCollapsed]=React.useState(true);
   const[selIds,setSelIds]=React.useState(new Set());
 
   const load=async()=>{
