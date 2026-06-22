@@ -764,34 +764,32 @@ function StudentLearningReport({userData,onClose}){
     if(!el)return;
     setSaving(true);
     el.scrollTop=0;
-    await new Promise(r=>setTimeout(r,50));
+    // React가 saving 상태로 리렌더한 뒤 잠시 기다려 레이아웃을 안정화
+    await new Promise(r=>setTimeout(r,100));
     try{
-      const W=el.offsetWidth;
+      const W=el.scrollWidth;
       const fullH=el.scrollHeight;
       const canvas=await window.html2canvas(el,{
         scale:2,
         backgroundColor:'#ffffff',
         useCORS:true,
         scrollX:0,
-        scrollY:-window.scrollY,
+        scrollY:0,
         width:W,
         height:fullH,
         windowWidth:W,
         windowHeight:fullH,
         onclone:(_doc,cloned)=>{
-          cloned.style.cssText=[
-            'position:relative !important',
-            'top:0 !important',
-            'left:0 !important',
-            'max-height:none !important',
-            'overflow:visible !important',
-            'height:'+fullH+'px !important',
-            'box-shadow:none !important',
-          ].join(';');
-          cloned.querySelectorAll('*').forEach(n=>{
-            n.style.setProperty('overflow','visible','important');
-            n.style.setProperty('max-height','none','important');
-          });
+          // 컨테이너만 overflow 해제 (자식은 유지해야 progress bar 등이 정상 렌더)
+          cloned.style.setProperty('position','relative','important');
+          cloned.style.setProperty('top','0','important');
+          cloned.style.setProperty('left','0','important');
+          cloned.style.setProperty('max-height','none','important');
+          cloned.style.setProperty('overflow','visible','important');
+          cloned.style.setProperty('height',fullH+'px','important');
+          cloned.style.setProperty('box-shadow','none','important');
+          // 버튼은 레이아웃 유지하되 보이지 않게 처리 (저장 중… 문구 등 제거)
+          cloned.querySelectorAll('button').forEach(b=>b.style.setProperty('visibility','hidden','important'));
         },
       });
       const a=document.createElement('a');
