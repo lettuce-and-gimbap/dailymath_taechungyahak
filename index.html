@@ -6498,36 +6498,44 @@ function StudentLearningReport({userData,onClose}){
     const el=reportRef.current;
     if(!el)return;
     setSaving(true);
-    // fixed 컨텍스트 밖으로 el을 직접 이동해 캡처 (fixed 부모 안에서 캡처하면
-    // html2canvas가 좌표를 viewport 기준으로 잘못 계산해 흰 영역이 생김)
-    const parent=el.parentNode;
-    const anchor=el.nextSibling;
-    const W=el.offsetWidth;
-    Object.assign(el.style,{
-      position:'absolute',top:'0',left:'-9999px',
-      maxHeight:'none',overflow:'visible',height:'auto',
-      width:W+'px',boxShadow:'none',zIndex:'-1'
-    });
-    document.body.appendChild(el);
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    el.scrollTop=0;
+    await new Promise(r=>setTimeout(r,50));
     try{
-      const H=el.scrollHeight;
+      const W=el.offsetWidth;
+      const fullH=el.scrollHeight;
       const canvas=await window.html2canvas(el,{
-        scale:2,backgroundColor:'#ffffff',useCORS:true,
-        scrollX:0,scrollY:0,width:W,height:H,
-        windowWidth:W,windowHeight:H,
+        scale:2,
+        backgroundColor:'#ffffff',
+        useCORS:true,
+        scrollX:0,
+        scrollY:-window.scrollY,
+        width:W,
+        height:fullH,
+        windowWidth:W,
+        windowHeight:fullH,
+        onclone:(_doc,cloned)=>{
+          // html2canvas 내부 복제본에만 적용 — 실제 DOM 불변
+          cloned.style.cssText=[
+            'position:relative !important',
+            'top:0 !important',
+            'left:0 !important',
+            'max-height:none !important',
+            'overflow:visible !important',
+            'height:'+fullH+'px !important',
+            'box-shadow:none !important',
+          ].join(';');
+          cloned.querySelectorAll('*').forEach(n=>{
+            n.style.setProperty('overflow','visible','important');
+            n.style.setProperty('max-height','none','important');
+          });
+        },
       });
       const a=document.createElement('a');
       a.href=canvas.toDataURL('image/png');
       a.download=`학습보고서_${userData.name}.png`;
       a.click();
     }catch(err){alert('PNG 저장 실패: '+err.message);}
-    finally{
-      // 스타일 초기화 후 원래 위치로 복원
-      Object.assign(el.style,{position:'',top:'',left:'',maxHeight:'',overflow:'',height:'',width:'',boxShadow:'',zIndex:''});
-      parent.insertBefore(el,anchor);
-      setSaving(false);
-    }
+    finally{setSaving(false);}
   };
 
   return(
