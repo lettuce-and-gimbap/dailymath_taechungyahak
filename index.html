@@ -6493,7 +6493,7 @@ function StudentLearningReport({userData,onClose}){
 
   const reportRef=useRef(null);
   const[saving,setSaving]=useState(false);
-  const saveAsPNG=async()=>{
+  const saveAsJPG=async()=>{
     if(!window.html2canvas){alert('html2canvas를 불러오지 못했습니다.');return;}
     const el=reportRef.current;
     if(!el)return;
@@ -6514,7 +6514,6 @@ function StudentLearningReport({userData,onClose}){
         windowWidth:W,
         windowHeight:fullH,
         onclone:(_doc,cloned)=>{
-          // html2canvas 내부 복제본에만 적용 — 실제 DOM 불변
           cloned.style.cssText=[
             'position:relative !important',
             'top:0 !important',
@@ -6531,10 +6530,10 @@ function StudentLearningReport({userData,onClose}){
         },
       });
       const a=document.createElement('a');
-      a.href=canvas.toDataURL('image/png');
-      a.download=`학습보고서_${userData.name}.png`;
+      a.href=canvas.toDataURL('image/jpeg',0.95);
+      a.download=`학습보고서_${userData.name}.jpg`;
       a.click();
-    }catch(err){alert('PNG 저장 실패: '+err.message);}
+    }catch(err){alert('JPG 저장 실패: '+err.message);}
     finally{setSaving(false);}
   };
 
@@ -6547,7 +6546,7 @@ function StudentLearningReport({userData,onClose}){
             <div className="font-black text-lg">나의 학습 리포트</div>
             <div className="text-xs text-indigo-200 font-semibold">{userData.name}님 · 총 {total}문제</div>
           </div>
-          <button onClick={saveAsPNG} disabled={saving} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm disabled:opacity-60">{saving?'저장 중…':'💾 PNG 저장'}</button>
+          <button onClick={saveAsJPG} disabled={saving} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm disabled:opacity-60">{saving?'저장 중…':'💾 JPG 저장'}</button>
           <button onClick={onClose} className="px-3 py-1.5 bg-white/20 rounded-xl font-bold text-sm">✕</button>
         </div>
         <div className="p-5 space-y-4">
