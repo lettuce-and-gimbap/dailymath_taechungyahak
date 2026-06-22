@@ -768,11 +768,20 @@ function StudentLearningReport({userData,onClose}){
     const wrapper=document.createElement('div');
     Object.assign(wrapper.style,{position:'absolute',top:'0',left:'-9999px',width:W+'px',zIndex:'-1',background:'white'});
     const clone=el.cloneNode(true);
-    Object.assign(clone.style,{maxHeight:'none',overflow:'visible',width:W+'px',boxShadow:'none'});
+    Object.assign(clone.style,{maxHeight:'none',overflow:'visible',width:W+'px',boxShadow:'none',height:'auto'});
+    // 모든 하위 요소의 스크롤/높이 제한 해제
+    clone.querySelectorAll('*').forEach(node=>{
+      const s=node.style;
+      s.maxHeight='none';
+      s.overflow='visible';
+      s.overflowY='visible';
+      s.overflowX='visible';
+    });
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
     try{
-      await new Promise(r=>setTimeout(r,150));
+      await new Promise(r=>setTimeout(r,200));
+      const H=clone.scrollHeight;
       const canvas=await window.html2canvas(clone,{
         scale:2,
         backgroundColor:'#ffffff',
@@ -780,9 +789,9 @@ function StudentLearningReport({userData,onClose}){
         scrollX:0,
         scrollY:0,
         width:W,
-        height:clone.scrollHeight,
+        height:H,
         windowWidth:W,
-        windowHeight:clone.scrollHeight,
+        windowHeight:H,
       });
       const a=document.createElement('a');
       a.href=canvas.toDataURL('image/png');
