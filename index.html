@@ -6498,20 +6498,26 @@ function StudentLearningReport({userData,onClose}){
     const el=reportRef.current;
     if(!el)return;
     setSaving(true);
-    // overflow 제약 해제 → 전체 콘텐츠 캡처
-    const prevMaxH=el.style.maxHeight;
-    const prevOverflow=el.style.overflow;
-    el.style.maxHeight='none';
-    el.style.overflow='visible';
+    // fixed 모달 내부 위치 오류 방지: body에 클론을 붙여서 캡처
+    const W=el.offsetWidth;
+    const wrapper=document.createElement('div');
+    Object.assign(wrapper.style,{position:'absolute',top:'0',left:'-9999px',width:W+'px',zIndex:'-1',background:'white'});
+    const clone=el.cloneNode(true);
+    Object.assign(clone.style,{maxHeight:'none',overflow:'visible',width:W+'px',boxShadow:'none'});
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
     try{
-      await new Promise(r=>setTimeout(r,50)); // 레이아웃 재계산 대기
-      const canvas=await window.html2canvas(el,{
+      await new Promise(r=>setTimeout(r,150));
+      const canvas=await window.html2canvas(clone,{
         scale:2,
         backgroundColor:'#ffffff',
         useCORS:true,
         scrollX:0,
-        scrollY:-window.scrollY,
-        windowWidth:document.documentElement.scrollWidth,
+        scrollY:0,
+        width:W,
+        height:clone.scrollHeight,
+        windowWidth:W,
+        windowHeight:clone.scrollHeight,
       });
       const a=document.createElement('a');
       a.href=canvas.toDataURL('image/png');
@@ -6519,8 +6525,7 @@ function StudentLearningReport({userData,onClose}){
       a.click();
     }catch(err){alert('PNG 저장 실패: '+err.message);}
     finally{
-      el.style.maxHeight=prevMaxH;
-      el.style.overflow=prevOverflow;
+      document.body.removeChild(wrapper);
       setSaving(false);
     }
   };
@@ -11165,3 +11170,4 @@ root.render(<App/>);
 
 </body>
 </html>
+
