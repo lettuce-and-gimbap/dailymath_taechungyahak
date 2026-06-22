@@ -233,11 +233,12 @@ function GeometryQuiz({userData, onUpdate}){
         uAns: sel[i] !== undefined ? p.choices[sel[i]] : '미입력',
         cAns: p.choices[p.answer],
         isOk: sel[i] === p.answer,
-        timeSec: fms!=null ? Math.round(fms/1000) : null, // 균등배분 오류 수정
+        timeSec: fms!=null ? Math.round(fms/1000) : null,
         firstClickMs: fms,
         revisionCount: revisionCounts[i] ?? 0,
         qTopicHash: getTopicHash(p),
         explanation: easyExplanation(p),
+        graph: p.graph || null,
         meta: { category: 'geometry', type: concept.lbl, diff: '기하' }
       };
     });
