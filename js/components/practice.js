@@ -758,50 +758,48 @@ function StudentLearningReport({userData,onClose}){
 
   const reportRef=useRef(null);
   const[saving,setSaving]=useState(false);
-  const saveAsPNG=async()=>{
+  const saveAsJPG=async()=>{
     if(!window.html2canvas){alert('html2canvas를 불러오지 못했습니다.');return;}
     const el=reportRef.current;
     if(!el)return;
     setSaving(true);
-    // fixed 모달 내부 위치 오류 방지: body에 클론을 붙여서 캡처
-    const W=el.offsetWidth;
-    const wrapper=document.createElement('div');
-    Object.assign(wrapper.style,{position:'absolute',top:'0',left:'-9999px',width:W+'px',zIndex:'-1',background:'white'});
-    const clone=el.cloneNode(true);
-    Object.assign(clone.style,{maxHeight:'none',overflow:'visible',width:W+'px',boxShadow:'none',height:'auto'});
-    // 모든 하위 요소의 스크롤/높이 제한 해제
-    clone.querySelectorAll('*').forEach(node=>{
-      const s=node.style;
-      s.maxHeight='none';
-      s.overflow='visible';
-      s.overflowY='visible';
-      s.overflowX='visible';
-    });
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    el.scrollTop=0;
+    await new Promise(r=>setTimeout(r,50));
     try{
-      await new Promise(r=>setTimeout(r,200));
-      const H=clone.scrollHeight;
-      const canvas=await window.html2canvas(clone,{
+      const W=el.offsetWidth;
+      const fullH=el.scrollHeight;
+      const canvas=await window.html2canvas(el,{
         scale:2,
         backgroundColor:'#ffffff',
         useCORS:true,
         scrollX:0,
-        scrollY:0,
+        scrollY:-window.scrollY,
         width:W,
-        height:H,
+        height:fullH,
         windowWidth:W,
-        windowHeight:H,
+        windowHeight:fullH,
+        onclone:(_doc,cloned)=>{
+          cloned.style.cssText=[
+            'position:relative !important',
+            'top:0 !important',
+            'left:0 !important',
+            'max-height:none !important',
+            'overflow:visible !important',
+            'height:'+fullH+'px !important',
+            'box-shadow:none !important',
+          ].join(';');
+          cloned.querySelectorAll('*').forEach(n=>{
+            n.style.setProperty('overflow','visible','important');
+            n.style.setProperty('max-height','none','important');
+          });
+        },
       });
       const a=document.createElement('a');
-      a.href=canvas.toDataURL('image/png');
-      a.download=`학습보고서_${userData.name}.png`;
+      a.href=canvas.toDataURL('image/jpeg',0.95);
+      a.download=`학습보고서_${userData.name}.jpg`;
       a.click();
-    }catch(err){alert('PNG 저장 실패: '+err.message);}
-    finally{
-      document.body.removeChild(wrapper);
-      setSaving(false);
-    }
+    }catch(err){alert('JPG 저장 실패: '+err.message);}
+    finally{setSaving(false);}
   };
 
   return(
@@ -813,7 +811,7 @@ function StudentLearningReport({userData,onClose}){
             <div className="font-black text-lg">나의 학습 리포트</div>
             <div className="text-xs text-indigo-200 font-semibold">{userData.name}님 · 총 {total}문제</div>
           </div>
-          <button onClick={saveAsPNG} disabled={saving} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm disabled:opacity-60">{saving?'저장 중…':'💾 PNG 저장'}</button>
+          <button onClick={saveAsJPG} disabled={saving} className="px-3 py-1.5 bg-white text-indigo-700 rounded-xl font-black text-sm disabled:opacity-60">{saving?'저장 중…':'💾 JPG 저장'}</button>
           <button onClick={onClose} className="px-3 py-1.5 bg-white/20 rounded-xl font-bold text-sm">✕</button>
         </div>
         <div className="p-5 space-y-4">
