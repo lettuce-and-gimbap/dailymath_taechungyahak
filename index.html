@@ -8940,7 +8940,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
 // === js/dashboards/teacherDashboard.js ===
 function TeacherDashboard({userData,onLogout,onUpdate}){
   const[tab,setTab]=useState('analysis');
-  const TABS=[{k:'analysis',icon:'📊',lbl:'학생현황'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'feedback',icon:'💬',lbl:'피드백'}];
+  const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'}];
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-md">
       <div className="text-2xl">👨‍🏫</div>
@@ -8953,7 +8953,6 @@ function TeacherDashboard({userData,onLogout,onUpdate}){
       {tab==='analysis'&&<StudentAnalysisTab/>}
       {tab==='worksheets'&&<WorksheetTab/>}
       {tab==='notices'&&<NoticeTab/>}
-      {tab==='feedback'&&<FeedbackTab/>}
     </div>
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-2xl mx-auto">
       <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>setTab(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 ${tab===t.k?'text-indigo-600':'text-gray-400'}`}>
@@ -8968,26 +8967,46 @@ function NoticeTab(){
   const[notices,setNotices]=useState([]);
   const[homeworks,setHomeworks]=useState([]);
   const[posting,setPosting]=useState(false);
+
   const loadAll=async()=>{
     try{
+      const now=new Date();
       const nSnap=await db.collection('notices').orderBy('createdAt','desc').limit(30).get();
-      const nArr=[];nSnap.forEach(d=>nArr.push({id:d.id,...d.data()}));setNotices(nArr);
+      const nArr=[];nSnap.forEach(d=>nArr.push({id:d.id,...d.data()}));
+      setNotices(nArr);
       const hSnap=await db.collection('homework').orderBy('createdAt','desc').limit(20).get();
-      const hArr=[];hSnap.forEach(d=>hArr.push({id:d.id,...d.data()}));setHomeworks(hArr);
+      const hArr=[];hSnap.forEach(d=>hArr.push({id:d.id,...d.data()}));
+      setHomeworks(hArr);
     }catch(e){}
   };
   useEffect(()=>{loadAll();},[]);
+
   const postNotice=async()=>{
-    if(!noticeText.trim())return;setPosting(true);
-    try{const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+3);
-    await db.collection('notices').add({text:noticeText.trim(),createdAt:now,expiresAt:exp});
-    setNoticeText('');loadAll();}catch(e){alert('등록 실패');}setPosting(false);
+    if(!noticeText.trim())return;
+    setPosting(true);
+    try{
+      const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+3);
+      await db.collection('notices').add({text:noticeText.trim(),createdAt:now,expiresAt:exp});
+      setNoticeText('');loadAll();
+    }catch(e){alert('등록 실패');}
+    setPosting(false);
   };
-  const deleteNotice=async(id)=>{if(!window.confirm('공지를 삭제할까요?'))return;try{await db.collection('notices').doc(id).delete();loadAll();}catch(e){}};
-  const deleteHomework=async(id)=>{if(!window.confirm('숙제를 삭제(비활성화)할까요?'))return;try{await db.collection('homework').doc(id).set({active:false},{merge:true});loadAll();}catch(e){}};
+
+  const deleteNotice=async(id)=>{
+    if(!window.confirm('공지를 삭제할까요?'))return;
+    try{await db.collection('notices').doc(id).delete();loadAll();}catch(e){}
+  };
+
+  const deleteHomework=async(id)=>{
+    if(!window.confirm('숙제를 삭제(비활성화)할까요?'))return;
+    try{await db.collection('homework').doc(id).set({active:false},{merge:true});loadAll();}catch(e){}
+  };
+
   const fmt=ts=>{if(!ts)return'';const d=ts.toDate?ts.toDate():new Date(ts);return d.toLocaleDateString('ko-KR');};
   const isExpired=ts=>{if(!ts)return true;const d=ts.toDate?ts.toDate():new Date(ts);return d<new Date();};
+
   return(<div className="p-4 space-y-5 pb-36">
+    {/* 전체공지 작성 */}
     <div className="bg-white rounded-2xl p-5 shadow-sm">
       <div className="text-sm font-black text-gray-600 mb-3">📢 전체 공지 작성</div>
       <div className="text-xs text-gray-400 mb-3">등록 후 3일간 모든 학생의 홈 화면에 표시됩니다.</div>
@@ -8996,25 +9015,48 @@ function NoticeTab(){
         {posting?'등록 중...':'전체 공지 등록 📢'}
       </button>
     </div>
+
+    {/* 등록된 공지 목록 */}
     <div>
       <div className="text-sm font-black text-gray-500 mb-2 px-1">등록된 공지 ({notices.length})</div>
       {notices.length===0&&<div className="text-center text-gray-400 py-6 text-sm">등록된 공지가 없습니다</div>}
-      <div className="space-y-3">{notices.map(n=>{const expired=isExpired(n.expiresAt);return(<div key={n.id} className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${expired?'border-gray-300 opacity-60':'border-indigo-400'}`}>
-        <div className="flex items-center gap-2 mb-2">{expired?<span className="text-xs bg-gray-200 text-gray-500 font-bold px-2 py-0.5 rounded-full">만료됨</span>:<span className="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">표시 중</span>}<span className="text-xs text-gray-400 ml-auto">만료: {fmt(n.expiresAt)}</span></div>
-        <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep mb-3">{n.text}</p>
-        <button onClick={()=>deleteNotice(n.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>
-      </div>);})}</div>
+      <div className="space-y-3">
+        {notices.map(n=>{
+          const expired=isExpired(n.expiresAt);
+          return(<div key={n.id} className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${expired?'border-gray-300 opacity-60':'border-indigo-400'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              {expired?<span className="text-xs bg-gray-200 text-gray-500 font-bold px-2 py-0.5 rounded-full">만료됨</span>
+                      :<span className="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">표시 중</span>}
+              <span className="text-xs text-gray-400 ml-auto">만료: {fmt(n.expiresAt)}</span>
+            </div>
+            <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep mb-3">{n.text}</p>
+            <button onClick={()=>deleteNotice(n.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>
+          </div>);
+        })}
+      </div>
     </div>
+
+    {/* 숙제 목록 */}
     <div>
       <div className="text-sm font-black text-gray-500 mb-2 px-1">📝 등록된 숙제 ({homeworks.length})</div>
       <div className="text-xs text-gray-400 mb-3 px-1">숙제는 학습지 탭 → 모의고사 생성 후 "숙제로 내기" 버튼으로 추가합니다.</div>
       {homeworks.length===0&&<div className="text-center text-gray-400 py-6 text-sm">등록된 숙제가 없습니다</div>}
-      <div className="space-y-3">{homeworks.map(h=>{const expired=isExpired(h.expiresAt)||h.active===false;const done=(h.completedBy||[]).length;return(<div key={h.id} className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${expired?'border-gray-300 opacity-60':'border-green-400'}`}>
-        <div className="flex items-center gap-2 mb-2">{expired?<span className="text-xs bg-gray-200 text-gray-500 font-bold px-2 py-0.5 rounded-full">비활성</span>:<span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">진행 중</span>}<span className="text-xs text-gray-400 ml-auto">완료: {done}명</span></div>
-        <div className="font-bold text-gray-800 text-sm mb-1">{h.title}</div>
-        <div className="text-xs text-gray-500 mb-3">{h.level||''} · {h.questions?.length||0}문항 · 만료: {fmt(h.expiresAt)}</div>
-        {!expired&&<button onClick={()=>deleteHomework(h.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>}
-      </div>);})}</div>
+      <div className="space-y-3">
+        {homeworks.map(h=>{
+          const expired=isExpired(h.expiresAt)||h.active===false;
+          const done=(h.completedBy||[]).length;
+          return(<div key={h.id} className={`bg-white rounded-2xl p-4 shadow-sm border-l-4 ${expired?'border-gray-300 opacity-60':'border-green-400'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              {expired?<span className="text-xs bg-gray-200 text-gray-500 font-bold px-2 py-0.5 rounded-full">비활성</span>
+                      :<span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">진행 중</span>}
+              <span className="text-xs text-gray-400 ml-auto">완료: {done}명</span>
+            </div>
+            <div className="font-bold text-gray-800 text-sm mb-1">{h.title}</div>
+            <div className="text-xs text-gray-500 mb-3">{h.level||''} · {h.questions?.length||0}문항 · 만료: {fmt(h.expiresAt)}</div>
+            {!expired&&<button onClick={()=>deleteHomework(h.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>}
+          </div>);
+        })}
+      </div>
     </div>
   </div>);
 }
@@ -9098,6 +9140,13 @@ function StudentAnalysisTab(){
     }catch(e){alert('삭제 실패: '+e.message);}
   };
 
+  const[recentSessions,setRecentSessions]=useState([]);
+  useEffect(()=>{
+    db.collection('math_logs').orderBy('date','desc').limit(10).get()
+      .then(snap=>{const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setRecentSessions(arr);})
+      .catch(()=>{});
+  },[]);
+
   const load=async()=>{
     setLoading(true);
     try{
@@ -9110,7 +9159,15 @@ function StudentAnalysisTab(){
   };
   useEffect(()=>{load()},[]);
 
-  if(selected)return<StudentDetail student={selected} onBack={()=>setSelected(null)}/>;
+  if(selected)return<StudentDetail
+    student={selected}
+    onBack={()=>setSelected(null)}
+    folders={folders}
+    customFolders={customFolders}
+    onAssignFolder={(fid,sid)=>{assignFolder(fid,sid);}}
+    onClearFolder={(sid)=>{clearFolder(sid);}}
+    onDeleteStudent={(s)=>{deleteStudent(s);setSelected(null);}}
+  />;
 
   const curFolder=folders.find(f=>f.id===activeFolder)||folders[0];
   // '폴더없음' 탭: 어느 커스텀 폴더에도 없는 학생
@@ -9127,133 +9184,201 @@ function StudentAnalysisTab(){
   const toggleSort=key=>{if(sortBy===key)setSortAsc(v=>!v);else{setSortBy(key);setSortAsc(key==='name');}};
 
   const LIGHT_CLS={'light-red':'bg-red-50 text-red-700 border border-red-200','light-yel':'bg-yellow-50 text-yellow-700 border border-yellow-200','light-grn':'bg-green-50 text-green-700 border border-green-200'};
+  const STATUS_DOT={'light-red':'bg-red-400','light-yel':'bg-yellow-400','light-grn':'bg-emerald-400'};
 
-  return(<div className="p-4 pb-36 space-y-3">
-    <div className="flex items-center justify-between mb-2">
-      <div className="text-lg font-black text-gray-800">📊 학생 현황</div>
-      <div className="flex items-center gap-2">
-        <button onClick={()=>toggleSort('name')} className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${sortBy==='name'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
-          이름순 {sortBy==='name'?(sortAsc?'↑':'↓'):''}
+  return(<div className="p-4 pb-36 space-y-4">
+
+    {/* ── 학생 의견 수신함 ── */}
+    <StudentFeedbackPanel/>
+
+    {/* ── 최근 학습 세션 ── */}
+    {recentSessions.length>0&&<div className="bg-white rounded-2xl p-4 shadow-sm">
+      <div className="text-xs font-black text-gray-400 uppercase mb-2">🕐 최근 학습 세션</div>
+      <div className="space-y-1.5">
+        {recentSessions.map((s,i)=>(
+          <button key={s.id||i}
+            onClick={()=>{const found=students.find(st=>st.name===s.studentName||st.id===s.studentName);if(found)setSelected(found);}}
+            className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
+            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-black text-gray-800 text-xs">{s.studentName||'?'}</div>
+              <div className="text-[10px] text-gray-500 truncate">{s.type||'학습'} · 점수: {s.score||'-'}</div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="text-[10px] text-gray-400 font-bold">{s.date||''}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>}
+
+    {/* ── 학생 그리드 헤더 ── */}
+    <div className="flex items-center justify-between">
+      <div className="text-base font-black text-gray-800">📊 학생 관리 <span className="text-sm font-normal text-gray-400">({students.length}명)</span></div>
+      <div className="flex items-center gap-1.5">
+        <button onClick={()=>toggleSort('name')} className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all ${sortBy==='name'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
+          이름{sortBy==='name'?(sortAsc?'↑':'↓'):''}
         </button>
-        <button onClick={()=>toggleSort('date')} className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all ${sortBy==='date'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
-          접속순 {sortBy==='date'?(sortAsc?'↑':'↓'):''}
+        <button onClick={()=>toggleSort('date')} className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all ${sortBy==='date'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
+          접속{sortBy==='date'?(sortAsc?'↑':'↓'):''}
         </button>
-        <button onClick={load} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-bold">🔄</button>
+        <button onClick={load} className="text-sm px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold">🔄</button>
       </div>
     </div>
 
     {/* ── 폴더 탭 ── */}
-    <div className="flex gap-2 flex-wrap items-center">
-      {/* 폴더없음 (기본) */}
+    <div className="flex gap-1.5 flex-wrap items-center">
       <button onClick={()=>setActiveFolder('all')}
-        className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all ${activeFolder==='all'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
-        📋 폴더없음 <span className="text-xs opacity-70">({students.filter(s=>!customFolders.some(f=>f.ids.includes(s.id))).length})</span>
+        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${activeFolder==='all'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
+        📋 전체 <span className="opacity-70">({students.filter(s=>!customFolders.some(f=>f.ids.includes(s.id))).length})</span>
       </button>
-
-      {/* 커스텀 폴더 탭 */}
       {customFolders.map(f=>(
         <div key={f.id} className="flex items-center gap-0.5">
           {editFolderId===f.id
             ?<input autoFocus defaultValue={f.name}
                 onBlur={e=>renameFolder(f.id,e.target.value)}
                 onKeyDown={e=>e.key==='Enter'&&renameFolder(f.id,e.target.value)}
-                className="border-2 border-indigo-400 rounded-lg px-2 py-1 text-sm font-bold w-24 outline-none"/>
+                className="border-2 border-indigo-400 rounded-lg px-2 py-0.5 text-xs font-bold w-20 outline-none"/>
             :<>
               <button onDoubleClick={()=>setEditFolderId(f.id)} onClick={()=>setActiveFolder(f.id)}
-                className={`px-3 py-1.5 rounded-l-xl text-sm font-bold transition-all ${activeFolder===f.id?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
-                📁 {f.name} <span className="text-xs opacity-70">({f.ids.length})</span>
+                className={`px-2.5 py-1 rounded-l-xl text-xs font-bold transition-all ${activeFolder===f.id?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>
+                📁 {f.name} <span className="opacity-70">({f.ids.length})</span>
               </button>
               <button onClick={()=>deleteFolder(f.id)}
-                className={`px-1.5 py-1.5 rounded-r-xl text-xs font-black transition-all ${activeFolder===f.id?'bg-indigo-400 text-white hover:bg-red-500':'bg-gray-200 text-gray-500 hover:bg-red-100 hover:text-red-600'}`}
-                title="폴더 삭제">✕</button>
-            </>
-          }
+                className={`px-1 py-1 rounded-r-xl text-xs font-black transition-all ${activeFolder===f.id?'bg-indigo-400 text-white hover:bg-red-500':'bg-gray-200 text-gray-500 hover:bg-red-100 hover:text-red-600'}`}>✕</button>
+            </>}
         </div>
       ))}
-      <button onClick={addFolder} className="px-3 py-1.5 rounded-xl text-sm font-bold bg-green-100 text-green-700">＋ 폴더 추가</button>
+      <button onClick={addFolder} className="px-2.5 py-1 rounded-xl text-xs font-bold bg-green-100 text-green-700">＋ 폴더</button>
     </div>
-    <div className="text-xs text-gray-400">폴더 탭 더블클릭: 이름 수정 · ✕: 폴더 삭제 · 카드 📁: 폴더 배정</div>
+    <div className="text-[10px] text-gray-400">탭 더블클릭: 이름 수정 · ✕: 폴더 삭제 · 상세화면에서 폴더 배정/삭제</div>
 
     {/* 신호등 안내 */}
-    <div className="bg-white rounded-2xl p-4 text-sm border border-gray-200 shadow-sm space-y-1.5">
-      <div className="font-bold text-gray-600 mb-2">신호등 기준 안내</div>
-      {[['🔴 집중 케어','미접속 5일↑ 또는 정답률 40% 미만'],['🟡 격려 필요','미접속 3~4일 또는 정답률 40~69%'],['🟢 순항 중','2일 이내 접속 & 정답률 70% 이상']].map(([t,d])=><div key={t} className="text-xs text-gray-500">{t}: {d}</div>)}
+    <div className="flex gap-3 text-[10px] text-gray-500 flex-wrap">
+      {[['🔴','집중케어','5일↑ 또는 40%↓'],['🟡','격려필요','3~4일 또는 40~69%'],['🟢','순항중','2일↓ & 70%↑']].map(([icon,lbl,desc])=>(
+        <span key={lbl}>{icon} {lbl}: {desc}</span>
+      ))}
     </div>
 
     {loading&&<div className="text-center py-8 text-gray-400 font-bold">분석 중... ⏳</div>}
 
-    {!loading&&visibleStudents.map(s=>{
-      const a=analyzeStudent(s);
-      const myFolder=customFolders.find(f=>f.ids.includes(s.id));
-      const isOpen=pickerOpen===s.id;
-      return(
-      <div key={s.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* 카드 본문 */}
-        <div className="flex items-stretch">
-          <button onClick={()=>setSelected(s)} className="flex-1 p-4 text-left">
-            <div className="flex items-center gap-3 mb-1.5">
-              <span className="font-black text-gray-800 text-base flex-1">👤 {s.name||s.id}</span>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${LIGHT_CLS[a.status.color]}`}>{a.status.icon} {a.status.text}</span>
+    {/* ── 4×n 학생 그리드 ── */}
+    {!loading&&<div className="grid grid-cols-4 gap-2">
+      {visibleStudents.map(s=>{
+        const a=analyzeStudent(s);
+        const isOnline=!!onlineMap[s.name||s.id];
+        return(
+        <button key={s.id} onClick={()=>setSelected(s)}
+          className="bg-white rounded-2xl p-2.5 shadow-sm border border-gray-100 text-center hover:border-indigo-300 hover:bg-indigo-50 active:scale-95 transition-all flex flex-col items-center gap-1">
+          {/* 아바타 */}
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-black text-base flex items-center justify-center">
+              {(s.name||s.id)[0]}
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 font-semibold">
-              {onlineMap[s.name||s.id]
-                ? <span className="inline-flex items-center gap-1 text-emerald-600 font-black bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 text-[10px]"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse"/>접속중</span>
-                : <span>마지막 학습: {daysText(a.daysInactive)}</span>
-              }
-              <span>🕐 {s.lastLoginAt||s.lastDate||'기록 없음'}</span>
-              <span>정답률: {a.recentAcc}%</span>
-              <span>레슨: {s.logs?.length||0}회</span>
-            </div>
-          </button>
-          {/* 우측 버튼 컬럼 */}
-          <div className="flex flex-col border-l border-gray-100">
-            <button onClick={e=>{e.stopPropagation();setPickerOpen(isOpen?null:s.id);}}
-              className={`flex-1 px-3 text-xs font-bold transition-colors ${isOpen?'bg-indigo-500 text-white':'text-indigo-500 hover:bg-indigo-50'}`}
-              title="폴더 배정">
-              📁<br/>{myFolder?'변경':'배정'}
-            </button>
-            <button onClick={e=>{e.stopPropagation();deleteStudent(s);}}
-              className="flex-1 px-3 text-xs font-bold text-red-400 hover:bg-red-50 border-t border-gray-100 transition-colors"
-              title="학생 삭제">
-              🗑️<br/>삭제
-            </button>
+            {isOnline&&<span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white"/>}
+            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${STATUS_DOT[a.status.color]}`}/>
           </div>
-        </div>
-
-        {/* 폴더 피커 */}
-        {isOpen&&(
-          <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
-            <div className="text-xs font-bold text-gray-500 mb-2">
-              현재: {myFolder?<span className="text-indigo-600">📁 {myFolder.name}</span>:<span className="text-gray-400">폴더없음</span>}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {myFolder&&(
-                <button onClick={()=>{clearFolder(s.id);setPickerOpen(null);}}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-200 text-gray-600 hover:bg-gray-300">
-                  📋 폴더없음으로
-                </button>
-              )}
-              {customFolders.map(f=>(
-                <button key={f.id} onClick={()=>{assignFolder(f.id,s.id);setPickerOpen(null);}}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${myFolder?.id===f.id?'bg-indigo-500 text-white':'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300'}`}>
-                  📁 {f.name}
-                </button>
-              ))}
-              {customFolders.length===0&&<span className="text-xs text-gray-400">폴더를 먼저 추가하세요</span>}
-            </div>
+          {/* 이름 */}
+          <div className="text-[11px] font-black text-gray-800 truncate w-full text-center">{s.name||s.id}</div>
+          {/* 정답률 */}
+          <div className="text-[10px] font-bold text-gray-500">{a.recentAcc}%</div>
+          {/* 마지막 */}
+          <div className="text-[9px] text-gray-400 truncate w-full text-center">
+            {isOnline?'🟢 접속중':daysText(a.daysInactive)}
           </div>
-        )}
-      </div>);})}
+        </button>);
+      })}
+    </div>}
 
     {!loading&&visibleStudents.length===0&&(
       <div className="text-center py-12 text-gray-400 font-bold">
-        {activeFolder==='all'?'모든 학생이 폴더에 배정되어 있어요.':'이 폴더에 배정된 학생이 없어요.'}
+        {activeFolder==='all'?'학생이 없어요.':'이 폴더에 배정된 학생이 없어요.'}
       </div>
     )}
   </div>);
 }
 
-function StudentDetail({student,onBack}){
+function QuickFeedbackPanel({student}){
+  const[open,setOpen]=useState(false);
+  const[mode,setMode]=useState('general'); // 'general' | 'session'
+  const[sessionIdx,setSessionIdx]=useState('');
+  const[msg,setMsg]=useState('');
+  const[sent,setSent]=useState(false);
+
+  const selLog=mode==='session'&&sessionIdx!==''?student?.logs?.[Number(sessionIdx)]:null;
+
+  const send=async()=>{
+    if(!msg.trim())return;
+    try{
+      let logStr='';
+      if(mode==='session'&&sessionIdx!==''&&student?.logs?.[Number(sessionIdx)]){
+        const l=student.logs[Number(sessionIdx)];
+        logStr=`${fmtDate(l.date)} ${l.time||''} | ${l.type||''} | 점수: ${l.score||''}`;
+      }
+      await db.collection('feedback').add({
+        studentName:student.name,
+        message:msg.trim(),
+        relatedLog:logStr,
+        read:false,
+        createdAt:new Date()
+      });
+      setMsg('');setSent(true);
+      setTimeout(()=>setSent(false),2000);
+    }catch(e){alert('피드백 저장 실패: '+e.message);}
+  };
+
+  return(<div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 mb-4">
+    <div className="flex items-center justify-between">
+      <div className="text-sm font-black text-indigo-700">💌 피드백 주기</div>
+      <button onClick={()=>setOpen(v=>!v)} className="text-xs px-2.5 py-1 bg-indigo-100 text-indigo-600 rounded-lg font-bold">
+        {open?'접기 ▲':'펼치기 ▼'}
+      </button>
+    </div>
+    {open&&<div className="mt-3 space-y-3">
+      {/* 모드 선택 */}
+      <div className="flex gap-2">
+        <button onClick={()=>{setMode('general');setSessionIdx('');}}
+          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${mode==='general'?'bg-indigo-600 text-white shadow':'bg-white text-gray-600 border border-gray-200'}`}>
+          💬 일반 피드백
+        </button>
+        <button onClick={()=>setMode('session')}
+          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${mode==='session'?'bg-indigo-600 text-white shadow':'bg-white text-gray-600 border border-gray-200'}`}>
+          📋 특정 세션 지정
+        </button>
+      </div>
+      {/* 세션 선택 드롭다운 */}
+      {mode==='session'&&<select value={sessionIdx} onChange={e=>setSessionIdx(e.target.value)}
+        className="w-full border-2 border-gray-200 rounded-xl p-2.5 text-xs font-bold focus:border-indigo-400 outline-none bg-white">
+        <option value="">-- 세션을 선택하세요 --</option>
+        {(student.logs||[]).slice(0,15).map((log,i)=>(
+          <option key={i} value={i}>{fmtDate(log.date)} {log.time||''} | {log.type||''} | 점수: {log.score||'-'}</option>
+        ))}
+      </select>}
+      {/* 선택 세션 정오표 미리보기 */}
+      {selLog&&selLog.questions&&<div className="bg-white border border-indigo-100 rounded-xl p-3 max-h-36 overflow-y-auto">
+        <div className="text-[10px] font-black text-indigo-600 mb-1.5">📊 세션 정오표</div>
+        <div className="space-y-1">
+          {selLog.questions.map((q,j)=>(
+            <div key={j} className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-lg ${q.isOk?'bg-green-50':'bg-red-50'}`}>
+              <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
+              <span className="text-gray-700 truncate">{q.qTxt||q.q||''}</span>
+            </div>
+          ))}
+        </div>
+      </div>}
+      {/* 메시지 입력 */}
+      <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={3} lang="ko"
+        placeholder={mode==='session'&&selLog?`[${fmtDate(selLog.date)} ${selLog.type||''}] 세션에 대한 피드백...`:'학생에게 전달할 피드백 메시지...'}
+        className="w-full border-2 border-gray-200 rounded-xl p-3 text-sm font-bold resize-none focus:border-indigo-400 outline-none"/>
+      <button onClick={send}
+        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm active:scale-95 transition-transform">
+        {sent?'✅ 전송완료!':'💌 피드백 전송'}
+      </button>
+    </div>}
+  </div>);
+}
+
+function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent}){
   const[open,setOpen]=useState(null);
   const[tab,setTab]=useState('overview');
   const[qStats,setQStats]=useState({});
@@ -10209,6 +10334,26 @@ function StudentDetail({student,onBack}){
       })()}
     </div>
 
+    {/* ── 피드백 주기 ── */}
+    <QuickFeedbackPanel student={student}/>
+
+    {/* ── 폴더 배정 / 삭제 ── */}
+    {(customFolders||[]).length>0&&(()=>{
+      const myFolder=(customFolders||[]).find(f=>f.ids?.includes(student.id));
+      return(<div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-bold text-gray-500">📁 폴더:</span>
+        {myFolder
+          ?<span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{myFolder.name}</span>
+          :<span className="text-xs text-gray-400">미배정</span>}
+        {myFolder&&<button onClick={()=>onClearFolder&&onClearFolder(student.id)} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-lg font-bold">폴더 해제</button>}
+        {(customFolders||[]).filter(f=>f.id!==myFolder?.id).map(f=>(
+          <button key={f.id} onClick={()=>onAssignFolder&&onAssignFolder(f.id,student.id)}
+            className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold border border-indigo-100">📁 {f.name}</button>
+        ))}
+        <button onClick={()=>{if(onDeleteStudent)onDeleteStudent(student);}} className="ml-auto text-xs px-2 py-0.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 학생 삭제</button>
+      </div>);
+    })()}
+
     {/* 상단 상태 카드 */}
     <div className="bg-white rounded-3xl p-5 shadow-md border-2 border-gray-100">
       <div className="flex items-center gap-3 mb-4">
@@ -10596,6 +10741,8 @@ function StudentDetail({student,onBack}){
     {printLog&&<SessionPrintModal log={printLog} studentName={student.name} studentId={student.id} onClose={()=>setPrintLog(null)}/>}
   </div>);
 }
+
+
 
 
 
