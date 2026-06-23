@@ -296,6 +296,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
 
   const cats=WRONG_Q_CATEGORY_ORDER.filter(c=>grouped[c]);
   const [openCats,setOpenCats]=React.useState(new Set()); // 기본 전부 접힘
+  const [randomCount,setRandomCount]=React.useState('');
 
   const toggleCat=cat=>setOpenCats(prev=>{const s=new Set(prev);s.has(cat)?s.delete(cat):s.add(cat);return s;});
 
@@ -311,6 +312,16 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
 
   const allOn=allWrongQs.length>0&&allWrongQs.every((_,i)=>wrongQSel.has(i));
   const selAll=()=>setWrongQSel(allOn?new Set():new Set(allWrongQs.map((_,i)=>i)));
+
+  const applyRandom=()=>{
+    const cnt=parseInt(randomCount,10);
+    if(!cnt||cnt<1)return;
+    const total=allWrongQs.length;
+    const actual=Math.min(cnt,total);
+    const indices=Array.from({length:total},(_,i)=>i);
+    for(let i=indices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[indices[i],indices[j]]=[indices[j],indices[i]];}
+    setWrongQSel(new Set(indices.slice(0,actual)));
+  };
 
   const ORD=['①','②','③','④'];
 
@@ -373,12 +384,29 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
   return(<div>
     <div className="text-xs text-red-500 mb-2">유형별로 묶었습니다. 원하는 문제를 선택해 인쇄하세요.</div>
     {/* 전체 선택 / 해제 */}
-    <div className="flex items-center gap-2 mb-3 flex-wrap">
+    <div className="flex items-center gap-2 mb-2 flex-wrap">
       <button onClick={selAll} className={`text-xs px-3 py-1.5 rounded-lg font-bold ${allOn?'bg-red-400 text-white':'bg-gray-100 text-gray-600'}`}>{allOn?'✓ 전체 해제':'전체 선택'}</button>
       <button onClick={()=>setWrongQSel(new Set())} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold">전체 해제</button>
       <label className="flex items-center gap-1.5 ml-auto text-xs font-bold text-gray-600">
         <input type="checkbox" checked={wrongQShowAns} onChange={e=>setWrongQShowAns(e.target.checked)}/>해설 포함
       </label>
+    </div>
+    {/* 랜덤 출제 개수 선택 */}
+    <div className="flex items-center gap-2 mb-3 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2">
+      <span className="text-xs font-black text-indigo-700 flex-shrink-0">🎲 랜덤 출제</span>
+      <input
+        type="number" min="1" max={allWrongQs.length} value={randomCount}
+        onChange={e=>setRandomCount(e.target.value)}
+        placeholder={`1~${allWrongQs.length}`}
+        className="w-20 text-xs border border-indigo-200 rounded-lg px-2 py-1 text-center font-bold bg-white"
+      />
+      <span className="text-xs text-indigo-600 font-bold">문항</span>
+      <button
+        onClick={applyRandom}
+        disabled={!randomCount||parseInt(randomCount,10)<1}
+        className="text-xs px-3 py-1 bg-indigo-500 text-white rounded-lg font-black disabled:opacity-40 active:scale-95 transition-all"
+      >랜덤 선택</button>
+      <span className="text-[10px] text-indigo-400 font-bold">(전체 {allWrongQs.length}개 중)</span>
     </div>
     {/* 카테고리별 아코디언 */}
     <div className="space-y-2 mb-3">

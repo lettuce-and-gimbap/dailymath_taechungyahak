@@ -606,16 +606,16 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{width:`${pct}%`}}/></div>
       <div className="bg-indigo-100 text-indigo-700 font-black px-4 py-2 rounded-full text-base">✅ {correctCount}/10</div>
     </div>
-    <div className={`bg-white rounded-3xl p-6 shadow-md flex flex-col items-center justify-center ${q.category==='exam5'?(q.graph?'':'min-h-48'):'min-h-40'}`}>
+    <div className={`bg-white rounded-3xl p-6 shadow-md flex flex-col ${q.category==='exam5'?'items-start':'items-center justify-center'} ${q.category==='exam5'?(q.graph?'':'min-h-48'):'min-h-40'}`}>
       {q.category==='exam5'
-        ?<div className="flex flex-col items-center gap-1 mb-4">
+        ?<div className="flex flex-col items-start gap-1 mb-3 w-full">
           <div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">📚 {q.topic||q.meta?.type||'검정고시 영역 연습'}</div>
           {(()=>{var src=getExamSource(q);return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
         </div>
         :<div className="inline-block bg-yellow-100 text-yellow-800 text-sm font-bold px-3 py-1 rounded-full mb-4">{q.category==='div'?'약수 구하기':'나눗셈'}</div>
       }
       {q.category==='exam5'&&q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2 w-full"><GraphPreview q={q}/></div>}
-      {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left px-1">{q.q}</div>}
+      {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left w-full break-keep">{q.q}</div>}
       {q.category==='exam5'&&q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3 w-full"><GraphPreview q={q}/></div>}
       {q.category==='math'&&<div className="text-4xl font-black text-gray-800 tracking-wide">{q.a} ÷ {q.b} = ?</div>}
       {q.category==='div'&&<div className="text-3xl font-black text-gray-800 leading-relaxed">
