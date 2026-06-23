@@ -1727,12 +1727,19 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
 
   const renderMathHtml=txt=>{
     if(!txt)return'';
+    // 마크다운 인라인 서식 적용 (HTML 이스케이프 후 적용하므로 안전)
+    const applyMd=s=>s
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/__(.+?)__/g,'<strong>$1</strong>')
+      .replace(/_(.+?)_/g,'<em>$1</em>')
+      .replace(/~~(.+?)~~/g,'<del>$1</del>');
     const result=[];
     const s=String(txt);
     const re=/(\$\$[\s\S]*?\$\$|\$[^\$\n]+\$)/g;
     let lastIdx=0,m;
     while((m=re.exec(s))!==null){
-      if(m.index>lastIdx)result.push(esc(s.slice(lastIdx,m.index)));
+      if(m.index>lastIdx)result.push(applyMd(esc(s.slice(lastIdx,m.index))));
       const token=m[1];
       const isDisplay=token.startsWith('$$');
       const inner=isDisplay?token.slice(2,-2).trim():token.slice(1,-1);
@@ -1746,7 +1753,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       }
       lastIdx=m.index+m[0].length;
     }
-    if(lastIdx<s.length)result.push(esc(s.slice(lastIdx)));
+    if(lastIdx<s.length)result.push(applyMd(esc(s.slice(lastIdx))));
     return result.join('');
   };
 
@@ -1855,7 +1862,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         📄 <b>학생 제공용</b>: 정답·해설 없이 문제만 (큰 글씨) &nbsp;|&nbsp; 🔡 <b>큰글씨 보기</b>: 해설 포함, 학생이 읽기 쉬운 큰 글씨 &nbsp;|&nbsp; 📋 <b>기본</b>: 정답·해설 포함 기본 크기
       </div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">- 잘림 현상이 있을 수 있습니다. 원활한 인쇄를 위해 Chrome 등 다른 브라우저를 사용해주세요 :) -</div>
-      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
+      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 수학식 · <b>**굵게**</b> · <b>*기울임*</b> · <b>~~취소선~~</b> 입력 가능. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
 
       <style dangerouslySetInnerHTML={{__html:`
         @media print {
@@ -1949,7 +1956,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
                             <textarea value={e.solText||''} onChange={ev=>setEdit(i,'solText',ev.target.value)} rows={4} className="w-full text-sm border border-amber-200 rounded-lg p-2 font-mono resize-y bg-white" placeholder="풀이 과정을 입력하세요."/>
                           </div>
                           <div>
-                            <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $ 입력 가능)</span></div>
+                            <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $, **굵게**, *기울임*, ~~취소선~~ 입력 가능)</span></div>
                             <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={3} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
