@@ -183,7 +183,7 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
     if(!q){try{q=qType===5?genMiddleMock():genMockProbStat();}catch(e){}}
     if(!q)q={topic:'확률',q:'3명 중 2명을 순서대로 뽑는 경우의 수는?',choices:['3','6','9','12'],answer:1,meta:{category:'stat',type:'확률과 통계',diff:'기초'}};
     return{...q,category:'exam5',isMC:true,
-      qLogTxt:q.q?.slice(0,30)||q.topic||areaLabel};
+      qLogTxt:q.q||q.topic||areaLabel};
   }
   if(qType===0){const q=genDivBasic(rangeMin,rangeMax);return{...q,category:'math',isMC}}
   return{...genDivRemainder(rangeMin,rangeMax),category:'math',isMC};

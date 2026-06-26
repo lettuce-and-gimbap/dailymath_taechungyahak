@@ -423,7 +423,7 @@ function QuickFeedbackPanel({student}){
           {selLog.questions.map((q,j)=>(
             <div key={j} className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-lg ${q.isOk?'bg-green-50':'bg-red-50'}`}>
               <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
-              <span className="text-gray-700 truncate">{q.qTxt||q.q||''}</span>
+              <span className="text-gray-700 break-keep leading-snug">{q.qFull||q.qTxt||q.q||''}</span>
             </div>
           ))}
         </div>
@@ -1781,7 +1781,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
                     <div key={j} className={`rounded-xl p-3 text-xs border ${q.isOk?'bg-white border-gray-200':'bg-red-50 border-red-200'}`}>
                       <div className="flex gap-2 mb-1">
                         <span className="font-black text-gray-500">Q{j+1}.</span>
-                        <span className="font-bold text-gray-800 flex-1 leading-relaxed">{q.qTxt}</span>
+                        <span className="font-bold text-gray-800 flex-1 leading-relaxed break-keep">{q.qFull||q.qTxt}</span>
                         <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
                       </div>
                       {q.examSource&&<div className="pl-6 mb-1 text-[10px] text-blue-500 font-bold">📌 {q.examSource}</div>}
