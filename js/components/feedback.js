@@ -1,8 +1,52 @@
 // === js/components/feedback.js ===
 
+// qTxt가 30자에서 잘린 구버전 로그에서 전체 문제 텍스트를 복원
+function restoreQText(q){
+  if(q.qFull) return q.qFull;
+  const txt=(q.qTxt||q.q||'').trim();
+  if(!txt) return '';
+  // 이미 완전한 문장(물음표로 끝남)
+  if(txt.endsWith('?')) return txt;
+  const topic=q.topic||'';
+  const solAll=(q.sol||[]).join('\n');
+  // 나머지 정리 (두 패턴)
+  // cubic:     "...나누었을 때의"  →  " 나머지는?"
+  // quadratic: "...때, 나머지"    →  "는?"
+  if(topic==='나머지 정리'){
+    if(/나누었을 때의$/.test(txt)) return txt+' 나머지는?';
+    if(/때, 나머지$/.test(txt)) return txt+'는?';
+  }
+  // 다항식 사칙연산: "...에 대하여 A" or "...에 대하여 A+" or "...에 대하여 A-"
+  if(topic==='다항식 사칙연산'){
+    if(/에 대하여 A\+$/.test(txt)) return txt+'B는?';
+    if(/에 대하여 A\-$/.test(txt)) return txt+'B는?';
+    if(/에 대하여 A$/.test(txt)){
+      const isAdd=solAll.includes('더할')||solAll.includes('A+B');
+      return txt+(isAdd?'+B는?':'-B는?');
+    }
+  }
+  // 항등식: "...항등식일" or "...항등식"
+  if(topic==='항등식'){
+    if(/항등식일$/.test(txt)) return txt+' 때, 두 상수 a, b에 대하여 a+b의 값은?';
+    if(/항등식$/.test(txt)) return txt+'일 때, 두 상수 a, b에 대하여 a+b의 값은?';
+  }
+  // 나누어떨어지는 조건
+  if(topic==='나누어떨어지는 조건'){
+    if(/나누어떨어질 때$/.test(txt)) return txt+', 상수 a의 값은?';
+    if(/나누어떨어$/.test(txt)) return txt+'질 때, 상수 a의 값은?';
+  }
+  // 인수분해
+  if(topic==='인수분해'){
+    if(/상수 a$/.test(txt)) return txt+'의 값은?';
+    if(/a의 값$/.test(txt)) return txt+'은?';
+    if(/a의 값은$/.test(txt)) return txt+'?';
+  }
+  return txt;
+}
+
 // 중졸·고졸 검정고시 수학 영역 자동 분류
 function classifyWrongQTopic(q){
-  const src=((q.topic||'')+(q.qFull||q.qTxt||q.q||'')+(q._logType||'')).toLowerCase();
+  const src=((q.topic||'')+(restoreQText(q)||'')+(q._logType||'')).toLowerCase();
   if(/수와\s*연산|자연수|정수|유리수|실수|분수|소수|약수|배수|최대공약수|최소공배수|소인수|집합|무한소수|순환소수/.test(src))return'수와 연산';
   if(/방정식|부등식|연립|이차방정식|이차부등식|일차방정식|일차부등식|판별식|근의 공식|절댓값 방정식/.test(src))return'방정식과 부등식';
   if(/이차함수|일차함수|유리함수|무리함수|지수함수|로그함수|함수|평행이동|대칭이동|역함수|합성함수/.test(src))return'함수';
@@ -21,7 +65,7 @@ const WRONG_Q_CATEGORY_ORDER=['수와 연산','문자와 식','방정식과 부�
 // 구버전 데이터(q.graph 없는 기하 오답)를 qTxt에서 그래프 파라미터 복원
 function tryReconstructGraph(q){
   if(q.graph)return q.graph;
-  const raw=(q.qFull||q.qTxt||q.q||'');
+  const raw=(restoreQText(q)||'');
   const txt=raw.replace(/−/g,'-').replace(/≤/g,'<=').replace(/≥/g,'>=').replace(/²/g,'^2');
   const type=q.meta?.type||'';
 
@@ -356,7 +400,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
         const graphSvg=effGraph?`<div class="graph">${graphToSVGStr(effGraph)}</div>`:'';
         const choicesHtml=Array.isArray(q.choices)?`<div class="choices">${q.choices.map((c,j)=>`<div class="choice">${ORD[j]||String(j+1)} ${c}</div>`).join('')}</div>`:'';
         const ansText=q.cAns||(Array.isArray(q.choices)&&q.answer!=null?q.choices[q.answer]:'');
-        html+=`<div class="q"><span class="qnum">${num++}.</span> <span class="qtxt">${q.qFull||q.qTxt||q.q||''}</span>${graphSvg}${choicesHtml}`;
+        html+=`<div class="q"><span class="qnum">${num++}.</span> <span class="qtxt">${restoreQText(q)||''}</span>${graphSvg}${choicesHtml}`;
         if(showAns)html+=`<div class="ans">정답: ${ansText}</div>${q.explanation?`<div class="exp">${q.explanation}</div>`:''}`;
         html+=`</div>`;
       });
@@ -375,7 +419,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
     if(!confirm(`오답 ${qs.length}문제를 ${studentName} 학생에게 숙제로 내시겠어요?`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
-      const hwQs=qs.map(q=>({q:q.qFull||q.qTxt||q.q||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
+      const hwQs=qs.map(q=>({q:restoreQText(q)||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
       await db.collection('homework').add({title:`${studentName} 학생 오답 문제지`,level:'오답',questions:hwQs,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:[studentName]});
       alert('✅ 숙제로 등록되었습니다!');
     }catch(e){alert('등록 실패');}
@@ -433,7 +477,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
                 <input type="checkbox" checked={on} onChange={()=>setWrongQSel(prev=>{const s=new Set(prev);on?s.delete(i):s.add(i);return s;})} className="mt-0.5 w-4 h-4 flex-shrink-0 rounded"/>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-bold text-gray-400 mb-0.5">{q._logDate} · {q._logType}</div>
-                  <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{q.qFull||q.qTxt||q.q||'(문제 없음)'}</div>
+                  <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{restoreQText(q)||'(문제 없음)'}</div>
                   {effGraph&&<div className="mt-1 flex justify-center"><GraphPreview q={{...q,graph:effGraph}}/></div>}
                   {q.cAns&&<div className="text-xs text-indigo-600 mt-0.5">정답: {q.cAns}</div>}
                 </div>
@@ -700,7 +744,7 @@ function FeedbackTab(){
                    <div key={j} className={`p-2.5 rounded-lg text-xs border ${q.isOk ? 'bg-white border-green-200' : 'bg-red-50 border-red-200'}`}>
                      <div className="flex gap-2 items-start">
                        <span className="font-black text-gray-500 flex-shrink-0">Q{j+1}.</span>
-                       <span className="font-bold text-gray-800 flex-1 leading-snug break-keep">{q.qFull||q.qTxt}</span>
+                       <span className="font-bold text-gray-800 flex-1 leading-snug break-keep">{restoreQText(q)||''}</span>
                        <span className={`font-black flex-shrink-0 text-sm ${q.isOk ? 'text-green-500' : 'text-red-500'}`}>{q.isOk ? 'O' : 'X'}</span>
                      </div>
                      {!q.isOk && <div className="mt-1.5 pl-6 text-gray-600 leading-snug break-keep">학생 답: <span className="font-bold">{q.uAns}</span> <span className="text-gray-400">→</span> 정답: <span className="text-red-600 font-bold">{q.cAns}</span></div>}
