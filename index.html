@@ -554,7 +554,7 @@ var autoMathHtml=(text)=>{
 /* ===== FIREBASE HELPERS ===== */
 var saveUser=async(data)=>{try{await db.collection('users').doc(data.name).set(data,{merge:true})}catch(e){console.error(e)}};
 var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).get();return d.exists?d.data():null}catch(e){return null}};
-var saveLog=async(log)=>{try{await db.collection('math_logs').add({...log,createdAt:new Date()})}catch(e){console.error(e)}};
+var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
 
 
 
@@ -3551,12 +3551,12 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
     ?`${studentId}_${(log.date||'nd')}_${(log.time||'').replace(/[^0-9]/g,'')}`
     :null;
 
-  const[printCols,setPrintCols]=useState(1);
   const[topicOverrides,setTopicOverrides]=useState({});
   const[overrideSaved,setOverrideSaved]=useState({});
   const[savedEditsMap,setSavedEditsMap]=useState({});
   const[sessionLoaded,setSessionLoaded]=useState(false);
   const[corrected,setCorrected]=useState({});
+  const[printCols,setPrintCols]=useState(1);
 
   const[edits,setEdits]=useState(()=>{
     const init={};
@@ -3672,12 +3672,19 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
 
   const renderMathHtml=txt=>{
     if(!txt)return'';
+    // 마크다운 인라인 서식 적용 (HTML 이스케이프 후 적용하므로 안전)
+    const applyMd=s=>s
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/__(.+?)__/g,'<strong>$1</strong>')
+      .replace(/_(.+?)_/g,'<em>$1</em>')
+      .replace(/~~(.+?)~~/g,'<del>$1</del>');
     const result=[];
     const s=String(txt);
     const re=/(\$\$[\s\S]*?\$\$|\$[^\$\n]+\$)/g;
     let lastIdx=0,m;
     while((m=re.exec(s))!==null){
-      if(m.index>lastIdx)result.push(esc(s.slice(lastIdx,m.index)));
+      if(m.index>lastIdx)result.push(applyMd(esc(s.slice(lastIdx,m.index))));
       const token=m[1];
       const isDisplay=token.startsWith('$$');
       const inner=isDisplay?token.slice(2,-2).trim():token.slice(1,-1);
@@ -3691,7 +3698,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
       }
       lastIdx=m.index+m[0].length;
     }
-    if(lastIdx<s.length)result.push(esc(s.slice(lastIdx)));
+    if(lastIdx<s.length)result.push(applyMd(esc(s.slice(lastIdx))));
     return result.join('');
   };
 
@@ -3800,7 +3807,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
         📄 <b>학생 제공용</b>: 정답·해설 없이 문제만 (큰 글씨) &nbsp;|&nbsp; 🔡 <b>큰글씨 보기</b>: 해설 포함, 학생이 읽기 쉬운 큰 글씨 &nbsp;|&nbsp; 📋 <b>기본</b>: 정답·해설 포함 기본 크기
       </div>
       <div className="no-print px-4 pt-1 text-xs text-red-500 font-semibold">- 잘림 현상이 있을 수 있습니다. 원활한 인쇄를 위해 Chrome 등 다른 브라우저를 사용해주세요 :) -</div>
-      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 형식으로 수학식을 쓸 수 있어요. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
+      <div className="no-print px-4 pt-1 pb-1 text-xs text-indigo-600 font-semibold bg-indigo-50 mx-4 rounded-lg mt-1">✏️ 각 문제 아래 [해설 수정] 버튼으로 해설을 수정하거나 선생님 코멘트를 추가할 수 있습니다. <b>$ 수식 $</b> 수학식 · <b>**굵게**</b> · <b>*기울임*</b> · <b>~~취소선~~</b> 입력 가능. · <b>💾 저장 &amp; 완료</b>로 이 세션에 고정, <b>📚 다음 해설에 반영</b>으로 같은 유형 모든 학생에 적용됩니다.</div>
 
       <style dangerouslySetInnerHTML={{__html:`
         @media print {
@@ -3894,7 +3901,7 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
                             <textarea value={e.solText||''} onChange={ev=>setEdit(i,'solText',ev.target.value)} rows={4} className="w-full text-sm border border-amber-200 rounded-lg p-2 font-mono resize-y bg-white" placeholder="풀이 과정을 입력하세요."/>
                           </div>
                           <div>
-                            <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $ 입력 가능)</span></div>
+                            <div className="text-xs font-black text-green-700 mb-1">💬 선생님 코멘트 <span className="font-normal text-gray-500">($ 수식 $, **굵게**, *기울임*, ~~취소선~~ 입력 가능)</span></div>
                             <textarea value={e.comment||''} onChange={ev=>setEdit(i,'comment',ev.target.value)} rows={3} className="w-full text-sm border border-green-200 rounded-lg p-2 resize-y bg-white" placeholder="이 문제에 대한 선생님 코멘트를 입력하세요."/>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
@@ -4287,59 +4294,152 @@ function genMockSetFunc(){
 }
 
 /* ════════════════════════════════════════════════
-   ⑤ 확률과 통계 영역 — 실생활 문맥 풍부화
-   2021~2026 Q19~Q20 전 패턴 커버
+   ⑤ 확률과 통계 영역 — 6가지 유형 균등 출제
+   순열·조합·기본확률·여사건·곱의법칙·합의법칙
    ════════════════════════════════════════════════ */
 function genMockProbStat(){
-  const isPermutation=Math.random()<0.5;
-  // ─ 순열 문맥 풀 (검정고시 실제 그림 유형 반영)
-  const pCtxs=[
-    (n,r)=>`서로 다른 ${n}장의 글자 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}개의 경기 종목 중에서 ${r}개를 골라 순서대로 나열하는 경우의 수는?`,
-    (n,r)=>`${n}명의 학생 중에서 ${r}명을 뽑아 일렬로 세우는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}점의 작품 중에서 ${r}점을 골라 일렬로 나열하는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}개의 채소 모종 중에서 ${r}개를 골라 화분 1과 화분 2에 각각 하나씩 심는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}곳 중에서 ${r}곳을 골라 여행할 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
-    (n,r)=>`서로 다른 ${n}장의 한국 문화 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
-  ];
-  // ─ 조합 문맥 풀
-  const cCtxs=[
-    (n,r)=>`서로 다른 ${n}개의 민속놀이 중에서 ${r}개를 선택하는 경우의 수는?`,
-    (n,r)=>`${n}종류의 꽃 중에서 서로 다른 ${r}종류를 선택하는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}개의 정다면체 중에서 ${r}개를 선택하는 경우의 수는?`,
-    (n,r)=>`${n}가지 방과 후 프로그램 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
-    (n,r)=>`아이스크림 토핑 ${n}종류 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}개의 수학 진로 과목 중에서 ${r}과목을 선택하는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}종류의 잡곡 중에서 ${r}종류를 선택하는 경우의 수는?`,
-    (n,r)=>`서로 다른 ${n}개의 문화 센터 프로그램 중에서 ${r}개를 선택하는 경우의 수는?`,
-  ];
-  if(isPermutation){
-    const safeOpts=[[3,2],[4,2],[5,2]]; // P값: 6,12,20
+  function gcd(a,b){return b===0?a:gcd(b,a%b);}
+  function frac(n,d){const g=gcd(Math.abs(n),Math.abs(d));return g===d?String(n/g):`${n/g}/${d/g}`;}
+
+  const TYPE=Math.floor(Math.random()*6);
+
+  // ── 0 순열 ──
+  if(TYPE===0){
+    const pCtxs=[
+      (n,r)=>`서로 다른 ${n}장의 글자 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}개의 경기 종목 중에서 ${r}개를 골라 순서대로 나열하는 경우의 수는?`,
+      (n,r)=>`${n}명의 학생 중에서 ${r}명을 뽑아 일렬로 세우는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}점의 작품 중에서 ${r}점을 골라 일렬로 나열하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}곳 중에서 ${r}곳을 골라 여행할 순서를 정하는 경우의 수는? (단, 한 번 여행한 곳은 다시 가지 않는다.)`,
+      (n,r)=>`서로 다른 ${n}장의 한국 문화 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}종류의 채소 모종 중에서 ${r}개를 골라 화분에 하나씩 심는 순서를 정하는 경우의 수는?`,
+      (n,r)=>`${n}개의 팀 중에서 ${r}개 팀을 뽑아 1위·2위를 정하는 경우의 수는?`,
+    ];
+    const safeOpts=[[3,2],[4,2],[5,2]];
     const[n,r]=pick(safeOpts);
     let pnr=1;for(let i=n;i>n-r;i--)pnr*=i;
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
-    const pSteps=[];let acc=1;for(let i=n;i>n-r;i--){pSteps.push(`${i}`);acc*=i;}
+    const pSteps=[];for(let i=n;i>n-r;i--)pSteps.push(`${i}`);
     return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
-      sol:[
-        `순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,
-        `P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,
-        `(순서가 다르면 다른 경우이므로, 첫 번째부터 차례로 선택 가능한 수를 곱합니다.)`
-      ]};
+      sol:[`순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,`P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,`(순서가 다르면 다른 경우로 셉니다.)`]};
   }
-  const safeCombs=[[4,2],[5,2],[6,2],[4,3],[5,3],[6,3]];
-  const[n2,r2]=pick(safeCombs);
-  let cnr=1;for(let i=0;i<r2;i++)cnr=Math.round(cnr*(n2-i)/(i+1));
-  if(cnr>20)cnr=10; // safety
-  const wrongs2=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
-  const{choices,answer}=makeChoices(String(cnr),wrongs2);
-  const cNum=[];const cDen=[];for(let i=0;i<r2;i++){cNum.push(n2-i);cDen.push(i+1);}
-  return{topic:'조합',q:pick(cCtxs)(n2,r2),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
-    sol:[
-      `조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,
-      `C(${n2},${r2}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cNum.reduce((a,b)=>a*b,1)} ÷ ${cDen.reduce((a,b)=>a*b,1)} = ${cnr}`,
-      `(순서가 달라도 같은 선택이므로, 순열값을 r!로 나눕니다.)`
-    ]};
+
+  // ── 1 조합 ──
+  if(TYPE===1){
+    const cCtxs=[
+      (n,r)=>`서로 다른 ${n}개의 민속놀이 중에서 ${r}개를 선택하는 경우의 수는?`,
+      (n,r)=>`${n}종류의 꽃 중에서 서로 다른 ${r}종류를 선택하는 경우의 수는?`,
+      (n,r)=>`${n}가지 방과 후 프로그램 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
+      (n,r)=>`아이스크림 토핑 ${n}종류 중에서 서로 다른 ${r}가지를 선택하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}개의 수학 진로 과목 중에서 ${r}과목을 선택하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}종류의 잡곡 중에서 ${r}종류를 선택하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}개의 문화 센터 프로그램 중에서 ${r}개를 선택하는 경우의 수는?`,
+      (n,r)=>`${n}명의 후보 중에서 대표 ${r}명을 뽑는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}가지 색 중에서 ${r}가지를 골라 사용하는 경우의 수는?`,
+    ];
+    const safeCombs=[[4,2],[5,2],[6,2],[4,3],[5,3],[6,3]];
+    const[n,r]=pick(safeCombs);
+    let cnr=1;for(let i=0;i<r;i++)cnr=Math.round(cnr*(n-i)/(i+1));
+    if(cnr>20)cnr=10;
+    const wrongs=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
+    const{choices,answer}=makeChoices(String(cnr),wrongs);
+    const cNum=[];const cDen=[];for(let i=0;i<r;i++){cNum.push(n-i);cDen.push(i+1);}
+    return{topic:'조합',q:pick(cCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+      sol:[`조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,`C(${n},${r}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cnr}`,`(순서가 달라도 같은 선택이므로, 순열값을 r!로 나눕니다.)`]};
+  }
+
+  // ── 2 기본 확률 ──
+  if(TYPE===2){
+    const cases=[
+      {w:2,r:3,total:5,wLabel:'흰',rLabel:'빨간',obj:'공'},
+      {w:3,r:2,total:5,wLabel:'파란',rLabel:'빨간',obj:'공'},
+      {w:1,r:4,total:5,wLabel:'흰',rLabel:'검은',obj:'공'},
+      {w:2,r:4,total:6,wLabel:'흰',rLabel:'빨간',obj:'바둑돌'},
+      {w:4,r:2,total:6,wLabel:'흰',rLabel:'검은',obj:'바둑돌'},
+      {w:3,r:7,total:10,wLabel:'파란',rLabel:'빨간',obj:'카드'},
+      {w:4,r:6,total:10,wLabel:'흰',rLabel:'검은',obj:'공'},
+      {w:2,r:8,total:10,wLabel:'빨간',rLabel:'파란',obj:'공'},
+    ];
+    const c=pick(cases);
+    const ans=frac(c.w,c.total);
+    const poolFracs=['1/2','1/3','2/3','1/4','3/4','2/5','3/5','1/5','4/5','1/6','5/6','3/10','7/10','2/10','4/10'];
+    const wrongs=[...new Set(poolFracs.filter(f=>f!==ans))].slice(0,3);
+    const{choices,answer}=makeChoices(ans,wrongs);
+    const qCtxs=[
+      `주머니에 ${c.wLabel} ${c.obj} ${c.w}개, ${c.rLabel} ${c.obj} ${c.r}개가 들어 있다. 이 주머니에서 ${c.obj} 한 개를 꺼낼 때, ${c.wLabel} ${c.obj}가 나올 확률은?`,
+      `상자 안에 ${c.wLabel} ${c.obj} ${c.w}개와 ${c.rLabel} ${c.obj} ${c.r}개가 있다. 임의로 한 개를 꺼낼 때 ${c.wLabel} ${c.obj}일 확률은?`,
+    ];
+    return{topic:'확률',q:pick(qCtxs),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+      sol:[`확률 = (사건이 일어나는 경우의 수) ÷ (전체 경우의 수)`,`P(${c.wLabel} ${c.obj}) = ${c.w} ÷ ${c.total} = ${ans}`]};
+  }
+
+  // ── 3 여사건 확률 ──
+  if(TYPE===3){
+    const cases=[
+      {total:6,fav:3,eventLabel:'짝수',compLabel:'짝수가 아닌 수',obj:'주사위를 한 번 던질 때',ans:'1/2',favAns:'1/2'},
+      {total:6,fav:2,eventLabel:'3의 배수',compLabel:'3의 배수가 아닌 수',obj:'주사위를 한 번 던질 때',ans:'2/3',favAns:'1/3'},
+      {total:6,fav:1,eventLabel:'6',compLabel:'6이 아닌 수',obj:'주사위를 한 번 던질 때',ans:'5/6',favAns:'1/6'},
+      {total:5,fav:2,eventLabel:'흰 공',compLabel:'흰 공이 아닌 공',obj:'흰 공 2개, 빨간 공 3개인 주머니에서 한 개를 꺼낼 때',ans:'3/5',favAns:'2/5'},
+      {total:5,fav:1,eventLabel:'빨간 공',compLabel:'빨간 공이 아닌 공',obj:'빨간 공 1개, 파란 공 4개인 주머니에서 한 개를 꺼낼 때',ans:'4/5',favAns:'1/5'},
+      {total:10,fav:3,eventLabel:'3의 배수',compLabel:'3의 배수가 아닌 수',obj:'1부터 10까지 쓰인 카드 중 한 장을 뽑을 때',ans:'7/10',favAns:'3/10'},
+    ];
+    const c=pick(cases);
+    const poolFracs=['1/2','1/3','2/3','1/4','3/4','1/5','4/5','2/5','3/5','1/6','5/6','3/10','7/10'];
+    const wrongs=[...new Set(poolFracs.filter(f=>f!==c.ans&&f!==c.favAns))].slice(0,3);
+    const{choices,answer}=makeChoices(c.ans,wrongs);
+    const qCtxs=[
+      `${c.obj}, ${c.compLabel}가 나올 확률은?`,
+      `${c.obj}, ${c.eventLabel}가 나오지 않을 확률은?`,
+    ];
+    return{topic:'여사건',q:pick(qCtxs),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+      sol:[`여사건의 확률: P(A가 아닌 경우) = 1 - P(A)`,`P(${c.eventLabel}) = ${c.favAns}`,`P(${c.compLabel}) = 1 - ${c.favAns} = ${c.ans}`]};
+  }
+
+  // ── 4 경우의 수 — 곱의 법칙 ──
+  if(TYPE===4){
+    const multCases=[
+      {a:3,b:2,ans:6,aLabel:'셔츠 3가지',bLabel:'바지 2가지'},
+      {a:4,b:2,ans:8,aLabel:'상의 4가지',bLabel:'하의 2가지'},
+      {a:2,b:5,ans:10,aLabel:'모자 2가지',bLabel:'가방 5가지'},
+      {a:3,b:4,ans:12,aLabel:'음료 3가지',bLabel:'빵 4가지'},
+      {a:4,b:3,ans:12,aLabel:'색연필 4가지',bLabel:'스케치북 3가지'},
+      {a:5,b:2,ans:10,aLabel:'책 5권',bLabel:'읽는 순서 2가지'},
+      {a:3,b:3,ans:9,aLabel:'앞면 3가지',bLabel:'뒷면 3가지'},
+      {a:2,b:4,ans:8,aLabel:'경로 A 2가지',bLabel:'경로 B 4가지'},
+    ];
+    const multCtxs=[
+      c=>`${c.aLabel}와 ${c.bLabel}가 있다. 각각 하나씩 고르는 경우의 수는?`,
+      c=>`${c.aLabel}와 ${c.bLabel}가 있을 때, 각각 하나를 선택하는 방법의 수는?`,
+      c=>`${c.aLabel}와 ${c.bLabel}가 있다. 한 가지씩 선택하는 모든 경우의 수는?`,
+    ];
+    const c=pick(multCases);
+    const poolNums=[6,8,10,12,9,15,16,20].filter(v=>v!==c.ans);
+    const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
+    const{choices,answer}=makeChoices(String(c.ans),wrongs);
+    return{topic:'경우의 수(곱)',q:pick(multCtxs)(c),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+      sol:[`곱의 법칙: 두 사건이 동시에 일어날 경우의 수 = (첫 번째 경우의 수) × (두 번째 경우의 수)`,`${c.a} × ${c.b} = ${c.ans}`]};
+  }
+
+  // ── 5 경우의 수 — 합의 법칙 ──
+  const sumCases=[
+    {a:3,b:2,ans:5,aLabel:'버스 3가지 노선',bLabel:'지하철 2가지 노선',desc:'집에서 학교까지'},
+    {a:4,b:3,ans:7,aLabel:'A 방법 4가지',bLabel:'B 방법 3가지',desc:'목적지에 가는'},
+    {a:2,b:5,ans:7,aLabel:'택시 2가지 경로',bLabel:'버스 5가지 경로',desc:'역에서 시장까지'},
+    {a:5,b:4,ans:9,aLabel:'연필 5자루',bLabel:'볼펜 4자루',desc:'필기구를 한 자루 고르는'},
+    {a:3,b:6,ans:9,aLabel:'한식 3가지',bLabel:'양식 6가지',desc:'식당에서 메뉴를 하나 고르는'},
+    {a:4,b:5,ans:9,aLabel:'소설책 4권',bLabel:'만화책 5권',desc:'책 한 권을 고르는'},
+  ];
+  const sumCtxs=[
+    c=>`${c.desc} 방법: ${c.aLabel}과 ${c.bLabel}이 있다. 이 중 한 가지를 선택하는 경우의 수는?`,
+    c=>`${c.aLabel}과 ${c.bLabel}이 있을 때, 이 중 하나를 선택하는 방법의 수는? (중복 없음)`,
+  ];
+  const c=pick(sumCases);
+  const poolNums=[4,5,6,7,8,9,10,11,12].filter(v=>v!==c.ans);
+  const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
+  const{choices,answer}=makeChoices(String(c.ans),wrongs);
+  return{topic:'경우의 수(합)',q:pick(sumCtxs)(c),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    sol:[`합의 법칙: 두 사건 중 하나가 일어나는 경우의 수 = (첫 번째 경우의 수) + (두 번째 경우의 수)`,`${c.a} + ${c.b} = ${c.ans}`]};
 }
 
 /* ===== 2021~2026 중졸 검정고시 생성기 =====
@@ -5468,15 +5568,26 @@ function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework
   React.useEffect(()=>{
     const now=new Date();
     db.collection('notices').get().then(snap=>{
-      const arr=[];snap.forEach(d=>{const n={id:d.id,...d.data()};const exp=n.expiresAt?.toDate?n.expiresAt.toDate():new Date(n.expiresAt||0);if(exp>now)arr.push(n);});
-      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));setNotices(arr);
+      const arr=[];snap.forEach(d=>{
+        const n={id:d.id,...d.data()};
+        const exp=n.expiresAt?.toDate?n.expiresAt.toDate():new Date(n.expiresAt||0);
+        if(exp>now)arr.push(n);
+      });
+      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));
+      setNotices(arr);
     }).catch(()=>{});
     db.collection('homework').where('active','==',true).get().then(snap=>{
-      const arr=[];snap.forEach(d=>{const h={id:d.id,...d.data()};const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);const forMe=!h.assignedTo||(Array.isArray(h.assignedTo)?h.assignedTo.includes(name):h.assignedTo===name);if(exp>now&&forMe&&!(h.completedBy||[]).includes(name))arr.push(h);});
-      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));if(arr.length>0)setPendingHomework(arr[0]);
+      const arr=[];snap.forEach(d=>{
+        const h={id:d.id,...d.data()};
+        const exp=h.expiresAt?.toDate?h.expiresAt.toDate():new Date(h.expiresAt||0);
+        const forMe=!h.assignedTo||(Array.isArray(h.assignedTo)?h.assignedTo.includes(name):h.assignedTo===name);
+        if(exp>now&&forMe&&!(h.completedBy||[]).includes(name))arr.push(h);
+      });
+      arr.sort((a,b)=>(b.createdAt?.toDate?.().getTime()||0)-(a.createdAt?.toDate?.().getTime()||0));
+      if(arr.length>0)setPendingHomework(arr[0]);
     }).catch(()=>{});
   },[name]);
-
+  
   // 1. 스탬프 및 진도율 계산 로직
   const weekDates=weekDatesFrom(currentWeekStart||getKSTMonday());
   const pct=Math.min((todayLessons/goal)*100,100);const circ=226.2;const offset=circ-(circ*pct/100);
@@ -5600,6 +5711,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
   return(<div className="p-4 space-y-5 pb-36">
     <div className="text-2xl font-black text-gray-800 mt-1">{name}님! 안녕하세요 👋</div>
 
+    {/* 전체공지 배너 */}
     {notices.map(n=>(
       <div key={n.id} className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 shadow-sm">
         <div className="font-black text-blue-800 text-sm mb-1">📢 선생님 공지</div>
@@ -5607,6 +5719,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
       </div>
     ))}
 
+    {/* 숙제 배너 */}
     {pendingHomework&&(
       <button onClick={()=>onStartHomework&&onStartHomework(pendingHomework)} className="w-full text-left bg-green-50 border-2 border-green-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
         <div className="text-3xl">📝</div>
@@ -5918,7 +6031,7 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
     if(!q){try{q=qType===5?genMiddleMock():genMockProbStat();}catch(e){}}
     if(!q)q={topic:'확률',q:'3명 중 2명을 순서대로 뽑는 경우의 수는?',choices:['3','6','9','12'],answer:1,meta:{category:'stat',type:'확률과 통계',diff:'기초'}};
     return{...q,category:'exam5',isMC:true,
-      qLogTxt:q.q?.slice(0,30)||q.topic||areaLabel};
+      qLogTxt:q.q||q.topic||areaLabel};
   }
   if(qType===0){const q=genDivBasic(rangeMin,rangeMax);return{...q,category:'math',isMC}}
   return{...genDivRemainder(rangeMin,rangeMax),category:'math',isMC};
@@ -6341,16 +6454,16 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{width:`${pct}%`}}/></div>
       <div className="bg-indigo-100 text-indigo-700 font-black px-4 py-2 rounded-full text-base">✅ {correctCount}/10</div>
     </div>
-    <div className={`bg-white rounded-3xl p-6 shadow-md flex flex-col items-center justify-center ${q.category==='exam5'?(q.graph?'':'min-h-48'):'min-h-40'}`}>
+    <div className={`bg-white rounded-3xl p-6 shadow-md flex flex-col ${q.category==='exam5'?'items-start':'items-center justify-center'} ${q.category==='exam5'?(q.graph?'':'min-h-48'):'min-h-40'}`}>
       {q.category==='exam5'
-        ?<div className="flex flex-col items-center gap-1 mb-4">
+        ?<div className="flex flex-col items-start gap-1 mb-3 w-full">
           <div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">📚 {q.topic||q.meta?.type||'검정고시 영역 연습'}</div>
           {(()=>{var src=getExamSource(q);return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
         </div>
         :<div className="inline-block bg-yellow-100 text-yellow-800 text-sm font-bold px-3 py-1 rounded-full mb-4">{q.category==='div'?'약수 구하기':'나눗셈'}</div>
       }
       {q.category==='exam5'&&q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2 w-full"><GraphPreview q={q}/></div>}
-      {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left px-1">{q.q}</div>}
+      {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left w-full break-keep">{q.q}</div>}
       {q.category==='exam5'&&q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3 w-full"><GraphPreview q={q}/></div>}
       {q.category==='math'&&<div className="text-4xl font-black text-gray-800 tracking-wide">{q.a} ÷ {q.b} = ?</div>}
       {q.category==='div'&&<div className="text-3xl font-black text-gray-800 leading-relaxed">
@@ -6499,34 +6612,32 @@ function StudentLearningReport({userData,onClose}){
     if(!el)return;
     setSaving(true);
     el.scrollTop=0;
-    await new Promise(r=>setTimeout(r,50));
+    // React가 saving 상태로 리렌더한 뒤 잠시 기다려 레이아웃을 안정화
+    await new Promise(r=>setTimeout(r,100));
     try{
-      const W=el.offsetWidth;
+      const W=el.scrollWidth;
       const fullH=el.scrollHeight;
       const canvas=await window.html2canvas(el,{
         scale:2,
         backgroundColor:'#ffffff',
         useCORS:true,
         scrollX:0,
-        scrollY:-window.scrollY,
+        scrollY:0,
         width:W,
         height:fullH,
         windowWidth:W,
         windowHeight:fullH,
         onclone:(_doc,cloned)=>{
-          cloned.style.cssText=[
-            'position:relative !important',
-            'top:0 !important',
-            'left:0 !important',
-            'max-height:none !important',
-            'overflow:visible !important',
-            'height:'+fullH+'px !important',
-            'box-shadow:none !important',
-          ].join(';');
-          cloned.querySelectorAll('*').forEach(n=>{
-            n.style.setProperty('overflow','visible','important');
-            n.style.setProperty('max-height','none','important');
-          });
+          // 컨테이너만 overflow 해제 (자식은 유지해야 progress bar 등이 정상 렌더)
+          cloned.style.setProperty('position','relative','important');
+          cloned.style.setProperty('top','0','important');
+          cloned.style.setProperty('left','0','important');
+          cloned.style.setProperty('max-height','none','important');
+          cloned.style.setProperty('overflow','visible','important');
+          cloned.style.setProperty('height',fullH+'px','important');
+          cloned.style.setProperty('box-shadow','none','important');
+          // 버튼은 레이아웃 유지하되 보이지 않게 처리 (저장 중… 문구 등 제거)
+          cloned.querySelectorAll('button').forEach(b=>b.style.setProperty('visibility','hidden','important'));
         },
       });
       const a=document.createElement('a');
@@ -6661,6 +6772,7 @@ function HistoryTab({userData, feedbacks}){
     {showReport&&<StudentLearningReport userData={userData} onClose={()=>setShowReport(false)}/>}
   </div>);
 }
+
 
 // ========== js\components\geometry.js ==========
 // === js/components/geometry.js ===
@@ -6998,6 +7110,7 @@ function GeometryQuiz({userData, onUpdate}){
   </div>);
 }
 
+
 // ========== js\components\mockExam.js ==========
 // === js/components/mockExam.js ===
 function MockExamTab({userData,onUpdate}){
@@ -7286,6 +7399,7 @@ function WorksheetTab(){
   const[grades, setGrades] = useState({});
   // 모의고사 문제지 저장 완료 여부
   const[examSaved,setExamSaved]=useState(false);
+  // 숙제 대상 학생 (빈 배열 = 전체/지정 안 함, 비어있지 않으면 해당 학생들만)
   const[homeworkTargets,setHomeworkTargets]=useState([]);
   const[examPrintCols,setExamPrintCols]=useState(1);
 
@@ -7430,13 +7544,22 @@ function WorksheetTab(){
       loadWsList();
     }catch(e){showToast('❌ 저장 실패. 인터넷을 확인하세요.');}
   };
+
+  // 숙제로 내기
   const assignAsHomework=async()=>{
     if(!examSheet)return;
     const targetLabel=homeworkTargets.length===0?'전체 학생':homeworkTargets.map(n=>n+' 학생').join(', ');
     if(!window.confirm(`"${examSheet.title}"\n을 ${targetLabel}에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
-    try{const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
-    await db.collection('homework').add({title:examSheet.title,level:examSheet.level||'고졸',questions:examSheet.questions,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:homeworkTargets.length===0?null:homeworkTargets});
-    showToast(`✅ ${targetLabel}에게 숙제로 등록되었습니다!`);}catch(e){showToast('❌ 숙제 등록 실패');}
+    try{
+      const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
+      await db.collection('homework').add({
+        title:examSheet.title,level:examSheet.level||'고졸',
+        questions:examSheet.questions,
+        active:true,createdAt:now,expiresAt:exp,completedBy:[],
+        assignedTo:homeworkTargets.length===0?null:homeworkTargets
+      });
+      showToast(`✅ ${targetLabel}에게 숙제로 등록되었습니다!`);
+    }catch(e){showToast('❌ 숙제 등록 실패');}
   };
 
   useEffect(()=>{setSelectedDomains([]);},[wsType]);
@@ -7953,9 +8076,155 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
 // ========== js\components\feedback.js ==========
 // === js/components/feedback.js ===
 
+// qTxt가 30자에서 잘린 구버전 로그에서 전체 문제 텍스트를 복원
+function restoreQText(q){
+  if(q.qFull) return q.qFull;
+  const txt=(q.qTxt||q.q||'').trim();
+  if(!txt) return '';
+  // 이미 완전한 문장(물음표로 끝남)
+  if(txt.endsWith('?')) return txt;
+  const rebuilt=rebuildQFromGenerator(q,txt);
+  if(rebuilt) return rebuilt;
+  return legacyRestoreQText(q,txt);
+}
+
+// js/generators/highschool.js 의 실제 문제 생성 템플릿을 그대로 재현해 완성 문장 후보를
+// 만들고, 그 후보의 앞부분이 저장된(잘린) qTxt와 정확히 일치할 때만 채택한다.
+// (문장 끝을 그럴듯하게 추측해 붙이는 방식이 아니라, 원본 생성 로직을 역산 + 검증하는 방식)
+function rebuildQFromGenerator(q,txt){
+  const topic=q.topic||'';
+  const solAll=Array.isArray(q.sol)?q.sol.join('\n'):'';
+  const cAnsNum=parseFloat(q.cAns);
+  const MINUS='−'; // 생성기가 사용하는 유니코드 마이너스 기호(−)
+  const fits=cand=>cand&&cand.slice(0,txt.length)===txt?cand:null;
+  let m;
+
+  if(topic==='이차방정식 근과 계수'){
+    m=txt.match(/^이차방정식 x²\+(\d+)x([+-]\d+)=0의 두 근을 α, β라고 할/);
+    if(m){
+      const base=`이차방정식 x²+${m[1]}x${m[2]}=0의 두 근을 α, β라고 할 때, `;
+      if(solAll.includes('α+β를 묻고')) return fits(base+'α+β의 값은?');
+      if(solAll.includes('αβ를 묻고')) return fits(base+'αβ의 값은?');
+      const p=+m[1],qv=+m[2];
+      if(!isNaN(cAnsNum)){
+        if(cAnsNum===-p) return fits(base+'α+β의 값은?');
+        if(cAnsNum===qv) return fits(base+'αβ의 값은?');
+      }
+      return fits(base+'α+β의 값은?')||fits(base+'αβ의 값은?');
+    }
+  }
+
+  if(topic==='두 근→이차방정식'){
+    m=txt.match(/^두 수 (\d+), (\d+)를 근으로 하고 x²의 계수가 1인 이차/);
+    if(m){
+      const r1=+m[1],r2=+m[2],sum=r1+r2,prod=r1*r2;
+      const base=`두 수 ${r1}, ${r2}를 근으로 하고 x²의 계수가 1인 이차방정식이 `;
+      const sumCand=base+`x²${MINUS}ax+${prod}=0일 때, 상수 a의 값은?`;
+      const prodCand=base+`x²${MINUS}${sum}x+a=0일 때, 상수 a의 값은?`;
+      if(solAll.includes('x의 계수는')) return fits(sumCand);
+      if(solAll.includes('상수 항이')) return fits(prodCand);
+      if(!isNaN(cAnsNum)){
+        if(cAnsNum===sum) return fits(sumCand);
+        if(cAnsNum===prod) return fits(prodCand);
+      }
+      return fits(sumCand)||fits(prodCand);
+    }
+  }
+
+  if(topic==='이차방정식 중근'){
+    m=txt.match(/^이차방정식 x²([+-]\d+x)\+(\d+)=0이/);
+    if(m) return fits(`이차방정식 x²${m[1]}+${m[2]}=0이 중근을 가질 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='삼차방정식 한 근'){
+    m=txt.match(/^삼차방정식 x³([+-]\d+x²)([+-]\d+x)\+a=0의 한 근이 (-?\d+)일/);
+    if(m) return fits(`삼차방정식 x³${m[1]}${m[2]}+a=0의 한 근이 ${m[3]}일 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='사차방정식 한 근'){
+    m=txt.match(/^사차방정식 x⁴([+-]\d+x²)\+a=0의 한 근이 (-?\d+)일/);
+    if(m) return fits(`사차방정식 x⁴${m[1]}+a=0의 한 근이 ${m[2]}일 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='연립방정식'){
+    m=txt.match(/^연립방정식의 해가 x=(-?\d+), y=b일/);
+    if(m) return fits(`연립방정식의 해가 x=${m[1]}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`);
+  }
+
+  if(topic==='이차부등식'){
+    m=txt.match(/^이차부등식 (\(x[+−-][^)]*\)\(x[+−-][^)]*\))([≤≥]0)/);
+    if(m) return fits(`이차부등식 ${m[1]}${m[2]}의 해는?`);
+  }
+
+  if(topic==='연립부등식'){
+    m=txt.match(/^연립부등식의 해가 (-?\d+)<x<a일/);
+    if(m) return fits(`연립부등식의 해가 ${m[1]}<x<a일 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='절댓값 부등식'){
+    m=txt.match(/^부등식 (.+?[≤≥]\d+)의 해를/);
+    if(m) return fits(`부등식 ${m[1]}의 해를 수직선 위에 나타내면 그림과 같다. 상수 a의 값은?`);
+  }
+
+  if(topic==='복소수'){
+    m=txt.match(/^등식 \(x−(\d+)\)\+(\d+)i=(\d+)\+(\d+)i를 만족하는/);
+    if(m) return fits(`등식 (x${MINUS}${m[1]})+${m[2]}i=${m[3]}+${m[4]}i를 만족하는 실수 x, y의 값은? (단, i=√${MINUS}1)`);
+  }
+
+  if(topic==='켤레복소수'){
+    m=txt.match(/^복소수 z=a\+2i에 대하여 z\+z̄=(-?\d+)일/);
+    if(m) return fits(`복소수 z=a+2i에 대하여 z+z̄=${m[1]}일 때, 실수 a의 값은? (단, i=√${MINUS}1, z̄는 z의 켤레복소수)`);
+    m=txt.match(/^복소수 (\d+)\+(\d+)i의 켤레복소수를 p\+qi라 할/);
+    if(m) return fits(`복소수 ${m[1]}+${m[2]}i의 켤레복소수를 p+qi라 할 때, p+q의 값은? (단, i=√${MINUS}1)`);
+    m=txt.match(/^복소수 (\d+)−(\d+)i의 켤레복소수가 a\+(\d+)i일/);
+    if(m) return fits(`복소수 ${m[1]}${MINUS}${m[2]}i의 켤레복소수가 a+${m[3]}i일 때, 실수 a의 값은? (단, i=√${MINUS}1)`);
+  }
+
+  return null;
+}
+
+// 위 템플릿 역산으로 복원되지 않는 구형 로그를 위한 보조 규칙(느슨한 접미어 추측)
+function legacyRestoreQText(q,txt){
+  const topic=q.topic||'';
+  const solAll=(q.sol||[]).join('\n');
+  // 나머지 정리 (두 패턴)
+  // cubic:     "...나누었을 때의"  →  " 나머지는?"
+  // quadratic: "...때, 나머지"    →  "는?"
+  if(topic==='나머지 정리'){
+    if(/나누었을 때의$/.test(txt)) return txt+' 나머지는?';
+    if(/때, 나머지$/.test(txt)) return txt+'는?';
+  }
+  // 다항식 사칙연산: "...에 대하여 A" or "...에 대하여 A+" or "...에 대하여 A-"
+  if(topic==='다항식 사칙연산'){
+    if(/에 대하여 A\+$/.test(txt)) return txt+'B는?';
+    if(/에 대하여 A\-$/.test(txt)) return txt+'B는?';
+    if(/에 대하여 A$/.test(txt)){
+      const isAdd=solAll.includes('더할')||solAll.includes('A+B');
+      return txt+(isAdd?'+B는?':'-B는?');
+    }
+  }
+  // 항등식: "...항등식일" or "...항등식"
+  if(topic==='항등식'){
+    if(/항등식일$/.test(txt)) return txt+' 때, 두 상수 a, b에 대하여 a+b의 값은?';
+    if(/항등식$/.test(txt)) return txt+'일 때, 두 상수 a, b에 대하여 a+b의 값은?';
+  }
+  // 나누어떨어지는 조건
+  if(topic==='나누어떨어지는 조건'){
+    if(/나누어떨어질 때$/.test(txt)) return txt+', 상수 a의 값은?';
+    if(/나누어떨어$/.test(txt)) return txt+'질 때, 상수 a의 값은?';
+  }
+  // 인수분해
+  if(topic==='인수분해'){
+    if(/상수 a$/.test(txt)) return txt+'의 값은?';
+    if(/a의 값$/.test(txt)) return txt+'은?';
+    if(/a의 값은$/.test(txt)) return txt+'?';
+  }
+  return txt;
+}
+
 // 중졸·고졸 검정고시 수학 영역 자동 분류
 function classifyWrongQTopic(q){
-  const src=((q.topic||'')+(q.qTxt||q.q||'')+(q._logType||'')).toLowerCase();
+  const src=((q.topic||'')+(restoreQText(q)||'')+(q._logType||'')).toLowerCase();
   if(/수와\s*연산|자연수|정수|유리수|실수|분수|소수|약수|배수|최대공약수|최소공배수|소인수|집합|무한소수|순환소수/.test(src))return'수와 연산';
   if(/방정식|부등식|연립|이차방정식|이차부등식|일차방정식|일차부등식|판별식|근의 공식|절댓값 방정식/.test(src))return'방정식과 부등식';
   if(/이차함수|일차함수|유리함수|무리함수|지수함수|로그함수|함수|평행이동|대칭이동|역함수|합성함수/.test(src))return'함수';
@@ -7974,7 +8243,7 @@ const WRONG_Q_CATEGORY_ORDER=['수와 연산','문자와 식','방정식과 부�
 // 구버전 데이터(q.graph 없는 기하 오답)를 qTxt에서 그래프 파라미터 복원
 function tryReconstructGraph(q){
   if(q.graph)return q.graph;
-  const raw=(q.qTxt||q.q||'');
+  const raw=(restoreQText(q)||'');
   const txt=raw.replace(/−/g,'-').replace(/≤/g,'<=').replace(/≥/g,'>=').replace(/²/g,'^2');
   const type=q.meta?.type||'';
 
@@ -8249,6 +8518,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
 
   const cats=WRONG_Q_CATEGORY_ORDER.filter(c=>grouped[c]);
   const [openCats,setOpenCats]=React.useState(new Set()); // 기본 전부 접힘
+  const [randomCount,setRandomCount]=React.useState('');
 
   const toggleCat=cat=>setOpenCats(prev=>{const s=new Set(prev);s.has(cat)?s.delete(cat):s.add(cat);return s;});
 
@@ -8264,6 +8534,16 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
 
   const allOn=allWrongQs.length>0&&allWrongQs.every((_,i)=>wrongQSel.has(i));
   const selAll=()=>setWrongQSel(allOn?new Set():new Set(allWrongQs.map((_,i)=>i)));
+
+  const applyRandom=()=>{
+    const cnt=parseInt(randomCount,10);
+    if(!cnt||cnt<1)return;
+    const total=allWrongQs.length;
+    const actual=Math.min(cnt,total);
+    const indices=Array.from({length:total},(_,i)=>i);
+    for(let i=indices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[indices[i],indices[j]]=[indices[j],indices[i]];}
+    setWrongQSel(new Set(indices.slice(0,actual)));
+  };
 
   const ORD=['①','②','③','④'];
 
@@ -8298,7 +8578,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
         const graphSvg=effGraph?`<div class="graph">${graphToSVGStr(effGraph)}</div>`:'';
         const choicesHtml=Array.isArray(q.choices)?`<div class="choices">${q.choices.map((c,j)=>`<div class="choice">${ORD[j]||String(j+1)} ${c}</div>`).join('')}</div>`:'';
         const ansText=q.cAns||(Array.isArray(q.choices)&&q.answer!=null?q.choices[q.answer]:'');
-        html+=`<div class="q"><span class="qnum">${num++}.</span> <span class="qtxt">${q.qTxt||q.q||''}</span>${graphSvg}${choicesHtml}`;
+        html+=`<div class="q"><span class="qnum">${num++}.</span> <span class="qtxt">${restoreQText(q)||''}</span>${graphSvg}${choicesHtml}`;
         if(showAns)html+=`<div class="ans">정답: ${ansText}</div>${q.explanation?`<div class="exp">${q.explanation}</div>`:''}`;
         html+=`</div>`;
       });
@@ -8317,7 +8597,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
     if(!confirm(`오답 ${qs.length}문제를 ${studentName} 학생에게 숙제로 내시겠어요?`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
-      const hwQs=qs.map(q=>({q:q.qTxt||q.q||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
+      const hwQs=qs.map(q=>({q:restoreQText(q)||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
       await db.collection('homework').add({title:`${studentName} 학생 오답 문제지`,level:'오답',questions:hwQs,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:[studentName]});
       alert('✅ 숙제로 등록되었습니다!');
     }catch(e){alert('등록 실패');}
@@ -8326,12 +8606,29 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
   return(<div>
     <div className="text-xs text-red-500 mb-2">유형별로 묶었습니다. 원하는 문제를 선택해 인쇄하세요.</div>
     {/* 전체 선택 / 해제 */}
-    <div className="flex items-center gap-2 mb-3 flex-wrap">
+    <div className="flex items-center gap-2 mb-2 flex-wrap">
       <button onClick={selAll} className={`text-xs px-3 py-1.5 rounded-lg font-bold ${allOn?'bg-red-400 text-white':'bg-gray-100 text-gray-600'}`}>{allOn?'✓ 전체 해제':'전체 선택'}</button>
       <button onClick={()=>setWrongQSel(new Set())} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold">전체 해제</button>
       <label className="flex items-center gap-1.5 ml-auto text-xs font-bold text-gray-600">
         <input type="checkbox" checked={wrongQShowAns} onChange={e=>setWrongQShowAns(e.target.checked)}/>해설 포함
       </label>
+    </div>
+    {/* 랜덤 출제 개수 선택 */}
+    <div className="flex items-center gap-2 mb-3 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2">
+      <span className="text-xs font-black text-indigo-700 flex-shrink-0">🎲 랜덤 출제</span>
+      <input
+        type="number" min="1" max={allWrongQs.length} value={randomCount}
+        onChange={e=>setRandomCount(e.target.value)}
+        placeholder={`1~${allWrongQs.length}`}
+        className="w-20 text-xs border border-indigo-200 rounded-lg px-2 py-1 text-center font-bold bg-white"
+      />
+      <span className="text-xs text-indigo-600 font-bold">문항</span>
+      <button
+        onClick={applyRandom}
+        disabled={!randomCount||parseInt(randomCount,10)<1}
+        className="text-xs px-3 py-1 bg-indigo-500 text-white rounded-lg font-black disabled:opacity-40 active:scale-95 transition-all"
+      >랜덤 선택</button>
+      <span className="text-[10px] text-indigo-400 font-bold">(전체 {allWrongQs.length}개 중)</span>
     </div>
     {/* 카테고리별 아코디언 */}
     <div className="space-y-2 mb-3">
@@ -8358,7 +8655,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
                 <input type="checkbox" checked={on} onChange={()=>setWrongQSel(prev=>{const s=new Set(prev);on?s.delete(i):s.add(i);return s;})} className="mt-0.5 w-4 h-4 flex-shrink-0 rounded"/>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-bold text-gray-400 mb-0.5">{q._logDate} · {q._logType}</div>
-                  <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{q.qTxt||q.q||'(문제 없음)'}</div>
+                  <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{restoreQText(q)||'(문제 없음)'}</div>
                   {effGraph&&<div className="mt-1 flex justify-center"><GraphPreview q={{...q,graph:effGraph}}/></div>}
                   {q.cAns&&<div className="text-xs text-indigo-600 mt-0.5">정답: {q.cAns}</div>}
                 </div>
@@ -8625,7 +8922,7 @@ function FeedbackTab(){
                    <div key={j} className={`p-2.5 rounded-lg text-xs border ${q.isOk ? 'bg-white border-green-200' : 'bg-red-50 border-red-200'}`}>
                      <div className="flex gap-2 items-start">
                        <span className="font-black text-gray-500 flex-shrink-0">Q{j+1}.</span>
-                       <span className="font-bold text-gray-800 flex-1 leading-snug break-keep">{q.qTxt}</span>
+                       <span className="font-bold text-gray-800 flex-1 leading-snug break-keep">{restoreQText(q)||''}</span>
                        <span className={`font-black flex-shrink-0 text-sm ${q.isOk ? 'text-green-500' : 'text-red-500'}`}>{q.isOk ? 'O' : 'X'}</span>
                      </div>
                      {!q.isOk && <div className="mt-1.5 pl-6 text-gray-600 leading-snug break-keep">학생 답: <span className="font-bold">{q.uAns}</span> <span className="text-gray-400">→</span> 정답: <span className="text-red-600 font-bold">{q.cAns}</span></div>}
@@ -8753,6 +9050,7 @@ var QUOTE_BGS=[
   'linear-gradient(135deg,#f6d365 0%,#fda085 100%)',
   'linear-gradient(135deg,#84fab0 0%,#8fd3f4 100%)'
 ];
+
 
 
 
@@ -9132,6 +9430,7 @@ function analyzeStudent(sData){
 }
 var daysText=d=>d===0?'오늘':d===1?'어제':d===999?'기록없음':`${d}일 전`;
 
+/* ===== 숙제 세션 ===== */
 function HomeworkSession({homework,userData,onUpdate,onDone}){
   const ORD=['①','②','③','④'];
   const[idx,setIdx]=useState(0);
@@ -9142,6 +9441,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
   const[startTime]=useState(Date.now());
   const q=homework.questions[idx];
   const total=homework.questions.length;
+
   const check=()=>{
     if(selected===null)return;
     const isOk=selected===q.answer;
@@ -9149,74 +9449,105 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
     setResults(newRes);
     const newCorrect=correctCount+(isOk?1:0);
     setCorrectCount(newCorrect);
-    if(idx+1>=total){finishHomework(newRes,newCorrect);setPhase('done');}
-    else{setPhase('feedback');}
+    if(idx+1>=total){
+      finishHomework(newRes,newCorrect);
+      setPhase('done');
+    } else {
+      setPhase('feedback');
+    }
   };
+
   const nextQ=()=>{setIdx(i=>i+1);setSelected(null);setPhase('question');};
+
   const finishHomework=async(res,correct)=>{
     try{
-      await db.collection('homework').doc(homework.id).update({completedBy:firebase.firestore.FieldValue.arrayUnion(userData.name)});
-      const log={studentName:userData.name,date:todayStr(),time:timeStr(),type:`숙제: ${homework.title}`,score:`${correct}/${total}`,questions:res,totalSec:Math.round((Date.now()-startTime)/1000),feeling:null};
+      await db.collection('homework').doc(homework.id).update({
+        completedBy:firebase.firestore.FieldValue.arrayUnion(userData.name)
+      });
+      const log={studentName:userData.name,date:todayStr(),time:timeStr(),
+        type:`숙제: ${homework.title}`,score:`${correct}/${total}`,
+        questions:res,totalSec:Math.round((Date.now()-startTime)/1000),feeling:null};
       await saveLog(log);
       const upd={...userData,logs:[log,...(userData.logs||[]).slice(0,49)]};
       await saveUser(upd);onUpdate(upd);
     }catch(e){}
   };
+
   if(phase==='done'){
     const pct=Math.round(correctCount/total*100);
-    return(<div className="flex flex-col min-h-screen items-center justify-center p-6 text-center bg-gray-50 max-w-lg mx-auto">
-      <div className="text-8xl mb-4">🎉</div>
-      <h2 className="text-3xl font-black text-gray-800 mb-2">숙제 완료!</h2>
-      <p className="text-gray-500 text-lg mb-2 font-bold">{homework.title}</p>
-      <div className="bg-white rounded-3xl p-6 shadow-md w-full max-w-xs mb-4">
-        <div className="text-6xl font-black text-green-500 mb-1">{correctCount}<span className="text-2xl text-gray-400">/{total}</span></div>
-        <div className="text-gray-500 font-bold mb-3">정답</div>
-        <div className={`text-2xl font-black ${pct>=80?'text-green-600':pct>=60?'text-amber-500':'text-red-500'}`}>{pct}점</div>
-      </div>
-      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 text-white mb-6 w-full max-w-xs">
-        <div className="text-2xl mb-2">🌟</div>
-        <div className="font-black text-lg mb-1">{pct>=90?'완벽해요! 정말 대단해요! 👏':pct>=70?'정말 잘했어요! 훌륭합니다! 💪':'끝까지 풀어줘서 고마워요! 다음엔 더 잘할 거예요! 🌈'}</div>
-        <div className="text-sm opacity-90">선생님이 기록을 확인하실 거예요!</div>
-      </div>
-      <button onClick={onDone} className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-black text-xl active:scale-95 transition-transform">홈으로 🏠</button>
-    </div>);
-  }
-  const pgPct=Math.round((idx/total)*100);
-  return(<div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50" style={{overflowX:'hidden'}}>
-    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
-      <div className="text-lg font-black text-indigo-700 flex-1 truncate">📝 {homework.title}</div>
-      <div className="text-sm font-bold text-gray-400">{idx+1}/{total}</div>
-    </header>
-    <div className="flex-1 p-4 space-y-4 pb-36">
-      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500" style={{width:`${pgPct}%`}}/>
-      </div>
-      <div className="bg-white rounded-3xl p-5 shadow-md">
-        <div className="inline-block bg-indigo-100 text-indigo-700 text-xs font-black px-3 py-1 rounded-full mb-3">{q.topic||homework.level||'검정고시'}</div>
-        {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>}
-        <div className="text-base font-bold text-gray-800 leading-relaxed">{q.q}</div>
-        {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3"><GraphPreview q={q}/></div>}
-      </div>
-      {phase==='question'&&(<div className="flex flex-col gap-3">
-        {q.choices.map((c,i)=>(<button key={i} onClick={()=>setSelected(i)}
-          className={`p-4 rounded-2xl border-2 text-base font-bold transition-all text-left leading-relaxed ${selected===i?'border-indigo-500 bg-indigo-50 text-indigo-700':'border-gray-200 bg-white text-gray-700'}`}>
-          <span className="text-indigo-900 mr-1">{ORD[i]}</span> <MathText v={c}/>
-        </button>))}
-        <button onClick={check} disabled={selected===null} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg disabled:opacity-40 active:scale-95 transition-all mt-2">제출하기 ✓</button>
-      </div>)}
-      {phase==='feedback'&&(<div className="space-y-3">
-        <div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 ${selected===q.answer?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>
-          {selected===q.answer?'✅ 정답입니다! 잘했어요!':` ❌ 아쉬워요! 정답은 ${ORD[q.answer]} ${q.choices[q.answer]}입니다.`}
+    return(
+      <div className="flex flex-col min-h-screen items-center justify-center p-6 text-center bg-gray-50 max-w-lg mx-auto">
+        <div className="text-8xl mb-4">🎉</div>
+        <h2 className="text-3xl font-black text-gray-800 mb-2">숙제 완료!</h2>
+        <p className="text-gray-500 text-lg mb-2 font-bold">{homework.title}</p>
+        <div className="bg-white rounded-3xl p-6 shadow-md w-full max-w-xs mb-4">
+          <div className="text-6xl font-black text-green-500 mb-1">{correctCount}<span className="text-2xl text-gray-400">/{total}</span></div>
+          <div className="text-gray-500 font-bold mb-3">정답</div>
+          <div className={`text-2xl font-black ${pct>=80?'text-green-600':pct>=60?'text-amber-500':'text-red-500'}`}>{pct}점</div>
         </div>
-        {Array.isArray(q.sol)&&q.sol.length>0&&(<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
-          <div className="text-xs font-black text-amber-600 mb-2">📖 풀이</div>
-          <div className="space-y-1">{q.sol.map((s,si)=><div key={si} className="text-sm text-gray-700 font-medium">{s}</div>)}</div>
-        </div>)}
-        <button onClick={nextQ} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">다음 문제 →</button>
-      </div>)}
+        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 text-white mb-6 w-full max-w-xs">
+          <div className="text-2xl mb-2">🌟</div>
+          <div className="font-black text-lg mb-1">
+            {pct>=90?'완벽해요! 정말 대단해요! 👏':pct>=70?'정말 잘했어요! 훌륭합니다! 💪':'끝까지 풀어줘서 고마워요! 다음엔 더 잘할 거예요! 🌈'}
+          </div>
+          <div className="text-sm opacity-90">선생님이 기록을 확인하실 거예요!</div>
+        </div>
+        <button onClick={onDone} className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-black text-xl active:scale-95 transition-transform">홈으로 🏠</button>
+      </div>
+    );
+  }
+
+  const pct=Math.round((idx/total)*100);
+  return(
+    <div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50" style={{overflowX:'hidden'}}>
+      <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
+        <div className="text-lg font-black text-indigo-700 flex-1 truncate">📝 {homework.title}</div>
+        <div className="text-sm font-bold text-gray-400">{idx+1}/{total}</div>
+      </header>
+      <div className="flex-1 p-4 space-y-4 pb-36">
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500" style={{width:`${pct}%`}}/>
+        </div>
+        <div className="bg-white rounded-3xl p-5 shadow-md">
+          <div className="inline-block bg-indigo-100 text-indigo-700 text-xs font-black px-3 py-1 rounded-full mb-3">{q.topic||homework.level||'검정고시'}</div>
+          {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>}
+          <div className="text-base font-bold text-gray-800 leading-relaxed">{q.q}</div>
+          {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3"><GraphPreview q={q}/></div>}
+        </div>
+        {phase==='question'&&(
+          <div className="flex flex-col gap-3">
+            {q.choices.map((c,i)=>(
+              <button key={i} onClick={()=>setSelected(i)}
+                className={`p-4 rounded-2xl border-2 text-base font-bold transition-all text-left leading-relaxed ${selected===i?'border-indigo-500 bg-indigo-50 text-indigo-700':'border-gray-200 bg-white text-gray-700'}`}>
+                <span className="text-indigo-900 mr-1">{ORD[i]}</span> <MathText v={c}/>
+              </button>
+            ))}
+            <button onClick={check} disabled={selected===null} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg disabled:opacity-40 active:scale-95 transition-all mt-2">
+              제출하기 ✓
+            </button>
+          </div>
+        )}
+        {phase==='feedback'&&(
+          <div className="space-y-3">
+            <div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 ${selected===q.answer?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>
+              {selected===q.answer?'✅ 정답입니다! 잘했어요!':` ❌ 아쉬워요! 정답은 ${ORD[q.answer]} ${q.choices[q.answer]}입니다.`}
+            </div>
+            {Array.isArray(q.sol)&&q.sol.length>0&&(
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                <div className="text-xs font-black text-amber-600 mb-2">📖 풀이</div>
+                <div className="space-y-1">{q.sol.map((s,i)=><div key={i} className="text-sm text-gray-700 font-medium">{s}</div>)}</div>
+              </div>
+            )}
+            <button onClick={nextQ} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
+              다음 문제 →
+            </button>
+          </div>
+        )}
+      </div>
     </div>
-  </div>);
+  );
 }
+
 
 
 
@@ -9646,7 +9977,7 @@ function QuickFeedbackPanel({student}){
           {selLog.questions.map((q,j)=>(
             <div key={j} className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-lg ${q.isOk?'bg-green-50':'bg-red-50'}`}>
               <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
-              <span className="text-gray-700 truncate">{q.qTxt||q.q||''}</span>
+              <span className="text-gray-700 break-keep leading-snug">{restoreQText(q)||''}</span>
             </div>
           ))}
         </div>
@@ -11004,7 +11335,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
                     <div key={j} className={`rounded-xl p-3 text-xs border ${q.isOk?'bg-white border-gray-200':'bg-red-50 border-red-200'}`}>
                       <div className="flex gap-2 mb-1">
                         <span className="font-black text-gray-500">Q{j+1}.</span>
-                        <span className="font-bold text-gray-800 flex-1 leading-relaxed">{q.qTxt}</span>
+                        <span className="font-bold text-gray-800 flex-1 leading-relaxed break-keep">{restoreQText(q)||''}</span>
                         <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
                       </div>
                       {q.examSource&&<div className="pl-6 mb-1 text-[10px] text-blue-500 font-bold">📌 {q.examSource}</div>}
@@ -11039,6 +11370,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
     {printLog&&<SessionPrintModal log={printLog} studentName={student.name} studentId={student.id} onClose={()=>setPrintLog(null)}/>}
   </div>);
 }
+
 
 
 
@@ -11173,8 +11505,9 @@ var root=ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 
 
+
+
 </script>
 
 </body>
 </html>
-

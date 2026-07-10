@@ -7,6 +7,108 @@ function restoreQText(q){
   if(!txt) return '';
   // 이미 완전한 문장(물음표로 끝남)
   if(txt.endsWith('?')) return txt;
+  const rebuilt=rebuildQFromGenerator(q,txt);
+  if(rebuilt) return rebuilt;
+  return legacyRestoreQText(q,txt);
+}
+
+// js/generators/highschool.js 의 실제 문제 생성 템플릿을 그대로 재현해 완성 문장 후보를
+// 만들고, 그 후보의 앞부분이 저장된(잘린) qTxt와 정확히 일치할 때만 채택한다.
+// (문장 끝을 그럴듯하게 추측해 붙이는 방식이 아니라, 원본 생성 로직을 역산 + 검증하는 방식)
+function rebuildQFromGenerator(q,txt){
+  const topic=q.topic||'';
+  const solAll=Array.isArray(q.sol)?q.sol.join('\n'):'';
+  const cAnsNum=parseFloat(q.cAns);
+  const MINUS='−'; // 생성기가 사용하는 유니코드 마이너스 기호(−)
+  const fits=cand=>cand&&cand.slice(0,txt.length)===txt?cand:null;
+  let m;
+
+  if(topic==='이차방정식 근과 계수'){
+    m=txt.match(/^이차방정식 x²\+(\d+)x([+-]\d+)=0의 두 근을 α, β라고 할/);
+    if(m){
+      const base=`이차방정식 x²+${m[1]}x${m[2]}=0의 두 근을 α, β라고 할 때, `;
+      if(solAll.includes('α+β를 묻고')) return fits(base+'α+β의 값은?');
+      if(solAll.includes('αβ를 묻고')) return fits(base+'αβ의 값은?');
+      const p=+m[1],qv=+m[2];
+      if(!isNaN(cAnsNum)){
+        if(cAnsNum===-p) return fits(base+'α+β의 값은?');
+        if(cAnsNum===qv) return fits(base+'αβ의 값은?');
+      }
+      return fits(base+'α+β의 값은?')||fits(base+'αβ의 값은?');
+    }
+  }
+
+  if(topic==='두 근→이차방정식'){
+    m=txt.match(/^두 수 (\d+), (\d+)를 근으로 하고 x²의 계수가 1인 이차/);
+    if(m){
+      const r1=+m[1],r2=+m[2],sum=r1+r2,prod=r1*r2;
+      const base=`두 수 ${r1}, ${r2}를 근으로 하고 x²의 계수가 1인 이차방정식이 `;
+      const sumCand=base+`x²${MINUS}ax+${prod}=0일 때, 상수 a의 값은?`;
+      const prodCand=base+`x²${MINUS}${sum}x+a=0일 때, 상수 a의 값은?`;
+      if(solAll.includes('x의 계수는')) return fits(sumCand);
+      if(solAll.includes('상수 항이')) return fits(prodCand);
+      if(!isNaN(cAnsNum)){
+        if(cAnsNum===sum) return fits(sumCand);
+        if(cAnsNum===prod) return fits(prodCand);
+      }
+      return fits(sumCand)||fits(prodCand);
+    }
+  }
+
+  if(topic==='이차방정식 중근'){
+    m=txt.match(/^이차방정식 x²([+-]\d+x)\+(\d+)=0이/);
+    if(m) return fits(`이차방정식 x²${m[1]}+${m[2]}=0이 중근을 가질 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='삼차방정식 한 근'){
+    m=txt.match(/^삼차방정식 x³([+-]\d+x²)([+-]\d+x)\+a=0의 한 근이 (-?\d+)일/);
+    if(m) return fits(`삼차방정식 x³${m[1]}${m[2]}+a=0의 한 근이 ${m[3]}일 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='사차방정식 한 근'){
+    m=txt.match(/^사차방정식 x⁴([+-]\d+x²)\+a=0의 한 근이 (-?\d+)일/);
+    if(m) return fits(`사차방정식 x⁴${m[1]}+a=0의 한 근이 ${m[2]}일 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='연립방정식'){
+    m=txt.match(/^연립방정식의 해가 x=(-?\d+), y=b일/);
+    if(m) return fits(`연립방정식의 해가 x=${m[1]}, y=b일 때, 두 상수 a, b에 대하여 a+b의 값은?`);
+  }
+
+  if(topic==='이차부등식'){
+    m=txt.match(/^이차부등식 (\(x[+−-][^)]*\)\(x[+−-][^)]*\))([≤≥]0)/);
+    if(m) return fits(`이차부등식 ${m[1]}${m[2]}의 해는?`);
+  }
+
+  if(topic==='연립부등식'){
+    m=txt.match(/^연립부등식의 해가 (-?\d+)<x<a일/);
+    if(m) return fits(`연립부등식의 해가 ${m[1]}<x<a일 때, 상수 a의 값은?`);
+  }
+
+  if(topic==='절댓값 부등식'){
+    m=txt.match(/^부등식 (.+?[≤≥]\d+)의 해를/);
+    if(m) return fits(`부등식 ${m[1]}의 해를 수직선 위에 나타내면 그림과 같다. 상수 a의 값은?`);
+  }
+
+  if(topic==='복소수'){
+    m=txt.match(/^등식 \(x−(\d+)\)\+(\d+)i=(\d+)\+(\d+)i를 만족하는/);
+    if(m) return fits(`등식 (x${MINUS}${m[1]})+${m[2]}i=${m[3]}+${m[4]}i를 만족하는 실수 x, y의 값은? (단, i=√${MINUS}1)`);
+  }
+
+  if(topic==='켤레복소수'){
+    m=txt.match(/^복소수 z=a\+2i에 대하여 z\+z̄=(-?\d+)일/);
+    if(m) return fits(`복소수 z=a+2i에 대하여 z+z̄=${m[1]}일 때, 실수 a의 값은? (단, i=√${MINUS}1, z̄는 z의 켤레복소수)`);
+    m=txt.match(/^복소수 (\d+)\+(\d+)i의 켤레복소수를 p\+qi라 할/);
+    if(m) return fits(`복소수 ${m[1]}+${m[2]}i의 켤레복소수를 p+qi라 할 때, p+q의 값은? (단, i=√${MINUS}1)`);
+    m=txt.match(/^복소수 (\d+)−(\d+)i의 켤레복소수가 a\+(\d+)i일/);
+    if(m) return fits(`복소수 ${m[1]}${MINUS}${m[2]}i의 켤레복소수가 a+${m[3]}i일 때, 실수 a의 값은? (단, i=√${MINUS}1)`);
+  }
+
+  return null;
+}
+
+// 위 템플릿 역산으로 복원되지 않는 구형 로그를 위한 보조 규칙(느슨한 접미어 추측)
+function legacyRestoreQText(q,txt){
   const topic=q.topic||'';
   const solAll=(q.sol||[]).join('\n');
   // 나머지 정리 (두 패턴)

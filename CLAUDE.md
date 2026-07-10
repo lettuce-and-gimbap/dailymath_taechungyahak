@@ -25,3 +25,20 @@ Host github.com
     Port 443
     IdentityFile ~/.ssh/id_rsa
 ```
+
+## ⚠️ index.html은 js/ 소스의 번들 결과물 — 반드시 동기화할 것
+
+이 프로젝트는 번들러가 없다. 실제로 브라우저에 서빙되는 `index.html`은
+`<script type="text/babel">` 안에 `js/` 폴더의 모든 파일을 `// ========== js\...\*.js ==========`
+마커로 이어붙인 결과물이다 (순서는 `scripts_rebuild_index.py`의 `FILES` 목록 참고).
+
+**`js/` 아래 파일만 고치고 `index.html`을 갱신하지 않으면 배포본에는 그 수정이 전혀 반영되지 않는다.**
+2026-06-22 이후 여러 커밋(`js/components/feedback.js`, `practice.js`, `teacherDashboard.js`,
+`generators/setFunc.js` 수정)이 이 동기화를 누락해서, "고쳤다고 커밋했는데 실제 화면은 안 고쳐지는"
+문제가 반복됐다 (오답 문제지 텍스트 잘림 버그가 대표 사례).
+
+**`js/` 파일을 수정할 때마다 반드시:**
+```bash
+"/c/Users/sam04/AppData/Local/Programs/Python/Python312/python.exe" scripts_rebuild_index.py
+```
+를 실행해 `index.html`을 재생성한 뒤, `index.html`과 `js/*.js` 변경분을 함께 커밋한다.
