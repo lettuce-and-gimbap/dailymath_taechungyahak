@@ -1,0 +1,689 @@
+// === js/worksheet/gedUnits.js ===
+/* =====================================================================
+   만능 학습지 — 유형별 문제 엔진 (GED_AREAS / GED_UNITS)
+   각 유형(unit) :
+     id, tag(시험 문항 번호), area, title, src(출제 근거), coord(좌표 중심 유형 ★)
+     concept : [li html...]        fields : [{k,label,min,max}|{k,label,sel:[...]}]
+     def : 예제용 기본 조건          rand() : 실전용 무작위 조건
+     build(p) : {q, figure?, choices, raw?, layout?, ans, answerTex|answerRaw, sol:[p...]} | {err}
+   ===================================================================== */
+var GED_AREAS=[
+  {k:'C0',title:'좌표 기초 워밍업',desc:'좌표 읽기 · 사분면 · 직선의 그래프'},
+  {k:'A', title:'영역 A · 다항식과 복소수',desc:'1번~5번'},
+  {k:'B', title:'영역 B · 방정식과 부등식',desc:'6번~9번'},
+  {k:'C', title:'영역 C · 도형의 방정식 (좌표평면)',desc:'10번~14번'},
+  {k:'D', title:'영역 D · 집합 · 명제 · 함수',desc:'15번~18번'},
+  {k:'E', title:'영역 E · 경우의 수',desc:'19번~20번'}
+];
+
+var GED_UNITS=(function(){
+  const{nf,par,xm,ym,tail,tex,pr,rnd,pick,nz,CIRC,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
+    numChoices,stepChoices,pickChoices,coordChoices,planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,NAVY,RED,GREEN,GREY}=GS;
+  const fig=svg=>`<div class="fig">${svg}</div>`;
+  const quadName=(x,y)=>x>0&&y>0?1:(x<0&&y>0?2:(x<0&&y<0?3:(x>0&&y<0?4:0)));
+  const lineTex=(a,b)=>`y=${a===1?'':(a===-1?'-':nf(a))}x${tail(b)}`;
+
+  return[
+  /* ================================================================
+     C0. 좌표 기초 워밍업 (좌표 중심 ★)
+     ================================================================ */
+  { id:'c1', tag:'기초 1', area:'C0', title:'좌표평면 위의 점 읽기', src:'모든 좌표 문제의 출발점', coord:true,
+    concept:[
+      '좌표는 <b>(가로, 세로)</b> 순서입니다. 항상 <b>x가 먼저, y가 나중</b>입니다.',
+      '점에서 <b>x축으로 수직으로 내려가</b> 만나는 눈금이 x좌표, <b>y축으로 수평으로 가서</b> 만나는 눈금이 y좌표입니다.',
+      '오른쪽·위쪽은 양수(+), 왼쪽·아래쪽은 음수(−)입니다.',
+      '손가락으로 점선을 따라 축까지 짚어 보면 절대 틀리지 않습니다.'],
+    fields:[{k:'x',label:'점의 x',min:-5,max:5},{k:'y',label:'점의 y',min:-5,max:5}],
+    def:{x:3,y:2},
+    rand(){return{x:nz(-5,5),y:nz(-5,5)};},
+    build(p){
+      const ch=coordChoices(p.x,p.y);
+      const q=`그림과 같이 좌표평면 위에 점 ${tex('\\mathrm{P}')}가 있다. 점 ${tex('\\mathrm{P}')}의 좌표는?`;
+      const figure=fig(planeSVG({xmin:-6,xmax:6,ymin:-6,ymax:6,s:34},[{t:'pt',x:p.x,y:p.y,label:'P',guide:true,nolabel:true,r:8}]));
+      const sol=[
+        `점 P에서 <b>아래(또는 위)로 곧게</b> 내려가 x축과 만나는 눈금을 읽습니다 → ${tex(nf(p.x))}`,
+        `점 P에서 <b>옆으로 곧게</b> 가서 y축과 만나는 눈금을 읽습니다 → ${tex(nf(p.y))}`,
+        `(x, y) 순서로 쓰면 ${tex(`\\mathrm{P}${pr(p.x,p.y)}`)} 입니다.`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:pr(p.x,p.y),layout:'one'};
+    }
+  },
+  { id:'c2', tag:'기초 2', area:'C0', title:'사분면과 부호', src:'대칭이동(14번)의 밑바탕', coord:true,
+    concept:[
+      '좌표평면은 두 축이 네 칸으로 나눕니다. 오른쪽 위부터 <b>시계 반대 방향</b>으로 제1 → 제2 → 제3 → 제4사분면입니다.',
+      '제1사분면 (+, +) · 제2사분면 (−, +) · 제3사분면 (−, −) · 제4사분면 (+, −)',
+      'x축 대칭은 y의 부호만, y축 대칭은 x의 부호만, 원점 대칭은 둘 다 바뀝니다.',
+      '축 위의 점(x=0 또는 y=0)은 어느 사분면에도 속하지 않습니다.'],
+    fields:[{k:'x',label:'점의 x',min:-5,max:5},{k:'y',label:'점의 y',min:-5,max:5},{k:'kind',label:'움직임',sel:['그대로','x축 대칭','y축 대칭','원점 대칭']}],
+    def:{x:-3,y:2,kind:'그대로'},
+    rand(){return{x:nz(-5,5),y:nz(-5,5),kind:pick(['그대로','그대로','x축 대칭','y축 대칭','원점 대칭'])};},
+    build(p){
+      if(p.x===0||p.y===0)return{err:'축 위의 점은 사분면에 속하지 않습니다. 0이 아닌 수를 넣어 주세요.'};
+      let X=p.x,Y=p.y,how='';
+      if(p.kind==='x축 대칭'){Y=-p.y;how='x축 대칭은 y의 부호만 바꿉니다.';}
+      else if(p.kind==='y축 대칭'){X=-p.x;how='y축 대칭은 x의 부호만 바꿉니다.';}
+      else if(p.kind==='원점 대칭'){X=-p.x;Y=-p.y;how='원점 대칭은 x, y 둘 다 부호를 바꿉니다.';}
+      const qn=quadName(X,Y);
+      const names=['제1사분면','제2사분면','제3사분면','제4사분면'];
+      const q=p.kind==='그대로'
+        ?`점 ${tex(pr(p.x,p.y))}은 제몇 사분면 위의 점인가?`
+        :`점 ${tex(pr(p.x,p.y))}을 <b>${p.kind}</b>이동한 점은 제몇 사분면 위의 점인가?`;
+      const items=[{t:'text',x:2.2,y:2.8,s:'제1',size:22,color:'#888'},{t:'text',x:-3.6,y:2.8,s:'제2',size:22,color:'#888'},{t:'text',x:-3.6,y:-3.2,s:'제3',size:22,color:'#888'},{t:'text',x:2.2,y:-3.2,s:'제4',size:22,color:'#888'},
+        {t:'pt',x:p.x,y:p.y,label:'P',guide:true,r:8}];
+      const figure=fig(planeSVG({xmin:-6,xmax:6,ymin:-6,ymax:6,s:32},items));
+      const sol=[
+        `점 P${tex(pr(p.x,p.y))}의 부호는 (${p.x>0?'+':'−'}, ${p.y>0?'+':'−'}) 입니다.`,
+        ...(how?[how+` → ${tex(pr(X,Y))}, 부호는 (${X>0?'+':'−'}, ${Y>0?'+':'−'})`]:[]),
+        `(${X>0?'+':'−'}, ${Y>0?'+':'−'}) 는 <b>${names[qn-1]}</b>입니다.`];
+      return{q,figure,choices:names,raw:true,layout:'two',ans:qn-1,sol,answerRaw:names[qn-1]};
+    }
+  },
+  { id:'c3', tag:'기초 3', area:'C0', title:'직선의 그래프 읽기 (기울기와 y절편)', src:'12번 직선의 방정식 밑바탕', coord:true,
+    concept:[
+      `직선 ${tex('y=ax+b')}은 <b>y = (기울기)x + (y절편)</b> 모양입니다.`,
+      '<b>y절편 b</b> = 직선이 y축과 만나는 눈금. 그래프에서 바로 읽습니다.',
+      '<b>기울기 a</b> = 오른쪽으로 1칸 갈 때 위로 몇 칸 올라가는가. 내려가면 음수입니다.',
+      '기울기와 y절편만 읽으면 직선의 식을 그대로 쓸 수 있습니다.'],
+    fields:[{k:'kind',label:'문제 종류',sel:['그래프 읽기','식 세우기']},{k:'a',label:'기울기 a',min:-3,max:3},{k:'b',label:'y절편 b',min:-4,max:4}],
+    def:{kind:'그래프 읽기',a:2,b:-1},
+    rand(){return{kind:pick(['그래프 읽기','그래프 읽기','식 세우기']),a:nz(-3,3),b:nz(-4,4)};},
+    build(p){
+      if(p.a===0)return{err:'기울기가 0이면 가로선이 됩니다. 0이 아닌 수를 넣어 주세요.'};
+      const a=p.a,b=p.b,f=x=>a*x+b;
+      const items=[{t:'fn',f},{t:'pt',x:0,y:b,guide:true,label:'',r:7},{t:'pt',x:1,y:a+b,guide:true,r:7,color:GREEN}];
+      const lim=Math.max(5,Math.abs(a+b)+1,Math.abs(b)+1);
+      const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim))},items));
+      if(p.kind==='그래프 읽기'){
+        const ans=a+b,ch=numChoices(ans);
+        const q=`그림은 일차함수 ${tex('y=ax+b')}의 그래프이다. 두 상수 ${tex('a,\\ b')}에 대하여 ${tex('a+b')}의 값은?`;
+        const sol=[
+          `직선이 y축과 만나는 눈금(빨간 점)을 읽으면 ${tex(nf(b))} → y절편 ${tex('b='+nf(b))}`,
+          `오른쪽으로 1칸 가면(초록 점) y가 ${nf(b)}에서 ${nf(a+b)}로 → ${a>0?'올라가므로':'내려가므로'} 기울기 ${tex('a='+nf(a))}`,
+          `따라서 ${tex(`a+b=${par(a)}+${par(b)}=${nf(ans)}`)}`];
+        return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+      }
+      const correct=lineTex(a,b);
+      const ch=pickChoices(correct,[lineTex(b,a),lineTex(-a,b),lineTex(a,-b),lineTex(-a,-b)].filter(s=>s!==correct&&!(b===0&&s===lineTex(a,0))),k=>lineTex(a+k,b));
+      const q=`기울기가 ${tex(nf(a))}이고 ${tex('y')}절편이 ${tex(nf(b))}인 직선의 방정식은?`;
+      const sol=[`직선의 식은 ${tex('y=(\\text{기울기})x+(y\\text{절편})')} 입니다.`,`기울기 자리에 ${tex(nf(a))}, y절편 자리에 ${tex(nf(b))}를 넣습니다.`,`따라서 ${tex(correct)}`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:correct,layout:'two'};
+    }
+  },
+
+  /* ================================================================
+     영역 A. 다항식과 복소수
+     ================================================================ */
+  { id:'u1', tag:'1번', area:'A', title:'다항식의 계산', src:'2023~2026 매회 1번',
+    concept:[
+      `'같은 옷을 입은 항'끼리만 더하고 뺍니다. ${tex('x^3')}은 ${tex('x^3')}끼리, ${tex('x')}는 ${tex('x')}끼리.`,
+      `사과 3개와 배 2개를 더해도 '과일 5개'가 아니라 '사과 3개, 배 2개'입니다. 다항식도 같습니다.`,
+      `더할 때는 그대로 더하고, 뺄 때는 뒤 다항식의 부호를 전부 뒤집어서 더합니다.`,
+      `답을 쓸 때는 차수가 높은 것(${tex('x^3')})부터 앞에 씁니다.`],
+    fields:[{k:'p',label:'A의 x³ 계수',min:1,max:3},{k:'a',label:'A의 x 계수',min:-6,max:6},{k:'q',label:'B의 x³ 계수',min:1,max:3},{k:'b',label:'B의 x 계수',min:-6,max:6},{k:'op',label:'연산',sel:['+','−']}],
+    def:{p:1,a:4,q:1,b:-2,op:'+'},
+    rand(){const op=pick(['+','+','−']);let p=rnd(1,2),q=rnd(1,2),a=rnd(-5,5),b=rnd(-5,5);
+      if(op==='−'){if(p===q)p=q+1;if(a===b)b=a-rnd(1,3);}if(a===0)a=1;if(b===0)b=-2;return{p,a,q,b,op};},
+    build(p){
+      const sg=p.op==='+'?1:-1,c3=p.p+sg*p.q,c1=p.a+sg*p.b;
+      if(c3===0&&c1===0)return{err:'결과가 0이 됩니다. 계수를 바꿔 주세요.'};
+      const A=poly([[p.p,'x^3'],[p.a,'x']]),B=poly([[p.q,'x^3'],[p.b,'x']]),res=poly([[c3,'x^3'],[c1,'x']]);
+      let off=rnd(0,3);const lo=c1-off;
+      const list=[0,1,2,3].map(i=>poly([[c3,'x^3'],[lo+i,'x']]));
+      const opTex=p.op==='+'?'A+B':'A-B';
+      const q=`두 다항식 ${tex('A='+A)}, ${tex('B='+B)}에 대하여 ${tex(opTex)}는?`;
+      const sol=[`${tex('x^3')}끼리 먼저 : ${tex(`${nf(p.p)}${p.op==='+'?'+':'-'}${nf(p.q)}=${nf(c3)}`)} → ${tex(poly([[c3,'x^3']]))}`,
+        `${tex('x')}끼리 다음 : ${tex(`${par(p.a)}${p.op==='+'?'+':'-'}${par(p.b)}=${nf(c1)}`)} → ${tex(c1===0?'0':poly([[c1,'x']]))}`,
+        `둘을 붙여 쓰면 ${tex(opTex+'='+res)}`];
+      return{q,choices:list,ans:off,sol,answerTex:res,layout:'two'};
+    }
+  },
+  { id:'u2', tag:'2번', area:'A', title:'항등식', src:'2023~2026 매회 2번',
+    concept:[
+      `항등식은 ${tex('x')}에 어떤 수를 넣어도 '언제나' 성립하는 등식입니다. 양쪽이 쌍둥이라는 뜻입니다.`,
+      `쌍둥이니까 자리마다 짝이 맞아야 합니다. ${tex('x^2')} 앞 숫자끼리, ${tex('x')} 앞 숫자끼리, 맨 뒤 숫자끼리 같아야 합니다.`,
+      `문제에서 모르는 글자 ${tex('a')}, ${tex('b')}가 있으면 '같은 자리의 숫자'를 그대로 가져오면 끝입니다.`,
+      `마지막에 ${tex('a+b')}처럼 더하라고 하면 그때 더합니다. 먼저 더하지 마세요.`],
+    fields:[{k:'p',label:'왼쪽 x 계수',min:-6,max:6},{k:'q',label:'오른쪽 상수항',min:-6,max:6},{k:'lead',label:'x² 계수',min:1,max:3}],
+    def:{p:2,q:1,lead:1},
+    rand(){let p=rnd(-4,5),q=rnd(-4,5);if(p===0)p=3;if(q===0)q=2;return{p,q,lead:rnd(1,2)};},
+    build(p){
+      const L=poly([[p.lead,'x^2'],[p.p,'x']])+'+a',R=poly([[p.lead,'x^2']])+'+bx'+term(p.q,'',false);
+      const a=p.q,b=p.p,ans=a+b,ch=numChoices(ans);
+      const q=`등식 ${tex(L+'='+R)}이 ${tex('x')}에 대한 항등식일 때, 두 상수 ${tex('a')}, ${tex('b')}에 대하여 ${tex('a+b')}의 값은?`;
+      const sol=[`${tex('x')} 자리 짝 맞추기 : 왼쪽은 ${tex(nf(b))}, 오른쪽은 ${tex('b')} → ${tex('b='+nf(b))}`,
+        `맨 뒤 숫자 짝 맞추기 : 왼쪽은 ${tex('a')}, 오른쪽은 ${tex(nf(a))} → ${tex('a='+nf(a))}`,
+        `따라서 ${tex(`a+b=${par(a)}+${par(b)}=${nf(ans)}`)}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  },
+  { id:'u3', tag:'3번', area:'A', title:'나머지정리 · 조립제법', src:'2023~2026 매회 3번',
+    concept:[
+      `조립제법은 '내려쓰고 → 곱하고 → 더하고'를 반복하는 박자 놀이입니다.`,
+      `왼쪽 구석의 수는 나누는 식 ${tex('x-k')}의 ${tex('k')}입니다. ${tex('x-1')}이면 1, ${tex('x+2')}면 ${tex('-2')}입니다.`,
+      `맨 위 줄에는 다항식의 계수를 차례로 적습니다. 빠진 차수가 있으면 그 자리에 0을 씁니다.`,
+      `맨 아래 줄의 마지막 칸이 나머지 ${tex('R')}입니다. 앞의 칸들은 몫의 계수입니다.`],
+    fields:[{k:'k',label:'나누는 수 k (x−k)',min:-3,max:3},{k:'b',label:'x² 계수',min:-5,max:5},{k:'c',label:'x 계수',min:-6,max:6},{k:'d',label:'상수항',min:-6,max:6}],
+    def:{k:1,b:2,c:4,d:-1},
+    rand(){return{k:pick([-2,-1,1,2,3]),b:rnd(-3,4),c:rnd(-4,5),d:rnd(-5,5)};},
+    build(p){
+      if(p.k===0)return{err:'나누는 수 k는 0이 아니어야 합니다.'};
+      const q2=p.b+p.k,q3=p.c+p.k*q2,R=p.d+p.k*q3;const products=[p.k,p.k*q2,p.k*q3];
+      const P=poly([[1,'x^3'],[p.b,'x^2'],[p.c,'x'],[p.d,'']]);const div=p.k>=0?`x-${nf(p.k)}`:`x+${nf(-p.k)}`;
+      const ch=numChoices(R);
+      const q=`다음은 조립제법을 이용하여 다항식 ${tex(P)}을 일차식 ${tex(div)}로 나누었을 때의 몫과 나머지를 구하는 과정이다. 이때, 나머지 ${tex('R')}의 값은?`;
+      const figure=fig(synthSVG(nf(p.k),[1,p.b,p.c,p.d].map(nf),products.map(nf),[1,q2,q3,R].map(nf),true));
+      const sol=[`내려쓰기 : 첫 칸 1을 그대로 내려씁니다.`,
+        `곱하고 더하기 : ${tex(`${par(p.k)}\\times 1=${nf(products[0])}`)}, ${tex(`${par(p.b)}+${par(products[0])}=${nf(q2)}`)}`,
+        `다시 : ${tex(`${par(p.k)}\\times ${par(q2)}=${nf(products[1])}`)}, ${tex(`${par(p.c)}+${par(products[1])}=${nf(q3)}`)}`,
+        `마지막 : ${tex(`${par(p.k)}\\times ${par(q3)}=${nf(products[2])}`)}, ${tex(`${par(p.d)}+${par(products[2])}=${nf(R)}`)}`,
+        `맨 아래 마지막 칸이 나머지이므로 ${tex('R='+nf(R))} (몫은 ${tex(poly([[1,'x^2'],[q2,'x'],[q3,'']]))})`,
+        `확인 : ${tex('x='+nf(p.k))}을 대입해도 나머지가 나옵니다(나머지정리).`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(R)};
+    }
+  },
+  { id:'u4', tag:'4번', area:'A', title:'다항식의 인수분해', src:'2023~2026 매회 4번',
+    concept:[
+      `세제곱의 합·차 공식 두 줄만 외웁니다.<br>${tex('x^3+a^3=(x+a)(x^2-ax+a^2)')}<br>${tex('x^3-a^3=(x-a)(x^2+ax+a^2)')}`,
+      `앞 괄호의 부호는 원래 부호 그대로, 뒤 괄호 가운데 부호는 반대, 맨 뒤는 항상 ${tex('+')}입니다.`,
+      `숫자를 세제곱수로 바꿔 보는 것이 첫걸음입니다. ${tex('8=2^3')}, ${tex('27=3^3')}, ${tex('64=4^3')}, ${tex('125=5^3')}`,
+      `문제의 괄호와 공식의 괄호를 나란히 놓고 같은 자리를 읽으면 ${tex('a')}가 보입니다.`],
+    fields:[{k:'a',label:'a 값',min:2,max:5},{k:'sg',label:'부호',sel:['+','−']}],
+    def:{a:2,sg:'+'},
+    rand(){return{a:rnd(2,5),sg:pick(['+','−'])};},
+    build(p){
+      const a=p.a,cube=a*a*a,plus=p.sg==='+';
+      const left=`x^3${plus?'+':'-'}${nf(cube)}`;
+      const right=plus?`(x+a)(x^2-${nf(a)}x+${nf(a*a)})`:`(x-a)(x^2+${nf(a)}x+${nf(a*a)})`;
+      const ch=numChoices(a);
+      const q=`다항식 ${tex(left)}을 인수분해한 식이 ${tex(right)}일 때, 상수 ${tex('a')}의 값은?`;
+      const sol=[`${tex(nf(cube))}은 ${tex(`${nf(a)}^3`)}이므로 ${tex(`${left}=x^3${plus?'+':'-'}${nf(a)}^3`)}`,
+        `공식 ${tex(plus?'x^3+a^3=(x+a)(x^2-ax+a^2)':'x^3-a^3=(x-a)(x^2+ax+a^2)')}에 ${tex('a='+nf(a))}을 넣으면 ${tex(plus?`(x+${nf(a)})(x^2-${nf(a)}x+${nf(a*a)})`:`(x-${nf(a)})(x^2+${nf(a)}x+${nf(a*a)})`)}`,
+        `문제의 식과 나란히 비교하면 ${tex('a='+nf(a))}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(a)};
+    }
+  },
+  { id:'u5', tag:'5번', area:'A', title:'허수와 켤레복소수', src:'2023~2026 매회 5번',
+    concept:[
+      `${tex('i')}는 제곱하면 ${tex('-1')}이 되는 특별한 수입니다. ${tex('i=\\sqrt{-1}')}`,
+      `복소수는 '실수 부분 + 허수 부분'으로 생겼습니다. ${tex('2-i')}에서 실수 부분은 2, 허수 부분은 ${tex('-1')}입니다.`,
+      `켤레복소수는 거울에 비춘 수입니다. ${tex('i')} 앞의 부호만 뒤집습니다. ${tex('2-i')}의 켤레는 ${tex('2+i')}`,
+      `실수 부분은 절대 건드리지 않습니다. 허수 부분의 부호만 바꿉니다.`],
+    fields:[{k:'p',label:'실수 부분',min:-5,max:5},{k:'q',label:'허수 부분 (i의 계수)',min:-5,max:5}],
+    def:{p:2,q:-1},
+    rand(){return{p:rnd(1,5),q:pick([-3,-2,-1,1,2,3])};},
+    build(p){
+      if(p.q===0)return{err:'허수 부분이 0이면 켤레복소수 문제가 되지 않습니다.'};
+      const z=poly([[p.p,''],[p.q,'i']]),conj=poly([[p.p,''],[-p.q,'i']]);
+      const a=p.p,b=-p.q,ans=a+b,ch=numChoices(ans);
+      const q=`복소수 ${tex(z)}의 켤레복소수가 ${tex('a+bi')}일 때, 두 실수 ${tex('a')}, ${tex('b')}에 대하여 ${tex('a+b')}의 값은? (단, ${tex('i=\\sqrt{-1}')})`;
+      const sol=[`${tex('i')} 앞의 부호만 뒤집습니다 : ${tex(z)}의 켤레복소수는 ${tex(conj)}`,
+        `${tex('a+bi')}와 나란히 놓으면 ${tex('a='+nf(a))}, ${tex('b='+nf(b))}`,
+        `따라서 ${tex(`a+b=${par(a)}+${par(b)}=${nf(ans)}`)}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  },
+
+  /* ================================================================
+     영역 B. 방정식과 부등식
+     ================================================================ */
+  { id:'u6', tag:'6번', area:'B', title:'이차방정식의 해 (중근 · 한 근 대입)', src:'2023~2026 매회 6번',
+    concept:[
+      `'중근'은 답이 두 개가 겹쳐서 하나처럼 보이는 것입니다. 식이 ${tex('(x+k)^2=0')} 꼴로 완전히 접히면 중근입니다.`,
+      `${tex('x^2+ax+c=0')}이 중근이 되려면 ${tex('c')}가 어떤 수의 제곱이고, ${tex('a')}는 '그 수의 2배'입니다. ${tex('x^2+4x+4=(x+2)^2')}`,
+      `판별식으로 확인하면 ${tex('a^2-4c=0')}입니다. 외우기 싫으면 '제곱수 찾고 2배' 만 기억하세요.`,
+      `'한 근이 2이다'라는 말은 ${tex('x')} 자리에 2를 넣으면 등식이 맞는다는 뜻입니다. 넣고 계산하면 끝입니다.`],
+    fields:[{k:'kind',label:'문제 종류',sel:['중근','한 근 대입']},{k:'k',label:'중근용 k (c=k²)',min:1,max:5},{k:'sg',label:'x항 부호',sel:['+','−']},{k:'r',label:'대입용 근 r',min:1,max:3},{k:'a',label:'대입용 a',min:-4,max:4}],
+    def:{kind:'중근',k:2,sg:'+',r:1,a:3},
+    rand(){let a=rnd(-3,4);if(a===0)a=2;return{kind:pick(['중근','중근','한 근 대입']),k:rnd(1,4),sg:pick(['+','−']),r:rnd(1,3),a};},
+    build(p){
+      if(p.kind==='중근'){
+        const k=p.k,c=k*k,a=2*k,plus=p.sg==='+';
+        const eq=`x^2${plus?'+':'-'}ax+${nf(c)}=0`;const ch=numChoices(a);
+        const q=`이차방정식 ${tex(eq)}이 중근을 가질 때, 양수 ${tex('a')}의 값은?`;
+        const sol=[`${tex(nf(c))}은 ${tex(`${nf(k)}^2`)}이므로 접힌 모양은 ${tex(`(x${plus?'+':'-'}${nf(k)})^2`)}이어야 합니다.`,
+          `${tex(`(x${plus?'+':'-'}${nf(k)})^2=x^2${plus?'+':'-'}${nf(a)}x+${nf(c)}`)} → ${tex('a='+nf(a))}`,
+          `판별식으로 확인 : ${tex(`a^2-4\\times ${nf(c)}=0`)} → ${tex(`a^2=${nf(4*c)}`)} → 양수 ${tex('a='+nf(a))}`];
+        return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(a)};
+      }
+      const r=p.r,a=p.a,c=-(r*r+a*r);const eqTex=`x^2+ax${tail(c)}=0`;const ch=numChoices(a);
+      const q=`이차방정식 ${tex(eqTex)}의 한 근이 ${tex(nf(r))}일 때, 상수 ${tex('a')}의 값은?`;
+      const sol=[`${tex('x')} 자리에 ${tex(nf(r))}을 넣습니다 : ${tex(`${nf(r)}^2+a\\times ${nf(r)}${tail(c)}=0`)}`,
+        `${tex(`${nf(r*r)}+${nf(r)}a${tail(c)}=0`)} → ${tex(`${nf(r)}a=${nf(-(r*r+c))}`)} → ${tex('a='+nf(a))}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(a)};
+    }
+  },
+  { id:'u7', tag:'7번', area:'B', title:'이차함수의 최댓값 · 최솟값', src:'2023~2026 매회 7번', coord:true,
+    concept:[
+      `시작점과 끝점에 <b>굵은 점</b>이 찍혀 있어도 겁먹지 않습니다. 우리가 할 일은 딱 하나 — <b>가장 볼록한 지점의 y값</b> 찾기입니다.`,
+      `${tex('y=a(x-p)^2+q')}의 꼭짓점은 ${tex('(p,\\ q)')}. a가 양수면 U 모양이라 <b>최솟값</b>, 음수면 ∩ 모양이라 <b>최댓값</b>이 꼭짓점에서 나옵니다.`,
+      `꼭짓점이 범위 <b>안</b>에 있으면 → 꼭짓점의 y값이 답입니다.`,
+      `꼭짓점이 범위 <b>밖</b>에 있으면 → 시작점과 끝점의 y값만 비교합니다. 헷갈리면 세 점을 직접 계산하세요.`],
+    fields:[{k:'a',label:'볼록 방향',sel:['아래로 볼록 (a=1)','위로 볼록 (a=-1)']},{k:'p',label:'꼭짓점 x (p)',min:-3,max:4},{k:'q',label:'꼭짓점 y (q)',min:-4,max:4},{k:'lo',label:'범위 시작',min:-4,max:4},{k:'hi',label:'범위 끝',min:-3,max:6},{k:'ask',label:'묻는 것',sel:['최솟값','최댓값']}],
+    def:{a:'아래로 볼록 (a=1)',p:1,q:-2,lo:0,hi:3,ask:'최솟값'},
+    rand(){const a=pick(['아래로 볼록 (a=1)','아래로 볼록 (a=1)','위로 볼록 (a=-1)']);const p=rnd(-1,3),q=rnd(-3,3);const lo=p-rnd(0,2),hi=p+rnd(1,3);
+      const ask=a.includes('-1')?pick(['최댓값','최댓값','최솟값']):pick(['최솟값','최솟값','최댓값']);return{a,p,q,lo,hi:hi===lo?hi+1:hi,ask};},
+    build(p){
+      if(p.lo>=p.hi)return{err:'범위 시작이 끝보다 작아야 합니다.'};
+      const a=String(p.a).includes('-1')?-1:1;const f=x=>a*(x-p.p)**2+p.q;
+      const inside=p.p>=p.lo&&p.p<=p.hi;
+      const cand=[[p.lo,f(p.lo)],[p.hi,f(p.hi)]];if(inside)cand.push([p.p,p.q]);
+      const isMin=p.ask==='최솟값';let best=cand[0];for(const c of cand)if(isMin?c[1]<best[1]:c[1]>best[1])best=c;
+      const ans=best[1],ch=numChoices(ans);
+      const expr=`y=${a===-1?'-':''}${p.p===0?'x^2':`(${xm(p.p)})^2`}${tail(p.q)}`;
+      const q=`${tex(`${nf(p.lo)} \\le x \\le ${nf(p.hi)}`)}일 때, 이차함수 ${tex(expr)}의 <b>${p.ask}</b>은?`;
+      const ys=cand.map(c=>c[1]).concat([p.q]);
+      const ymax=Math.max(...ys,1)+1,ymin=Math.min(...ys,-1)-1,xmin=Math.min(p.lo,-1)-1,xmax=Math.max(p.hi,1)+1;
+      const items=[{t:'fn',f,color:GREY,dash:true,width:2.8},{t:'fn',f,from:p.lo,to:p.hi,width:5},
+        {t:'pt',x:p.lo,y:f(p.lo),guide:true,color:NAVY,r:7},{t:'pt',x:p.hi,y:f(p.hi),guide:true,color:NAVY,r:7}];
+      if(inside)items.push({t:'pt',x:p.p,y:p.q,label:'꼭짓점',guide:true,r:8,lx:12,ly:a>0?28:-14});
+      const figure=fig(planeSVG({xmin,xmax,ymin,ymax,s:34,maxW:420},items));
+      const sol=[
+        `꼭짓점은 ${tex(pr(p.p,p.q))}이고, ${a>0?'a가 양수라 아래로 볼록한 U 모양':'a가 음수라 위로 볼록한 ∩ 모양'}입니다.`,
+        inside?`범위 ${tex(`${nf(p.lo)} \\le x \\le ${nf(p.hi)}`)} 안에 꼭짓점 ${tex('x='+nf(p.p))}가 <b>들어 있습니다.</b> 후보는 양 끝점과 꼭짓점입니다.`
+              :`범위 안에 꼭짓점이 <b>없습니다.</b> 이럴 때는 굵은 점으로 표시된 시작점과 끝점만 비교하면 됩니다.`,
+        ...cand.map(([x,y])=>`${tex('x='+nf(x))} → ${tex(`y=${a===-1?'-':''}(${par(x)}${p.p>0?'-'+nf(p.p):(p.p<0?'+'+nf(-p.p):'')})^2${tail(p.q)}=${nf(y)}`)}`),
+        `가장 ${isMin?'작은':'큰'} 값은 ${tex('x='+nf(best[0]))}일 때 ${tex(nf(ans))}이므로 ${p.ask}은 ${tex(nf(ans))}`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  },
+  { id:'u8', tag:'8번', area:'B', title:'사차 · 삼차방정식의 근 (한 근 대입)', src:'2023~2026 매회 8번',
+    concept:[
+      `'한 근이 1이다' = ${tex('x')} 자리에 1을 넣으면 식이 0이 된다. 이것뿐입니다.`,
+      `차수가 4든 3이든 겁먹지 마세요. 숫자를 넣고 더하고 빼는 산수 문제로 바뀝니다.`,
+      `${tex('1^4=1')}, ${tex('1^2=1')}, ${tex('2^4=16')}, ${tex('2^3=8')}, ${tex('2^2=4')} 정도만 알면 됩니다.`,
+      `남는 글자 ${tex('a')} 하나만 있는 일차방정식이 되므로, 마지막에 ${tex('a')}를 구합니다.`],
+    fields:[{k:'deg',label:'차수',sel:['사차','삼차']},{k:'r',label:'주어진 근 r',min:1,max:2},{k:'a',label:'정답 a',min:-4,max:5}],
+    def:{deg:'사차',r:1,a:4},
+    rand(){let a=rnd(-3,5);if(a===0)a=1;return{deg:pick(['사차','사차','삼차']),r:rnd(1,2),a};},
+    build(p){
+      const quart=p.deg==='사차',r=p.r,a=p.a;const c=quart?-(r**4+a*r*r):-(r**3+a*r);
+      const eq=quart?`x^4+ax^2${tail(c)}=0`:`x^3+ax${tail(c)}=0`;const ch=numChoices(a);
+      const q=`${quart?'사차':'삼차'}방정식 ${tex(eq)}의 한 근이 ${tex(nf(r))}일 때, 상수 ${tex('a')}의 값은?`;
+      const r1=quart?r**4:r**3,r2=quart?r*r:r;
+      const sol=[`${tex('x')} 자리에 ${tex(nf(r))}을 넣습니다 : ${tex(quart?`${nf(r)}^4+a\\times ${nf(r)}^2${tail(c)}=0`:`${nf(r)}^3+a\\times ${nf(r)}${tail(c)}=0`)}`,
+        `${tex(`${nf(r1)}+${nf(r2)}a${tail(c)}=0`)} → ${tex(`${nf(r2)}a=${nf(-(r1+c))}`)} → ${tex('a='+nf(a))}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(a)};
+    }
+  },
+  { id:'u9', tag:'9번', area:'B', title:'이차부등식의 해', src:'2023~2026 매회 9·10번',
+    concept:[
+      `${tex('(x+1)(x-2)\\le 0')}처럼 곱해서 0 이하이면, 두 수 ${tex('-1')}과 ${tex('2')} '사이'가 답입니다. 사이 = 색칠한 칸이 가운데.`,
+      `${tex('\\ge 0')}이면 반대로 '바깥쪽' 두 갈래가 답입니다. 색칠한 칸이 양쪽 끝.`,
+      `괄호 안 부호를 뒤집어 읽습니다. ${tex('(x+1)')}은 ${tex('x=-1')}, ${tex('(x-2)')}는 ${tex('x=2')}입니다. 여기서 가장 많이 틀립니다.`,
+      `등호가 있으면(≤, ≥) 끝점을 까만 점으로, 없으면(<, >) 빈 점으로 그립니다.`],
+    fields:[{k:'r1',label:'작은 근',min:-5,max:4},{k:'r2',label:'큰 근',min:-4,max:5},{k:'sign',label:'부등호',sel:['≤','≥','<','>']}],
+    def:{r1:-1,r2:2,sign:'≤'},
+    rand(){const r1=rnd(-4,2);return{r1,r2:r1+rnd(1,4),sign:pick(['≤','≥','<','>'])};},
+    build(p){
+      if(p.r1>=p.r2)return{err:'작은 근이 큰 근보다 작아야 합니다.'};
+      const{r1,r2}=p,closed=p.sign==='≤'||p.sign==='≥',inside=p.sign==='≤'||p.sign==='<';
+      const fac=`(${xm(r1)})(${xm(r2)})`,sgTex={'≤':'\\le','≥':'\\ge','<':'<','>':'>'}[p.sign];
+      let alt=[-r2,-r1];if(alt[0]===r1&&alt[1]===r2)alt=[r1-1,r2-1];
+      const opts=[{h:numlineSVG(r1,r2,'in',closed),ok:inside},{h:numlineSVG(r1,r2,'out',closed),ok:!inside},{h:numlineSVG(alt[0],alt[1],'in',closed),ok:false},{h:numlineSVG(alt[0],alt[1],'out',closed),ok:false}];
+      const sh=shuffle(opts);const ans=sh.findIndex(o=>o.ok);
+      const q=`이차부등식 ${tex(fac+' '+sgTex+' 0')}의 해를 수직선 위에 나타낸 것은?`;
+      const lt=closed?'\\le':'<',gt=closed?'\\ge':'>';
+      const answerTex=inside?`${nf(r1)} ${lt} x ${lt} ${nf(r2)}`:`x ${lt} ${nf(r1)}\\ \\text{또는}\\ x ${gt} ${nf(r2)}`;
+      const sol=[`괄호를 0으로 만드는 수 : ${tex(xm(r1)+'=0')} → ${tex('x='+nf(r1))}, ${tex(xm(r2)+'=0')} → ${tex('x='+nf(r2))}`,
+        `부등호가 ${tex(sgTex+' 0')}이므로 ${inside?'두 수 사이':'두 수의 바깥쪽'}이 답입니다. ${closed?'등호가 있어 끝점을 까만 점으로 찍습니다.':'등호가 없어 끝점은 빈 점입니다.'}`,
+        `따라서 ${tex(answerTex)}`];
+      return{q,choices:sh.map(o=>`<span class="cs">${o.h}</span>`),raw:true,layout:'two',ans,sol,answerTex};
+    }
+  },
+
+  /* ================================================================
+     영역 C. 도형의 방정식 (좌표평면 ★)
+     ================================================================ */
+  { id:'u10', tag:'10번', area:'C', title:'두 점 사이의 거리', src:'2023~2026 매회 11번 계열', coord:true,
+    concept:[
+      `두 점을 잇는 선은 직각삼각형의 빗변입니다. <b>가로로 몇 칸, 세로로 몇 칸</b> 갔는지 세면 됩니다.`,
+      `거리 ${tex('=\\sqrt{(\\text{가로 차})^2+(\\text{세로 차})^2}')}. 피타고라스와 같은 식입니다.`,
+      `가로 3칸, 세로 4칸이면 ${tex('\\sqrt{9+16}=\\sqrt{25}=5')}. 시험은 거의 3·4·5, 6·8·10 짝으로 나옵니다.`,
+      `차를 구할 때 부호는 신경 쓰지 마세요. 제곱하면 어차피 양수가 됩니다.`],
+    fields:[{k:'x1',label:'A의 x',min:-3,max:4},{k:'y1',label:'A의 y',min:-3,max:4},{k:'tri',label:'가로·세로 차',sel:['3,4','4,3','6,8','8,6','1,1','2,2']}],
+    def:{x1:1,y1:1,tri:'3,4'},
+    rand(){return{x1:rnd(-2,3),y1:rnd(-2,3),tri:pick(['3,4','4,3','3,4','4,3','6,8','8,6'])};},
+    build(p){
+      const[dx,dy]=p.tri.split(',').map(Number),x2=p.x1+dx,y2=p.y1+dy,d2=dx*dx+dy*dy,d=Math.sqrt(d2);
+      const ch=GS.isInt(d)?numChoices(d):pickChoices(sqrtTex(d2),[sqrtTex(d2+1),sqrtTex(d2-1),nf(dx+dy)],k=>sqrtTex(d2+k+1));
+      const q=`좌표평면 위의 두 점 ${tex(`\\mathrm{A}${pr(p.x1,p.y1)}`)}, ${tex(`\\mathrm{B}${pr(x2,y2)}`)} 사이의 거리는?`;
+      const xmin=Math.min(p.x1,x2,0)-1,xmax=Math.max(p.x1,x2,0)+1,ymin=Math.min(p.y1,y2,0)-1,ymax=Math.max(p.y1,y2,0)+1;
+      const items=[{t:'seg',x1:p.x1,y1:p.y1,x2,y2},{t:'seg',x1:p.x1,y1:p.y1,x2,y2:p.y1,color:GREEN,width:3,dash:'8 6'},{t:'seg',x1:x2,y1:p.y1,x2,y2,color:GREEN,width:3,dash:'8 6'},
+        {t:'pt',x:p.x1,y:p.y1,label:'A',guide:true,lx:-26,ly:-12},{t:'pt',x:x2,y:y2,label:'B',guide:true},
+        {t:'text',x:(p.x1+x2)/2,y:p.y1-0.75,s:nf(dx),size:20,color:GREEN,anchor:'middle'},{t:'text',x:x2+0.35,y:(p.y1+y2)/2,s:nf(dy),size:20,color:GREEN}];
+      const figure=fig(planeSVG({xmin,xmax,ymin,ymax,s:34,maxW:420},items));
+      const sol=[`가로 차 : ${tex(`${nf(x2)}-${par(p.x1)}=${nf(dx)}`)}, 세로 차 : ${tex(`${nf(y2)}-${par(p.y1)}=${nf(dy)}`)} (초록 점선)`,
+        `${tex(`\\overline{\\mathrm{AB}}=\\sqrt{${nf(dx)}^2+${nf(dy)}^2}=\\sqrt{${nf(dx*dx)}+${nf(dy*dy)}}=\\sqrt{${nf(d2)}}=${sqrtTex(d2)}`)}`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:sqrtTex(d2)};
+    }
+  },
+  { id:'u11', tag:'11번', area:'C', title:'선분의 내분점', src:'2023~2026 매회 11번', coord:true,
+    concept:[
+      `${tex('m:n')}으로 내분한다 = 선분을 ${tex('m+n')}조각으로 똑같이 나눈 뒤, A에서 ${tex('m')}조각만큼 간 자리입니다.`,
+      `숫자가 <b>하나</b>(수직선)면 나누는 계산을 <b>한 번</b>, (x, y) 좌표면 <b>x 따로, y 따로 두 번</b> 합니다.`,
+      `공식 ${tex('\\dfrac{m\\times b+n\\times a}{m+n}')} — <b>앞의 점에는 뒤 숫자를, 뒤의 점에는 앞 숫자를</b> 곱합니다.`,
+      `m : n 이 1 : 1 이면 그냥 <b>가운데 점(중점)</b>입니다. 시험에는 나누어떨어지는 수만 나옵니다.`],
+    fields:[{k:'kind',label:'종류',sel:['수직선','좌표평면']},{k:'m',label:'m',min:1,max:4},{k:'n',label:'n',min:1,max:5},
+      {k:'a',label:'[수직선] A의 좌표',min:-3,max:5},{k:'t',label:'[수직선] 한 조각 길이',min:1,max:2},
+      {k:'x1',label:'[좌표] A의 x',min:-5,max:3},{k:'y1',label:'[좌표] A의 y',min:-5,max:3},{k:'tx',label:'[좌표] 조각 가로',min:-2,max:2},{k:'ty',label:'[좌표] 조각 세로',min:-2,max:2}],
+    def:{kind:'좌표평면',m:1,n:2,a:1,t:1,x1:-2,y1:-1,tx:2,ty:1},
+    rand(){const m=rnd(1,3);let n=rnd(1,4);if(n===m&&Math.random()<0.6)n=m+1;
+      return{kind:pick(['수직선','좌표평면','좌표평면']),m,n,a:rnd(-2,3),t:rnd(1,2),x1:rnd(-4,2),y1:rnd(-4,2),tx:nz(-2,2),ty:nz(-2,2)};},
+    build(p){
+      const{m,n}=p;
+      if(p.kind==='수직선'){
+        const b=p.a+p.t*(m+n),P=p.a+p.t*m;const ch=numChoices(P);
+        const q=`수직선 위의 두 점 ${tex(`\\mathrm{A}(${nf(p.a)})`)}, ${tex(`\\mathrm{B}(${nf(b)})`)}에 대하여 선분 AB를 ${tex(`${nf(m)}:${nf(n)}`)}으로 내분하는 점 P의 좌표는?`;
+        const figure=fig(divSVG(p.a,b,m,n));
+        const sol=[`조각 세기 : 선분 길이 ${tex(`${nf(b)}-${par(p.a)}=${nf(b-p.a)}`)}를 ${tex(`${nf(m)}+${nf(n)}=${nf(m+n)}`)}조각으로 나누면 한 조각은 ${tex(nf(p.t))}`,
+          `A에서 ${tex(nf(m))}조각 : ${tex(`${nf(p.a)}+${nf(m)}\\times ${nf(p.t)}=${nf(P)}`)}`,
+          `공식 확인 : ${tex(`\\dfrac{${nf(m)}\\times ${par(b)}+${nf(n)}\\times ${par(p.a)}}{${nf(m)}+${nf(n)}}=\\dfrac{${nf(m*b+n*p.a)}}{${nf(m+n)}}=${nf(P)}`)}`];
+        return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(P)};
+      }
+      if(p.tx===0&&p.ty===0)return{err:'조각의 가로·세로가 모두 0이면 A와 B가 같은 점이 됩니다.'};
+      const x2=p.x1+p.tx*(m+n),y2=p.y1+p.ty*(m+n),sx=p.x1+p.tx*m,sy=p.y1+p.ty*m;
+      const ch=coordChoices(sx,sy);
+      const q=`좌표평면 위의 두 점 ${tex(`\\mathrm{A}${pr(p.x1,p.y1)}`)}, ${tex(`\\mathrm{B}${pr(x2,y2)}`)}에 대하여 선분 ${tex('\\mathrm{AB}')}를 ${tex(`${nf(m)}:${nf(n)}`)}으로 내분하는 점의 좌표는?`;
+      const lim=Math.max(5,Math.abs(p.x1),Math.abs(x2),Math.abs(p.y1),Math.abs(y2))+1;
+      const items=[{t:'seg',x1:p.x1,y1:p.y1,x2,y2},{t:'pt',x:p.x1,y:p.y1,label:'A',guide:true},{t:'pt',x:x2,y:y2,label:'B',guide:true}];
+      const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim))},items));
+      const sol=[`${tex('(x,\\ y)')} 좌표이므로 나누는 계산을 <b>x 따로, y 따로 두 번</b> 합니다. 앞의 점 A에는 뒤 숫자 ${nf(n)}, 뒤의 점 B에는 앞 숫자 ${nf(m)}을 곱합니다.`,
+        `x 계산 : ${tex(`\\dfrac{${nf(m)}\\times ${par(x2)}+${nf(n)}\\times ${par(p.x1)}}{${nf(m)}+${nf(n)}}=\\dfrac{${nf(m*x2+n*p.x1)}}{${nf(m+n)}}=${nf(sx)}`)}`,
+        `y 계산 : ${tex(`\\dfrac{${nf(m)}\\times ${par(y2)}+${nf(n)}\\times ${par(p.y1)}}{${nf(m)}+${nf(n)}}=\\dfrac{${nf(m*y2+n*p.y1)}}{${nf(m+n)}}=${nf(sy)}`)}`,
+        `그림으로 확인 : A에서 B까지 가로 ${nf(p.tx*(m+n))}, 세로 ${nf(p.ty*(m+n))}를 ${nf(m+n)}조각으로 나누어 ${nf(m)}조각 간 자리 → ${tex(pr(sx,sy))}`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:pr(sx,sy),layout:'two'};
+    }
+  },
+  { id:'u12', tag:'12번', area:'C', title:'점과 직선 사이의 거리', src:'2025~2026 12번', coord:true,
+    concept:[
+      `점에서 직선까지의 '가장 짧은 길'은 <b>직각으로 내려간 길</b>입니다. 그 길이가 거리입니다.`,
+      `원점과 직선 ${tex('ax+by+c=0')} 사이의 거리는 ${tex('\\dfrac{|c|}{\\sqrt{a^2+b^2}}')}입니다. 위에는 상수, 아래에는 계수의 제곱합 루트.`,
+      `${tex('4x+3y-15=0')}이면 ${tex('\\dfrac{|-15|}{\\sqrt{16+9}}=\\dfrac{15}{5}=3')}. 아래는 거의 항상 5가 나옵니다.`,
+      `절댓값이 있으니 위의 수가 음수여도 양수로 바꿔 씁니다.`],
+    fields:[{k:'ab',label:'x, y 계수',sel:['3,4','4,3']},{k:'d',label:'정답(거리)',min:1,max:4},{k:'sg',label:'상수항 부호',sel:['−','+']}],
+    def:{ab:'4,3',d:3,sg:'−'},
+    rand(){return{ab:pick(['3,4','4,3']),d:rnd(1,4),sg:pick(['−','−','+'])};},
+    build(p){
+      const[a,b]=p.ab.split(',').map(Number),c=(p.sg==='−'?-1:1)*5*p.d;
+      const line=`${nf(a)}x+${nf(b)}y${tail(c)}=0`;const ch=numChoices(p.d);
+      const q=`원점과 직선 ${tex(line)} 사이의 거리는?`;
+      const Fx=-a*c/25,Fy=-b*c/25,xi=-c/a,yi=-c/b;
+      const xmin=Math.floor(Math.min(0,xi,Fx))-1,xmax=Math.ceil(Math.max(0,xi,Fx))+1,ymin=Math.floor(Math.min(0,yi,Fy))-1,ymax=Math.ceil(Math.max(0,yi,Fy))+1;
+      const len=Math.sqrt(Fx*Fx+Fy*Fy);const u=[-Fx/len,-Fy/len],v=[b/5,-a/5];
+      const items=[{t:'fn',f:x=>(-a*x-c)/b},{t:'seg',x1:0,y1:0,x2:Fx,y2:Fy,color:RED,dash:'8 6',width:3.4},{t:'rangle',x:Fx,y:Fy,u,v},{t:'pt',x:Fx,y:Fy,r:6},
+        {t:'text',x:xi+0.3,y:yi*0.5+0.3,s:line.replace('=0','=0'),size:18}];
+      const figure=fig(planeSVG({xmin,xmax,ymin,ymax,s:34,maxW:420},items));
+      const sol=[`공식에 넣습니다 : ${tex(`\\dfrac{|${nf(c)}|}{\\sqrt{${nf(a)}^2+${nf(b)}^2}}`)}`,
+        `${tex(`=\\dfrac{${nf(Math.abs(c))}}{\\sqrt{${nf(a*a)}+${nf(b*b)}}}=\\dfrac{${nf(Math.abs(c))}}{5}=${nf(p.d)}`)} (그림의 빨간 점선 길이)`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(p.d)};
+    }
+  },
+  { id:'u13', tag:'13번', area:'C', title:'원의 방정식', src:'2023~2026 매회 13번', coord:true,
+    concept:[
+      `기본 모양은 <b>(x − a)² + (y − b)² = r²</b> 이고, 중심은 (a, b)입니다. 괄호 안 부호는 <b>반대</b>로 읽습니다!`,
+      `중심 좌표는 문제에서 거의 다 줍니다. <b>그대로 자리에 넣기만</b> 하면 됩니다.`,
+      `문제는 r입니다. r은 <b>중심에서 원 끝까지의 길이</b>. 그 길이를 <b>두 번 곱하면</b> 바로 r²입니다.`,
+      `x축에 접하면 중심의 y값이 길이, y축에 접하면 중심의 x값이 길이, 원점을 지나면 중심에서 원점까지 거리가 길이입니다.`],
+    fields:[{k:'kind',label:'조건',sel:['반지름 주어짐','x축에 접함','y축에 접함','원점을 지남','원과 직선의 접점']},{k:'a',label:'중심 x',min:-4,max:4},{k:'b',label:'중심 y',min:-4,max:4},{k:'r',label:'반지름 r',min:1,max:4},{k:'dir',label:'[접점] 직선 종류',sel:['x=a','y=a']}],
+    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a'},
+    rand(){const kind=pick(['반지름 주어짐','반지름 주어짐','x축에 접함','y축에 접함','원점을 지남','원과 직선의 접점']);
+      let a=nz(-3,3),b=nz(-3,3);if(kind==='원점을 지남'){const t=pick([[3,4],[4,3],[1,1],[2,1],[1,2]]);a=t[0]*pick([1,-1]);b=t[1]*pick([1,-1]);}
+      return{kind,a,b,r:rnd(1,4),dir:pick(['x=a','x=a','y=a'])};},
+    build(p){
+      if(p.kind==='원과 직선의 접점'){
+        const r=p.r,r2=r*r,vert=p.dir==='x=a';const ch=numChoices(r);
+        const q=`직선 ${tex(p.dir)}와 원 ${tex(`x^2+y^2=${nf(r2)}`)}가 한 점에서 만날 때, 양수 ${tex('a')}의 값은?`;
+        const R=r+2,items=[{t:'circle',cx:0,cy:0,r},{t:'pt',x:0,y:0,r:5,color:'#000'},{t:'text',x:-R+0.2,y:-R+0.8,s:`x²+y²=${nf(r2)}`,size:19}];
+        if(vert)items.push({t:'vline',x:r,label:'x=a',dash:'',color:NAVY},{t:'seg',x1:0,y1:0,x2:r,y2:0,color:GREEN,width:4,dash:'9 6'});
+        else items.push({t:'hline',y:r,label:'y=a',dash:'',color:NAVY},{t:'seg',x1:0,y1:0,x2:0,y2:r,color:GREEN,width:4,dash:'9 6'});
+        const figure=fig(planeSVG({xmin:-R,xmax:R,ymin:-R,ymax:R,s:32},items));
+        const sol=[`원의 반지름 : ${tex(`x^2+y^2=${nf(r2)}=${nf(r)}^2`)} → ${tex('r='+nf(r))}`,
+          `${vert?'세로':'가로'}선 ${tex(p.dir)}가 원에 딱 닿으려면(접하려면) 원점에서 ${tex('a')}만큼 떨어진 거리가 반지름과 같아야 합니다. (초록 점선)`,
+          `따라서 ${tex('a='+nf(r))}`];
+        return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(r)};
+      }
+      let R2,why,Rtx,Rtt;
+      if(p.kind==='반지름 주어짐'){R2=p.r*p.r;why=`반지름을 문제에서 바로 주었습니다. 길이는 ${nf(p.r)}입니다.`;}
+      else if(p.kind==='x축에 접함'){if(p.b===0)return{err:'x축에 접하려면 중심 y가 0이 아니어야 합니다.'};R2=p.b*p.b;why=`x축(가로선)에 딱 붙어 있으므로, 중심에서 x축까지의 세로 거리가 곧 반지름입니다. 중심의 y가 ${par(p.b)}이니 길이는 ${nf(Math.abs(p.b))}입니다.`;}
+      else if(p.kind==='y축에 접함'){if(p.a===0)return{err:'y축에 접하려면 중심 x가 0이 아니어야 합니다.'};R2=p.a*p.a;why=`y축(세로선)에 딱 붙어 있으므로, 중심에서 y축까지의 가로 거리가 곧 반지름입니다. 중심의 x가 ${par(p.a)}이니 길이는 ${nf(Math.abs(p.a))}입니다.`;}
+      else{if(p.a===0&&p.b===0)return{err:'중심이 원점이면 원점을 지나는 원이 될 수 없습니다.'};R2=p.a*p.a+p.b*p.b;why=`원이 원점을 지나므로, 중심에서 원점까지의 거리가 반지름입니다. 가로 ${nf(Math.abs(p.a))}, 세로 ${nf(Math.abs(p.b))}인 직각삼각형의 빗변이므로 길이는 ${tex(`\\sqrt{${nf(p.a*p.a)}+${nf(p.b*p.b)}}=${sqrtTex(R2)}`)}입니다.`;}
+      const R=Math.sqrt(R2);Rtx=sqrtTex(R2);Rtt=sqrtTxt(R2);
+      const eqOf=(a,b,k)=>`(${xm(a)})^2+(${ym(b)})^2=${nf(k)}`;
+      const eq=p.a===0&&p.b===0?`x^2+y^2=${nf(R2)}`:eqOf(p.a,p.b,R2);
+      const cands=[eqOf(-p.a,-p.b,R2),eqOf(p.b,p.a,R2),eqOf(p.a,p.b,(Math.round(R)+1)**2),eqOf(p.a,p.b,R2===R?R2+1:Math.round(R)),eqOf(-p.a,p.b,R2)];
+      const ch=pickChoices(eq,cands,k=>eqOf(p.a,p.b,R2+k));
+      const cond={'반지름 주어짐':`반지름의 길이가 ${tex(nf(p.r))}인`,'x축에 접함':'x축에 접하는','y축에 접함':'y축에 접하는','원점을 지남':'원점을 지나는'}[p.kind];
+      const q=`중심의 좌표가 ${tex(pr(p.a,p.b))}이고 ${cond} 원의 방정식은?`;
+      const lim=Math.ceil(Math.max(Math.abs(p.a)+R,Math.abs(p.b)+R))+1;
+      const items=[{t:'circle',cx:p.a,cy:p.b,r:R},{t:'pt',x:p.a,y:p.b,label:'중심',guide:true,r:7,lx:12,ly:-12}];
+      if(p.kind==='x축에 접함')items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:p.a,y:0,color:GREEN,r:6});
+      else if(p.kind==='y축에 접함')items.push({t:'seg',x1:p.a,y1:p.b,x2:0,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:0,y:p.b,color:GREEN,r:6});
+      else if(p.kind==='원점을 지남')items.push({t:'seg',x1:p.a,y1:p.b,x2:0,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'seg',x1:p.a,y1:p.b,x2:p.a,y2:0,color:GREY,width:2.4,dash:'6 5'},{t:'seg',x1:0,y1:0,x2:p.a,y2:0,color:GREY,width:2.4,dash:'6 5'});
+      else items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a+R,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'text',x:p.a+R/2,y:p.b+0.35,s:'r='+nf(R),size:19,color:GREEN,anchor:'middle'});
+      const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim)),maxW:420},items));
+      const sol=[`원의 기본 모양은 ${tex('(x-a)^2+(y-b)^2=r^2')}입니다. 중심 ${tex(pr(p.a,p.b))}를 자리에 넣습니다. (괄호 안 부호는 반대!)`,
+        why,
+        `오른쪽에는 반지름을 <b>두 번 곱한 값</b>을 씁니다. ${tex(`${Rtx}\\times${Rtx}=${nf(R2)}`)}`,
+        `따라서 ${tex(eq)}`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:eq,layout:'two'};
+    }
+  },
+  { id:'u14', tag:'14번', area:'C', title:'점의 대칭이동 · 평행이동', src:'2023~2026 매회 14번', coord:true,
+    concept:[
+      `대칭이동은 <b>종이접기</b>, 평행이동은 <b>밀기</b>입니다.`,
+      `x축 대칭 : 가로선을 접습니다 → 위아래만 바뀌므로 <b>y만 부호 변경</b>. y축 대칭 : 세로선을 접습니다 → <b>x만 부호 변경</b>`,
+      `원점 대칭 : 두 번 접습니다 → <b>x, y 모두 부호 변경</b>. 직선 y=x 대칭 : <b>x와 y의 자리를 맞바꿉니다</b>`,
+      `평행이동 : 밀라고 한 만큼 <b>그대로 더합니다</b>. 음수만큼 밀면 빼는 것과 같습니다.`],
+    fields:[{k:'op',label:'움직이는 방법',sel:['x축 대칭','y축 대칭','원점 대칭','직선 y=x 대칭','평행이동']},{k:'x',label:'점의 x',min:-5,max:5},{k:'y',label:'점의 y',min:-5,max:5},{k:'dx',label:'[평행이동] x축 방향',min:-4,max:4},{k:'dy',label:'[평행이동] y축 방향',min:-4,max:4}],
+    def:{op:'원점 대칭',x:2,y:3,dx:1,dy:2},
+    rand(){let dx=rnd(-3,3),dy=rnd(-3,3);if(dx===0)dx=1;if(dy===0)dy=-2;return{op:pick(['x축 대칭','y축 대칭','원점 대칭','직선 y=x 대칭','평행이동','평행이동']),x:nz(-4,4),y:nz(-4,4),dx,dy};},
+    build(p){
+      let X,Y,how;
+      if(p.op==='x축 대칭'){X=p.x;Y=-p.y;how='x축을 접었으니 x는 그대로, y만 부호가 바뀝니다.';}
+      else if(p.op==='y축 대칭'){X=-p.x;Y=p.y;how='y축을 접었으니 y는 그대로, x만 부호가 바뀝니다.';}
+      else if(p.op==='원점 대칭'){X=-p.x;Y=-p.y;how='원점 대칭은 두 번 접는 것이라 x, y 둘 다 부호가 바뀝니다.';}
+      else if(p.op==='직선 y=x 대칭'){X=p.y;Y=p.x;how='직선 y=x 대칭은 x와 y의 자리를 서로 바꿉니다.';}
+      else{X=p.x+p.dx;Y=p.y+p.dy;how=`평행이동은 밀기입니다. x에는 x축 방향 값 ${par(p.dx)}를, y에는 y축 방향 값 ${par(p.dy)}를 그대로 더합니다. ${tex(`(${nf(p.x)}+${par(p.dx)},\\ ${nf(p.y)}+${par(p.dy)})`)}`;}
+      const q=p.op==='평행이동'
+        ?`좌표평면 위의 점 ${tex(pr(p.x,p.y))}을 ${tex('x')}축의 방향으로 ${tex(nf(p.dx))}만큼, ${tex('y')}축의 방향으로 ${tex(nf(p.dy))}만큼 평행이동한 점의 좌표는?`
+        :`좌표평면 위의 점 ${tex(pr(p.x,p.y))}을 <b>${p.op.replace(' 대칭','')}</b>에 대하여 대칭이동한 점의 좌표는?`;
+      const ch=coordChoices(X,Y);
+      const lim=Math.max(6,Math.abs(X)+1,Math.abs(Y)+1);
+      const items=[{t:'pt',x:p.x,y:p.y,label:'P',guide:true,r:8}];
+      if(p.op==='직선 y=x 대칭')items.push({t:'fn',f:x=>x,color:GREY,width:3,dash:'9 7'},{t:'text',x:lim-1.6,y:lim-0.6,s:'y=x',size:19,color:'#777',italic:true});
+      const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim))},items));
+      const sol=[`점 P의 자리를 먼저 눈으로 찾습니다. x축에서 ${par(p.x)}, y축에서 ${par(p.y)}인 곳입니다.`,how,`따라서 옮겨진 점은 ${tex(pr(X,Y))}입니다.`];
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:pr(X,Y),layout:'one'};
+    }
+  },
+
+  /* ================================================================
+     영역 D. 집합 · 명제 · 함수
+     ================================================================ */
+  { id:'u15', tag:'15번', area:'D', title:'집합', src:'2023~2026 매회 15번',
+    concept:[
+      `${tex('n(A)')}는 집합 A에 들어 있는 것의 '개수'입니다. ${tex('A=\\{a,\\ b\\}')}면 ${tex('n(A)=2')}.`,
+      `${tex('A\\cup B')}(합집합)는 두 바구니를 한데 부은 것. 겹치는 것은 한 번만 셉니다.`,
+      `${tex('A\\cap B')}(교집합)는 두 바구니에 모두 들어 있는 것만 고른 것.`,
+      `개수 공식 : ${tex('n(A\\cup B)=n(A)+n(B)-n(A\\cap B)')}. 겹친 만큼 한 번 빼 줍니다.`],
+    fields:[{k:'nA',label:'n(A)',min:2,max:4},{k:'nB',label:'n(B)',min:2,max:4},{k:'k',label:'겹치는 개수',min:1,max:3},{k:'ask',label:'묻는 것',sel:['합집합','교집합']}],
+    def:{nA:2,nB:3,k:1,ask:'합집합'},
+    rand(){const nA=rnd(2,4),nB=rnd(2,4);return{nA,nB,k:rnd(1,Math.min(nA,nB)),ask:pick(['합집합','합집합','교집합'])};},
+    build(p){
+      if(p.k>Math.min(p.nA,p.nB))return{err:'겹치는 개수는 두 집합 원소 개수보다 클 수 없습니다.'};
+      const L='abcdefg'.split('');const A=L.slice(0,p.nA),B=[...A.slice(p.nA-p.k),...L.slice(p.nA,p.nA+p.nB-p.k)];
+      const st=arr=>`\\{${arr.join(',\\ ')}\\}`;const uni=[...new Set([...A,...B])],inter=A.filter(x=>B.includes(x));
+      const isU=p.ask==='합집합',ans=isU?uni.length:inter.length;const ch=numChoices(ans);
+      const q=`두 집합 ${tex('A='+st(A))}, ${tex('B='+st(B))}에 대하여 ${tex(isU?'n(A\\cup B)':'n(A\\cap B)')}의 값은?`;
+      const sol=isU?[`두 바구니를 부으면 ${tex('A\\cup B='+st(uni))} (겹치는 ${tex(st(inter))}는 한 번만)`,`개수를 세면 ${tex('n(A\\cup B)='+nf(ans))}`,`공식 확인 : ${tex(`${nf(p.nA)}+${nf(p.nB)}-${nf(p.k)}=${nf(ans)}`)}`]
+        :[`둘 다에 들어 있는 것만 고르면 ${tex('A\\cap B='+st(inter))}`,`개수를 세면 ${tex('n(A\\cap B)='+nf(ans))}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  },
+  { id:'u16', tag:'16번', area:'D', title:'명제', src:'2023~2026 매회 16번',
+    concept:[
+      `명제는 '참인지 거짓인지 딱 정할 수 있는 문장'입니다. 거짓이어도 명제입니다. ${tex('1+1=3')}은 거짓인 명제.`,
+      `'맛있다', '크다', '재미있다'처럼 사람마다 답이 다른 문장은 명제가 아닙니다.`,
+      `'p이면 q이다'의 대우는 '${tex('q')}가 아니면 ${tex('p')}가 아니다'. 순서를 바꾸고 둘 다 부정합니다.`,
+      `${tex('p \\Rightarrow q')}가 참이면 ${tex('p')}는 ${tex('q')}이기 위한 '충분'조건, ${tex('q')}는 ${tex('p')}이기 위한 '필요'조건입니다. 화살표가 나가는 쪽이 충분.`],
+    fields:[{k:'kind',label:'문제 종류',sel:['명제 고르기','대우','필요·충분조건']},{k:'seed',label:'문제 번호 (바꾸면 다른 문제)',min:1,max:999}],
+    def:{kind:'명제 고르기',seed:7},
+    rand(){return{kind:pick(['명제 고르기','명제 고르기','대우','필요·충분조건']),seed:rnd(1,999)};},
+    build(p){
+      const rng=mulberry(p.seed*7919+11);const T=['ㄱ','ㄴ','ㄷ','ㄹ'];
+      if(p.kind==='명제 고르기'){
+        const P=[tex('2+3=5'),'삼각형의 세 내각의 크기의 합은 '+tex('360^\\circ')+'이다.','4는 짝수이다.','10은 홀수이다.','서울은 대한민국의 수도이다.',tex('1+1=3'),'정사각형의 네 변의 길이는 모두 같다.','12는 5의 배수이다.',tex('7')+'은 소수이다.','한 시간은 60분이다.'];
+        const N=['10은 큰 수이다.','잔치국수는 맛있다.','수학은 재미있다.','오늘은 날씨가 좋다.','그 사람은 키가 크다.','이 꽃은 예쁘다.','3은 작은 수이다.','여름은 덥다.'];
+        const ps=shuffleWith(rng,P).slice(0,2),ns=shuffleWith(rng,N).slice(0,2);
+        const items=shuffleWith(rng,[{s:ps[0],ok:true},{s:ps[1],ok:true},{s:ns[0],ok:false},{s:ns[1],ok:false}]);
+        const okIdx=items.map((it,i)=>it.ok?i:-1).filter(i=>i>=0);const correct=okIdx.map(i=>T[i]).join(', ');
+        const pairs=[];for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)pairs.push(`${T[i]}, ${T[j]}`);
+        const others=shuffleWith(rng,pairs.filter(x=>x!==correct)).slice(0,3);const chs=shuffleWith(rng,[correct,...others]).sort();
+        const ans=chs.indexOf(correct);
+        const q=`명제인 것을 &lt;보기&gt;에서 고른 것은?`;
+        const figure=`<div class="fig" style="text-align:left"><div class="boxk"><div style="text-align:center;font-size:.85em;margin-bottom:4px">&lt;보 기&gt;</div>${items.map((it,i)=>`<div>${T[i]}. ${it.s}</div>`).join('')}</div></div>`;
+        const sol=[`참·거짓을 정할 수 있는 문장만 고릅니다.`,...items.map((it,i)=>`${T[i]} : ${it.ok?'참인지 거짓인지 정할 수 있음 → 명제':'사람마다 다름 → 명제 아님'}`),`따라서 ${correct}`];
+        return{q,figure,choices:chs,raw:true,layout:'one',ans,sol,answerRaw:correct};
+      }
+      if(p.kind==='대우'){
+        const C=(c,e)=>({c,e}),M=(a,b)=>C(tex(a)+'이면',tex(b)+'이다');
+        const pool=[{p:M('x=2','x=2'),q:M('x^2=4','x^2=4'),np:M('x\\ne 2','x\\ne 2'),nq:M('x^2\\ne 4','x^2\\ne 4')},
+          {p:C('a가 4의 배수이면','a는 4의 배수이다'),q:C('a가 2의 배수이면','a는 2의 배수이다'),np:C('a가 4의 배수가 아니면','a는 4의 배수가 아니다'),nq:C('a가 2의 배수가 아니면','a는 2의 배수가 아니다')},
+          {p:C('두 삼각형이 합동이면','두 삼각형은 합동이다'),q:C('두 삼각형의 넓이가 같으면','두 삼각형의 넓이는 같다'),np:C('두 삼각형이 합동이 아니면','두 삼각형은 합동이 아니다'),nq:C('두 삼각형의 넓이가 같지 않으면','두 삼각형의 넓이는 같지 않다')},
+          {p:M('x>3','x>3'),q:M('x>1','x>1'),np:M('x\\le 3','x\\le 3'),nq:M('x\\le 1','x\\le 1')},
+          {p:C('비가 오면','비가 온다'),q:C('땅이 젖으면','땅이 젖는다'),np:C('비가 오지 않으면','비가 오지 않는다'),nq:C('땅이 젖지 않으면','땅이 젖지 않는다')}];
+        const e=pool[Math.floor(rng()*pool.length)];const mk=(A,B)=>`${A.c} ${B.e}.`;
+        const opts=[{s:mk(e.q,e.p),ok:false},{s:mk(e.np,e.nq),ok:false},{s:mk(e.nq,e.np),ok:true},{s:mk(e.p,e.nq),ok:false}];
+        const sh=shuffleWith(rng,opts),ans=sh.findIndex(o=>o.ok);
+        const q=`명제 '${mk(e.p,e.q)}'의 대우는?`;
+        const sol=[`대우 = 앞뒤를 바꾸고 둘 다 부정합니다.`,`뒤의 '${e.q.e}'를 부정해 앞에 놓고, 앞의 '${e.p.e}'를 부정해 뒤에 놓습니다.`,`따라서 '${sh[ans].s}'`];
+        return{q,choices:sh.map(o=>o.s),raw:true,layout:'two',ans,sol,answerRaw:sh[ans].s};
+      }
+      const pool=[{p:tex('x=2'),q:tex('x^2=4'),a:0},{p:tex('x^2=4'),q:tex('x=2'),a:1},{p:tex('x=2'),q:tex('2x=4'),a:2},{p:'a는 4의 배수',q:'a는 2의 배수',a:0},{p:'a는 2의 배수',q:'a는 4의 배수',a:1},{p:tex('x>2'),q:tex('x>0'),a:0},{p:tex('x+1=3'),q:tex('x=2'),a:2}];
+      const e=pool[Math.floor(rng()*pool.length)];const names=['충분조건','필요조건','필요충분조건','어느 조건도 아니다'];
+      const q=`두 조건 ${tex('p')} : ${e.p}, ${tex('q')} : ${e.q}에 대하여 ${tex('p')}는 ${tex('q')}이기 위한 무슨 조건인가?`;
+      const why=[`${tex('p')}가 맞으면 ${tex('q')}도 반드시 맞지만, 거꾸로는 아닙니다(${tex('p \\Rightarrow q')}만 참). 화살표가 나가는 ${tex('p')}는 충분조건.`,
+        `${tex('q')}가 맞으면 ${tex('p')}도 맞지만 거꾸로는 아닙니다(${tex('q \\Rightarrow p')}만 참). 화살표를 받는 ${tex('p')}는 필요조건.`,
+        `양쪽 모두 성립합니다(${tex('p \\Leftrightarrow q')}). 필요충분조건.`][e.a];
+      return{q,choices:names,raw:true,layout:'two',ans:e.a,sol:[why],answerRaw:names[e.a]};
+    }
+  },
+  { id:'u17', tag:'17번', area:'D', title:'합성함수와 역함수', src:'2023~2026 매회 17번',
+    concept:[
+      `함수는 '화살표 따라가기'입니다. ${tex('f(3)')}은 3에서 출발한 화살표가 도착한 곳.`,
+      `${tex('(g\\circ f)(3)')}은 먼저 ${tex('f')}, 그다음 ${tex('g')}. 오른쪽 것부터 씁니다. 화살표를 두 번 타면 됩니다.`,
+      `역함수 ${tex('f^{-1}(b)')}는 화살표를 거꾸로 타기. ${tex('b')}에 도착한 화살표가 어디서 출발했는지 찾습니다.`,
+      `그림 문제는 손가락으로 화살표를 짚어 가면 절대 틀리지 않습니다.`],
+    fields:[{k:'ask',label:'묻는 것',sel:['합성함수','역함수']},{k:'x0',label:'출발 원소 (1~4)',min:1,max:4},{k:'seed',label:'화살표 배치 번호',min:1,max:999}],
+    def:{ask:'합성함수',x0:3,seed:5},
+    rand(){return{ask:pick(['합성함수','합성함수','역함수']),x0:rnd(1,4),seed:rnd(1,999)};},
+    build(p){
+      const rng=mulberry(p.seed*104729+3);const X=[1,2,3,4],Y=['a','b','c','d'],Z=[5,6,7,8];
+      const fy=shuffleWith(rng,Y),gz=shuffleWith(rng,Z);
+      const fp=X.map((x,i)=>[x,fy[i]]),gp=Y.map((y,i)=>[y,gz[i]]);
+      const f=x=>fp.find(q=>q[0]===x)[1],g=y=>gp.find(q=>q[0]===y)[1],finv=y=>fp.find(q=>q[1]===y)[0];
+      const x0=Math.min(4,Math.max(1,p.x0));
+      if(p.ask==='합성함수'){
+        const ans=g(f(x0));const chs=Z.map(nf);
+        const q=`두 함수 ${tex('f:X\\to Y')}, ${tex('g:Y\\to Z')}가 그림과 같을 때, ${tex(`(g\\circ f)(${nf(x0)})`)}의 값은?`;
+        const figure=fig(mapSVG([{name:'X',items:X},{name:'Y',items:Y},{name:'Z',items:Z}],[{name:'f',pairs:fp},{name:'g',pairs:gp}]));
+        const sol=[`먼저 ${tex('f')} : ${tex(`f(${nf(x0)})=${f(x0)}`)} (${nf(x0)}에서 나간 화살표가 ${f(x0)}에 도착)`,`다음 ${tex('g')} : ${tex(`g(${f(x0)})=${nf(ans)}`)}`,`따라서 ${tex(`(g\\circ f)(${nf(x0)})=g(f(${nf(x0)}))=${nf(ans)}`)}`];
+        return{q,figure,choices:chs,ans:Z.indexOf(ans),sol,answerTex:nf(ans),layout:'one'};
+      }
+      const y0=Y[x0-1],ans=finv(y0);const chs=X.map(nf);
+      const q=`함수 ${tex('f:X\\to Y')}가 그림과 같을 때, ${tex(`f^{-1}(${y0})`)}의 값은?`;
+      const figure=fig(mapSVG([{name:'X',items:X},{name:'Y',items:Y}],[{name:'f',pairs:fp}]));
+      const sol=[`${tex(`f^{-1}(${y0})`)}는 ${y0}에 도착한 화살표가 어디서 출발했는지 묻는 것입니다.`,`${y0}로 가는 화살표는 ${nf(ans)}에서 출발하므로 ${tex(`f^{-1}(${y0})=${nf(ans)}`)}`];
+      return{q,figure,choices:chs,ans:X.indexOf(ans),sol,answerTex:nf(ans),layout:'one'};
+    }
+  },
+  { id:'u18', tag:'18번', area:'D', title:'유리함수 · 무리함수의 평행이동', src:'2023~2026 매회 18번', coord:true,
+    concept:[
+      `그래프의 휜 모양은 <b>보지 않아도 됩니다.</b>`,
+      `유리함수 ${tex('y=\\dfrac{k}{x-m}+n')} : x축, y축 말고 남아 있는 <b>빨간 점선(점근선)</b>의 좌표만 봅니다. 세로 점선 x = m, 가로 점선 y = n.`,
+      `무리함수 ${tex('y=\\sqrt{x-m}+n')} : 오직 <b>시작점 (m, n)</b>만 봅니다. 원래 ${tex('y=\\sqrt{x}')}의 시작점은 원점입니다.`,
+      `결국 문제는 <b>얼마나 오른쪽으로(m), 얼마나 위로(n) 밀었나?</b> 하나뿐입니다. ${tex('x')} 옆의 수는 부호를 뒤집어 읽습니다.`],
+    fields:[{k:'type',label:'함수 종류',sel:['무리함수','유리함수']},{k:'k',label:'[유리] 분자 k',min:-3,max:3},{k:'m',label:'x축 방향 m',min:-4,max:4},{k:'n',label:'y축 방향 n',min:-4,max:4}],
+    def:{type:'유리함수',k:2,m:1,n:2},
+    rand(){return{type:pick(['무리함수','유리함수']),k:nz(-3,3),m:nz(-3,3),n:nz(-3,3)};},
+    build(p){
+      const m=p.m,n=p.n,ans=m+n,ch=numChoices(ans),irr=p.type==='무리함수';
+      let fS,base,items,g,sol;
+      if(irr){
+        fS=`y=\\sqrt{${xm(m)}}${tail(n)}`;base='y=\\sqrt{x}';
+        const f=x=>Math.sqrt(x-m)+n;
+        g={xmin:Math.min(-2,m-1),xmax:Math.max(7,m+5),ymin:Math.min(-2,n-2),ymax:Math.max(5,n+3),s:34,maxW:430};
+        items=[{t:'fn',f:x=>Math.sqrt(x),from:0,color:GREY,dash:'8 6',width:3},{t:'fn',f,from:m,width:5},{t:'pt',x:0,y:0,color:'#8c97a6',r:6},{t:'pt',x:m,y:n,label:'시작점',guide:true,r:8,lx:-8,ly:-16},
+          {t:'text',x:Math.min(g.xmax-2.4,4.5),y:Math.sqrt(4.5)+0.5,s:'y=√x',size:18,color:'#777'}];
+        sol=[`그래프가 휘어진 모양은 볼 필요가 없습니다. 오직 <b>시작점</b>만 봅니다.`,
+          `원래 ${tex('y=\\sqrt{x}')}의 시작점은 원점 ${tex('(0,\\ 0)')}입니다. (회색 점선)`,
+          `옮겨진 그래프의 시작점은 ${tex(pr(m,n))}입니다. 원점에서 가로로 ${nf(m)}, 세로로 ${nf(n)}만큼 움직였습니다. → ${tex(`m=${nf(m)},\\ n=${nf(n)}`)}`,
+          `따라서 ${tex(`m+n=${nf(m)}+${par(n)}=${nf(ans)}`)}`];
+      }else{
+        if(p.k===0)return{err:'분자 k는 0이 아니어야 합니다.'};
+        fS=`y=\\dfrac{${nf(p.k)}}{${xm(m)}}${tail(n)}`;base=`y=\\dfrac{${nf(p.k)}}{x}`;
+        const f=x=>p.k/(x-m)+n;
+        g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:32};
+        items=[{t:'vline',x:m,label:'x='+nf(m)},{t:'hline',y:n,label:'y='+nf(n)},{t:'fn',f,from:-9,to:m-0.03,width:4.6},{t:'fn',f,from:m+0.03,to:9,width:4.6},{t:'pt',x:m,y:n,r:6,hollow:true}];
+        sol=[`그래프 모양은 신경 쓰지 않아도 됩니다. x축, y축 말고 <b>빨간 점선(점근선)</b>만 보면 됩니다.`,
+          `세로 점선이 ${tex('x='+nf(m))}에 있습니다. 원래 세로 점선은 y축(x=0)이었으니 ${m>0?'오른쪽':'왼쪽'}으로 ${nf(Math.abs(m))}만큼 밀린 것입니다. → ${tex('m='+nf(m))}`,
+          `가로 점선이 ${tex('y='+nf(n))}에 있습니다. 원래는 x축(y=0)이었으니 ${n>0?'위':'아래'}로 ${nf(Math.abs(n))}만큼 밀린 것입니다. → ${tex('n='+nf(n))}`,
+          `따라서 ${tex(`m+n=${nf(m)}+${par(n)}=${nf(ans)}`)}`];
+      }
+      const q=`${p.type} ${tex(fS)}의 그래프는 ${p.type} ${tex(base)}의 그래프를 ${tex('x')}축의 방향으로 ${tex('m')}만큼, ${tex('y')}축의 방향으로 ${tex('n')}만큼 평행이동한 것이다. 두 상수 ${tex('m,\\ n')}에 대하여 ${tex('m+n')}의 값은?`;
+      const figure=fig(planeSVG(g,items));
+      return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  },
+
+  /* ================================================================
+     영역 E. 경우의 수
+     ================================================================ */
+  { id:'u19', tag:'19번', area:'E', title:'순열', src:'2023~2026 매회 19번',
+    concept:[
+      `'순서대로', '나란히', '1등·2등'처럼 순서가 있으면 순열입니다.`,
+      `${tex('{}_4\\mathrm{P}_2')}는 4에서 시작해 1씩 줄이며 2개를 곱합니다 : ${tex('4\\times 3=12')}`,
+      `${tex('{}_4\\mathrm{P}_3=4\\times 3\\times 2=24')}, ${tex('{}_5\\mathrm{P}_2=5\\times 4=20')}. 시험은 이 세 가지만 나옵니다.`,
+      `첫 자리에 올 수 있는 것 4가지, 다음 자리는 하나 빠져서 3가지. 그래서 곱합니다.`],
+    fields:[{k:'c',label:'경우',sel:['4개 중 2개','4개 중 3개','5개 중 2개']},{k:'seed',label:'상황 번호',min:1,max:99}],
+    def:{c:'4개 중 3개',seed:1},
+    rand(){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개']),seed:rnd(1,99)};},
+    build(p){
+      const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
+      const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
+      const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
+      const q=`${e.a} ${nf(n)}${e.u}가 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}를 ${e.v} 경우의 수는?`;
+      const fac=Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ');
+      const sol=[`순서가 있으므로 순열입니다. ${tex(`{}_{${nf(n)}}\\mathrm{P}_{${nf(r)}}`)}`,`${tex(nf(n))}부터 1씩 줄이며 ${tex(nf(r))}개를 곱합니다 : ${tex(`${fac}=${nf(ans)}`)}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  },
+  { id:'u20', tag:'20번', area:'E', title:'조합', src:'2023~2026 매회 20번',
+    concept:[
+      `'선택한다', '고른다', '뽑는다'만 있고 순서 말이 없으면 조합입니다.`,
+      `${tex('{}_5\\mathrm{C}_3')}는 순열 ${tex('5\\times 4\\times 3')}을 ${tex('3\\times 2\\times 1')}로 나눈 것 : ${tex('\\dfrac{60}{6}=10')}`,
+      `${tex('{}_4\\mathrm{C}_2=\\dfrac{4\\times 3}{2\\times 1}=6')}, ${tex('{}_5\\mathrm{C}_2=\\dfrac{5\\times 4}{2\\times 1}=10')}, ${tex('{}_4\\mathrm{C}_3=4')}. 이 네 가지가 전부입니다.`,
+      `순서를 안 따지니까 같은 묶음이 여러 번 세어진 것을 나누어 없애는 것입니다.`],
+    fields:[{k:'c',label:'경우',sel:['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개']},{k:'seed',label:'상황 번호',min:1,max:99}],
+    def:{c:'5개 중 3개',seed:1},
+    rand(){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개']),seed:rnd(1,99)};},
+    build(p){
+      const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
+      const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
+      const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
+      const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}가 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}를 ${e.v} 경우의 수는?`;
+      const fn=Array.from({length:r},(_,i)=>nf(n-i)).join('\\times '),fd=Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ');
+      const sol=[`순서를 따지지 않으므로 조합입니다. ${tex(`{}_{${nf(n)}}\\mathrm{C}_{${nf(r)}}`)}`,`${tex(`\\dfrac{${fn}}{${fd}}=\\dfrac{${nf(num)}}{${nf(den)}}=${nf(ans)}`)}`];
+      return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
+    }
+  }
+  ];
+})();
+
+/* 자주 쓰는 묶음(프리셋) */
+var GED_PRESETS=[
+  {k:'coord',icon:'★',lbl:'좌표 완전정복',desc:'좌표 기초 3 + 좌표평면 유형 6 (7·10·11·12·13·14·18번)',ids:['c1','c2','c3','u7','u10','u11','u12','u13','u14','u18']},
+  {k:'warm',icon:'🌱',lbl:'좌표 워밍업',desc:'좌표 읽기·사분면·직선 + 대칭이동·거리',ids:['c1','c2','c3','u14','u10']},
+  {k:'geo',icon:'📐',lbl:'도형의 방정식',desc:'10번~14번 (영역 C)',ids:['u10','u11','u12','u13','u14']},
+  {k:'all20',icon:'📘',lbl:'전 영역 1~20번',desc:'고졸 검정고시 20문항 유형 전부',ids:['u1','u2','u3','u4','u5','u6','u7','u8','u9','u10','u11','u12','u13','u14','u15','u16','u17','u18','u19','u20']},
+  {k:'full',icon:'🌍',lbl:'전체 (기초 포함)',desc:'좌표 기초 3 + 20문항 유형',ids:['c1','c2','c3','u1','u2','u3','u4','u5','u6','u7','u8','u9','u10','u11','u12','u13','u14','u15','u16','u17','u18','u19','u20']}
+];
