@@ -17,6 +17,13 @@
     git push ssh://git@ssh.github.com:443/lettuce-and-gimbap/dailymath_taechungyahak.git main
   ```
 
+### 2026-09-07 추가: 비대화형 셸(Claude Code 등)에서는 HTTPS가 확실함
+- `id_rsa` 에 **패스프레이즈**가 걸려 있어 ssh-agent 없는 셸에서는 위 SSH 방식이 `Permission denied (publickey)` 로 실패한다.
+- 대신 Git Credential Manager(`credential.helper=manager`)에 저장된 GitHub 토큰으로 HTTPS 푸시가 바로 된다:
+  ```bash
+  GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never git push https://github.com/lettuce-and-gimbap/dailymath_taechungyahak.git main
+  ```
+
 ### 영구 설정 방법 (선택)
 `~/.ssh/config` 에 아래 내용을 추가하면 매번 명시하지 않아도 됨:
 ```
