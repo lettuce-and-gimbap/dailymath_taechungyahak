@@ -1,4 +1,9 @@
-// === js/components/worksheet.js ===
+// === js/teacher/worksheet.js ===
+/* --------------------------------------------------------------------
+   학습지 탭
+   연산·약수·배수·문장제 문제지와 검정고시 모의고사 문제지 생성
+   -------------------------------------------------------------------- */
+
 function WorksheetTab(){
   const[wsType,setWsType]=useState('div');
   const[title,setTitle]=useState('');
@@ -698,5 +703,3 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
     </div>
   </div>);
 }
-
-

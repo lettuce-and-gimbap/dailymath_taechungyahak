@@ -13,8 +13,23 @@
 - **작업대**: 새로 만들어도 이전 학습지가 지워지지 않고 쌓인다. 장마다 접기/펼치기 토글
 - 학습지마다 **저장**(Firestore `gedSheets`) · **반출**(인쇄/PDF · 새 탭 · JSON) · **삭제**, 자동 임시저장
 
-코드: `js/worksheet/gedCore.js`(엔진) · `js/worksheet/gedUnits.js`(유형) · `js/components/gedWorksheet.js`(탭)
+코드: `js/worksheet/gedCore.js`(엔진) · `js/worksheet/gedUnits.js`(유형) · `js/teacher/gedWorksheet.js`(탭)
+
+## 폴더 구조
+
+`js/` 는 **계층 → 도메인** 순서로 나눈다. 아래 계층은 위 계층만 알고, 위 계층은 아래를 모른다.
+
+| 폴더 | 역할 |
+|---|---|
+| `core/` | 상수 · 공용 도우미 · 기출 매핑 · 로그 지표 · Firestore 접근 |
+| `math/` | 수식 표기 · 그래프 미리보기 · 그래프 SVG (여러 화면 공용) |
+| `generators/` | 문제 생성기 (`elementary` · `middle` · `high/` 영역별) |
+| `worksheet/` | 만능 학습지 엔진 |
+| `ui/` | 로그인 · 스플래시 · 인쇄 모달 (학생·선생님 공용) |
+| `student/` | 학생 화면 — 홈 · 문제풀기 · 기하학 · 모의고사 · 기록 · 숙제 |
+| `teacher/` | 선생님 화면 — 학생관리 · 상세분석 · 오답노트 · 공지 · 학습지 |
 
 ## 개발 메모
 
-`js/` 아래를 고친 뒤에는 반드시 `scripts_rebuild_index.py` 를 실행해 `index.html` 을 다시 만든다. 자세한 내용은 `CLAUDE.md` 참고.
+`js/` 아래를 고친 뒤에는 반드시 `scripts_rebuild_index.py` 를 실행해 `index.html` 을 다시 만든다.
+`index.html` 은 `js/` 를 이어 붙인 결과물이라 직접 고치지 않는다. 자세한 내용은 `CLAUDE.md` 참고.

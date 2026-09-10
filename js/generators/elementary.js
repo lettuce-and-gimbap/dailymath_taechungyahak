@@ -1,4 +1,9 @@
-// === js/generators/basic.js ===
+// === js/generators/elementary.js ===
+/* --------------------------------------------------------------------
+   초등 과정 생성기
+   나눗셈 · 약수/공약수 · 배수/공배수 · 스토리텔링 문장제
+   -------------------------------------------------------------------- */
+
 /* ===== MATH PROBLEM GENERATORS ===== */
 function genDivBasic(mn,mx){
   let pairs=[];
@@ -7,6 +12,7 @@ function genDivBasic(mn,mx){
   const p=pairs[Math.floor(Math.random()*pairs.length)];
   return{a:p.b*p.c,b:p.b,ansC:p.c,ansR:0,hasR:false,qLogTxt:`${p.b*p.c} ÷ ${p.b}`};
 }
+
 function genDivRemainder(mn,mx){
   const a=randInt(mn,mx);let bOpts=[];
   for(let i=2;i<=9;i++)if(a%i!==0&&Math.floor(a/i)>=1)bOpts.push(i);
@@ -14,17 +20,20 @@ function genDivRemainder(mn,mx){
   if(a%b===0)b=b>=9?7:b+1;
   return{a,b,ansC:Math.floor(a/b),ansR:a%b,hasR:true,qLogTxt:`${a} ÷ ${b}`};
 }
+
 function genDivisors(mn,mx,hard){
   const tgt=hard?randInt(10,200):randInt(mn,mx);
   const divs=[];for(let i=1;i<=tgt;i++)if(tgt%i===0)divs.push(i);
   return{target:tgt,divisors:divs};
 }
+
 function generate3By2Div(){
   let a,b,q,r;
   while(true){b=randInt(10,99);r=randInt(1,b-1);let minQ=Math.ceil((100-r)/b),maxQ=Math.floor((999-r)/b);
     if(minQ<=maxQ&&maxQ>=1){q=randInt(minQ,maxQ);a=b*q+r;if(a>=100&&a<=999)break}}
   return{a,b,q,r,txt:`${a} ÷ ${b} = `};
 }
+
 function genGCDQuestion(min = 12, max = 50) {
   let a, b, g;
   let attempts = 0;
@@ -62,6 +71,7 @@ function genLCMQuestion(min = 2, max = 9) {
 
 /* ===== STORY MATH GENERATORS (문장제 문제) ===== */
 var NAMES = ['준하', '이안', '지우', '유하', '신비', '윈터', '설윤', '철수', '영희', '민수', '지민', '수아', '지훈', '상훈', '하은', '도윤'];
+
 var ITEMS = ['사과', '사탕', '구슬', '연필', '쿠키', '초콜릿', '딸기', '공책', '스티커', '장난감', '귤'];
 
 // 한글 받침 유무에 따라 조사를 자동으로 붙여주는 함수
@@ -77,7 +87,6 @@ function josa(word, j) {
   else if (j.includes('과') || j.includes('와')) res = hasJong ? '과' : '와';
   return word + res;
 }
-
 
 function genStoryLow(op) {
   const name = pick(NAMES); 
@@ -154,7 +163,6 @@ function genStoryLow(op) {
     if (type === 12) { const ans = randInt(4, 8); const b = randInt(10, 20); const a = ans * b; return { txt: `가족 사진 ${a}장을 새 사진첩 ${b}쪽에 똑같이 나누어 붙이려고 합니다. 한 쪽에 사진을 몇 장씩 붙여야 할까요?`, ans: ans }; }
   }
 }
-
 
 function genStoryMid(op) {
   const name = pick(NAMES);

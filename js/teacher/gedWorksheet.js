@@ -1,4 +1,9 @@
-// === js/components/gedWorksheet.js ===
+// === js/teacher/gedWorksheet.js ===
+/* --------------------------------------------------------------------
+   만능 학습지 탭
+   좌표 중심 + 고졸 검정고시 전 유형 학습지 작업대
+   -------------------------------------------------------------------- */
+
 /* =====================================================================
    만능 학습지 편집실 (선생님 탭) — 여러 장 보관(작업대) 방식
    - 좌표 중심 프리셋 + 고졸 검정고시 20문항 전 유형 선택
@@ -9,13 +14,18 @@
    - localStorage 자동 임시저장(v1 단일 학습지 데이터는 자동으로 옮겨 온다)
    ===================================================================== */
 var GED_LS_KEY='ged_sheet_builder_v2';
+
 var GED_LS_KEY_V1='ged_sheet_builder_v1';
+
 var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:'좌표 기초 · 대칭이동 · 평행이동 · 이차함수 · 원의 방정식 · 유리·무리함수 · 내분점 — 2024년 이후 출제 유형 중심',
   fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3};
 
 function gedNewRec(u,idx,params){return{key:`${u.id}-${idx}-${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`,uid:u.id,idx,params,override:null,rev:0};}
+
 function gedSafeBuild(u,p){try{const r=u.build(p);return r&&!r.err?r:null;}catch(e){return null;}}
+
 function gedSheetId(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
 /* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지) */
 function gedGenUnit(u,count,withEx){
   const out=[];
@@ -30,6 +40,7 @@ function gedGenUnit(u,count,withEx){
   }
   return out;
 }
+
 /* 문항 목록 → 유형별 묶음 + 실전 문항 번호 매기기 */
 function gedGroups(problems){
   const gs=[];let no=0;
@@ -37,13 +48,17 @@ function gedGroups(problems){
     gs.push({unit:u,recs:recs.map(r=>({...r,no:r.idx===0?'예제':++no}))});});
   return gs;
 }
+
 function gedFmtTime(ts){if(!ts)return'';const d=ts&&ts.toDate?ts.toDate():new Date(ts);
   return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+
 function gedSafeName(s){return String(s||'학습지').replace(/[\\/:*?"<>|]/g,'_').slice(0,60);}
+
 /* 새 학습지 한 장 만들기 */
 function gedMakeSheet(cfg,problems,docId){
   return{id:gedSheetId(),cfg:{...cfg},problems,docId:docId||null,collapsed:false,edit:false,showCtrl:true,createdAt:Date.now()};
 }
+
 /* localStorage 복원 (v2 → 없으면 v1 단일 학습지를 한 장으로 옮겨 옴) */
 function gedLoadInit(){
   const def={setupCfg:{...GED_DEF_CFG},selected:GED_PRESETS[0].ids,sheets:[]};

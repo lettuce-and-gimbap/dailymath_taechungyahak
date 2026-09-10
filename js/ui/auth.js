@@ -1,4 +1,9 @@
-// === js/components/auth.js ===
+// === js/ui/auth.js ===
+/* --------------------------------------------------------------------
+   로그인 화면과 다크 모드 토글
+   앱 진입점에서 사용
+   -------------------------------------------------------------------- */
+
 function DarkToggle({className}){
   const[dark,setDark]=React.useState(()=>typeof document!=='undefined'&&document.body.classList.contains('dark'));
   const toggle=()=>{

@@ -1,4 +1,9 @@
-// === js/components/home.js ===
+// === js/student/home.js ===
+/* --------------------------------------------------------------------
+   홈 탭
+   수학 나무 숲 · 출석 스탬프 · 공지/숙제 · 내가 보낸 의견
+   -------------------------------------------------------------------- */
+
 function calcStreak(activeDates){
   if(!activeDates?.length)return{total:0,streak:0};
   const u=[...new Set(activeDates)].sort((a,b)=>b.localeCompare(a));const total=u.length;
@@ -8,7 +13,6 @@ function calcStreak(activeDates){
   streak=1;for(let i=1;i<u.length;i++){const d1=new Date(u[i-1]),d2=new Date(u[i]);if((d1-d2)/(1000*60*60*24)===1)streak++;else break}
   return{total,streak};
 }
-
 
 /* ===== HOME TAB (나의 수학 나무 숲 & 대시보드) ===== */
 /* ── 학생이 보낸 의견 목록 (삭제 + 읽기 전 수정) ── */

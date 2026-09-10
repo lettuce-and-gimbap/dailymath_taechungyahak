@@ -1,4 +1,9 @@
-// === js/components/mockExam.js ===
+// === js/student/mockExam.js ===
+/* --------------------------------------------------------------------
+   모의고사 탭
+   중졸·고졸 검정고시 모의고사 응시
+   -------------------------------------------------------------------- */
+
 function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);

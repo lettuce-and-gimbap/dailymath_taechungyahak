@@ -1,4 +1,9 @@
-// === js/components/geometry.js ===
+// === js/student/explore.js ===
+/* --------------------------------------------------------------------
+   기하학 탭 화면
+   개념 학습 · 그래프 탐험 · 확인 퀴즈
+   -------------------------------------------------------------------- */
+
 function GeometryTab({userData, onUpdate}){
   const[subTab,setSubTab]=useState('learn');
   const sz=useCanvasSize();
