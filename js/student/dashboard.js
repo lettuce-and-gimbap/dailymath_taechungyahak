@@ -13,7 +13,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   const[pendingTab,setPendingTab]=useState(null);
   const[hasSavedSession,setHasSavedSession]=useState(()=>!!localStorage.getItem('yakHakSavedSession_'+userData.name));
   const[activeHomework,setActiveHomework]=useState(null);
-  const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
+  const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표10'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
 
   const handleSessionActive=(active)=>{
     setSessionActive(active);
@@ -102,6 +102,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
       {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}/>}
+      {tab==='coord'&&<CoordDailyTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}

@@ -399,7 +399,15 @@ function GedWorksheetTab(){
           <div className="text-xs font-black text-gray-500 uppercase mb-2">2. 어떻게 구성할까요?</div>
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-xs font-bold text-gray-600">유형당 실전</span>
-            {[1,2,3,4,5,6].map(n=><Btn key={n} on={setupCfg.count===n} onClick={()=>setSetupCfg({count:n})}>{n}문항</Btn>)}
+            {[1,2,3,4,5,6,8,10,12,15,20,25,30].map(n=><Btn key={n} on={setupCfg.count===n} onClick={()=>setSetupCfg({count:n})}>{n}문항</Btn>)}
+          </div>
+          {/* 직접 입력 — 버튼에 없는 수(예: 7, 40)도 쓸 수 있게 */}
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-[11px] font-bold text-gray-400">직접 입력</span>
+            <input type="number" min="1" max="50" value={setupCfg.count}
+              onChange={e=>{const v=Math.max(1,Math.min(50,Number(e.target.value)||1));setSetupCfg({count:v});}}
+              className="w-20 border-2 border-gray-200 rounded-xl px-2 py-1.5 text-sm font-black text-center outline-none focus:border-indigo-400"/>
+            <span className="text-[11px] font-bold text-gray-400">문항 (1~50)</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             <Btn on={setupCfg.includeConcept} onClick={()=>setSetupCfg({includeConcept:!setupCfg.includeConcept})}>📖 개념 카드</Btn>

@@ -29,6 +29,7 @@ FILES = [
     "js/student/explore.js",
     "js/student/home.js",
     "js/student/practice.js",
+    "js/student/coordDaily.js",
     "js/student/report.js",
     "js/student/history.js",
     "js/student/mockExam.js",
