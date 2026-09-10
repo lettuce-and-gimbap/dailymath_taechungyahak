@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>수학반 커리큘럼 보드 · 태청야학</title>
+<link rel="icon" href="icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAFAF6; --card:#FFFFFF; --ink:#1F2421; --soft:#4B534C; --faint:#7C837C;
+    --rule:#DCDED4; --rule2:#B7BCB0;
+    --green:#2A6E4C; --green-bg:#EAF2ED;
+    --stamp:#A8382F; --stamp-bg:#F8ECEA;
+    --gold:#7E6420; --gold-bg:#F5EFDD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif;}
+  h1,h2,h3,.serif{font-family:"Gowun Batang","Batang",serif}
+  .mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  button{font-family:inherit}
+  input,textarea{font-family:inherit;color:inherit}
+  /* 상황표 셀 */
+  .lv0{background:#fff;color:var(--faint);border-color:var(--rule)}
+  .lv1{background:var(--gold-bg);color:var(--gold);border-color:#DDD0A8}
+  .lv2{background:var(--green-bg);color:var(--green);border-color:#A9CDB8}
+  .lv3{background:var(--green);color:#fff;border-color:var(--green)}
+  .sticky-l{position:sticky;left:0;z-index:2}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:#c9cdc3;border-radius:4px}
+  @media print{
+    .no-print{display:none !important}
+    body{background:#fff}
+    @page{size:A4 portrait;margin:14mm}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyB91eiFNRs_ziJnzWMjvg-TKSq447oPasY",
+  authDomain:"math-solving-daily.firebaseapp.com",
+  projectId:"math-solving-daily",
+  storageBucket:"math-solving-daily.firebasestorage.app",
+  messagingSenderId:"909343306519",
+  appId:"1:909343306519:web:d18ff0db8f74015b053d52"
+});
+window._db = firebase.firestore();
+</script>
+
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef,useCallback} = React;
+const db = window._db;
+
+/* ══════════════════════════════════════════════════════════
+   저장소 — Firestore 문서 하나 + localStorage 폴백
+   curriculumBoard/2026-2027 = { sessions:{}, mastery:{}, students:[] }
+   읽기·쓰기 각 1회씩만 쓰도록 문서 하나에 모아 둔다.
+   ══════════════════════════════════════════════════════════ */
+const DOC_ID   = '2026-2027';
+const LS_KEY   = 'curriculumBoard_' + DOC_ID;
+const GOAL     = 12;              // 합격선: ★★ 이상 12유형 = 60점
+
+/* ── 고졸 검정고시 20유형 ── */
+const P_CORE='core', P_2ND='second', P_3RD='third';
+const UNITS = [
+  {n:1,  t:'다항식의 계산',            p:P_CORE},
+  {n:2,  t:'항등식',                   p:P_CORE},
+  {n:3,  t:'나머지정리 · 조립제법',    p:P_2ND},
+  {n:4,  t:'다항식의 인수분해',        p:P_CORE},
+  {n:5,  t:'허수와 켤레복소수',        p:P_CORE},
+  {n:6,  t:'이차방정식의 해',          p:P_CORE},
+  {n:7,  t:'이차함수 최대 · 최소',     p:P_2ND},
+  {n:8,  t:'삼 · 사차방정식의 근',     p:P_3RD},
+  {n:9,  t:'이차부등식',               p:P_3RD},
+  {n:10, t:'두 점 사이의 거리',        p:P_CORE},
+  {n:11, t:'선분의 내분점',            p:P_CORE},
+  {n:12, t:'점과 직선 사이의 거리',    p:P_2ND},
+  {n:13, t:'원의 방정식',              p:P_2ND},
+  {n:14, t:'평행이동 · 대칭이동',      p:P_CORE},
+  {n:15, t:'집합',                     p:P_CORE},
+  {n:16, t:'명제',                     p:P_CORE},
+  {n:17, t:'합성함수 · 역함수',        p:P_2ND},
+  {n:18, t:'유리함수 · 무리함수',      p:P_3RD},
+  {n:19, t:'순열',                     p:P_CORE},
+  {n:20, t:'조합',                     p:P_CORE},
+];
+const P_LABEL = {core:'코어', second:'2순위', third:'3순위'};
+const P_CLS   = {core:'bg-[var(--green)] text-white',
+                 second:'bg-[var(--gold-bg)] text-[var(--gold)] border border-[#DDD0A8]',
+                 third:'bg-[#F3F4F1] text-[var(--faint)] border border-[var(--rule)]'};
+
+/* ── ★ 판정 4단계 ── */
+const LEVELS = [
+  {v:0, mark:'☆',   name:'미학습',    desc:'아직 배우지 않았거나 손대지 못함'},
+  {v:1, mark:'★',   name:'도움받아',  desc:'힌트를 받아 풀이 완성'},
+  {v:2, mark:'★★',  name:'혼자',      desc:'개입 없이 정확히 풀이 (1회)'},
+  {v:3, mark:'★★★', name:'설명까지',  desc:'다른 날 2회 연속, 또는 말로 설명'},
+];
+
+/* ── 회차 시드 (PDF 커리큘럼과 같은 내용) ── */
+const PHASES = [
+  {k:1, t:'1단계 · 코어 12 1회전',        sub:'2026. 9 ~ 12'},
+  {k:2, t:'2단계 · 겨울 반복과 2순위',    sub:'2027. 1 ~ 2'},
+  {k:3, t:'3~4단계 · 실전화와 파이널',    sub:'2027. 3 ~ 4'},
+  {k:4, t:'5~6단계 · 재정비와 제2회',     sub:'2027. 5 ~ 8'},
+];
+// no: 회차(휴강·시험은 null) / d: 날짜 / t: 제목 / u: 새로 배우는 유형 / r: 복습 / k: 종류
+const SEED = [
+  {no:1,  d:'2026-09-11', ph:1, k:'test', t:'진단평가 — 고졸 20문항', u:[], r:'', memo:'학생별 유형 지도 20칸 최초 작성'},
+  {no:2,  d:'2026-09-18', ph:1, k:'lesson', t:'좌표 기초 — 점 읽기 · 사분면 · 직선', u:[], r:'진단 오답 3문항'},
+  {no:null,d:'2026-09-25',ph:1, k:'rest', t:'휴강 예상 (추석) — 앱 숙제 5문항 배포', u:[], r:''},
+  {no:3,  d:'2026-10-02', ph:1, k:'lesson', t:'1번 다항식의 계산', u:[1], r:'좌표 기초 2문항'},
+  {no:null,d:'2026-10-09',ph:1, k:'rest', t:'휴강 예상 (한글날)', u:[], r:''},
+  {no:4,  d:'2026-10-16', ph:1, k:'lesson', t:'2번 항등식', u:[2], r:'1번'},
+  {no:5,  d:'2026-10-23', ph:1, k:'lesson', t:'4번 인수분해', u:[4], r:'2번 · 좌표 기초'},
+  {no:6,  d:'2026-10-30', ph:1, k:'test', t:'5번 켤레복소수 + 10월 미니 모의고사', u:[5], r:'4번 · 1번', memo:'미니 모의: 1·2·4번 각 2문항'},
+  {no:7,  d:'2026-11-06', ph:1, k:'lesson', t:'6번 이차방정식의 해', u:[6], r:'5번 · 2번'},
+  {no:8,  d:'2026-11-13', ph:1, k:'lesson', t:'10번 두 점 사이의 거리', u:[10], r:'6번 · 4번'},
+  {no:9,  d:'2026-11-20', ph:1, k:'lesson', t:'11번 선분의 내분점', u:[11], r:'10번 · 5번'},
+  {no:10, d:'2026-11-27', ph:1, k:'test', t:'14번 평행 · 대칭이동 + 11월 미니 모의고사', u:[14], r:'11번 · 6번', memo:'미니 모의: 5·6·10·11번'},
+  {no:11, d:'2026-12-04', ph:1, k:'lesson', t:'15번 집합', u:[15], r:'14번 · 10번'},
+  {no:12, d:'2026-12-11', ph:1, k:'lesson', t:'16번 명제 + 19 · 20번 순열 · 조합', u:[16,19,20], r:'15번 · 11번', memo:'19·20번은 고정 출제 형태 표로 암기'},
+  {no:13, d:'2026-12-18', ph:1, k:'test', t:'학기말 총정리 모의고사 — 코어 12유형 각 1문항', u:[], r:'전체', memo:'성장카드 1차 발급 + 생활통지표'},
+
+  {no:null,d:'2026-12-25',ph:2, k:'rest', t:'휴강 (성탄절) — 겨울 숙제 꾸러미 배포', u:[], r:''},
+  {no:null,d:'2027-01-01',ph:2, k:'rest', t:'휴강 (신정)', u:[], r:''},
+  {no:14, d:'2027-01-08', ph:2, k:'lesson', t:'3번 나머지정리 · 조립제법', u:[3], r:'1 · 2 · 4번'},
+  {no:15, d:'2027-01-15', ph:2, k:'lesson', t:'7번 이차함수 최대 · 최소', u:[7], r:'3번 · 6번'},
+  {no:16, d:'2027-01-22', ph:2, k:'test', t:'겨울 중간 점검 모의고사 — 코어 12', u:[], r:'오답 클리닉'},
+  {no:17, d:'2027-01-29', ph:2, k:'lesson', t:'13번 원의 방정식', u:[13], r:'7번 · 10 · 11번'},
+  {no:null,d:'2027-02-05',ph:2, k:'rest', t:'휴강 예상 (설 연휴)', u:[], r:''},
+  {no:18, d:'2027-02-12', ph:2, k:'lesson', t:'12번 점과 직선 사이의 거리', u:[12], r:'13번 · 14번'},
+  {no:19, d:'2027-02-19', ph:2, k:'lesson', t:'17번 합성함수 · 역함수', u:[17], r:'12번 · 15 · 16번'},
+  {no:20, d:'2027-02-26', ph:2, k:'test', t:'2순위 5유형 모의고사 + 원서 접수 안내', u:[], r:'전체', memo:'제1회 원서 접수는 2월 중순 — 한 사람씩 확인'},
+
+  {no:21, d:'2027-03-05', ph:3, k:'test', t:'실전 모의고사 1회차 — 20문항 · 40분', u:[], r:'', memo:'점수 공개, 유형 지도 갱신'},
+  {no:22, d:'2027-03-12', ph:3, k:'lesson', t:'개인 클리닉 A — 오답 상위 3유형', u:[], r:''},
+  {no:23, d:'2027-03-19', ph:3, k:'lesson', t:'개인 클리닉 B + 9번 이차부등식', u:[9], r:''},
+  {no:24, d:'2027-03-26', ph:3, k:'test', t:'실전 모의고사 2회차 + 시험 요령', u:[], r:'', memo:'시간 배분 · OMR · 모르는 문항 처리 · 검산 순서'},
+  {no:25, d:'2027-04-02', ph:3, k:'lesson', t:'파이널 90분 — 코어 12유형 각 1문항', u:[], r:'코어 12', memo:'성장카드 최종본 전달, 수험표 확인'},
+  {no:null,d:'2027-04-10',ph:3, k:'exam', t:'2027년 제1회 고졸 검정고시 시행 (일정 확인 필요)', u:[], r:''},
+  {no:26, d:'2027-04-16', ph:3, k:'lesson', t:'리뷰 수업 — 복기 · 자기 채점 · 다음 목표', u:[], r:''},
+
+  {no:27, d:'2027-05-07', ph:4, k:'lesson', t:'재건축 진단 / 합격 트랙: 생활수학 ① 비율 · 할인 · 이자', u:[], r:''},
+  {no:28, d:'2027-05-14', ph:4, k:'lesson', t:'무너진 코어 재학습 ① / 합격 트랙: 18번', u:[18], r:''},
+  {no:29, d:'2027-05-21', ph:4, k:'lesson', t:'무너진 코어 재학습 ② / 합격 트랙: 8번', u:[8], r:''},
+  {no:30, d:'2027-05-28', ph:4, k:'test', t:'5월 점검 모의고사', u:[], r:''},
+  {no:31, d:'2027-06-04', ph:4, k:'lesson', t:'2순위 재학습 (3 · 7 · 13번) / 생활수학 ② 통계 읽기', u:[], r:'3 · 7 · 13번'},
+  {no:32, d:'2027-06-11', ph:4, k:'lesson', t:'2순위 재학습 (12 · 17번) / 합격 트랙: 9번', u:[], r:'12 · 17번'},
+  {no:33, d:'2027-06-18', ph:4, k:'lesson', t:'좌표 영역 집중 (10 ~ 14번 연속)', u:[], r:'10 ~ 14번'},
+  {no:34, d:'2027-06-25', ph:4, k:'test', t:'6월 모의고사 + 제2회 원서 접수 확인', u:[], r:'', memo:'접수는 6월 중순'},
+  {no:35, d:'2027-07-02', ph:4, k:'lesson', t:'개인 클리닉 A', u:[], r:''},
+  {no:36, d:'2027-07-09', ph:4, k:'lesson', t:'개인 클리닉 B', u:[], r:''},
+  {no:37, d:'2027-07-16', ph:4, k:'test', t:'실전 모의고사 3회차 — 40분 · OMR 포함', u:[], r:''},
+  {no:null,d:'2027-07-23',ph:4, k:'rest', t:'휴강 예상 (하계 일정) — 파이널 숙제 배포', u:[], r:''},
+  {no:38, d:'2027-07-30', ph:4, k:'lesson', t:'파이널 90분 + 성장카드 발급', u:[], r:'코어 12'},
+  {no:null,d:'2027-08-07',ph:4, k:'exam', t:'2027년 제2회 고졸 검정고시 시행 (일정 확인 필요)', u:[], r:''},
+  {no:39, d:'2027-08-13', ph:4, k:'lesson', t:'리뷰 수업 — 가채점 · 결과 나누기', u:[], r:''},
+  {no:40, d:'2027-08-20', ph:4, k:'test', t:'학기말 · 연간 성장 발표', u:[], r:'', memo:'연간 통지표 작성'},
+];
+
+/* ── 유틸 ── */
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+const fmtD = iso => {
+  const [y,m,dd] = iso.split('-');
+  return `${Number(m)}/${Number(dd)}`;
+};
+const fmtFull = iso => {
+  const dt = new Date(iso+'T00:00:00');
+  const w = ['일','월','화','수','목','금','토'][dt.getDay()];
+  return `${dt.getFullYear()}. ${dt.getMonth()+1}. ${dt.getDate()}. (${w})`;
+};
+const unitById = n => UNITS.find(u => u.n === n);
+const gaugeOf  = m => UNITS.filter(u => (m?.[u.n]||0) >= 2).length;
+
+/* ══════════════════════════════════════════════════════════
+   보드 데이터 훅 — Firestore 실시간 구독 + 로컬 폴백
+   ══════════════════════════════════════════════════════════ */
+function useBoard(){
+  const [board, setBoard] = useState(() => {
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return {status:{}, mastery:{}, students:[]};
+  });
+  const [conn, setConn]   = useState('connecting'); // connecting | live | offline
+  const skipRef = useRef(false);                    // 내가 방금 쓴 스냅샷은 무시
+
+  useEffect(() => {
+    let unsub = () => {};
+    try{
+      unsub = db.collection('curriculumBoard').doc(DOC_ID).onSnapshot(
+        snap => {
+          setConn('live');
+          if(!snap.exists) return;
+          if(skipRef.current){ skipRef.current = false; return; }
+          const d = snap.data() || {};
+          setBoard({status:d.status||{}, mastery:d.mastery||{}, students:d.students||[]});
+        },
+        err => { console.warn('[board] 구독 실패 — 로컬 저장으로 전환', err); setConn('offline'); }
+      );
+    }catch(e){ setConn('offline'); }
+    return () => unsub();
+  }, []);
+
+  // 로컬 백업은 항상 남긴다 (오프라인·새로고침 대비)
+  useEffect(() => {
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(board)); }catch(e){}
+  }, [board]);
+
+  const commit = useCallback(next => {
+    setBoard(next);
+    skipRef.current = true;
+    db.collection('curriculumBoard').doc(DOC_ID)
+      .set({...next, updatedAt: new Date().toISOString()}, {merge:true})
+      .then(() => setConn('live'))
+      .catch(err => { console.warn('[board] 저장 실패 — 로컬에만 보관', err); setConn('offline'); });
+  }, []);
+
+  return {board, conn, commit};
+}
+
+/* ══════════════════════════════════════════════════════════
+   공통 조각
+   ══════════════════════════════════════════════════════════ */
+function Gauge({value, size='md'}){
+  const pct = Math.min(100, (value/UNITS.length)*100);
+  const goalPct = (GOAL/UNITS.length)*100;
+  const h = size==='lg' ? 'h-5' : 'h-3';
+  return (
+    <div className="w-full">
+      <div className={`relative w-full ${h} bg-[#EDEFE9] rounded-sm overflow-hidden border border-[var(--rule)]`}>
+        <div className="absolute inset-y-0 left-0 bg-[var(--green)]" style={{width:pct+'%'}}></div>
+        <div className="absolute inset-y-0 w-[2px] bg-[var(--stamp)]" style={{left:`calc(${goalPct}% - 1px)`}}></div>
+      </div>
+    </div>
+  );
+}
+
+function ConnPill({conn}){
+  const map = {
+    connecting:['연결 중…','bg-[#F3F4F1] text-[var(--faint)]'],
+    live:['실시간 저장 중','bg-[var(--green-bg)] text-[var(--green)]'],
+    offline:['오프라인 — 이 기기에만 저장','bg-[var(--stamp-bg)] text-[var(--stamp)]'],
+  };
+  const [txt, cls] = map[conn] || map.connecting;
+  return <span className={`text-[11px] font-semibold px-2 py-1 rounded-sm ${cls}`}>{txt}</span>;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ① 진행표 — 회차별 진행 상황
+   ══════════════════════════════════════════════════════════ */
+const ST = {
+  todo: {label:'예정',  cls:'bg-white text-[var(--faint)] border-[var(--rule2)]'},
+  done: {label:'완료',  cls:'bg-[var(--green)] text-white border-[var(--green)]'},
+  off:  {label:'휴강',  cls:'bg-[#F3F4F1] text-[var(--faint)] border-[var(--rule)] line-through'},
+};
+const nextStatus = s => s==='done' ? 'off' : s==='off' ? 'todo' : 'done';
+
+function ProgressTab({board, commit, editable}){
+  const [phase, setPhase] = useState(0);   // 0 = 전체
+  const today = todayISO();
+
+  const rows = useMemo(
+    () => SEED.filter(s => phase===0 || s.ph===phase),
+    [phase]
+  );
+  const lessons = SEED.filter(s => s.k!=='rest' && s.k!=='exam');
+  const doneN   = lessons.filter(s => (board.status[s.d]?.state) === 'done').length;
+
+  const upd = (d, patch) => {
+    const st = {...board.status, [d]: {...(board.status[d]||{}), ...patch}};
+    commit({...board, status: st});
+  };
+
+  // 다음 수업 = 오늘 이후 첫 회차
+  const upcoming = SEED.find(s => s.d >= today);
+
+  return (
+    <div className="space-y-4">
+      {/* 요약 */}
+      <div className="bg-[var(--card)] border border-[var(--rule)] p-4 sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <div>
+            <div className="text-[11px] tracking-[.14em] text-[var(--faint)] font-semibold mb-1">전체 진행</div>
+            <div className="serif text-2xl font-bold">
+              <span className="mono text-[var(--green)]">{doneN}</span>
+              <span className="text-[var(--faint)] mono text-base"> / {lessons.length}회 완료</span>
+            </div>
+          </div>
+          {upcoming && (
+            <div className="text-right">
+              <div className="text-[11px] tracking-[.14em] text-[var(--faint)] font-semibold mb-1">다음 수업</div>
+              <div className="text-sm font-semibold">{fmtFull(upcoming.d)}</div>
+              <div className="text-[13px] text-[var(--soft)] max-w-[420px]">{upcoming.t}</div>
+            </div>
+          )}
+        </div>
+        <div className="relative w-full h-3 bg-[#EDEFE9] border border-[var(--rule)] rounded-sm overflow-hidden">
+          <div className="absolute inset-y-0 left-0 bg-[var(--green)]"
+               style={{width:(doneN/lessons.length*100)+'%'}}></div>
+        </div>
+      </div>
+
+      {/* 단계 필터 */}
+      <div className="flex flex-wrap gap-2 no-print">
+        <button onClick={()=>setPhase(0)}
+          className={`px-3 py-2 text-[13px] font-semibold border ${phase===0?'bg-[var(--ink)] text-white border-[var(--ink)]':'bg-white border-[var(--rule2)] text-[var(--soft)]'}`}>
+          전체
+        </button>
+        {PHASES.map(p => (
+          <button key={p.k} onClick={()=>setPhase(p.k)}
+            className={`px-3 py-2 text-[13px] font-semibold border ${phase===p.k?'bg-[var(--ink)] text-white border-[var(--ink)]':'bg-white border-[var(--rule2)] text-[var(--soft)]'}`}>
+            {p.t}<span className="ml-2 text-[11px] opacity-70 mono">{p.sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 회차 목록 */}
+      <div className="bg-[var(--card)] border border-[var(--rule)]">
+        {rows.map((s,i) => {
+          const rec   = board.status[s.d] || {};
+          const state = rec.state || (s.k==='rest' ? 'off' : 'todo');
+          const isToday = s.d === today;
+          const isPast  = s.d < today;
+          return (
+            <div key={s.d+'-'+i}
+              className={`border-b border-[var(--rule)] last:border-b-0 px-3 sm:px-4 py-3
+                ${s.k==='exam' ? 'bg-[var(--stamp-bg)]' : s.k==='test' ? 'bg-[var(--green-bg)]' : ''}
+                ${isToday ? 'ring-2 ring-inset ring-[var(--green)]' : ''}`}>
+              <div className="flex items-start gap-3">
+                <div className="w-[62px] shrink-0 pt-0.5">
+                  <div className="mono text-[12px] text-[var(--faint)]">{fmtD(s.d)}</div>
+                  <div className="mono text-[15px] font-semibold">
+                    {s.no ? s.no+'회' : <span className="text-[var(--faint)] text-[13px]">—</span>}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className={`text-[15px] font-semibold leading-snug ${s.k==='rest'?'text-[var(--faint)] italic':''}`}>
+                    {s.t}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    {s.u.map(n => {
+                      const u = unitById(n);
+                      return u ? (
+                        <span key={n} className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-sm ${P_CLS[u.p]}`}>
+                          {u.n}번 {u.t}
+                        </span>
+                      ) : null;
+                    })}
+                    {s.r && <span className="text-[12px] text-[var(--soft)]">복습 · {s.r}</span>}
+                  </div>
+                  {s.memo && <div className="text-[12px] text-[var(--faint)] mt-1">{s.memo}</div>}
+
+                  {/* 수업 기록 */}
+                  {editable ? (
+                    <input
+                      value={rec.note || ''}
+                      onChange={e => upd(s.d, {note:e.target.value})}
+                      placeholder={isPast || isToday ? '수업 기록 — 실제로 어디까지 했는지, 누가 무엇을 어려워했는지' : '메모'}
+                      className="mt-2 w-full text-[13px] bg-transparent border-b border-dashed border-[var(--rule2)] py-1 outline-none focus:border-[var(--green)] placeholder:text-[#B9BDB1]"
+                    />
+                  ) : rec.note ? (
+                    <div className="mt-2 text-[13px] text-[var(--soft)] border-l-2 border-[var(--rule2)] pl-2">{rec.note}</div>
+                  ) : null}
+                </div>
+
+                <button
+                  disabled={!editable}
+                  onClick={() => upd(s.d, {state: nextStatus(state)})}
+                  className={`shrink-0 w-[58px] py-1.5 text-[12px] font-bold border ${ST[state].cls} ${editable?'':'opacity-70 cursor-default'}`}>
+                  {ST[state].label}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[12px] text-[var(--faint)] no-print">
+        상태 단추를 누르면 <b>예정 → 완료 → 휴강</b> 순으로 바뀝니다. 기록은 바로 저장되어 다른 기기에서도 보입니다.
+      </p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   ② 상황표 — 학생 × 20유형 ★판정
+   ══════════════════════════════════════════════════════════ */
+function StatusTab({board, commit, editable}){
+  const [adding, setAdding] = useState('');
+  const students = board.students || [];
+
+  const setLevel = (name, n, lv) => {
+    const m = {...(board.mastery||{})};
+    m[name] = {...(m[name]||{}), [n]: lv};
+    commit({...board, mastery:m});
+  };
+  const addStudent = () => {
+    const nm = adding.trim();
+    if(!nm || students.includes(nm)) { setAdding(''); return; }
+    commit({...board, students:[...students, nm]});
+    setAdding('');
+  };
+  const removeStudent = nm => {
+    if(!window.confirm(`${nm} 학생을 상황표에서 지웁니다. 계속할까요?`)) return;
+    const m = {...(board.mastery||{})}; delete m[nm];
+    commit({...board, students: students.filter(s=>s!==nm), mastery:m});
+  };
+
+  // 유형별 반 전체 도달률 (★★ 이상)
+  const perUnit = UNITS.map(u => {
+    const ok = students.filter(s => (board.mastery?.[s]?.[u.n]||0) >= 2).length;
+    return {n:u.n, ok, rate: students.length ? Math.round(ok/students.length*100) : 0};
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[var(--card)] border border-[var(--rule)] p-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px]">
+          <span className="tracking-[.14em] text-[var(--faint)] font-semibold">★ 판정 기준</span>
+          {LEVELS.map(l => (
+            <span key={l.v} className="flex items-center gap-1.5">
+              <span className={`mono w-[42px] text-center border px-1 py-0.5 lv${l.v}`}>{l.mark}</span>
+              <b>{l.name}</b>
+              <span className="text-[var(--faint)]">{l.desc}</span>
+            </span>
+          ))}
+        </div>
+        <p className="text-[12px] text-[var(--soft)] mt-2 mb-0">
+          <b>★★ 이상만</b> 합격 게이지에 들어갑니다. 판정은 <b>④ 혼자 풀기 블록</b>에서만, 한 유형당 2문항 이상을 근거로 합니다.
+        </p>
+      </div>
+
+      {students.length === 0 ? (
+        <div className="bg-[var(--card)] border border-dashed border-[var(--rule2)] p-8 text-center">
+          <div className="serif text-lg font-bold mb-1">아직 학생이 없습니다</div>
+          <p className="text-[13px] text-[var(--soft)]">아래에서 이름을 추가하면 20유형 판정표가 만들어집니다.</p>
+        </div>
+      ) : (
+        <div className="bg-[var(--card)] border border-[var(--rule)] overflow-x-auto">
+          <table className="w-full border-collapse text-[12px]">
+            <thead>
+              <tr>
+                <th className="sticky-l bg-[#F3F4F1] border-b border-[var(--rule2)] px-3 py-2 text-left w-[92px]">학생</th>
+                <th className="bg-[#F3F4F1] border-b border-[var(--rule2)] px-2 py-2 w-[128px]">합격 게이지</th>
+                {UNITS.map(u => (
+                  <th key={u.n} title={u.t}
+                      className="bg-[#F3F4F1] border-b border-[var(--rule2)] px-1 py-2 w-[34px] font-semibold">
+                    <div className="mono">{u.n}</div>
+                    <div className={`mt-1 h-[3px] ${u.p===P_CORE?'bg-[var(--green)]':u.p===P_2ND?'bg-[#DDD0A8]':'bg-[var(--rule)]'}`}></div>
+                  </th>
+                ))}
+                <th className="bg-[#F3F4F1] border-b border-[var(--rule2)] w-[34px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map(nm => {
+                const m = board.mastery?.[nm] || {};
+                const g = gaugeOf(m);
+                return (
+                  <tr key={nm}>
+                    <td className="sticky-l bg-white border-b border-[var(--rule)] px-3 py-2 font-semibold whitespace-nowrap">{nm}</td>
+                    <td className="border-b border-[var(--rule)] px-2 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`mono text-[13px] font-semibold ${g>=GOAL?'text-[var(--green)]':'text-[var(--soft)]'}`}>
+                          {g}/20
+                        </span>
+                        <Gauge value={g} />
+                      </div>
+                    </td>
+                    {UNITS.map(u => {
+                      const lv = m[u.n] || 0;
+                      return (
+                        <td key={u.n} className="border-b border-[var(--rule)] p-[2px] text-center">
+                          <button
+                            disabled={!editable}
+                            onClick={() => setLevel(nm, u.n, (lv+1)%4)}
+                            title={`${u.n}번 ${u.t} — ${LEVELS[lv].name}`}
+                            className={`w-full h-[30px] border text-[10px] leading-none mono lv${lv} ${editable?'hover:opacity-80':'cursor-default'}`}>
+                            {LEVELS[lv].mark}
+                          </button>
+                        </td>
+                      );
+                    })}
+                    <td className="border-b border-[var(--rule)] text-center no-print">
+                      {editable && (
+                        <button onClick={()=>removeStudent(nm)}
+                          className="text-[var(--faint)] hover:text-[var(--stamp)] px-1" title="학생 삭제">×</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {/* 반 전체 도달률 */}
+              <tr>
+                <td className="sticky-l bg-[#FBFBF9] px-3 py-2 text-[11px] text-[var(--faint)] font-semibold whitespace-nowrap">반 도달률</td>
+                <td className="bg-[#FBFBF9]"></td>
+                {perUnit.map(p => (
+                  <td key={p.n} className="bg-[#FBFBF9] text-center py-2">
+                    <span className={`mono text-[10px] ${p.rate>=60?'text-[var(--green)]':p.rate>0?'text-[var(--soft)]':'text-[#C4C8BF]'}`}>
+                      {p.rate}%
+                    </span>
+                  </td>
+                ))}
+                <td className="bg-[#FBFBF9]"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editable && (
+        <div className="flex gap-2 no-print">
+          <input value={adding} onChange={e=>setAdding(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter') addStudent(); }}
+            placeholder="학생 이름을 적고 Enter"
+            className="flex-1 max-w-[280px] border border-[var(--rule2)] px-3 py-2 text-[14px] bg-white outline-none focus:border-[var(--green)]" />
+          <button onClick={addStudent}
+            className="px-4 py-2 bg-[var(--ink)] text-white text-[13px] font-semibold">학생 추가</button>
+        </div>
+      )}
+      <p className="text-[12px] text-[var(--faint)] no-print">
+        칸을 누를 때마다 ☆ → ★ → ★★ → ★★★ 순으로 바뀝니다. 이름은 코드가 아니라 <b>데이터베이스에만</b> 저장되므로 저장소에는 남지 않습니다.
+      </p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   ③ 학생용 — 보여드리는 화면
+   ══════════════════════════════════════════════════════════ */
+function StudentTab({board}){
+  const students = board.students || [];
+  const [who, setWho] = useState(students[0] || '');
+  useEffect(() => { if(!who && students.length) setWho(students[0]); }, [students.join('|')]);
+
+  if(students.length === 0){
+    return (
+      <div className="bg-[var(--card)] border border-dashed border-[var(--rule2)] p-8 text-center">
+        <div className="serif text-lg font-bold mb-1">보여 드릴 학생이 없습니다</div>
+        <p className="text-[13px] text-[var(--soft)]">상황표 탭에서 학생을 먼저 추가해 주세요.</p>
+      </div>
+    );
+  }
+
+  const m = board.mastery?.[who] || {};
+  const g = gaugeOf(m);
+  const left = Math.max(0, GOAL - g);
+  const today = todayISO();
+  const upcoming = SEED.find(s => s.d >= today && s.k !== 'rest');
+  const doneUnits = UNITS.filter(u => (m[u.n]||0) >= 2);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 no-print">
+        {students.map(nm => (
+          <button key={nm} onClick={()=>setWho(nm)}
+            className={`px-4 py-2 text-[14px] font-semibold border ${who===nm?'bg-[var(--ink)] text-white border-[var(--ink)]':'bg-white border-[var(--rule2)] text-[var(--soft)]'}`}>
+            {nm}
+          </button>
+        ))}
+      </div>
+
+      {/* 큰 글씨 카드 — 학생에게 화면째로 보여드리는 부분 */}
+      <div className="bg-[var(--card)] border border-[var(--rule)] p-5 sm:p-8">
+        <div className="flex items-end justify-between border-b-2 border-[var(--ink)] pb-3 mb-6 gap-4">
+          <div>
+            <div className="text-[12px] tracking-[.16em] text-[var(--faint)] font-semibold mb-1">태청야학 수학반</div>
+            <h2 className="text-[28px] sm:text-[32px] font-bold leading-tight">{who} 님의 오늘</h2>
+          </div>
+          <div className="text-right text-[12px] text-[var(--faint)] leading-relaxed whitespace-nowrap">
+            {fmtFull(today)}
+          </div>
+        </div>
+
+        {/* 합격 게이지 */}
+        <div className="mb-7">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 mb-3">
+            <div className="serif text-[21px] font-bold">혼자 풀 수 있는 유형</div>
+            <div className="mono">
+              <span className="text-[42px] font-semibold text-[var(--green)]">{g}</span>
+              <span className="text-[20px] text-[var(--faint)]"> / 20</span>
+            </div>
+          </div>
+          <div className="flex gap-[3px]">
+            {UNITS.map((u,i) => {
+              const on = (m[u.n]||0) >= 2;
+              return (
+                <div key={u.n}
+                  className={`flex-1 h-[38px] border flex items-center justify-center mono text-[11px]
+                    ${on ? 'bg-[var(--green)] border-[var(--green)] text-white' : 'bg-white border-[var(--rule2)] text-[var(--faint)]'}
+                    ${i===GOAL-1 ? 'mr-[13px] relative after:content-[""] after:absolute after:-right-[9px] after:-top-[3px] after:-bottom-[3px] after:w-[2px] after:bg-[var(--stamp)]' : ''}`}>
+                  {u.n}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-2 text-[13px]">
+            <span className="text-[var(--faint)]">검정고시 1번부터 20번까지</span>
+            <span className="text-[var(--stamp)] font-semibold">← 여기까지 오면 합격 (12개 · 60점)</span>
+          </div>
+          <div className="mt-4 bg-[var(--green-bg)] border-l-4 border-[var(--green)] px-4 py-3 text-[17px]">
+            {left > 0
+              ? <>합격까지 <b className="text-[var(--green)]">{left}개</b> 남았습니다. 오늘도 한 걸음.</>
+              : <>합격선을 넘으셨습니다. 이제 <b className="text-[var(--green)]">지키는 연습</b>을 합니다.</>}
+          </div>
+        </div>
+
+        {/* 내가 가진 유형 */}
+        <div className="mb-7">
+          <div className="text-[12px] tracking-[.14em] text-[var(--faint)] font-semibold mb-2">내가 혼자 풀 수 있게 된 유형</div>
+          {doneUnits.length === 0 ? (
+            <p className="text-[15px] text-[var(--soft)]">이제 시작합니다. 첫 유형을 함께 만들어 봐요.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {doneUnits.map(u => (
+                <span key={u.n} className="text-[14px] px-2.5 py-1 bg-[var(--green-bg)] text-[var(--green)] border border-[#A9CDB8] font-semibold">
+                  {u.n}번 {u.t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 다음 수업 */}
+        {upcoming && (
+          <div>
+            <div className="text-[12px] tracking-[.14em] text-[var(--faint)] font-semibold mb-2">다음 수업에 할 일</div>
+            <div className="text-[19px] font-semibold leading-snug">{upcoming.t}</div>
+            <div className="text-[15px] text-[var(--soft)] mt-1">{fmtFull(upcoming.d)} · 금요일 19:00–20:30</div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2 no-print">
+        <button onClick={()=>window.print()}
+          className="px-4 py-2 bg-[var(--ink)] text-white text-[13px] font-semibold">이 화면 인쇄</button>
+        <a href="커리큘럼_2026-2학기~2027-1학기/03_학생 성장카드.html" target="_blank" rel="noopener"
+          className="px-4 py-2 border border-[var(--rule2)] text-[13px] font-semibold text-[var(--soft)] bg-white">
+          성장카드 서식 열기 →
+        </a>
+      </div>
+      <p className="text-[12px] text-[var(--faint)] no-print">
+        이 화면에는 <b>정답률 · 등수 · 틀린 문제 수 · 예측 점수</b>를 넣지 않습니다. 남은 개수로만 이야기합니다.
+      </p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   앱
+   ══════════════════════════════════════════════════════════ */
+function App(){
+  const {board, conn, commit} = useBoard();
+  const [tab, setTab] = useState('progress');
+  const [editable, setEditable] = useState(true);
+
+  const TABS = [
+    {k:'progress', label:'진행표',  hint:'회차별 진행 상황'},
+    {k:'status',   label:'상황표',  hint:'학생 × 20유형 판정'},
+    {k:'student',  label:'학생용',  hint:'보여 드리는 화면'},
+  ];
+
+  return (
+    <div className="min-h-screen">
+      <header className="border-b border-[var(--rule2)] bg-[var(--card)]">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-[11px] tracking-[.18em] text-[var(--faint)] font-semibold mb-1">
+                태청야학 수학반 · 2026. 9 ~ 2027. 8
+              </div>
+              <h1 className="text-[26px] sm:text-[30px] font-bold leading-tight">커리큘럼 보드</h1>
+            </div>
+            <div className="flex items-center gap-2 no-print">
+              <ConnPill conn={conn} />
+              <button onClick={()=>setEditable(v=>!v)}
+                className={`text-[12px] font-semibold px-3 py-1.5 border ${editable?'bg-white border-[var(--rule2)] text-[var(--soft)]':'bg-[var(--ink)] text-white border-[var(--ink)]'}`}>
+                {editable ? '편집 중' : '읽기 전용'}
+              </button>
+              <a href="커리큘럼_2026-2학기~2027-1학기/04_고졸검정고시 수학반 1년 커리큘럼.pdf" target="_blank" rel="noopener"
+                className="text-[12px] font-semibold px-3 py-1.5 border border-[var(--rule2)] bg-white text-[var(--soft)]">
+                1년 커리큘럼 PDF
+              </a>
+            </div>
+          </div>
+
+          <nav className="flex gap-1 mt-4 -mb-px no-print">
+            {TABS.map(t => (
+              <button key={t.k} onClick={()=>setTab(t.k)}
+                className={`px-4 py-2.5 text-[14px] font-semibold border-b-2 ${tab===t.k?'border-[var(--green)] text-[var(--ink)]':'border-transparent text-[var(--faint)]'}`}>
+                {t.label}
+                <span className="hidden sm:inline text-[11px] font-normal text-[var(--faint)] ml-2">{t.hint}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main className="max-w-[1180px] mx-auto px-4 sm:px-6 py-5 pb-16">
+        {tab==='progress' && <ProgressTab board={board} commit={commit} editable={editable} />}
+        {tab==='status'   && <StatusTab   board={board} commit={commit} editable={editable} />}
+        {tab==='student'  && <StudentTab  board={board} />}
+      </main>
+
+      <footer className="border-t border-[var(--rule)] py-5 no-print">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 text-[11px] text-[var(--faint)] flex flex-wrap justify-between gap-2">
+          <span>고졸 검정고시 수학반 커리큘럼 보드 · 태청야학 · 박소명</span>
+          <span className="mono">기준선 12 / 20 · 60점 · 수학 과목 합격</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
