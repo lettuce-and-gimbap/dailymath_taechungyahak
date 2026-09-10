@@ -140,3 +140,19 @@ dailymath_taechungyahak/
 
 새 문서를 만들 때도 위 트리의 알맞은 폴더에 넣는다. 학기·연도가 바뀌면
 `커리큘럼_<학기>/` 형태로 폴더를 하나 더 만들어 분류한다.
+
+## 🔒 공개 저장소 원칙 — 실명은 커밋하지 않는다
+
+이 저장소는 **public**이고 GitHub Pages가 켜져 있다. 그래서 커밋되는 커리큘럼 문서는
+학생명을 **A~J 코드**로 바꾼 **공개본**이고, 실명과 개인별 관찰 내용이 든 원본은
+`커리큘럼_<학기>/_비공개/` 에만 둔다 (`.gitignore` 로 제외됨. 대조표는 담당 교사가 보관).
+
+- 문서를 고칠 때는 **`_비공개/` 원본을 먼저 고치고**, 실명을 코드로 치환한 사본을 공개 경로에 덮어쓴다.
+- `04_...html` 을 고친 뒤에는 PDF를 다시 뽑는다:
+  ```bash
+  "/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu \
+    --no-pdf-header-footer --print-to-pdf="<절대경로>.pdf" "file:///<절대경로>.html"
+  ```
+  A4 한 장에 `.page` 하나가 들어가야 한다(9쪽). 넘치면 print 미디어의 `zoom` 을 0.01씩 낮춘다.
+- **학생 이름을 코드에 하드코딩하지 않는다.** `curriculum.html` 의 학생 명단은 Firestore
+  (`curriculumBoard/2026-2027`)에만 저장되므로 저장소에는 남지 않는다.

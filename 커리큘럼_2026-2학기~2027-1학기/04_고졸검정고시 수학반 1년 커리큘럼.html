@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>고졸 검정고시 수학반 1년 커리큘럼 (2026.9 ~ 2027.8)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
+<style>
+  :root{
+    --ink:#1F2421; --soft:#4B534C; --faint:#7C837C;
+    --rule:#D9DCD2; --rule2:#B7BCB0;
+    --green:#2A6E4C; --green-bg:#EAF2ED;
+    --stamp:#A8382F; --stamp-bg:#F8ECEA;
+    --gold:#7E6420; --gold-bg:#F5EFDD;
+    --slate-bg:#F3F4F1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif;
+    color:var(--ink); background:#fff;
+    font-size:10.2pt; line-height:1.55;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .page{
+    width:210mm; min-height:297mm; padding:16mm 15mm 14mm;
+    margin:0 auto; background:#fff; position:relative;
+    display:flex; flex-direction:column;
+  }
+  .page + .page{ border-top:1px dashed #ccc; }
+  @media print{
+    .page{ width:auto; min-height:0; height:auto; padding:0; margin:0; border:none; display:block; }
+    .page + .page{ page-break-before:always; border-top:none; }
+    @page{ size:A4 portrait; margin:13mm 13mm 11mm; }
+
+    /* A4 한 장에 한 .page 가 정확히 들어가도록 밀도 조정.
+       zoom 은 마지막 미세 조정용 — 쪽이 넘치면 0.01씩 낮춘다. */
+    body{ font-size:9.1pt; line-height:1.44; zoom:.94; }
+    h1{ font-size:20pt; }
+    h2{ font-size:12.4pt; margin-bottom:5px; }
+    h3{ font-size:10.2pt; margin-bottom:4px; }
+    p{ margin-bottom:6px; }
+    ul,ol{ margin-bottom:6px; }
+    li{ margin-bottom:2px; }
+    section{ margin-bottom:11px; }
+    .masthead{ padding-bottom:8px; margin-bottom:12px; }
+    .masthead .sub{ font-size:9.4pt; }
+    .sec-head{ margin-bottom:7px; padding-bottom:3px; }
+    .lede{ font-size:9.3pt; margin-bottom:7px; }
+    table{ font-size:8.3pt; margin-bottom:7px; }
+    th,td{ padding:3.1px 5px; }
+    thead th{ font-size:7.7pt; }
+    .callout,.warn{ padding:6px 10px; margin-bottom:8px; font-size:8.9pt; }
+    .road{ gap:4px; margin-bottom:9px; }
+    .leg{ padding-top:5px; }
+    .leg .what{ font-size:8.7pt; }
+    .leg .note{ font-size:7.6pt; }
+    .cols2,.cols2-w{ gap:13px; }
+    .check{ padding:8px 11px; font-size:8.7pt; }
+    .foot{ padding-top:6px; font-size:7.4pt; margin-top:6px; break-inside:avoid; }
+  }
+
+  h1,h2,h3{font-family:"Gowun Batang","Batang",serif; margin:0; text-wrap:balance;}
+  h1{font-size:23pt; font-weight:700; letter-spacing:-.02em; line-height:1.25;}
+  h2{font-size:14pt; font-weight:700; margin:0 0 7px;}
+  h3{font-size:11.5pt; font-weight:700; margin:0 0 5px;}
+  p{margin:0 0 8px;}
+  ul,ol{margin:0 0 8px; padding-left:17px;}
+  li{margin-bottom:3px;}
+  b,strong{font-weight:600;}
+  .mono{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;}
+
+  /* 표지 머리 */
+  .masthead{border-bottom:2.5px solid var(--ink); padding-bottom:11px; margin-bottom:16px;}
+  .eyebrow{font-size:8.5pt; letter-spacing:.18em; color:var(--faint); font-weight:600; margin-bottom:6px;}
+  .masthead .meta{display:flex; justify-content:space-between; align-items:flex-end; gap:14px; margin-top:9px;}
+  .masthead .sub{font-size:10.5pt; color:var(--soft);}
+  .masthead .who{font-size:9pt; color:var(--faint); text-align:right; white-space:nowrap; line-height:1.5;}
+
+  /* 섹션 */
+  section{margin-bottom:15px;}
+  .sec-head{display:flex; align-items:baseline; gap:9px; border-bottom:1px solid var(--rule2);
+    padding-bottom:4px; margin-bottom:9px;}
+  .sec-no{font-family:"IBM Plex Mono",monospace; font-size:9pt; color:var(--green); font-weight:600;}
+  .lede{font-size:10.5pt; color:var(--soft); margin-bottom:10px;}
+
+  /* 표 */
+  table{width:100%; border-collapse:collapse; font-size:9.2pt; margin-bottom:9px;}
+  th,td{border-bottom:1px solid var(--rule); padding:4.5px 6px; text-align:left; vertical-align:top;}
+  thead th{background:var(--slate-bg); border-bottom:1px solid var(--rule2);
+    font-size:8.4pt; letter-spacing:.04em; color:var(--soft); font-weight:600; white-space:nowrap;}
+  td.c,th.c{text-align:center;}
+  td.n{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; text-align:center; white-space:nowrap;}
+  tr.rest td{background:#FBFBF9; color:var(--faint); font-style:italic;}
+  tr.exam td{background:var(--stamp-bg);}
+  tr.test td{background:var(--green-bg);}
+  .tag{display:inline-block; font-size:7.8pt; padding:.5px 4px; border-radius:2px; font-weight:600; white-space:nowrap;}
+  .t-core{background:var(--green); color:#fff;}
+  .t-2nd{background:var(--gold-bg); color:var(--gold); border:1px solid #DDD0A8;}
+  .t-3rd{background:var(--slate-bg); color:var(--faint); border:1px solid var(--rule);}
+
+  /* 강조 박스 */
+  .callout{border-left:3px solid var(--green); background:var(--green-bg);
+    padding:8px 12px; margin:0 0 11px; font-size:10pt;}
+  .callout b{color:var(--green);}
+  .warn{border-left:3px solid var(--stamp); background:var(--stamp-bg);
+    padding:8px 12px; margin:0 0 11px; font-size:9.4pt;}
+  .warn b{color:var(--stamp);}
+
+  /* 로드맵 타임라인 */
+  .road{display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin-bottom:11px;}
+  .leg{border-top:3px solid var(--rule2); padding-top:7px;}
+  .leg.on{border-top-color:var(--green);}
+  .leg.ex{border-top-color:var(--stamp);}
+  .leg .when{font-family:"IBM Plex Mono",monospace; font-size:8pt; color:var(--faint);}
+  .leg .what{font-size:9.4pt; font-weight:600; margin-top:1px; line-height:1.35;}
+  .leg .note{font-size:8.4pt; color:var(--soft); margin-top:3px; line-height:1.4;}
+
+  /* 2단 */
+  .cols2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .cols2-w{display:grid; grid-template-columns:1.25fr 1fr; gap:16px;}
+
+  /* 블록/시간표 */
+  .blocks td:first-child{white-space:nowrap; font-family:"IBM Plex Mono",monospace; font-size:8.6pt; color:var(--soft);}
+
+  /* 체크리스트 */
+  .check{border:1px solid var(--rule2); padding:10px 13px; font-size:9.4pt; background:#FCFCFA;}
+  .check li{list-style:none; margin-bottom:4px;}
+  .check ul{padding-left:0;}
+  .check li::before{content:"☐  "; color:var(--rule2); font-size:11pt;}
+  .check .hd{font-size:8.5pt; letter-spacing:.12em; color:var(--faint); font-weight:600; margin:0 0 6px;}
+
+  .foot{margin-top:auto; padding-top:9px; border-top:1px solid var(--rule);
+    font-size:8pt; color:var(--faint); display:flex; justify-content:space-between;}
+  .stars{font-family:"IBM Plex Mono",monospace; letter-spacing:-.5px;}
+</style>
+</head>
+<body>
+
+<!-- ══════════ P1 ══════════ -->
+<div class="page">
+  <div class="masthead">
+    <div class="eyebrow">태청야학 수학반 · 연간 교육과정</div>
+    <h1>고졸 검정고시 수학반<br />1년 커리큘럼</h1>
+    <div class="meta">
+      <div class="sub">2026년 9월 ~ 2027년 8월 · 금요일 19:00–20:30 (90분)<br />2027년 제1회 합격을 1차 목표로, 제2회를 안전망으로 둔 12개월 설계</div>
+      <div class="who">담당 박소명<br />작성 2026. 9. 11.<br />나래반 (고졸 트랙)<br /><span style="color:var(--stamp)">공개본 · 학생명 A~J 표기</span></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    이 커리큘럼의 기준선은 문장 하나입니다. <b>“20문항 중 12문항 = 60점 = 수학 과목 합격.”</b>
+    20유형을 모두 완벽히 할 필요가 없고, 매회 같은 자리에 같은 형태로 나오는 <b>코어 12유형</b>을 확실히 만드는 것이 전략입니다.
+  </div>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">01</span><h2>연간 로드맵</h2></div>
+    <div class="road">
+      <div class="leg on">
+        <div class="when">2026.09 – 12</div>
+        <div class="what">지도 그리기<br />코어 12 · 1회전</div>
+        <div class="note">진단 → 좌표 기초 → 계산·좌표 코어 → 집합·명제 → 순열·조합</div>
+      </div>
+      <div class="leg on">
+        <div class="when">2027.01 – 02</div>
+        <div class="what">겨울 반복<br />2순위 5유형</div>
+        <div class="note">코어가 겨울을 넘겨 남는지 확인. 앱 자율 루틴 병행</div>
+      </div>
+      <div class="leg on">
+        <div class="when">2027.03</div>
+        <div class="what">2회전<br />실전화</div>
+        <div class="note">모의고사 2회 · 개인별 오답 클리닉</div>
+      </div>
+      <div class="leg ex">
+        <div class="when">2027.04</div>
+        <div class="what">파이널<br />제1회 응시</div>
+        <div class="note">코어 12 각 1문항 · 시험 요령 · 성장카드 최종본</div>
+      </div>
+      <div class="leg on">
+        <div class="when">2027.05 – 07</div>
+        <div class="what">재정비<br />제2회 대비</div>
+        <div class="note">합격자는 심화·생활수학 / 재응시자는 취약 유형 재건축</div>
+      </div>
+      <div class="leg ex">
+        <div class="when">2027.08</div>
+        <div class="what">제2회 응시<br />학기말</div>
+        <div class="note">2차 시험 후 리뷰 · 다음 학년도 계획</div>
+      </div>
+    </div>
+    <div class="warn">
+      <b>일정 확인 필요.</b> 검정고시는 통상 제1회 4월 초, 제2회 8월 초 토요일에 시행되고 원서 접수는 각각 2월·6월 중순입니다.
+      정확한 날짜는 시·도 교육청 공고로 확인한 뒤 아래 주차표의 시험 주간을 확정하십시오. 이 문서는 <b>4월 첫째 주 · 8월 첫째 주 토요일 시행</b>을 가정했습니다.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">02</span><h2>목표 설계 — 20문항 중 12문항</h2></div>
+    <p class="lede">고졸 검정고시는 전 과목 평균 60점 이상이면 합격이고, 60점 이상 받은 과목은 <b>과목 합격</b>으로 다음 회차에 면제됩니다. 수학은 20문항 × 5점이므로 12문항이 기준선입니다.</p>
+    <div class="cols2-w">
+      <table>
+        <thead><tr><th>시기</th><th class="c">혼자 풀 수 있는 유형</th><th class="c">예상 점수</th></tr></thead>
+        <tbody>
+          <tr><td>2026년 12월 말</td><td class="n">코어 12 중 8</td><td class="n">40점</td></tr>
+          <tr><td>2027년 2월 말</td><td class="n">코어 11 + 2순위 2</td><td class="n">60–65점</td></tr>
+          <tr><td>2027년 3월 말</td><td class="n">15</td><td class="n">70–75점</td></tr>
+          <tr class="exam"><td><b>2027년 4월 제1회</b></td><td class="n"><b>실전 12문항 이상</b></td><td class="n"><b>합격</b></td></tr>
+          <tr><td>2027년 7월 말 (재응시자)</td><td class="n">17</td><td class="n">80–85점</td></tr>
+        </tbody>
+      </table>
+      <div>
+        <h3>왜 12개인가</h3>
+        <p>학생에게 <b>“20개 중 12개만 확실하게 만들면 됩니다”</b>를 반복해 주십시오. 시니어 학습자에게 “전 범위”는 그 자체로 이탈 요인이고, 셀 수 있는 목표는 남은 개수로 대화를 만들어 줍니다.</p>
+        <p style="margin:0">진도가 밀리는 날에도 이 숫자는 흔들리지 않습니다. 못 나간 유형은 <b>2순위·3순위에서 덜어내고</b> 코어를 지킵니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">03</span><h2>학습자 트랙</h2></div>
+    <table>
+      <thead><tr><th style="width:23%">트랙</th><th style="width:33%">대상</th><th>이 커리큘럼에서의 위치</th></tr></thead>
+      <tbody>
+        <tr><td><b>A · 고졸 검정고시</b> (주 트랙)</td><td>학생 A, 학생 B, 학생 C, 학생 D, 학생 E, 학생 F</td><td>본문 주차표 그대로 진행</td></tr>
+        <tr><td>B · 중졸 검정고시</td><td>학생 G, 학생 H</td><td>같은 90분 안에서 동일 주제의 중졸 버전 학습지</td></tr>
+        <tr><td>C · 수의 확장 / 다솜반</td><td>학생 I, 학생 J</td><td>분수·소수·혼합계산. 계산 기반 유형(1·2·4번)만 함께 참여</td></tr>
+      </tbody>
+    </table>
+    <div class="warn" style="margin-bottom:0">
+      출석률이 50% 안팎입니다. 따라서 <b>모든 회차는 그 회차만으로 완결</b>되도록 짰습니다. 지난주에 빠져도 오늘 수업을 따라올 수 있고, 복습은 §07의 3-1-1 규칙이 자동으로 처리합니다.
+    </div>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">1 / 9</span></div>
+</div>
+
+<!-- ══════════ P2 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">04</span><h2>유형 우선순위 — 무엇부터 할 것인가</h2></div>
+    <p class="lede">2023~2026년 기출 7회차 매핑을 근거로, <b>매회 같은 자리에 같은 형태로 나오는 정도</b>와 <b>계산 부담</b>을 기준으로 3등급으로 나눴습니다.</p>
+
+    <h3><span class="tag t-core">1순위</span> &nbsp;코어 12유형 — 이것만으로 60점</h3>
+    <table>
+      <thead><tr><th class="c" style="width:8%">문항</th><th style="width:27%">유형</th><th>왜 코어인가</th><th class="c" style="width:11%">학습 시기</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>다항식의 계산</td><td>매회 동일. 덧셈·뺄셈만 하면 됨</td><td class="n">10월 1주</td></tr>
+        <tr><td class="n">2</td><td>항등식</td><td>계수 비교 1단계</td><td class="n">10월 3주</td></tr>
+        <tr><td class="n">4</td><td>다항식의 인수분해</td><td>공식 대입형으로 고정</td><td class="n">10월 4주</td></tr>
+        <tr><td class="n">5</td><td>허수와 켤레복소수</td><td>부호만 바꾸면 됨</td><td class="n">10월 5주</td></tr>
+        <tr><td class="n">6</td><td>이차방정식의 해</td><td>대입 또는 판별식 1회</td><td class="n">11월 1주</td></tr>
+        <tr><td class="n">10</td><td>두 점 사이의 거리</td><td>공식 1개</td><td class="n">11월 2주</td></tr>
+        <tr><td class="n">11</td><td>선분의 내분점</td><td>공식 1개, 수직선·좌표 2종뿐</td><td class="n">11월 3주</td></tr>
+        <tr><td class="n">14</td><td>평행이동 · 대칭이동</td><td>부호 규칙만 알면 즉답</td><td class="n">11월 4주</td></tr>
+        <tr><td class="n">15</td><td>집합</td><td>n(A), 합집합·교집합 개념뿐</td><td class="n">12월 1주</td></tr>
+        <tr><td class="n">16</td><td>명제 (역·대우, 필요·충분)</td><td>문장 뒤집기 규칙</td><td class="n">12월 2주</td></tr>
+        <tr><td class="n">19</td><td>순열</td><td><b>출제 형태가 3종류뿐</b> (4→2, 4→3, 5→2)</td><td class="n">12월 2주</td></tr>
+        <tr><td class="n">20</td><td>조합</td><td><b>출제 형태가 4종류뿐</b> (4C2, 5C3, 5C2, 4C3)</td><td class="n">12월 2주</td></tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-bottom:12px">
+      19·20번은 투자 대비 회수가 가장 큽니다. 사실상 <b>표를 외우면 10점</b>입니다. 12월에 반드시 확보하십시오.
+    </div>
+
+    <div class="cols2">
+      <div>
+        <h3><span class="tag t-2nd">2순위</span> &nbsp;추가 확보 5유형 — 여기까지면 85점</h3>
+        <table>
+          <tbody>
+            <tr><td class="n" style="width:14%">3</td><td>나머지정리 · 조립제법</td><td class="n">1월</td></tr>
+            <tr><td class="n">7</td><td>이차함수 최대 · 최소</td><td class="n">1월</td></tr>
+            <tr><td class="n">13</td><td>원의 방정식</td><td class="n">1월</td></tr>
+            <tr><td class="n">12</td><td>점과 직선 사이의 거리</td><td class="n">2월</td></tr>
+            <tr><td class="n">17</td><td>합성함수 · 역함수</td><td class="n">2월</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3><span class="tag t-3rd">3순위</span> &nbsp;여유 3유형 — 시간이 남을 때만</h3>
+        <table>
+          <tbody>
+            <tr><td class="n" style="width:14%">8</td><td>삼 · 사차방정식의 근</td><td class="n">3월 이후</td></tr>
+            <tr><td class="n">9</td><td>이차부등식</td><td class="n">3월 이후</td></tr>
+            <tr><td class="n">18</td><td>유리함수 · 무리함수</td><td class="n">5월 이후</td></tr>
+          </tbody>
+        </table>
+        <div class="warn" style="margin-bottom:0">
+          <b>3순위는 3월 이전에 손대지 않습니다.</b> 코어 12가 흔들리는 상태에서 어려운 유형으로 넘어가는 것이 가장 흔한 실패 패턴입니다.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">05</span><h2>개인별 집중 포인트</h2></div>
+    <table>
+      <thead><tr><th style="width:14%">학생</th><th style="width:30%">강점</th><th>올해 집중할 곳</th></tr></thead>
+      <tbody>
+        <tr><td>학생 A</td><td>방정식, 항등식</td><td>이차부등식(9번), 좌표(10~14번)</td></tr>
+        <tr><td>학생 B</td><td>켤레복소수, 항등식 개념 연결</td><td>집합(15번) / <b>성장 가시화 자체가 개입 포인트</b> — 자기효능감이 낮음</td></tr>
+        <tr><td>학생 D</td><td>경우의 수(19·20번)</td><td>나머지정리(3번), 부등식(9번)</td></tr>
+        <tr><td>학생 E</td><td>전 영역 성실, 앱 데이터 풍부</td><td>나머지정리·원의 방정식 → 18:00~19:00 보강 유지</td></tr>
+        <tr><td>학생 F</td><td>꾸준함</td><td>계산 속도 부담 → <b>쉬운 난이도 반복으로 자기효능감 우선</b></td></tr>
+        <tr><td>학생 G</td><td>암산 · 사칙연산</td><td>기하 영역 / 다른 학생 지목 시 대기 규칙 유지</td></tr>
+        <tr><td>학생 H</td><td>신규 학습자</td><td>음수 · 좌표평면 · 방정식 기초부터 (중졸 트랙)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">2 / 9</span></div>
+</div>
+
+<!-- ══════════ P3 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">06</span><h2>주차별 계획 · 1단계 (2026. 9 ~ 12) — 코어 12 · 1회전</h2></div>
+    <p class="lede">표기 <b>[새]</b> 새 유형 · <b>[복]</b> 복습 · <b>[모]</b> 모의·평가. 휴강은 공휴일 기준 예상이며 학사일정으로 확정하십시오.</p>
+    <table>
+      <thead><tr>
+        <th class="c" style="width:5%">회</th><th class="c" style="width:8%">날짜</th>
+        <th style="width:29%">[새] 오늘의 유형</th><th style="width:19%">[복] 복습</th>
+        <th style="width:19%">병행 트랙 B / C</th><th>그날 꼭 남길 기록</th>
+      </tr></thead>
+      <tbody>
+        <tr class="test"><td class="n">1</td><td class="n">9/11</td><td><b>진단평가</b> — 고졸 20문항</td><td>–</td><td>B 중졸 진단 / C 분수 진단</td><td>유형 지도 20칸 최초 작성</td></tr>
+        <tr><td class="n">2</td><td class="n">9/18</td><td>[새] <b>좌표 기초</b> 점 읽기 · 사분면 · 직선</td><td>진단 오답 3문항</td><td>B 좌표평면 기초 / C 분수 크기 비교</td><td>★판정 3칸</td></tr>
+        <tr class="rest"><td class="n">–</td><td class="n">9/25</td><td colspan="4">휴강 예상 (추석) — 앱 숙제 5문항 배포, 접속 여부만 확인</td></tr>
+        <tr><td class="n">3</td><td class="n">10/2</td><td>[새] <b>1번</b> 다항식의 계산</td><td>좌표 기초 2문항</td><td>B 문자와 식 / C 분수의 덧셈</td><td>★판정</td></tr>
+        <tr class="rest"><td class="n">–</td><td class="n">10/9</td><td colspan="4">휴강 예상 (한글날)</td></tr>
+        <tr><td class="n">4</td><td class="n">10/16</td><td>[새] <b>2번</b> 항등식</td><td>1번</td><td>B 일차방정식 / C 분수의 뺄셈</td><td>★판정</td></tr>
+        <tr><td class="n">5</td><td class="n">10/23</td><td>[새] <b>4번</b> 인수분해</td><td>2번 · 좌표 기초</td><td>B 일차방정식 활용 / C 통분·약분</td><td>★판정</td></tr>
+        <tr class="test"><td class="n">6</td><td class="n">10/30</td><td>[새] <b>5번</b> 켤레복소수</td><td>4번 · 1번</td><td>B 수의 대소 / C 분수의 곱셈</td><td><b>[모] 10월 미니 모의고사</b> (1·2·4번 각 2문항)</td></tr>
+        <tr><td class="n">7</td><td class="n">11/6</td><td>[새] <b>6번</b> 이차방정식의 해</td><td>5번 · 2번</td><td>B 이차방정식 기초 / C 분수의 나눗셈</td><td>★판정</td></tr>
+        <tr><td class="n">8</td><td class="n">11/13</td><td>[새] <b>10번</b> 두 점 사이의 거리</td><td>6번 · 4번</td><td>B 좌표와 사분면 / C 소수의 계산</td><td>★판정</td></tr>
+        <tr><td class="n">9</td><td class="n">11/20</td><td>[새] <b>11번</b> 선분의 내분점</td><td>10번 · 5번</td><td>B 일차함수 / C 분수와 소수</td><td>★판정</td></tr>
+        <tr class="test"><td class="n">10</td><td class="n">11/27</td><td>[새] <b>14번</b> 평행이동 · 대칭이동</td><td>11번 · 6번</td><td>B 일차함수 y절편 / C 혼합 계산</td><td><b>[모] 11월 미니 모의고사</b> (5·6·10·11번)</td></tr>
+        <tr><td class="n">11</td><td class="n">12/4</td><td>[새] <b>15번</b> 집합</td><td>14번 · 10번</td><td>B 경우의 수 / C 비와 비율</td><td>★판정</td></tr>
+        <tr><td class="n">12</td><td class="n">12/11</td><td>[새] <b>16번</b> 명제 + <b>19·20번</b> 순열·조합 (고정 유형 표)</td><td>15번 · 11번</td><td>B 확률 기초 / C 그래프 읽기</td><td>★판정 3칸</td></tr>
+        <tr class="test"><td class="n">13</td><td class="n">12/18</td><td><b>[모] 학기말 총정리 모의고사</b> — 코어 12유형 각 1문항</td><td>전체</td><td>동일 형식</td><td><b>성장카드 1차 발급 + 생활통지표</b></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">3 / 9</span></div>
+</div>
+
+<!-- ══════════ P4 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">07</span><h2>주차별 계획 · 2단계 (2027. 1 ~ 2) — 겨울 반복과 2순위</h2></div>
+    <p class="lede">학사일정에 따라 <b>(a) 정규 수업</b>과 <b>(b) 방학</b> 두 가지로 준비했습니다. 겨울은 이탈이 가장 많이 나오는 구간이라, 어느 쪽이든 <b>주 1회 교사 피드백</b>을 고정합니다.</p>
+    <div class="cols2-w">
+      <table>
+        <thead><tr><th class="c" style="width:8%">회</th><th class="c" style="width:12%">날짜</th><th>(a) 정규 수업이 있는 경우</th><th style="width:22%">[복] 복습</th></tr></thead>
+        <tbody>
+          <tr class="rest"><td class="n">–</td><td class="n">12/25 · 1/1</td><td colspan="2">휴강 — 겨울 숙제 꾸러미 배포</td></tr>
+          <tr><td class="n">14</td><td class="n">1/8</td><td>[새] <b>3번</b> 나머지정리 · 조립제법</td><td>1 · 2 · 4번</td></tr>
+          <tr><td class="n">15</td><td class="n">1/15</td><td>[새] <b>7번</b> 이차함수 최대 · 최소</td><td>3번 · 6번</td></tr>
+          <tr class="test"><td class="n">16</td><td class="n">1/22</td><td><b>[모] 겨울 중간 점검</b> — 코어 12</td><td>오답 클리닉</td></tr>
+          <tr><td class="n">17</td><td class="n">1/29</td><td>[새] <b>13번</b> 원의 방정식</td><td>7번 · 10 · 11번</td></tr>
+          <tr class="rest"><td class="n">–</td><td class="n">2/5</td><td colspan="2">휴강 예상 (설 연휴)</td></tr>
+          <tr><td class="n">18</td><td class="n">2/12</td><td>[새] <b>12번</b> 점과 직선 사이의 거리</td><td>13번 · 14번</td></tr>
+          <tr><td class="n">19</td><td class="n">2/19</td><td>[새] <b>17번</b> 합성함수 · 역함수</td><td>12번 · 15 · 16번</td></tr>
+          <tr class="test"><td class="n">20</td><td class="n">2/26</td><td><b>[모] 2순위 5유형 모의고사</b> + 원서 접수 안내</td><td>전체</td></tr>
+        </tbody>
+      </table>
+      <div>
+        <h3>(b) 방학인 경우 — 8주 자율 루틴</h3>
+        <ul>
+          <li>매주 <b>월 · 수 · 금 저녁</b>, 앱에서 <b>고졸 검정고시 연습 5문항</b> (1회 10분 이내)</li>
+          <li><b>격주 금요일 2회 오프라인 보충</b> (1/22, 2/19 권장) — 60분 겨울 오답 클리닉 + 30분 새 유형 1개</li>
+          <li>교사는 <b>주 1회 앱 피드백</b> 고정 (수요일 권장)</li>
+          <li>2월 마지막 주 <b>복귀 진단 10문항</b>으로 손실분 확인 후 3월 계획 미세 조정</li>
+        </ul>
+        <div class="warn" style="margin-bottom:0">
+          <b>원서 접수는 2월 중순입니다.</b> 2/26 수업에서 접수 여부를 한 사람씩 확인하고, 접수를 마친 학생은 성장카드에 표시해 드리십시오.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">08</span><h2>주차별 계획 · 3~4단계 (2027. 3 ~ 4) — 실전화와 파이널</h2></div>
+    <table>
+      <thead><tr><th class="c" style="width:5%">회</th><th class="c" style="width:8%">날짜</th><th style="width:42%">내용</th><th>학습지 · 준비물</th></tr></thead>
+      <tbody>
+        <tr class="test"><td class="n">21</td><td class="n">3/5</td><td><b>[모] 실전 모의고사 1회차</b> — 20문항 · 40분 제한. 점수 공개, 유형 지도 갱신</td><td>만능학습지 20유형 인쇄본, OMR 연습지</td></tr>
+        <tr><td class="n">22</td><td class="n">3/12</td><td><b>개인 클리닉 A</b> — 학생별 오답 상위 3유형만 집중</td><td>앱 오답 문제지 개인별 출력</td></tr>
+        <tr><td class="n">23</td><td class="n">3/19</td><td><b>개인 클리닉 B</b> + 3순위 맛보기 (9번 이차부등식)</td><td>오답 문제지 + 9번 학습지</td></tr>
+        <tr class="test"><td class="n">24</td><td class="n">3/26</td><td><b>[모] 실전 모의고사 2회차</b> + <b>시험 요령</b> — 시간 배분, OMR 작성, 모르는 문항 처리, 검산 순서</td><td>실전 형식 인쇄본, 시계</td></tr>
+        <tr><td class="n">25</td><td class="n">4/2</td><td><b>파이널 90분</b> — 코어 12유형 각 1문항을 학생이 칠판에서 직접 풀이. 마지막 10분은 준비물 · 시험장 동선 · 컨디션 안내</td><td><b>성장카드 최종본 전달</b>, 수험표 확인</td></tr>
+        <tr class="exam"><td class="n">–</td><td class="n">4월 초 토</td><td><b>2027년 제1회 고졸 검정고시 시행</b></td><td>수험표 · 신분증 · 검정 볼펜 · 수정테이프</td></tr>
+        <tr><td class="n">26</td><td class="n">시험 다음 주</td><td><b>리뷰 수업</b> — 기억나는 문항 복기, 자기 채점, 다음 목표 설정</td><td>가채점표</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">4 / 9</span></div>
+</div>
+
+<!-- ══════════ P5 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">09</span><h2>주차별 계획 · 5~6단계 (2027. 5 ~ 8) — 재정비와 제2회</h2></div>
+    <p class="lede">4월 결과에 따라 반이 두 갈래로 나뉩니다. <b>같은 교실에서 같은 유형을 다루되, 요구 수준만 다르게</b> 운영하면 90분 안에 두 갈래를 함께 끌고 갈 수 있습니다.</p>
+    <table>
+      <thead><tr>
+        <th class="c" style="width:8%">회</th><th class="c" style="width:9%">날짜</th>
+        <th style="width:41%">재응시 트랙 (수학 60점 미만)</th><th>합격 트랙 (수학 과목 합격)</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="n">27</td><td class="n">5/7</td><td><b>재건축 진단</b> — 4월 시험 유형별 정오 복기, 무너진 코어 확정</td><td>생활수학 ① 비율 · 할인 · 이자</td></tr>
+        <tr><td class="n">28</td><td class="n">5/14</td><td>무너진 코어 재학습 ①</td><td>[새] <b>18번</b> 유리 · 무리함수</td></tr>
+        <tr><td class="n">29</td><td class="n">5/21</td><td>무너진 코어 재학습 ②</td><td>[새] <b>8번</b> 삼 · 사차방정식</td></tr>
+        <tr class="test"><td class="n">30</td><td class="n">5/28</td><td colspan="2"><b>[모] 5월 점검 모의고사</b> — 재응시 트랙은 코어 12, 합격 트랙은 전 20유형</td></tr>
+        <tr><td class="n">31</td><td class="n">6/4</td><td>2순위 재학습 (3 · 7 · 13번)</td><td>생활수학 ② 통계 읽기 · 그래프</td></tr>
+        <tr><td class="n">32</td><td class="n">6/11</td><td>2순위 재학습 (12 · 17번)</td><td>[새] <b>9번</b> 이차부등식</td></tr>
+        <tr><td class="n">33</td><td class="n">6/18</td><td>좌표 영역 집중 (10~14번 연속)</td><td>좌표 영역 심화</td></tr>
+        <tr class="test"><td class="n">34</td><td class="n">6/25</td><td colspan="2"><b>[모] 6월 모의고사</b> + <b>제2회 원서 접수 확인</b> (접수는 6월 중순)</td></tr>
+        <tr><td class="n">35</td><td class="n">7/2</td><td>개인 클리닉 A (오답 상위 3유형)</td><td>타 과목 수학 연계 / 후배 멘토 역할</td></tr>
+        <tr><td class="n">36</td><td class="n">7/9</td><td>개인 클리닉 B</td><td>동일</td></tr>
+        <tr class="test"><td class="n">37</td><td class="n">7/16</td><td colspan="2"><b>[모] 실전 모의고사 3회차</b> — 40분 제한, OMR 포함</td></tr>
+        <tr class="rest"><td class="n">–</td><td class="n">7/23</td><td colspan="2">휴강 예상 (야학 하계 일정) — 파이널 숙제 배포</td></tr>
+        <tr><td class="n">38</td><td class="n">7/30</td><td colspan="2"><b>파이널 90분</b> — 코어 12유형 각 1문항 · 시험 요령 재확인 · <b>성장카드 발급</b></td></tr>
+        <tr class="exam"><td class="n">–</td><td class="n">8월 초 토</td><td colspan="2"><b>2027년 제2회 고졸 검정고시 시행</b></td></tr>
+        <tr><td class="n">39</td><td class="n">8/13</td><td colspan="2"><b>리뷰 수업</b> — 가채점, 결과 나누기</td></tr>
+        <tr class="test"><td class="n">40</td><td class="n">8/20</td><td colspan="2"><b>학기말 · 연간 성장 발표</b> — 1년치 유형 지도와 성장카드를 나란히 놓고 각자 한 마디. <b>연간 통지표 작성</b></td></tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-bottom:0">
+      합격 트랙 학생에게는 <b>“다음 목표”</b>를 반드시 주십시오. 목표가 사라지면 출석이 끊깁니다. 생활수학, 다른 과목 수학 연계, 후배 학습자 멘토 역할 중에서 <b>본인이 고르게</b> 하는 것이 가장 잘 유지됩니다.
+    </div>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">5 / 9</span></div>
+</div>
+
+<!-- ══════════ P5 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">10</span><h2>90분 수업 운영 표준 (모든 회차 공통)</h2></div>
+    <p class="lede">시니어 학습자의 90분에서 가장 중요한 것은 <b>“오늘 내가 무엇을 했는지가 눈에 남는 것”</b>입니다. 아래 5블록을 고정 리듬으로 씁니다.</p>
+    <table class="blocks">
+      <thead><tr><th style="width:14%">시간</th><th style="width:15%">블록</th><th style="width:33%">활동</th><th style="width:20%">사용 학습지</th><th>수집 지표</th></tr></thead>
+      <tbody>
+        <tr><td>19:00–19:10</td><td><b>① 도장 워밍업</b></td><td>계산 5문항, 즉시 자기채점</td><td>워밍업지 (A4 1장)</td><td>꾸준함 도장 · 워밍업 정답 수</td></tr>
+        <tr><td>19:10–19:25</td><td><b>② 되돌아보기</b></td><td>지난주 · 3주 전 오답 3문항 재도전</td><td>앱 오답 문제지 출력본</td><td><b>다시 맞힌 문제 수</b></td></tr>
+        <tr><td>19:25–19:55</td><td><b>③ 오늘의 유형</b></td><td>[개념] → [예제]. 교사 설명 최소, 학생 지목 · 칠판 풀이 · 박수</td><td>만능학습지 [개념][예제]</td><td><b>설명 배지</b></td></tr>
+        <tr><td>19:55–20:20</td><td><b>④ 혼자 풀기</b></td><td>실전 4~6문항. 교사는 1:1 순회하며 도움 여부 표시</td><td>만능학습지 [실전]</td><td><b>유형 숙달 ★ 판정</b></td></tr>
+        <tr><td>20:20–20:30</td><td><b>⑤ 마무리</b></td><td>성장카드 오늘 칸 채우기, 앱 숙제 안내, 한 사람씩 한마디</td><td>성장카드</td><td>소감 · 자기평가</td></tr>
+      </tbody>
+    </table>
+    <div class="cols2">
+      <div>
+        <h3>운영 원칙</h3>
+        <ul>
+          <li>90분 동안 <b>모든 학생이 한 마디 이상</b> 하고 마칩니다.</li>
+          <li>정오답과 무관하게 발표가 끝나면 <b>박수</b>. 교정은 박수 뒤에 교사가 합니다.</li>
+          <li>새 유형은 <b>하루 1개</b>를 넘기지 않습니다. 남는 시간은 반복에 씁니다.</li>
+          <li>학생 수가 적은 날은 새 유형을 미루고 <b>② + ④를 두 배로</b> 늘립니다. 진도보다 정착이 우선입니다.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>결석 · 수준 차이 대응</h3>
+        <ul>
+          <li><b>결석자</b> — 그 주 학습지 3장을 봉투에 담아 다음 주 전달. “빠진 진도”가 아니라 <b>“보너스 문제”</b>라고 부릅니다.</li>
+          <li><b>2주 이상 결석</b> — 다음 출석일의 ② 블록을 그 학생 전용으로. 새 유형은 그날 건너뛰어도 됩니다.</li>
+          <li><b>빨리 끝낸 학생</b> — 같은 유형 [실전] 추가 2문항을 미리 준비해 조용히 건넵니다.</li>
+          <li><b>속도가 느린 학생</b> — 문항 수를 줄이되 <b>난이도는 낮추지 않습니다.</b> “4문항 중 4개”가 “6문항 중 4개”보다 자기효능감에 유리합니다.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">11</span><h2>반복학습 설계 — 3-1-1 나선</h2></div>
+    <p class="lede">한 번 배운 유형은 아래 네 번 다시 만납니다. 이 규칙만 지키면 별도의 복습 계획이 필요 없습니다.</p>
+    <table>
+      <thead><tr><th style="width:16%">언제</th><th style="width:30%">어디서</th><th>분량과 성격</th></tr></thead>
+      <tbody>
+        <tr><td class="n">W + 1주</td><td>① 워밍업 또는 ② 되돌아보기</td><td>2문항 — 짧게, 가볍게. 기억을 건드리기만 함</td></tr>
+        <tr><td class="n">W + 3주</td><td>복습 학습지</td><td>1장 (실전 4문항) — 잊을 때쯤 다시</td></tr>
+        <tr><td class="n">W + 8주</td><td>미니 모의고사</td><td>1문항 — 시험 형태로</td></tr>
+        <tr><td class="n">3월 · 7월</td><td>실전 모의고사</td><td>20문항 중 1문항 — 최종 확인</td></tr>
+      </tbody>
+    </table>
+    <h3>오답 루프 (앱 연동)</h3>
+    <p style="margin-bottom:6px">① 학생이 주중에 앱에서 문제를 풂 → ② 교사가 주중에 피드백 작성 → ③ 금요일 전 <b>오답만 모아 출력</b> → ④ 수업 ② 블록에서 재도전 → ⑤ 맞히면 성장카드 “다시 맞힌 문제”에 +1.</p>
+    <div class="callout" style="margin-bottom:0">
+      이 루프가 학생이 체감하는 성장의 핵심입니다. <b>틀린 문제가 쌓이는 구조가 아니라 “되찾은 문제”가 쌓이는 구조</b>로 보여주십시오.
+    </div>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">6 / 9</span></div>
+</div>
+
+<!-- ══════════ P6 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">12</span><h2>학습지 3종 세트</h2></div>
+    <p class="lede">매주 인쇄물은 <b>딱 3장</b>입니다. 그 이상은 시니어 학습자에게 부담이 됩니다.</p>
+    <table>
+      <thead><tr><th style="width:20%">종류</th><th style="width:16%">분량</th><th>만드는 법</th></tr></thead>
+      <tbody>
+        <tr><td><b>① 워밍업지</b></td><td>A4 1장 · 5문항</td><td>사칙연산 · 구구단 · 지난 유형 계산. 엑셀 학습지 또는 앱 기본/심화 나눗셈 출력</td></tr>
+        <tr><td><b>② 오늘의 유형지</b></td><td>A4 1~2장</td><td><b>만능학습지 탭</b>에서 유형 선택 → [개념]-[예제]-[실전 4~6문항] 인쇄</td></tr>
+        <tr><td><b>③ 되돌아보기지</b></td><td>A4 1장 · 3문항</td><td>앱 <b>오답 문제지</b> 개인별 출력 (학생마다 내용이 다름)</td></tr>
+      </tbody>
+    </table>
+    <h3>시니어 학습자용 학습지 원칙</h3>
+    <div class="cols2">
+      <ul>
+        <li>글자 크기 <b>14pt 이상</b>, 수식은 더 크게. 한 장에 <b>6문항 이하</b>.</li>
+        <li>문항 아래 <b>계산 공간을 문항 높이만큼</b> 비웁니다. 여백이 부족하면 다른 종이에 풀고 과정이 사라집니다.</li>
+        <li>한 문항은 <b>한 절차</b>만 묻습니다. 두 단계가 필요하면 (1), (2)로 쪼갭니다.</li>
+      </ul>
+      <ul>
+        <li><b>[개념] 칸에는 완성된 예시 풀이</b>를 넣습니다. 빈칸 채우기가 아니라 “보고 따라 할 본보기”가 있어야 합니다.</li>
+        <li>좌표 · 도형 유형은 <b>그림을 반드시 함께</b> 인쇄합니다.</li>
+        <li>상단에 <b>날짜 · 이름 · 오늘의 유형명</b> 칸을 둡니다. 통지표 근거 자료가 됩니다.</li>
+        <li>트랙 B는 <b>같은 주제의 쉬운 버전</b>으로. 주제어가 같으면 한 교실에서 같은 이야기를 할 수 있습니다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">13</span><h2>학생에게 보여줄 성장 5지표</h2></div>
+    <p class="lede">앱의 분석 지표(정답률 · 모멘텀 · 행동 패턴)는 <b>교사가 개입 시점을 판단하는 용도</b>입니다. 학생에게는 아래 다섯 개만 보여줍니다.</p>
+    <table>
+      <thead><tr><th class="c" style="width:5%"></th><th style="width:19%">지표</th><th style="width:15%">단위</th><th style="width:26%">출처</th><th>학생에게 하는 말</th></tr></thead>
+      <tbody>
+        <tr><td class="n">①</td><td><b>합격 게이지</b></td><td class="n">9 / 20</td><td>교사 ★판정</td><td>“합격까지 3개 남았습니다”</td></tr>
+        <tr><td class="n">②</td><td><b>이해 나무</b></td><td class="c">🌱 🌿 🌳 🍎</td><td>앱 영역별 정답률 (자동)</td><td>“도형 나무에 잎이 무성해졌어요”</td></tr>
+        <tr><td class="n">③</td><td><b>다시 맞힌 문제</b></td><td class="n">누적 개수</td><td>수업 ② + 앱 오답 재출제</td><td>“틀린 문제 3개를 오늘 되찾으셨습니다”</td></tr>
+        <tr><td class="n">④</td><td><b>꾸준함 도장</b></td><td class="n">도장 개수</td><td>출석부 + 앱 학습 일수</td><td>“이번 달 도장 6개를 모으셨습니다”</td></tr>
+        <tr><td class="n">⑤</td><td><b>설명 배지</b></td><td class="n">배지 개수</td><td>수업 ③ 교사 체크</td><td>“설명해 주신 덕분에 다들 이해했어요”</td></tr>
+      </tbody>
+    </table>
+    <div class="cols2">
+      <div>
+        <h3>유형 숙달 ★ 판정 기준</h3>
+        <table>
+          <thead><tr><th class="c" style="width:20%">표시</th><th>기준</th></tr></thead>
+          <tbody>
+            <tr><td class="c stars">☆</td><td>아직 배우지 않았거나 손대지 못함</td></tr>
+            <tr><td class="c stars">★</td><td><b>도움을 받아</b> 풀이 완성</td></tr>
+            <tr><td class="c stars">★★</td><td><b>혼자</b> 정확히 풀이 (1회)</td></tr>
+            <tr><td class="c stars">★★★</td><td><b>다른 날 2회 연속</b> 혼자 정확히, 또는 말로 설명</td></tr>
+          </tbody>
+        </table>
+        <p style="margin:0"><b>★★ 이상만</b> 합격 게이지에 포함합니다. 판정은 ④ 블록에서만, 한 유형당 <b>2문항 이상</b>을 근거로 합니다.</p>
+      </div>
+      <div>
+        <h3>지표에 쓰지 않는 것</h3>
+        <div class="warn">
+          정답률 퍼센트 · 등수 · 다른 학생과의 비교 · 틀린 문제 수 · 예측 점수 · <b>연속 출석 기록(streak)</b>.
+        </div>
+        <p style="margin:0">연속 기록은 생업으로 한 주 빠지면 0이 되어 시니어 학습자에게 이탈 요인이 됩니다. <b>누적 개수만</b> 씁니다. 같은 이유로 오답 개수는 보여주지 않고 <b>“다시 맞힌 개수”</b>만 보여줍니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">7 / 9</span></div>
+</div>
+
+<!-- ══════════ P7 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">14</span><h2>수집 지침 — 90분 동안 무엇을 언제 적는가</h2></div>
+    <table class="blocks">
+      <thead><tr><th style="width:14%">시간</th><th style="width:15%">블록</th><th style="width:22%">교사가 손에 드는 것</th><th>기록 동작</th></tr></thead>
+      <tbody>
+        <tr><td>19:00–19:10</td><td>① 워밍업</td><td>출석부</td><td>출석 도장 체크 <span class="mono">(30초)</span></td></tr>
+        <tr><td>19:10–19:25</td><td>② 되돌아보기</td><td>주간 기록표</td><td>학생별 “다시 맞힌 개수” 숫자만 <span class="mono">(1분)</span></td></tr>
+        <tr><td>19:25–19:55</td><td>③ 오늘의 유형</td><td>주간 기록표</td><td>설명한 학생 이름 옆에 체크 <span class="mono">(수시)</span></td></tr>
+        <tr><td>19:55–20:20</td><td>④ 혼자 풀기</td><td>주간 기록표</td><td><b>순회하며 ★판정.</b> 도움을 줬으면 그 자리에서 ★ 하나 <span class="mono">(순회 중)</span></td></tr>
+        <tr><td>20:20–20:30</td><td>⑤ 마무리</td><td>성장카드</td><td>학생이 직접 자기 카드를 채움. 교사는 확인만</td></tr>
+      </tbody>
+    </table>
+    <div class="cols2">
+      <div>
+        <h3>수집의 3원칙</h3>
+        <ol>
+          <li><b>수업 중에 다 끝냅니다.</b> 집에 가서 정리하는 방식은 3주를 못 넘깁니다. 위 기록 동작은 합쳐서 <b>2~3분</b>입니다.</li>
+          <li><b>학생이 자기 카드를 직접 채웁니다.</b> 교사가 채워주면 성적표가 되고, 학생이 채우면 성장 기록이 됩니다.</li>
+          <li><b>판정은 순회하면서, 종이 위에서.</b> 태블릿으로 입력하려 하면 순회가 끊깁니다. 종이에 적고 주말에 앱과 대조하십시오.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>주중 교사 루틴 (5분)</h3>
+        <table>
+          <tbody>
+            <tr><td style="width:22%"><b>수요일</b></td><td>앱 학생관리 → 신호등 확인 → 노랑 · 빨강 학생에게 피드백 1줄</td></tr>
+            <tr><td><b>목요일</b></td><td>오답 문제지 출력 + 유형 지도 갱신 (주간 기록표 → 학생별 유형 지도로 전사)</td></tr>
+            <tr><td><b>금 21:00</b></td><td>공지/숙제 탭에서 숙제 5문항 배포</td></tr>
+            <tr><td><b>월말</b></td><td>학습 분석 리포트 PDF 출력 → 성장카드 수치 전사</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">15</span><h2>평가 · 통지표 연계 일정</h2></div>
+    <table>
+      <thead><tr><th style="width:18%">시기</th><th style="width:34%">산출물</th><th>근거 데이터</th></tr></thead>
+      <tbody>
+        <tr><td>매주 금</td><td>주간 수업 기록표 1장</td><td>출석, ★판정, 다시 맞힌 수, 설명 배지</td></tr>
+        <tr><td>매월 말</td><td>앱 학습 분석 리포트 (학생별 PDF)</td><td>앱 로그</td></tr>
+        <tr class="test"><td>12월 3주</td><td><b>성장카드 1차 + 2학기 생활통지표</b></td><td>유형 지도 20칸, 월별 평균, 관찰 기록</td></tr>
+        <tr><td>2월 말</td><td>겨울 복귀 진단 결과 요약</td><td>복귀 진단 10문항</td></tr>
+        <tr class="test"><td>4월 초</td><td><b>성장카드 최종본</b> (시험 직전 전달)</td><td>3월 모의고사 2회 + 유형 지도</td></tr>
+        <tr><td>7월 말</td><td>성장카드 (제2회 응시자)</td><td>5~7월 모의고사 3회</td></tr>
+        <tr class="test"><td>8월 3주</td><td><b>연간 통지표 + 성장 발표</b></td><td>1년치 유형 지도, 성장카드 전체</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학</span><span class="mono">8 / 9</span></div>
+</div>
+
+<!-- ══════════ P8 ══════════ -->
+<div class="page">
+  <section>
+    <div class="sec-head"><span class="sec-no">16</span><h2>부록 · 회차별 체크리스트</h2></div>
+    <p class="lede">인쇄해서 교탁에 두는 용도입니다.</p>
+    <div class="cols2">
+      <div class="check">
+        <div class="hd">수업 전</div>
+        <ul>
+          <li>워밍업지 — 인원수 +2장</li>
+          <li>오늘의 유형지 (만능학습지 인쇄본)</li>
+          <li>되돌아보기지 (학생별 오답 · 이름 확인)</li>
+          <li>성장카드 파일 / 스티커</li>
+          <li>주간 수업 기록표 1장</li>
+          <li>칠판 마커, 결석자 봉투</li>
+        </ul>
+      </div>
+      <div class="check">
+        <div class="hd">수업 후</div>
+        <ul>
+          <li>★판정 기록 완료</li>
+          <li>다시 맞힌 문제 수 기록</li>
+          <li>설명한 학생 체크 — 전원 1회 이상인가?</li>
+          <li>앱 숙제 배포</li>
+          <li>결석자 봉투 준비</li>
+          <li>다음 주 되돌아보기에 넣을 오답 유형 메모</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">17</span><h2>부록 · 연간 한 장 달력</h2></div>
+    <table>
+      <thead><tr><th style="width:11%">월</th><th style="width:9%" class="c">수업</th><th style="width:40%">그 달의 임무</th><th>산출물 · 확인</th></tr></thead>
+      <tbody>
+        <tr><td><b>2026.09</b></td><td class="n">2회</td><td>진단 · 좌표 기초 · 유형 지도 개시</td><td>학생별 유형 지도 20칸</td></tr>
+        <tr><td><b>10</b></td><td class="n">4회</td><td>계산 코어 1 · 2 · 4 · 5번</td><td>10월 미니 모의고사</td></tr>
+        <tr><td><b>11</b></td><td class="n">4회</td><td>좌표 코어 6 · 10 · 11 · 14번</td><td>11월 미니 모의고사</td></tr>
+        <tr class="test"><td><b>12</b></td><td class="n">3회</td><td>집합 · 명제 · 순열 · 조합 → 코어 12 완주</td><td><b>성장카드 1차 · 생활통지표</b></td></tr>
+        <tr><td><b>2027.01</b></td><td class="n">4회</td><td>2순위 3 · 7 · 13번 + 겨울 점검</td><td>겨울 중간 모의고사</td></tr>
+        <tr><td><b>02</b></td><td class="n">3회</td><td>2순위 12 · 17번 · 복귀 진단</td><td><b>제1회 원서 접수 (중순)</b></td></tr>
+        <tr><td><b>03</b></td><td class="n">4회</td><td>실전 모의고사 2회 · 개인 클리닉</td><td>유형 지도 갱신</td></tr>
+        <tr class="exam"><td><b>04</b></td><td class="n">2회</td><td>파이널 · <b>제1회 시행</b> · 리뷰</td><td><b>성장카드 최종본</b></td></tr>
+        <tr><td><b>05</b></td><td class="n">4회</td><td>재건축 진단 · 트랙 분리 운영</td><td>5월 점검 모의고사</td></tr>
+        <tr><td><b>06</b></td><td class="n">4회</td><td>2순위 재학습 · 좌표 집중</td><td><b>제2회 원서 접수 (중순)</b></td></tr>
+        <tr><td><b>07</b></td><td class="n">4회</td><td>개인 클리닉 · 실전 3회차 · 파이널</td><td>성장카드</td></tr>
+        <tr class="exam"><td><b>08</b></td><td class="n">3회</td><td><b>제2회 시행</b> · 리뷰 · 연간 성장 발표</td><td><b>연간 통지표</b></td></tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-bottom:0">
+      <b>진행 상황은 종이 대신 웹에서도 봅니다.</b> 저장소의 <span class="mono">curriculum.html</span> 을 열면 이 표가 진행표 · 상황표 · 학생용 화면으로 살아 있고,
+      회차 상태와 학생별 ★판정을 눌러서 바로 고칠 수 있습니다. 고친 내용은 앱과 같은 Firebase에 저장되어 다른 기기에서도 즉시 보입니다.
+    </div>
+  </section>
+
+  <div class="foot"><span>고졸 검정고시 수학반 1년 커리큘럼 · 태청야학 · 박소명</span><span class="mono">9 / 9</span></div>
+</div>
+
+</body>
+</html>
