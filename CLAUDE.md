@@ -62,7 +62,12 @@ Host github.com
   유형 하나 = `{id, tag, area, title, src, coord?, concept[], fields[], def, rand(), build(p)}`.
   `build`는 `{q, figure?, choices[4], raw?, layout?, ans, answerTex|answerRaw, sol[]}` 또는 `{err}`를 돌려준다.
   새 유형을 추가할 때는 이 배열에 객체 하나만 넣으면 탭·프리셋·인쇄에 자동 반영된다. `coord:true`면 ★(좌표 중심) 표시.
-- `js/components/gedWorksheet.js` — React 탭 `GedWorksheetTab`. 문항별 조건 편집은 React, 문제 본문은 `GS.probHTML` 문자열을
-  `dangerouslySetInnerHTML`로 넣고 KaTeX를 `GS.renderTex`로 렌더링. 글자 편집(override)은 `ovRef`에 보관해 커서가 튀지 않게 한다.
+- `js/components/gedWorksheet.js` — React 탭 `GedWorksheetTab`. **작업대(여러 장 보관) 방식**:
+  `sheets:[{id,cfg,problems,docId,collapsed,edit,showCtrl,createdAt}]` 배열을 들고 있고, [새 학습지 추가]는 기존 장을
+  지우지 않고 맨 앞에 한 장을 더한다(기존 장은 자동으로 접힘). 접힌 장은 DOM을 아예 그리지 않아 여러 장이어도 가볍다.
+  학습지마다 접기/펼치기 · 저장(클라우드) · 반출(인쇄/PDF · 새 탭 · JSON) · 삭제 버튼을 가진다.
+  문항별 조건 편집은 React, 문제 본문은 `GS.probHTML` 문자열을 `dangerouslySetInnerHTML`로 넣고 KaTeX를 `GS.renderTex`로 렌더링.
+  글자 편집(override)은 `ovRef`(문항 key → HTML)에 보관해 커서가 튀지 않게 한다. 문항 key는 장을 넘어 유일하다.
+  임시저장 키는 `ged_sheet_builder_v2`이며, 예전 단일 학습지(`..._v1`)는 `gedLoadInit()`이 한 장으로 자동 이관한다.
 - 검증 스크립트(브라우저 콘솔): `GED_UNITS`를 순회하며 `rand()`→`build()` 300회씩 돌려 err/NaN/보기 중복이 0인지 확인.
 - `scripts_rebuild_index.py`는 이제 `<script type="text/babel">` 줄을 직접 찾으므로 head에 줄을 추가해도 안전하다.
