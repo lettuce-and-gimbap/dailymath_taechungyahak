@@ -129,6 +129,8 @@ var SVG_PROPS={style:{touchAction:'none',display:'block'},className:'border-2 bo
 /* ===== MINI GRAPH (for quiz) ===== */
 var MINI_S=80,MINI_SC=6;
 
+/* ⚠️ MiniGrid / MiniGraph 는 현재 어디에서도 호출하지 않는다 (2026-09-11 확인).
+   퀴즈용 축소 그래프였는데, 지금은 GraphPreview 가 그 역할을 한다. */
 function MiniGrid({S,SC}){
   const cx=S/2,cy=S/2;
   // 🌟 수정 1: 눈금을 -3~3에서 -6~6으로 확장하여, 모든 영역의 그래프가 화면에 잘리지 않도록 합니다.
