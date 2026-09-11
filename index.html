@@ -209,6 +209,18 @@ var ADMIN_NAMES=['박소명','이은희','최시은','윤새별','신현섭','�
 
 var DAY_KO=['월','화','수','목','금','토','일'];
 
+/* 같은 사람이 선생님 계정과 학생 계정을 둘 다 가진 경우, 로그아웃 없이 바로 오갈 수 있게 하는 짝.
+   [선생님 이름, 학생 이름] 순서로 등록한다. 두 이름 모두 Firestore users 에 실제 계정이 있어야 한다.
+   quickSwitchTarget(name) 은 그 이름의 짝(반대쪽)을 돌려주고, 등록되지 않은 이름이면 null. */
+var QUICK_SWITCH_PAIRS=[['박소명','박소명_학생']];
+function quickSwitchTarget(name){
+  for(const[teacher,student]of QUICK_SWITCH_PAIRS){
+    if(name===teacher)return student;
+    if(name===student)return teacher;
+  }
+  return null;
+}
+
 
 // ========== js\core\utils.js ==========
 // === js/core/utils.js ===
@@ -10302,7 +10314,7 @@ function SavedSessionBar({saved,collapsed,onCollapse,onExpand,onResume}){
   </div>;
 }
 
-function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
+function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
   const[showFbModal,setShowFbModal]=useState(false);
@@ -10314,9 +10326,15 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
   const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
   const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
   const[toast,setToast]=useState('');
+  const[pendingSwitch,setPendingSwitch]=useState(false);   // 전환 단추를 눌렀는데 문제 풀이 중이라 확인 모달을 거치는 중
   const SAVE_KEY='yakHakSavedSession_'+userData.name;
   const savedInfo=(()=>{try{return JSON.parse(localStorage.getItem(SAVE_KEY));}catch{return null;}})();
   const goResume=()=>{setResumeReq(true);setTab('practice');};
+  const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
+  const handleSwitchClick=()=>{
+    if(sessionActive&&tab==='practice'){setPendingSwitch(true);setShowNavModal(true);}
+    else onSwitchUser(switchTarget);
+  };
 
   /* 다른 탭(좌표10·기하학·모의고사·숙제)에서 한 묶음을 끝까지 풀어 기록이 새로 생기면,
      저장돼 있던 하던 공부는 그 기록으로 '풀림' 처리한다 — 알림을 무시하고 지금 문제를 계속 푼 경우 */
@@ -10412,6 +10430,10 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
       <div className="text-2xl">🎓</div>
       <h1 className="text-lg font-black text-gray-800 flex-1">태청야학 수학반</h1>
       <span className="text-sm font-bold text-gray-500">{userData.name}</span>
+      {switchTarget&&<button onClick={handleSwitchClick} title={`${switchTarget} 계정으로 전환`}
+        className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 active:scale-95 transition-transform">
+        👨‍🏫 전환
+      </button>}
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
@@ -10451,16 +10473,18 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
             <button onClick={()=>{
               const d=window.__yakHakActiveSession;
               if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);setBarCollapsed(false);}
-              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+              setShowNavModal(false);setSessionActive(false);
+              if(pendingSwitch){setPendingSwitch(false);onSwitchUser(switchTarget);}else setTab(pendingTab);
             }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               현재 상태 저장하기 💾
             </button>
             <button onClick={()=>{
-              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+              setShowNavModal(false);setSessionActive(false);
+              if(pendingSwitch){setPendingSwitch(false);onSwitchUser(switchTarget);}else setTab(pendingTab);
             }} className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
               그만하기
             </button>
-            <button onClick={()=>setShowNavModal(false)}
+            <button onClick={()=>{setShowNavModal(false);setPendingSwitch(false);}}
               className="w-full py-3 text-gray-400 font-bold text-sm">
               계속 풀기
             </button>
@@ -14786,14 +14810,19 @@ function GedWorksheetTab(){
    
    -------------------------------------------------------------------- */
 
-function TeacherDashboard({userData,onLogout,onUpdate}){
+function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   const[tab,setTab]=useState('analysis');
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'}];
+  const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-md">
       <div className="text-2xl">👨‍🏫</div>
       <h1 className="text-lg font-black flex-1">선생님 모드</h1>
       <span className="text-sm font-bold opacity-80">{userData.name}</span>
+      {switchTarget&&<button onClick={()=>onSwitchUser(switchTarget)} title={`${switchTarget} 계정으로 전환`}
+        className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-lg bg-white/15 text-white active:scale-95 transition-transform">
+        🧑‍🎓 전환
+      </button>}
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-white/70 font-bold px-2 py-1 rounded-lg bg-white/10">로그아웃</button>
     </header>
@@ -14837,14 +14866,35 @@ function App(){
   // 로그아웃 시 플래그 초기화 → 다음 접속 때 스플래시 다시 보임
   const logout=()=>{localStorage.removeItem('yakHakUser2');setUser(null);setShowSplash(false);sessionStorage.removeItem('yakHakSplashDone');};
   const update=newData=>{setUser(newData)};
+
+  /* 관리자 빠른 전환 (QUICK_SWITCH_PAIRS) : PIN 입력 없이 이름만 바꿔서 다시 불러온다.
+     자정이 지났으면 오늘 기록을 초기화하는 등 초기 로드/로그인과 같은 전처리를 거친다.
+     스플래시는 다시 띄우지 않는다 — 같은 사람이 화면만 바꾸는 것이지 새로 접속하는 게 아니라서. */
+  const switchUser=async(name)=>{
+    setChecking(true);
+    try{
+      const data=await loadUser(name);
+      if(!data){alert(`'${name}' 계정을 찾을 수 없습니다. 먼저 그 이름으로 가입해 주세요.`);setChecking(false);return;}
+      const d={...data};
+      const curMon=getKSTMonday();
+      if(d.lastDate!==todayStr()){d.todayLessons=0;d.todayCorrect=0;d.todayWrong=0;d.lastDate=todayStr();}
+      if(!d.currentWeekStart)d.currentWeekStart=curMon;
+      else if(d.currentWeekStart!==curMon){if(!d.stampArchive)d.stampArchive=[];const oldDates=(d.activeDates||[]).filter(x=>x>=d.currentWeekStart&&x<curMon);if(oldDates.length>0)d.stampArchive.unshift({weekStart:d.currentWeekStart,activeDates:oldDates});d.currentWeekStart=curMon;}
+      d.lastLoginAt=`${todayStr()} ${timeStr()}`;
+      await saveUser(d);
+      localStorage.setItem('yakHakUser2',JSON.stringify({name:d.name}));
+      setUser(d);
+    }catch(e){alert('전환 실패. 인터넷 연결을 확인해주세요.');}
+    setChecking(false);
+  };
   // 스플래시 닫힐 때 이번 세션에 본 것으로 기록 (새로고침·탭 이동 때 재노출 방지)
   const handleSplashDone=()=>{sessionStorage.setItem('yakHakSplashDone','1');setShowSplash(false);};
 
   if(checking)return<div className="min-h-screen flex items-center justify-center text-2xl font-black text-indigo-600">🎓 불러오는 중...</div>;
   if(!user)return<AuthScreen onLogin={login}/>;
   const main = user.role==='admin'
-    ? <TeacherDashboard userData={user} onLogout={logout} onUpdate={update}/>
-    : <StudentDashboard userData={user} onLogout={logout} onUpdate={update}/>;
+    ? <TeacherDashboard userData={user} onLogout={logout} onUpdate={update} onSwitchUser={switchUser}/>
+    : <StudentDashboard userData={user} onLogout={logout} onUpdate={update} onSwitchUser={switchUser}/>;
   return(<>{main}{showSplash&&<QuoteSplash onDone={handleSplashDone}/>}</>);
 }
 

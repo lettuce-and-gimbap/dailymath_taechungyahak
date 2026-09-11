@@ -155,6 +155,21 @@ js/
 - 검증 스크립트(브라우저 콘솔): `GED_UNITS`를 순회하며 **모든 kind마다** `rand()`→`build()`를 60회씩 돌려
   err/NaN/보기 중복/정답 인덱스가 정상인지 확인한다 (23유형 x 99종 x 60회 = 약 6천 건).
 
+## 🔁 관리자 계정 빠른 전환 (js/core/constants.js · js/app.js)
+
+같은 사람이 선생님 계정과 학생 계정을 둘 다 가진 경우(예: 박소명 / 박소명_학생), 로그아웃·재로그인 없이
+헤더의 작은 [전환] 단추로 바로 오갈 수 있다.
+
+- 짝은 `QUICK_SWITCH_PAIRS`(`core/constants.js`)에 `[선생님 이름, 학생 이름]`으로 등록한다. 두 이름 모두
+  Firestore `users`에 실제 계정이 있어야 한다(`quickSwitchTarget(name)`이 없으면 단추 자체가 안 보인다).
+- 전환은 `app.js`의 `switchUser(name)`이 처리한다 : `loadUser`로 대상 계정을 불러와 초기 로드와 같은
+  전처리(자정 지나면 오늘 기록 초기화, 주간 스탬프 롤오버)를 거친 뒤 `yakHakUser2`를 그 이름으로 바꾸고
+  `setUser`. 스플래시는 다시 띄우지 않는다(재접속이 아니라 화면만 바꾸는 것이라서).
+- 선생님 화면(`TeacherDashboard`)은 헤더에 🧑‍🎓 전환 단추, 학생 화면(`StudentDashboard`)은 👨‍🏫 전환 단추.
+  학생 쪽은 문제풀기 세션이 진행 중일 때(`sessionActive`) 누르면 기존 탭 이동 확인 모달을 그대로 재사용해
+  저장/그만하기를 고른 뒤에 전환한다(`pendingSwitch` 플래그로 탭 이동과 전환을 구분).
+- 새 짝을 추가할 때는 `QUICK_SWITCH_PAIRS`에 한 줄만 더하면 된다. 이름이 바뀌면 이 배열도 같이 고칠 것.
+
 ## 📚 학생 화면 · 하던 공부(저장된 문제풀기 세션) 알림 (js/student/dashboard.js)
 
 - 저장본은 localStorage `yakHakSavedSession_<이름>`. 좌표10·기하학·모의고사·기록 탭에서는 머리글 아래 **한 줄짜리 `SavedSessionBar`** 로만 알린다

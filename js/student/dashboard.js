@@ -29,7 +29,7 @@ function SavedSessionBar({saved,collapsed,onCollapse,onExpand,onResume}){
   </div>;
 }
 
-function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
+function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
   const[showFbModal,setShowFbModal]=useState(false);
@@ -41,9 +41,15 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
   const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
   const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
   const[toast,setToast]=useState('');
+  const[pendingSwitch,setPendingSwitch]=useState(false);   // 전환 단추를 눌렀는데 문제 풀이 중이라 확인 모달을 거치는 중
   const SAVE_KEY='yakHakSavedSession_'+userData.name;
   const savedInfo=(()=>{try{return JSON.parse(localStorage.getItem(SAVE_KEY));}catch{return null;}})();
   const goResume=()=>{setResumeReq(true);setTab('practice');};
+  const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
+  const handleSwitchClick=()=>{
+    if(sessionActive&&tab==='practice'){setPendingSwitch(true);setShowNavModal(true);}
+    else onSwitchUser(switchTarget);
+  };
 
   /* 다른 탭(좌표10·기하학·모의고사·숙제)에서 한 묶음을 끝까지 풀어 기록이 새로 생기면,
      저장돼 있던 하던 공부는 그 기록으로 '풀림' 처리한다 — 알림을 무시하고 지금 문제를 계속 푼 경우 */
@@ -139,6 +145,10 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
       <div className="text-2xl">🎓</div>
       <h1 className="text-lg font-black text-gray-800 flex-1">태청야학 수학반</h1>
       <span className="text-sm font-bold text-gray-500">{userData.name}</span>
+      {switchTarget&&<button onClick={handleSwitchClick} title={`${switchTarget} 계정으로 전환`}
+        className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 active:scale-95 transition-transform">
+        👨‍🏫 전환
+      </button>}
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
@@ -178,16 +188,18 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
             <button onClick={()=>{
               const d=window.__yakHakActiveSession;
               if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);setBarCollapsed(false);}
-              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+              setShowNavModal(false);setSessionActive(false);
+              if(pendingSwitch){setPendingSwitch(false);onSwitchUser(switchTarget);}else setTab(pendingTab);
             }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               현재 상태 저장하기 💾
             </button>
             <button onClick={()=>{
-              setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
+              setShowNavModal(false);setSessionActive(false);
+              if(pendingSwitch){setPendingSwitch(false);onSwitchUser(switchTarget);}else setTab(pendingTab);
             }} className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">
               그만하기
             </button>
-            <button onClick={()=>setShowNavModal(false)}
+            <button onClick={()=>{setShowNavModal(false);setPendingSwitch(false);}}
               className="w-full py-3 text-gray-400 font-bold text-sm">
               계속 풀기
             </button>

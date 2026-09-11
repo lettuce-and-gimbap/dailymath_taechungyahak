@@ -4,14 +4,19 @@
    
    -------------------------------------------------------------------- */
 
-function TeacherDashboard({userData,onLogout,onUpdate}){
+function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   const[tab,setTab]=useState('analysis');
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'}];
+  const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-md">
       <div className="text-2xl">👨‍🏫</div>
       <h1 className="text-lg font-black flex-1">선생님 모드</h1>
       <span className="text-sm font-bold opacity-80">{userData.name}</span>
+      {switchTarget&&<button onClick={()=>onSwitchUser(switchTarget)} title={`${switchTarget} 계정으로 전환`}
+        className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-lg bg-white/15 text-white active:scale-95 transition-transform">
+        🧑‍🎓 전환
+      </button>}
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-white/70 font-bold px-2 py-1 rounded-lg bg-white/10">로그아웃</button>
     </header>
