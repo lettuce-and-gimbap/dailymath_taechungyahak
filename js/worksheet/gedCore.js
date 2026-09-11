@@ -363,7 +363,7 @@ var GS=(function(){
 .gsheet .namebox{display:flex;gap:24px;border:3px solid var(--ink);border-radius:14px;padding:10px 20px;margin-bottom:22px;font-size:.85em}
 .gsheet .namebox span{flex:1}
 .gsheet .card{position:relative;border:3px solid var(--ink);border-radius:16px;padding:16px 20px 18px;margin:16px 0;background:#fff;page-break-inside:avoid;break-inside:avoid}
-.gsheet .card.concept{border-color:var(--navy);background:var(--band)}
+.gsheet .card.concept{border-color:var(--navy);background:var(--band);font-size:calc(var(--cs,1)*1em)}   /* [개념 글자] --cs 배율 */
 .gsheet .card.ex{border-color:var(--navy);background:#fbfcff}
 .gsheet .cap{display:inline-block;background:var(--navy);color:#fff;padding:2px 16px;border-radius:999px;font-size:.68em;margin-bottom:8px}
 .gsheet .card.concept ul{margin:6px 0 0;padding-left:1.2em}
@@ -442,6 +442,7 @@ var GS=(function(){
       <b>${title}</b>
       <span class="g">전체 글자 <input type="range" id="fsRange" min="16" max="40" value="${cfg.fs||24}"><span id="fsVal">${cfg.fs||24}px</span></span>
       <span class="g">문제 글자 <input type="range" id="qsRange" min="80" max="160" step="5" value="${Math.round((cfg.qs||1)*100)}"><span id="qsVal">${Math.round((cfg.qs||1)*100)}%</span></span>
+      <span class="g">개념 글자 <input type="range" id="csRange" min="70" max="160" step="5" value="${Math.round((cfg.cs||1)*100)}"><span id="csVal">${Math.round((cfg.cs||1)*100)}%</span></span>
       <span class="g">숫자·수식 <input type="range" id="msRange" min="80" max="200" step="5" value="${Math.round((cfg.ms||1)*100)}"><span id="msVal">${Math.round((cfg.ms||1)*100)}%</span></span>
       <button id="btnAns" class="${cfg.showAns?'on':''}">${cfg.showAns?'정답 숨기기':'정답 보이기'}</button>
       <button id="btnCols" class="${cfg.cols2?'on':''}">실전문제 2단</button>
@@ -454,6 +455,7 @@ var GS=(function(){
       rt();
       document.getElementById('fsRange').oninput=function(e){sh.style.setProperty('--fs',e.target.value+'px');document.getElementById('fsVal').textContent=e.target.value+'px';};
       document.getElementById('qsRange').oninput=function(e){sh.style.setProperty('--qs',e.target.value/100);document.getElementById('qsVal').textContent=e.target.value+'%';};
+      document.getElementById('csRange').oninput=function(e){sh.style.setProperty('--cs',e.target.value/100);document.getElementById('csVal').textContent=e.target.value+'%';};
       document.getElementById('msRange').oninput=function(e){sh.style.setProperty('--ms',e.target.value/100);document.getElementById('msVal').textContent=e.target.value+'%';};
       document.getElementById('btnAns').onclick=function(){var on=sh.classList.toggle('noans');this.classList.toggle('on',!on);this.textContent=on?'정답 보이기':'정답 숨기기';};
       document.getElementById('btnCols').onclick=function(){var on=sh.classList.toggle('cols2');this.classList.toggle('on',on);};
@@ -475,7 +477,7 @@ html,body{margin:0;padding:0;background:#dfe4ea}
 .wrap{padding:22px 12px 80px}
 ${SHEET_CSS}
 @media print{@page{size:A4;margin:12mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
-</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1}">${bodyHTML(cfg,groups)}</div></div>
+</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1};--cs:${cfg.cs||1}">${bodyHTML(cfg,groups)}</div></div>
 <script>${script}<${'/'}script></body></html>`;
   }
 

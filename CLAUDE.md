@@ -136,8 +136,8 @@ js/
   문항별 조건 편집은 React, 문제 본문은 `GS.probHTML` 문자열을 `dangerouslySetInnerHTML`로 넣고 KaTeX를 `GS.renderTex`로 렌더링.
   글자 편집(override)은 `ovRef`(문항 key → HTML)에 보관해 커서가 튀지 않게 한다. 문항 key는 장을 넘어 유일하다.
   임시저장 키는 `ged_sheet_builder_v2`이며, 예전 단일 학습지(`..._v1`)는 `gedLoadInit()`이 한 장으로 자동 이관한다.
-- **글자 크기 3단** : 전체 글자 `cfg.fs`(px) · 문제 글자 `cfg.qs`(배율, `.qtext`·`.choices`) · 숫자·수식 `cfg.ms`(배율, `.katex`·`.nm`·좌표평면 눈금).
-  `.gsheet` 의 CSS 변수 `--fs/--qs/--ms` 로 들어가며, 인쇄 때 `fs` 는 21px 로 묶이지만 `qs/ms` 는 em 배율이라 인쇄·PDF에도 반영된다.
+- **글자 크기 4단** : 전체 글자 `cfg.fs`(px) · 문제 글자 `cfg.qs`(배율, `.qtext`·`.choices`) · 개념 글자 `cfg.cs`(배율, `.card.concept`) · 숫자·수식 `cfg.ms`(배율, `.katex`·`.nm`·좌표평면 눈금).
+  `.gsheet` 의 CSS 변수 `--fs/--qs/--cs/--ms` 로 들어가며, 인쇄 때 `fs` 는 21px 로 묶이지만 `qs/ms` 는 em 배율이라 인쇄·PDF에도 반영된다.
   글 속 맨 숫자(3개, 5명)는 `GS.probHTML` 안의 `numSpan()` 이 `<span class="nm">` 으로 감싼다 (수식·SVG·문항 번호는 제외).
   planeSVG 눈금 숫자는 칸 너비에 따라 키우는 한도(`cap`)가 있어 옆 숫자와 겹치지 않는다.
 - **내 개념 설명(유형별 기본값)** : 학습지에서 개념 카드를 고치면 그 글이 유형 id 별로 저장되고,
@@ -154,6 +154,14 @@ js/
   (2026-09-11 : `u8`→`u8a`/`u8b`, `u17`→`u17a`/`u17b`, `u18`→`u18a`/`u18b`)
 - 검증 스크립트(브라우저 콘솔): `GED_UNITS`를 순회하며 **모든 kind마다** `rand()`→`build()`를 60회씩 돌려
   err/NaN/보기 중복/정답 인덱스가 정상인지 확인한다 (23유형 x 99종 x 60회 = 약 6천 건).
+
+## 📚 학생 화면 · 하던 공부(저장된 문제풀기 세션) 알림 (js/student/dashboard.js)
+
+- 저장본은 localStorage `yakHakSavedSession_<이름>`. 좌표10·기하학·모의고사·기록 탭에서는 머리글 아래 **한 줄짜리 `SavedSessionBar`** 로만 알린다
+  (예전의 화면 아래 큰 떠 있는 버튼은 문제 보기를 가려서 없앴다). 밀거나 ✕ 를 누르면 오른쪽 위 작은 `📚 하던 공부` 단추로 접힌다.
+- [이어서] → `resumeReq` → `DailyPracticeTab autoResume` 이 메뉴를 거치지 않고 바로 이어 푼다 (홈 배너도 같은 경로).
+- 알림을 무시하고 다른 탭에서 한 묶음을 끝까지 풀면(= `onUpdate` 로 들어온 `logs[0]` 이 새 기록이면) 저장본을 지워 **'풀림'으로 덮는다**.
+  새 탭에서 기록을 남길 때도 반드시 `logs:[log,...]` 맨 앞에 넣고 대시보드의 `onUpdate` 를 불러야 이 규칙이 동작한다.
 
 ## 📍 학생 화면 · 매일 좌표 10문제 (js/student/coordDaily.js)
 

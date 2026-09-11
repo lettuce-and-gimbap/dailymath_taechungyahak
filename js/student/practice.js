@@ -4,7 +4,7 @@
    메뉴 · 문항 만들기 · 풀이 과정 · 숫자 키패드 · 세션 진행
    -------------------------------------------------------------------- */
 
-function DailyPracticeTab({userData,onUpdate,onSessionActive}){
+function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed}){
   const[screen,setScreen]=useState('menu');
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
@@ -49,6 +49,9 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   setScreen('session');
   onSessionActive?.(true);
 };
+
+  /* 하던 공부 알림에서 [이어서]를 눌러 들어오면 메뉴를 거치지 않고 바로 이어 푼다 */
+  useEffect(()=>{if(autoResume){if(savedData)resumeSession();onAutoResumed?.();}},[autoResume]);
 
   const handleBack=()=>{
     setScreen('menu');

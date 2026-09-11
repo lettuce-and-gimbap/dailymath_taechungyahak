@@ -5254,7 +5254,7 @@ var GS=(function(){
 .gsheet .namebox{display:flex;gap:24px;border:3px solid var(--ink);border-radius:14px;padding:10px 20px;margin-bottom:22px;font-size:.85em}
 .gsheet .namebox span{flex:1}
 .gsheet .card{position:relative;border:3px solid var(--ink);border-radius:16px;padding:16px 20px 18px;margin:16px 0;background:#fff;page-break-inside:avoid;break-inside:avoid}
-.gsheet .card.concept{border-color:var(--navy);background:var(--band)}
+.gsheet .card.concept{border-color:var(--navy);background:var(--band);font-size:calc(var(--cs,1)*1em)}   /* [개념 글자] --cs 배율 */
 .gsheet .card.ex{border-color:var(--navy);background:#fbfcff}
 .gsheet .cap{display:inline-block;background:var(--navy);color:#fff;padding:2px 16px;border-radius:999px;font-size:.68em;margin-bottom:8px}
 .gsheet .card.concept ul{margin:6px 0 0;padding-left:1.2em}
@@ -5333,6 +5333,7 @@ var GS=(function(){
       <b>${title}</b>
       <span class="g">전체 글자 <input type="range" id="fsRange" min="16" max="40" value="${cfg.fs||24}"><span id="fsVal">${cfg.fs||24}px</span></span>
       <span class="g">문제 글자 <input type="range" id="qsRange" min="80" max="160" step="5" value="${Math.round((cfg.qs||1)*100)}"><span id="qsVal">${Math.round((cfg.qs||1)*100)}%</span></span>
+      <span class="g">개념 글자 <input type="range" id="csRange" min="70" max="160" step="5" value="${Math.round((cfg.cs||1)*100)}"><span id="csVal">${Math.round((cfg.cs||1)*100)}%</span></span>
       <span class="g">숫자·수식 <input type="range" id="msRange" min="80" max="200" step="5" value="${Math.round((cfg.ms||1)*100)}"><span id="msVal">${Math.round((cfg.ms||1)*100)}%</span></span>
       <button id="btnAns" class="${cfg.showAns?'on':''}">${cfg.showAns?'정답 숨기기':'정답 보이기'}</button>
       <button id="btnCols" class="${cfg.cols2?'on':''}">실전문제 2단</button>
@@ -5345,6 +5346,7 @@ var GS=(function(){
       rt();
       document.getElementById('fsRange').oninput=function(e){sh.style.setProperty('--fs',e.target.value+'px');document.getElementById('fsVal').textContent=e.target.value+'px';};
       document.getElementById('qsRange').oninput=function(e){sh.style.setProperty('--qs',e.target.value/100);document.getElementById('qsVal').textContent=e.target.value+'%';};
+      document.getElementById('csRange').oninput=function(e){sh.style.setProperty('--cs',e.target.value/100);document.getElementById('csVal').textContent=e.target.value+'%';};
       document.getElementById('msRange').oninput=function(e){sh.style.setProperty('--ms',e.target.value/100);document.getElementById('msVal').textContent=e.target.value+'%';};
       document.getElementById('btnAns').onclick=function(){var on=sh.classList.toggle('noans');this.classList.toggle('on',!on);this.textContent=on?'정답 보이기':'정답 숨기기';};
       document.getElementById('btnCols').onclick=function(){var on=sh.classList.toggle('cols2');this.classList.toggle('on',on);};
@@ -5366,7 +5368,7 @@ html,body{margin:0;padding:0;background:#dfe4ea}
 .wrap{padding:22px 12px 80px}
 ${SHEET_CSS}
 @media print{@page{size:A4;margin:12mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
-</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1}">${bodyHTML(cfg,groups)}</div></div>
+</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1};--cs:${cfg.cs||1}">${bodyHTML(cfg,groups)}</div></div>
 <script>${script}<${'/'}script></body></html>`;
   }
 
@@ -8310,7 +8312,7 @@ function StudentSentFeedback({name,refreshSignal}){
   </div>);
 }
 
-function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework}){
+function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,onStartHomework}){
   const{totalLessons,todayLessons,todayCorrect,todayWrong,goal=3,activeDates=[],currentWeekStart,stampArchive=[],name,logs=[]}=userData;
   const[notices,setNotices]=React.useState([]);
   const[pendingHomework,setPendingHomework]=React.useState(null);
@@ -8482,7 +8484,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     {/* 저장된 세션 알림 배너 */}
     {hasSavedSession&&(()=>{
       let saved=null;try{saved=JSON.parse(localStorage.getItem('yakHakSavedSession_'+name));}catch{}
-      return(<button onClick={onGoPractice} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+      return(<button onClick={onResumeSaved||onGoPractice} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
         <div className="text-3xl">📚</div>
         <div className="flex-1">
           <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
@@ -8601,7 +8603,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
    메뉴 · 문항 만들기 · 풀이 과정 · 숫자 키패드 · 세션 진행
    -------------------------------------------------------------------- */
 
-function DailyPracticeTab({userData,onUpdate,onSessionActive}){
+function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed}){
   const[screen,setScreen]=useState('menu');
   const[session,setSession]=useState(null);
   const[ver,setVer]=useState(userData.ver||0);
@@ -8646,6 +8648,9 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive}){
   setScreen('session');
   onSessionActive?.(true);
 };
+
+  /* 하던 공부 알림에서 [이어서]를 눌러 들어오면 메뉴를 거치지 않고 바로 이어 푼다 */
+  useEffect(()=>{if(autoResume){if(savedData)resumeSession();onAutoResumed?.();}},[autoResume]);
 
   const handleBack=()=>{
     setScreen('menu');
@@ -10272,7 +10277,32 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
    학생 화면의 탭 묶음과 하단 네비게이션
    -------------------------------------------------------------------- */
 
-function StudentDashboard({userData,onLogout,onUpdate}){
+/* 하던 공부 알림 — 문제 푸는 화면을 가리지 않게 머리글 바로 아래에 한 줄로 작게 뜬다.
+   - [이어서] : 문제풀기 탭으로 가서 저장된 문제부터 바로 이어 푼다
+   - 위·아래·옆으로 밀거나 [✕] : 오른쪽 위의 작은 📚 단추로 접힌다 (누르면 다시 펼쳐짐)
+   - 무시하고 지금 문제를 끝까지 풀면, 그 기록이 저장돼 있던 하던 공부를 '풀림'으로 덮는다 (StudentDashboard 참고) */
+function SavedSessionBar({saved,collapsed,onCollapse,onExpand,onResume}){
+  const start=useRef(null);
+  const[drag,setDrag]=useState(0);
+  if(collapsed)return<button onClick={onExpand} aria-label="하던 공부 보기"
+    className="fixed top-16 right-3 z-30 bg-amber-400 text-amber-900 rounded-full shadow-md font-black text-xs px-3 active:scale-95 transition-transform"
+    style={{minHeight:'36px'}}>📚 하던 공부</button>;
+  const down=e=>{start.current={x:e.clientX,y:e.clientY};};
+  const move=e=>{if(!start.current)return;const dx=e.clientX-start.current.x,dy=e.clientY-start.current.y;setDrag(Math.abs(dx)>Math.abs(dy)?dx:dy);};
+  const up=()=>{if(!start.current)return;start.current=null;if(Math.abs(drag)>40)onCollapse();setDrag(0);};
+  return<div className="px-3 pt-2 pb-1 bg-gray-50" style={{touchAction:'none'}}
+    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+    <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-300 rounded-2xl pl-3 pr-1.5 py-1.5 shadow-sm"
+      style={{transform:`translateY(${Math.max(-30,Math.min(30,drag))}px)`,opacity:1-Math.min(.6,Math.abs(drag)/120),transition:drag?'none':'all .2s'}}>
+      <span className="text-lg">📚</span>
+      <span className="flex-1 min-w-0 text-xs font-black text-amber-800 truncate">하던 공부 <span className="text-amber-600">({saved?.correctCount||0}/10 맞힘)</span></span>
+      <button onClick={onResume} className="px-3 bg-amber-500 text-white rounded-xl font-black text-xs whitespace-nowrap" style={{minHeight:'34px'}}>이어서</button>
+      <button onClick={onCollapse} aria-label="접기" className="px-2 text-amber-700 font-black text-sm" style={{minHeight:'34px'}}>✕</button>
+    </div>
+  </div>;
+}
+
+function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
   const[showFbModal,setShowFbModal]=useState(false);
@@ -10281,6 +10311,23 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   const[pendingTab,setPendingTab]=useState(null);
   const[hasSavedSession,setHasSavedSession]=useState(()=>!!localStorage.getItem('yakHakSavedSession_'+userData.name));
   const[activeHomework,setActiveHomework]=useState(null);
+  const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
+  const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
+  const[toast,setToast]=useState('');
+  const SAVE_KEY='yakHakSavedSession_'+userData.name;
+  const savedInfo=(()=>{try{return JSON.parse(localStorage.getItem(SAVE_KEY));}catch{return null;}})();
+  const goResume=()=>{setResumeReq(true);setTab('practice');};
+
+  /* 다른 탭(좌표10·기하학·모의고사·숙제)에서 한 묶음을 끝까지 풀어 기록이 새로 생기면,
+     저장돼 있던 하던 공부는 그 기록으로 '풀림' 처리한다 — 알림을 무시하고 지금 문제를 계속 푼 경우 */
+  const onUpdate=upd=>{
+    const newLog=upd&&Array.isArray(upd.logs)&&upd.logs[0]&&upd.logs[0]!==(userData.logs||[])[0];
+    if(newLog&&localStorage.getItem(SAVE_KEY)){
+      localStorage.removeItem(SAVE_KEY);setHasSavedSession(false);setBarCollapsed(false);
+      if(tab!=='practice'){setToast('✅ 하던 공부는 방금 푼 기록으로 정리했어요');setTimeout(()=>setToast(''),2800);}
+    }
+    onUpdateRaw(upd);
+  };
   const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표10'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
 
   const handleSessionActive=(active)=>{
@@ -10360,30 +10407,31 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   }
 
   return(<div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50 relative" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
-    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
+    <div className="sticky top-0 z-20">
+    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 shadow-sm">
       <div className="text-2xl">🎓</div>
       <h1 className="text-lg font-black text-gray-800 flex-1">태청야학 수학반</h1>
       <span className="text-sm font-bold text-gray-500">{userData.name}</span>
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
+    {/* 하던 공부 알림 (홈·문제풀기 탭은 화면 안에 따로 안내가 있어서 뺀다) */}
+    {hasSavedSession&&tab!=='practice'&&tab!=='home'&&
+      <SavedSessionBar saved={savedInfo} collapsed={barCollapsed} onCollapse={()=>setBarCollapsed(true)}
+        onExpand={()=>setBarCollapsed(false)} onResume={goResume}/>}
+    </div>
+    {toast&&<div className="fixed top-20 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
+      <div className="bg-gray-900 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg fade-in">{toast}</div></div>}
     <div className="flex-1 overflow-auto scroll-body">
-      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
-      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}/>}
+      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} onResumeSaved={goResume} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
+      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}
+        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)}/>}
       {tab==='coord'&&<CoordDailyTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks} onDeleteFeedback={deleteFeedback}/>}
     </div>
-    {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외) */}
-    {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(
-      <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30 max-w-lg mx-auto pointer-events-none">
-        <button onClick={()=>setTab('practice')} className="pointer-events-auto bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all">
-          📚 하던 공부가 있어요! 이어서 하시겠어요? →
-        </button>
-      </div>
-    )}
 
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-lg mx-auto">
       <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>handleTabClick(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 transition-all ${tab===t.k?'text-indigo-600':'text-gray-400'}`}><span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span></button>)}</div>
@@ -10402,7 +10450,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
           <div className="flex flex-col gap-3">
             <button onClick={()=>{
               const d=window.__yakHakActiveSession;
-              if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);}
+              if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);setBarCollapsed(false);}
               setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
             }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               현재 상태 저장하기 💾
@@ -14126,7 +14174,8 @@ var GED_LS_KEY_V1='ged_sheet_builder_v1';
 var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:'좌표 기초 · 대칭이동 · 평행이동 · 이차함수 · 원의 방정식 · 유리·무리함수 · 내분점 — 2024년 이후 출제 유형 중심',
   fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false,
   qs:1,      // 문제 글자 배율 (문제 본문·보기)
-  ms:1.2};   // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
+  ms:1.2,     // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
+  cs:1};      // 개념 카드 글자 배율
 
 /* 글자 크기 조절 — [−] 막대 [+] 와 빠른 단계 버튼. 값은 배율(1 = 100%) */
 var GED_SIZE_STEPS=[['작게',.9],['보통',1],['크게',1.25],['아주 크게',1.5]];
@@ -14144,6 +14193,7 @@ function GedSizeCtl({label,value,min,max,onChange,steps}){
       className={b+(Math.abs(v-x)<.001?' bg-indigo-600 text-white':' bg-white text-gray-600')} style={{minHeight:'34px'}}>{t}</button>)}
   </div>;
 }
+var GED_CONCEPT_STEPS=[['작게',.85],['보통',1],['크게',1.2],['아주 크게',1.4]];
 var GED_NUM_STEPS=[['보통',1],['크게',1.2],['더 크게',1.4],['아주 크게',1.7]];
 
 /* 유형을 세분화하면서 바뀐 id — 예전에 저장해 둔 학습지도 그대로 열리도록 옮겨 준다 */
@@ -14355,6 +14405,7 @@ function GedSheetView({sheet,seq,busy,ops}){
       {/* 글자 크기 : 문제 글 / 숫자·수식 따로 — 인쇄·PDF에도 그대로 반영된다 */}
       <div className="flex flex-col gap-1.5 mt-2">
         <GedSizeCtl label="문제 글자" value={cfg.qs} min={.8} max={1.6} onChange={x=>setCfg({qs:x})}/>
+        <GedSizeCtl label="개념 글자" value={cfg.cs} min={.7} max={1.6} steps={GED_CONCEPT_STEPS} onChange={x=>setCfg({cs:x})}/>
         <GedSizeCtl label="숫자·수식" value={cfg.ms} min={.8} max={2} steps={GED_NUM_STEPS} onChange={x=>setCfg({ms:x})}/>
       </div>
       <div className="grid grid-cols-1 gap-2 mt-2">
@@ -14364,7 +14415,7 @@ function GedSheetView({sheet,seq,busy,ops}){
       {edit&&<div className="text-[11px] text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mt-2 font-medium">글자 편집 모드: 문제·풀이 글을 바로 고칠 수 있습니다. 고친 카드는 노란 테두리가 되고, 조건 상자의 [↩ 생성 상태로]로 되돌릴 수 있습니다. (수식 자체는 조건 숫자로 바꾸는 편이 안전합니다)</div>}
 
       {/* ── 미리보기 ── */}
-      <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px','--qs':cfg.qs||1,'--ms':cfg.ms||1}}>
+      <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px','--qs':cfg.qs||1,'--ms':cfg.ms||1,'--cs':cfg.cs||1}}>
         <h1>{cfg.title||'고졸 검정고시 수학 · 만능 학습지'}</h1>
         {cfg.subtitle&&<p className="sub">{cfg.subtitle}</p>}
         <div className="namebox"><span>이름 : ______________</span><span>날짜 : ______ 월 ______ 일</span></div>
@@ -14662,6 +14713,7 @@ function GedWorksheetTab(){
           {/* 글자 크기 — 새 학습지의 처음 값 (만든 뒤에도 학습지마다 바꿀 수 있다) */}
           <div className="flex flex-col gap-1.5 mt-3">
             <GedSizeCtl label="문제 글자" value={setupCfg.qs} min={.8} max={1.6} onChange={x=>setSetupCfg({qs:x})}/>
+            <GedSizeCtl label="개념 글자" value={setupCfg.cs} min={.7} max={1.6} steps={GED_CONCEPT_STEPS} onChange={x=>setSetupCfg({cs:x})}/>
             <GedSizeCtl label="숫자·수식" value={setupCfg.ms} min={.8} max={2} steps={GED_NUM_STEPS} onChange={x=>setSetupCfg({ms:x})}/>
           </div>
           {/* 내 개념 설명 — 고쳐 둔 설명이 새 학습지에 그대로 들어간다 */}

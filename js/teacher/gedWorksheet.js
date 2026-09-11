@@ -20,7 +20,8 @@ var GED_LS_KEY_V1='ged_sheet_builder_v1';
 var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:'좌표 기초 · 대칭이동 · 평행이동 · 이차함수 · 원의 방정식 · 유리·무리함수 · 내분점 — 2024년 이후 출제 유형 중심',
   fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false,
   qs:1,      // 문제 글자 배율 (문제 본문·보기)
-  ms:1.2};   // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
+  ms:1.2,     // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
+  cs:1};      // 개념 카드 글자 배율
 
 /* 글자 크기 조절 — [−] 막대 [+] 와 빠른 단계 버튼. 값은 배율(1 = 100%) */
 var GED_SIZE_STEPS=[['작게',.9],['보통',1],['크게',1.25],['아주 크게',1.5]];
@@ -38,6 +39,7 @@ function GedSizeCtl({label,value,min,max,onChange,steps}){
       className={b+(Math.abs(v-x)<.001?' bg-indigo-600 text-white':' bg-white text-gray-600')} style={{minHeight:'34px'}}>{t}</button>)}
   </div>;
 }
+var GED_CONCEPT_STEPS=[['작게',.85],['보통',1],['크게',1.2],['아주 크게',1.4]];
 var GED_NUM_STEPS=[['보통',1],['크게',1.2],['더 크게',1.4],['아주 크게',1.7]];
 
 /* 유형을 세분화하면서 바뀐 id — 예전에 저장해 둔 학습지도 그대로 열리도록 옮겨 준다 */
@@ -249,6 +251,7 @@ function GedSheetView({sheet,seq,busy,ops}){
       {/* 글자 크기 : 문제 글 / 숫자·수식 따로 — 인쇄·PDF에도 그대로 반영된다 */}
       <div className="flex flex-col gap-1.5 mt-2">
         <GedSizeCtl label="문제 글자" value={cfg.qs} min={.8} max={1.6} onChange={x=>setCfg({qs:x})}/>
+        <GedSizeCtl label="개념 글자" value={cfg.cs} min={.7} max={1.6} steps={GED_CONCEPT_STEPS} onChange={x=>setCfg({cs:x})}/>
         <GedSizeCtl label="숫자·수식" value={cfg.ms} min={.8} max={2} steps={GED_NUM_STEPS} onChange={x=>setCfg({ms:x})}/>
       </div>
       <div className="grid grid-cols-1 gap-2 mt-2">
@@ -258,7 +261,7 @@ function GedSheetView({sheet,seq,busy,ops}){
       {edit&&<div className="text-[11px] text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mt-2 font-medium">글자 편집 모드: 문제·풀이 글을 바로 고칠 수 있습니다. 고친 카드는 노란 테두리가 되고, 조건 상자의 [↩ 생성 상태로]로 되돌릴 수 있습니다. (수식 자체는 조건 숫자로 바꾸는 편이 안전합니다)</div>}
 
       {/* ── 미리보기 ── */}
-      <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px','--qs':cfg.qs||1,'--ms':cfg.ms||1}}>
+      <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px','--qs':cfg.qs||1,'--ms':cfg.ms||1,'--cs':cfg.cs||1}}>
         <h1>{cfg.title||'고졸 검정고시 수학 · 만능 학습지'}</h1>
         {cfg.subtitle&&<p className="sub">{cfg.subtitle}</p>}
         <div className="namebox"><span>이름 : ______________</span><span>날짜 : ______ 월 ______ 일</span></div>
@@ -556,6 +559,7 @@ function GedWorksheetTab(){
           {/* 글자 크기 — 새 학습지의 처음 값 (만든 뒤에도 학습지마다 바꿀 수 있다) */}
           <div className="flex flex-col gap-1.5 mt-3">
             <GedSizeCtl label="문제 글자" value={setupCfg.qs} min={.8} max={1.6} onChange={x=>setSetupCfg({qs:x})}/>
+            <GedSizeCtl label="개념 글자" value={setupCfg.cs} min={.7} max={1.6} steps={GED_CONCEPT_STEPS} onChange={x=>setSetupCfg({cs:x})}/>
             <GedSizeCtl label="숫자·수식" value={setupCfg.ms} min={.8} max={2} steps={GED_NUM_STEPS} onChange={x=>setSetupCfg({ms:x})}/>
           </div>
           {/* 내 개념 설명 — 고쳐 둔 설명이 새 학습지에 그대로 들어간다 */}

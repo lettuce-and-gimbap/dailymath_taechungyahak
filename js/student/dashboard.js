@@ -4,7 +4,32 @@
    학생 화면의 탭 묶음과 하단 네비게이션
    -------------------------------------------------------------------- */
 
-function StudentDashboard({userData,onLogout,onUpdate}){
+/* 하던 공부 알림 — 문제 푸는 화면을 가리지 않게 머리글 바로 아래에 한 줄로 작게 뜬다.
+   - [이어서] : 문제풀기 탭으로 가서 저장된 문제부터 바로 이어 푼다
+   - 위·아래·옆으로 밀거나 [✕] : 오른쪽 위의 작은 📚 단추로 접힌다 (누르면 다시 펼쳐짐)
+   - 무시하고 지금 문제를 끝까지 풀면, 그 기록이 저장돼 있던 하던 공부를 '풀림'으로 덮는다 (StudentDashboard 참고) */
+function SavedSessionBar({saved,collapsed,onCollapse,onExpand,onResume}){
+  const start=useRef(null);
+  const[drag,setDrag]=useState(0);
+  if(collapsed)return<button onClick={onExpand} aria-label="하던 공부 보기"
+    className="fixed top-16 right-3 z-30 bg-amber-400 text-amber-900 rounded-full shadow-md font-black text-xs px-3 active:scale-95 transition-transform"
+    style={{minHeight:'36px'}}>📚 하던 공부</button>;
+  const down=e=>{start.current={x:e.clientX,y:e.clientY};};
+  const move=e=>{if(!start.current)return;const dx=e.clientX-start.current.x,dy=e.clientY-start.current.y;setDrag(Math.abs(dx)>Math.abs(dy)?dx:dy);};
+  const up=()=>{if(!start.current)return;start.current=null;if(Math.abs(drag)>40)onCollapse();setDrag(0);};
+  return<div className="px-3 pt-2 pb-1 bg-gray-50" style={{touchAction:'none'}}
+    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+    <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-300 rounded-2xl pl-3 pr-1.5 py-1.5 shadow-sm"
+      style={{transform:`translateY(${Math.max(-30,Math.min(30,drag))}px)`,opacity:1-Math.min(.6,Math.abs(drag)/120),transition:drag?'none':'all .2s'}}>
+      <span className="text-lg">📚</span>
+      <span className="flex-1 min-w-0 text-xs font-black text-amber-800 truncate">하던 공부 <span className="text-amber-600">({saved?.correctCount||0}/10 맞힘)</span></span>
+      <button onClick={onResume} className="px-3 bg-amber-500 text-white rounded-xl font-black text-xs whitespace-nowrap" style={{minHeight:'34px'}}>이어서</button>
+      <button onClick={onCollapse} aria-label="접기" className="px-2 text-amber-700 font-black text-sm" style={{minHeight:'34px'}}>✕</button>
+    </div>
+  </div>;
+}
+
+function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw}){
   const[tab,setTab]=useState('home');
   const[feedbacks,setFeedbacks]=useState([]);
   const[showFbModal,setShowFbModal]=useState(false);
@@ -13,6 +38,23 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   const[pendingTab,setPendingTab]=useState(null);
   const[hasSavedSession,setHasSavedSession]=useState(()=>!!localStorage.getItem('yakHakSavedSession_'+userData.name));
   const[activeHomework,setActiveHomework]=useState(null);
+  const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
+  const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
+  const[toast,setToast]=useState('');
+  const SAVE_KEY='yakHakSavedSession_'+userData.name;
+  const savedInfo=(()=>{try{return JSON.parse(localStorage.getItem(SAVE_KEY));}catch{return null;}})();
+  const goResume=()=>{setResumeReq(true);setTab('practice');};
+
+  /* 다른 탭(좌표10·기하학·모의고사·숙제)에서 한 묶음을 끝까지 풀어 기록이 새로 생기면,
+     저장돼 있던 하던 공부는 그 기록으로 '풀림' 처리한다 — 알림을 무시하고 지금 문제를 계속 푼 경우 */
+  const onUpdate=upd=>{
+    const newLog=upd&&Array.isArray(upd.logs)&&upd.logs[0]&&upd.logs[0]!==(userData.logs||[])[0];
+    if(newLog&&localStorage.getItem(SAVE_KEY)){
+      localStorage.removeItem(SAVE_KEY);setHasSavedSession(false);setBarCollapsed(false);
+      if(tab!=='practice'){setToast('✅ 하던 공부는 방금 푼 기록으로 정리했어요');setTimeout(()=>setToast(''),2800);}
+    }
+    onUpdateRaw(upd);
+  };
   const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표10'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
 
   const handleSessionActive=(active)=>{
@@ -92,30 +134,31 @@ function StudentDashboard({userData,onLogout,onUpdate}){
   }
 
   return(<div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50 relative" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
-    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
+    <div className="sticky top-0 z-20">
+    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 shadow-sm">
       <div className="text-2xl">🎓</div>
       <h1 className="text-lg font-black text-gray-800 flex-1">태청야학 수학반</h1>
       <span className="text-sm font-bold text-gray-500">{userData.name}</span>
       <DarkToggle/>
       <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
     </header>
+    {/* 하던 공부 알림 (홈·문제풀기 탭은 화면 안에 따로 안내가 있어서 뺀다) */}
+    {hasSavedSession&&tab!=='practice'&&tab!=='home'&&
+      <SavedSessionBar saved={savedInfo} collapsed={barCollapsed} onCollapse={()=>setBarCollapsed(true)}
+        onExpand={()=>setBarCollapsed(false)} onResume={goResume}/>}
+    </div>
+    {toast&&<div className="fixed top-20 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
+      <div className="bg-gray-900 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg fade-in">{toast}</div></div>}
     <div className="flex-1 overflow-auto scroll-body">
-      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
-      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}/>}
+      {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} onResumeSaved={goResume} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
+      {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}
+        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)}/>}
       {tab==='coord'&&<CoordDailyTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks} onDeleteFeedback={deleteFeedback}/>}
     </div>
-    {/* 진행 중인 저장 세션 플로팅 팝업 (홈/풀기 탭 제외) */}
-    {hasSavedSession&&tab!=='practice'&&tab!=='home'&&(
-      <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-30 max-w-lg mx-auto pointer-events-none">
-        <button onClick={()=>setTab('practice')} className="pointer-events-auto bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all">
-          📚 하던 공부가 있어요! 이어서 하시겠어요? →
-        </button>
-      </div>
-    )}
 
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-lg mx-auto">
       <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>handleTabClick(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 transition-all ${tab===t.k?'text-indigo-600':'text-gray-400'}`}><span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span></button>)}</div>
@@ -134,7 +177,7 @@ function StudentDashboard({userData,onLogout,onUpdate}){
           <div className="flex flex-col gap-3">
             <button onClick={()=>{
               const d=window.__yakHakActiveSession;
-              if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);}
+              if(d){localStorage.setItem('yakHakSavedSession_'+userData.name,JSON.stringify(d));setHasSavedSession(true);setBarCollapsed(false);}
               setShowNavModal(false);setSessionActive(false);setTab(pendingTab);
             }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">
               현재 상태 저장하기 💾

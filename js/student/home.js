@@ -85,7 +85,7 @@ function StudentSentFeedback({name,refreshSignal}){
   </div>);
 }
 
-function HomeTab({userData,onUpdate,onGoPractice,hasSavedSession,onStartHomework}){
+function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,onStartHomework}){
   const{totalLessons,todayLessons,todayCorrect,todayWrong,goal=3,activeDates=[],currentWeekStart,stampArchive=[],name,logs=[]}=userData;
   const[notices,setNotices]=React.useState([]);
   const[pendingHomework,setPendingHomework]=React.useState(null);
@@ -257,7 +257,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     {/* 저장된 세션 알림 배너 */}
     {hasSavedSession&&(()=>{
       let saved=null;try{saved=JSON.parse(localStorage.getItem('yakHakSavedSession_'+name));}catch{}
-      return(<button onClick={onGoPractice} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
+      return(<button onClick={onResumeSaved||onGoPractice} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
         <div className="text-3xl">📚</div>
         <div className="flex-1">
           <div className="font-black text-amber-800 text-base">하던 공부가 있어요!</div>
