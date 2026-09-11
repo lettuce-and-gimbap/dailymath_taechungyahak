@@ -251,9 +251,8 @@ function StudentFeedbackPanel(){
   </div>);
 }
 
-/* ⚠️ 현재 어디에서도 호출하지 않는다 (2026-09-11 확인).
-   선생님 대시보드는 오답 노트를 StudentDetail 안에서 직접 띄운다.
-   되살려 쓸 수 있게 남겨 두었고, 지울 때는 이 파일에서 이 함수만 지우면 된다. */
+/* 학생에게 피드백을 '메시지' 형태로 보내기 위해 만든 화면이다. (담당 교사 확인 2026-09-11)
+   아직 선생님 대시보드 탭에는 연결하지 않았지만 의도적으로 남겨 둔 코드이므로 지우지 않는다. */
 function FeedbackTab(){
   const[showStudentFb,setShowStudentFb]=useState(true);
   const[showRecentSessions,setShowRecentSessions]=useState(true);

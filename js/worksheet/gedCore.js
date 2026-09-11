@@ -180,6 +180,33 @@ var GS=(function(){
     return o+`</svg>`;
   }
   /* 함수 사상도 */
+  /* 벤다이어그램 — 두 집합 A, B 와 색칠할 부분
+     shade : 'union'(합집합) | 'inter'(교집합) | 'diffAB'(A-B) | 'diffBA'(B-A) | 없음 */
+  function vennSVG(A,B,shade,label){
+    const W=380,H=200,cy=104,r=66,cxA=148,cxB=232;
+    const onlyA=(A||[]).filter(x=>!(B||[]).includes(x));
+    const both=(A||[]).filter(x=>(B||[]).includes(x));
+    const onlyB=(B||[]).filter(x=>!(A||[]).includes(x));
+    const id='gsv'+(++UID);
+    let o=`<svg class="fig-svg" viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" ${F} font-size="20">`;
+    o+=`<rect width="${W}" height="${H}" fill="#fff"/>`;
+    if(shade){
+      const fill='#bcd3ef';
+      o+=`<defs><clipPath id="${id}a"><circle cx="${cxA}" cy="${cy}" r="${r}"/></clipPath><clipPath id="${id}b"><circle cx="${cxB}" cy="${cy}" r="${r}"/></clipPath></defs>`;
+      if(shade==='union')o+=`<circle cx="${cxA}" cy="${cy}" r="${r}" fill="${fill}"/><circle cx="${cxB}" cy="${cy}" r="${r}" fill="${fill}"/>`;
+      else if(shade==='inter')o+=`<g clip-path="url(#${id}a)"><circle cx="${cxB}" cy="${cy}" r="${r}" fill="${fill}"/></g>`;
+      else if(shade==='diffAB')o+=`<circle cx="${cxA}" cy="${cy}" r="${r}" fill="${fill}"/><g clip-path="url(#${id}a)"><circle cx="${cxB}" cy="${cy}" r="${r}" fill="#fff"/></g>`;
+      else if(shade==='diffBA')o+=`<circle cx="${cxB}" cy="${cy}" r="${r}" fill="${fill}"/><g clip-path="url(#${id}b)"><circle cx="${cxA}" cy="${cy}" r="${r}" fill="#fff"/></g>`;
+    }
+    o+=`<circle cx="${cxA}" cy="${cy}" r="${r}" fill="none" stroke="#000" stroke-width="2.8"/>`;
+    o+=`<circle cx="${cxB}" cy="${cy}" r="${r}" fill="none" stroke="#000" stroke-width="2.8"/>`;
+    o+=`<text x="${cxA-r+4}" y="${cy-r-8}" font-size="23" font-style="italic">A</text>`;
+    o+=`<text x="${cxB+r-16}" y="${cy-r-8}" font-size="23" font-style="italic">B</text>`;
+    const put=(arr,x)=>{const st=cy+7-(arr.length-1)*12;arr.forEach((v,i)=>{o+=`<text x="${x}" y="${st+i*24}" text-anchor="middle">${v}</text>`;});};
+    put(onlyA,cxA-30);put(both,(cxA+cxB)/2);put(onlyB,cxB+30);
+    if(label)o+=`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="19" fill="${NAVY}">${label}</text>`;
+    return o+`</svg>`;
+  }
   function mapSVG(sets,maps){
     const n=sets.length,cw=150,W=cw*n+40,H=70+Math.max(...sets.map(s=>s.items.length))*44+20;
     let o=`<svg class="fig-svg" viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" ${F} font-size="22">`;
@@ -209,9 +236,39 @@ var GS=(function(){
   /* =====================================================================
      HTML 템플릿
      ===================================================================== */
-  function conceptHTML(unit){
-    const body=Array.isArray(unit.concept)?`<ul>${unit.concept.map(c=>`<li>${c}</li>`).join('')}</ul>`:unit.concept;
-    return`<span class="cap">먼저 이것만 기억해요</span>${body}`;
+  /* 개념 설명 속 [[핵심말]] 마커 처리
+     - 보통 때  : 진한 글씨
+     - 빈칸 모드 : 밑줄 빈칸 (정답 보이기를 켜면 답이 나타난다) */
+  function markKw(text,blank){
+    return String(text).replace(/\[\[([^\]]+)\]\]/g, (_,w)=>
+      blank ? `<span class="bl"><span class="ba">${w}</span></span>` : `<b class="kw">${w}</b>`);
+  }
+  /* 개념 카드 HTML.
+     opts.blank  : 핵심말을 빈칸으로 (기본 false)
+     GED_CONCEPTS[unit.id] 가 있으면 그 풍부한 설명을, 없으면 unit.concept 를 쓴다. */
+  function conceptHTML(unit,opts){
+    opts=opts||{};
+    const blank=!!opts.blank;
+    const c=(typeof GED_CONCEPTS!=='undefined'&&GED_CONCEPTS[unit.id])||null;
+    let h=`<span class="cap">먼저 이것만 기억해요</span>`;
+    if(!c){
+      const body=Array.isArray(unit.concept)?`<ul>${(unit.concept||[]).map(x=>`<li>${markKw(x,blank)}</li>`).join('')}</ul>`:markKw(unit.concept||'',blank);
+      return h+body;
+    }
+    if(c.head)h+=`<p class="chead">${markKw(c.head,blank)}</p>`;
+    if(c.lines&&c.lines.length)h+=`<ul>${c.lines.map(l=>`<li>${markKw(l,blank)}</li>`).join('')}</ul>`;
+    if(c.fig){
+      const svg=typeof c.fig==='function'?c.fig():c.fig;
+      h+=`<div class="cfig">${svg}${c.figCap?`<div class="cfcap">${markKw(c.figCap,blank)}</div>`:''}</div>`;
+    }
+    if(c.ex&&c.ex.length){
+      h+=`<div class="cex"><div class="cexh">${c.exTitle||'이렇게 해 봅시다'}</div>`;
+      h+=c.ex.map(([q,a])=>`<div class="cexr"><span class="cexq">${markKw(q,blank)}</span><span class="cexa">${markKw(a,blank)}</span></div>`).join('');
+      h+=`</div>`;
+    }
+    if(c.warn)h+=`<p class="cwarn">⚠️ ${markKw(c.warn,blank)}</p>`;
+    if(c.tip)h+=`<p class="ctip">💡 ${markKw(c.tip,blank)}</p>`;
+    return h;
   }
   /* 문제 카드 안쪽 HTML.  idx 0 = 예제(풀이 공개), 그 외 = 실전(풀이는 ansOnly) */
   function probHTML(unit,params,idx,no,opts){
@@ -245,7 +302,7 @@ var GS=(function(){
     groups.forEach(gr=>{
       const u=gr.unit;
       h+=`<h2 id="${u.id}">${u.tag}. ${esc(u.title)}<small>${u.src||''}</small></h2>`;
-      if(cfg.includeConcept!==false)h+=`<div class="card concept">${conceptHTML(u)}</div>`;
+      if(cfg.includeConcept!==false)h+=`<div class="card concept">${gr.conceptHtml||conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
       const ex=gr.recs.filter(r=>r.idx===0),qs=gr.recs.filter(r=>r.idx!==0);
       ex.forEach(r=>{h+=`<h3>풀이 예시</h3><div class="card ex">${r.override||probHTML(u,r.params,0,'예제')}</div>`;});
       if(qs.length){h+=`<h3>실전 문제</h3><div class="qgrid">`;qs.forEach(r=>{h+=`<div class="card">${r.override||probHTML(u,r.params,r.idx,r.no)}</div>`;});h+=`</div>`;}
@@ -272,6 +329,20 @@ var GS=(function(){
 .gsheet .cap{display:inline-block;background:var(--navy);color:#fff;padding:2px 16px;border-radius:999px;font-size:.68em;margin-bottom:8px}
 .gsheet .card.concept ul{margin:6px 0 0;padding-left:1.2em}
 .gsheet .card.concept li{margin:5px 0}
+.gsheet .chead{margin:4px 0 8px;font-size:1.02em;color:var(--navy);line-height:1.5}
+.gsheet .kw{font-weight:700;color:#0f2f57}
+.gsheet .bl{display:inline-block;min-width:4.2em;border-bottom:3px solid #444;text-align:center;margin:0 3px;line-height:1.25}
+.gsheet.noans .bl .ba{visibility:hidden}
+.gsheet .cfig{text-align:center;margin:10px 0 4px}
+.gsheet .cfig svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.gsheet .cfcap{font-size:.66em;color:#555;margin-top:3px}
+.gsheet .cex{margin:10px 0 2px;border:2px dashed #9fb4d4;border-radius:12px;padding:8px 14px;background:#fff}
+.gsheet .cexh{font-size:.66em;color:var(--navy);font-weight:700;margin-bottom:4px}
+.gsheet .cexr{display:flex;gap:12px;align-items:baseline;font-size:.85em;margin:4px 0}
+.gsheet .cexq{flex:1}
+.gsheet .cexa{color:#1b7f3b;font-weight:700;white-space:nowrap}
+.gsheet .ctip{margin:9px 0 0;font-size:.82em;color:#8a5a00;background:#fff8e6;border-radius:10px;padding:6px 12px}
+.gsheet .cwarn{margin:9px 0 0;font-size:.82em;color:#a33;background:#fdf0f0;border-radius:10px;padding:6px 12px}
 .gsheet .qno{display:inline-block;background:var(--ink);color:#fff;border-radius:10px;padding:1px 13px;margin-right:10px;font-size:.76em}
 .gsheet .card.ex .qno{background:var(--navy)}
 .gsheet .qtext{margin:4px 0 10px}
@@ -311,7 +382,8 @@ var GS=(function(){
   .gsheet .ctrl,.gsheet .noprint{display:none!important}
   .gsheet h1{font-size:1.5em!important}
   .gsheet h2{page-break-after:avoid;break-after:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .gsheet .card,.gsheet .sol,.gsheet .ans,.gsheet .cap,.gsheet .qno{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gsheet .card,.gsheet .sol,.gsheet .ans,.gsheet .cap,.gsheet .qno,
+  .gsheet .cex,.gsheet .ctip,.gsheet .cwarn,.gsheet .kw,.gsheet .cexa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .gsheet .card{page-break-inside:avoid!important;break-inside:avoid!important}
   .gsheet .fig svg{max-width:440px!important}
   .gsheet.cols2 .qgrid{display:grid!important;grid-template-columns:1fr 1fr!important;column-gap:14px!important}
@@ -364,6 +436,6 @@ ${SHEET_CSS}
 
   return{nf,par,xm,ym,tail,esc,tex,pr,rnd,pick,nz,CIRC,isInt,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,choicesHTML,
-    planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,renderTex,conceptHTML,probHTML,bodyHTML,docHTML,SHEET_CSS,
+    planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,probHTML,bodyHTML,docHTML,SHEET_CSS,
     NAVY,RED,GREEN,GREY};
 })();

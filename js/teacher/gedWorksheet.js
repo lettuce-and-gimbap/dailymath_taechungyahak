@@ -18,7 +18,30 @@ var GED_LS_KEY='ged_sheet_builder_v2';
 var GED_LS_KEY_V1='ged_sheet_builder_v1';
 
 var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:'좌표 기초 · 대칭이동 · 평행이동 · 이차함수 · 원의 방정식 · 유리·무리함수 · 내분점 — 2024년 이후 출제 유형 중심',
-  fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3};
+  fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false};
+
+/* 유형을 세분화하면서 바뀐 id — 예전에 저장해 둔 학습지도 그대로 열리도록 옮겨 준다 */
+var GED_UID_MIGRATE={
+  u8:p=>((p.deg||'')==='삼차'?'u8a':'u8b'),
+  u17:p=>(((p.kind||'')+(p.ask||'')).indexOf('역함수')>=0?'u17b':'u17a'),
+  u18:p=>(((p.kind||'')+(p.type||'')).indexOf('무리')>=0?'u18b':'u18a')
+};
+function gedMigrateProblems(problems){
+  return(problems||[]).map(p=>{
+    const f=GED_UID_MIGRATE[p.uid];
+    return f?{...p,uid:f(p.params||{})}:p;   // key 는 그대로 둔다 (편집해 둔 내용과 연결돼 있음)
+  });
+}
+function gedMigrateIds(ids){
+  const out=[];
+  (ids||[]).forEach(id=>{
+    if(id==='u8'){out.push('u8a','u8b');}
+    else if(id==='u17'){out.push('u17a','u17b');}
+    else if(id==='u18'){out.push('u18a','u18b');}
+    else out.push(id);
+  });
+  return[...new Set(out)];
+}
 
 function gedNewRec(u,idx,params){return{key:`${u.id}-${idx}-${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`,uid:u.id,idx,params,override:null,rev:0};}
 
@@ -56,7 +79,8 @@ function gedSafeName(s){return String(s||'학습지').replace(/[\\/:*?"<>|]/g,'_
 
 /* 새 학습지 한 장 만들기 */
 function gedMakeSheet(cfg,problems,docId){
-  return{id:gedSheetId(),cfg:{...cfg},problems,docId:docId||null,collapsed:false,edit:false,showCtrl:true,createdAt:Date.now()};
+  return{id:gedSheetId(),cfg:{...cfg},problems,docId:docId||null,collapsed:false,edit:false,showCtrl:true,
+    concepts:{},cRev:0,createdAt:Date.now()};
 }
 
 /* localStorage 복원 (v2 → 없으면 v1 단일 학습지를 한 장으로 옮겨 옴) */
@@ -65,12 +89,13 @@ function gedLoadInit(){
   try{
     const d=JSON.parse(localStorage.getItem(GED_LS_KEY)||'null');
     if(d&&Array.isArray(d.sheets))
-      return{setupCfg:{...GED_DEF_CFG,...(d.setupCfg||{})},selected:(d.selected&&d.selected.length?d.selected:def.selected),
+      return{setupCfg:{...GED_DEF_CFG,...(d.setupCfg||{})},selected:gedMigrateIds(d.selected&&d.selected.length?d.selected:def.selected),
         sheets:d.sheets.map(s=>({...gedMakeSheet({...GED_DEF_CFG,...(s.cfg||{})},[],s.docId),...s,
-          cfg:{...GED_DEF_CFG,...(s.cfg||{})},problems:(s.problems||[]).map(p=>({...p,rev:0}))}))};
+          cfg:{...GED_DEF_CFG,...(s.cfg||{})},concepts:s.concepts||{},
+          problems:gedMigrateProblems(s.problems).map(p=>({...p,rev:0}))}))};
     const v1=JSON.parse(localStorage.getItem(GED_LS_KEY_V1)||'null');
     if(v1&&v1.cfg&&Array.isArray(v1.problems)&&v1.problems.length){
-      const sh=gedMakeSheet({...GED_DEF_CFG,...v1.cfg},v1.problems.map(p=>({...p,rev:0})),v1.docId);
+      const sh=gedMakeSheet({...GED_DEF_CFG,...v1.cfg},gedMigrateProblems(v1.problems).map(p=>({...p,rev:0})),v1.docId);
       return{setupCfg:{...GED_DEF_CFG,...v1.cfg},selected:(v1.selected&&v1.selected.length?v1.selected:def.selected),sheets:[sh]};
     }
   }catch(e){}
@@ -107,6 +132,23 @@ function GedProblemCard({rec,unit,no,edit,showCtrl,onParam,onRandom,onRemove,onR
       {rec.override&&<button onClick={()=>onRevert(rec.key)}>↩ 생성 상태로</button>}
       <button className="danger" onClick={()=>onRemove(rec.key)}>✕ 삭제</button>
     </div>}
+  </div>;
+}
+
+/* 개념 카드 — 글자 편집 모드에서 설명을 직접 고칠 수 있다.
+   빈칸 뚫기를 켜면 [[핵심말]]이 밑줄 빈칸이 되고, 정답 보이기를 켜면 빈칸 안의 답이 나타난다.
+   고친 내용은 그 학습지에 저장되고, [↩ 처음 설명으로] 로 되돌릴 수 있다. */
+function GedConceptCard({unit,blank,rev,edit,showCtrl,edited,getHtml,onEdit,onReset}){
+  const ref=useRef();
+  const html=useMemo(()=>getHtml(unit.id),[unit.id,blank,rev]);
+  useEffect(()=>{GS.renderTex(ref.current);},[html]);
+  return<div className={`card concept${edited?' overridden':''}`}>
+    <div ref={ref} contentEditable={edit} suppressContentEditableWarning={true}
+      onInput={e=>onEdit(e.currentTarget.innerHTML)}
+      dangerouslySetInnerHTML={{__html:html}}/>
+    {showCtrl&&<div className="ctrl noprint"><span className="tag">개념 설명</span>
+      <span style={{fontSize:'12px',color:'#666'}}>{edit?'글자를 눌러 바로 고칠 수 있습니다':'[✏️ 글자 편집]을 켜면 여기를 고칠 수 있습니다'}</span>
+      {edited&&<button onClick={onReset}>↩ 처음 설명으로</button>}</div>}
   </div>;
 }
 
@@ -155,6 +197,7 @@ function GedSheetView({sheet,seq,busy,ops}){
         <Btn on={cfg.showAns} onClick={()=>setCfg({showAns:!cfg.showAns})}>🔑 {cfg.showAns?'정답 숨기기':'정답 보이기'}</Btn>
         <Btn on={edit} onClick={()=>ops.setUI(id,{edit:!edit})}>✏️ {edit?'글자 편집 끄기':'글자 편집'}</Btn>
         <Btn on={showCtrl} onClick={()=>ops.setUI(id,{showCtrl:!showCtrl})}>🎛 조건 상자</Btn>
+        <Btn on={cfg.blankConcept} onClick={()=>setCfg({blankConcept:!cfg.blankConcept})}>✍️ 개념 빈칸</Btn>
         <Btn on={cfg.cols2} onClick={()=>setCfg({cols2:!cfg.cols2})}>🖨️ 실전 2단</Btn>
         <Btn on={cfg.format==='open'} onClick={()=>setCfg({format:cfg.format==='open'?'choice':'open'})}>{cfg.format==='open'?'서술형':'사지선다'}</Btn>
         <label className="flex items-center gap-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl px-3" style={{minHeight:'40px'}}>글자
@@ -184,7 +227,10 @@ function GedSheetView({sheet,seq,busy,ops}){
             {showCtrl&&<div className="ctrl noprint"><span className="tag">유형</span>
               <button onClick={()=>ops.addProblem(id,u.id)}>＋ 실전 문항 추가</button>
               <button className="danger" onClick={()=>{if(confirm(`'${u.title}' 유형을 이 학습지에서 뺄까요?`))ops.removeUnit(id,u.id);}}>✕ 이 유형 빼기</button></div>}
-            {cfg.includeConcept&&<div className="card concept" dangerouslySetInnerHTML={{__html:GS.conceptHTML(u)}}/>}
+            {cfg.includeConcept&&<GedConceptCard unit={u} blank={!!cfg.blankConcept} rev={sheet.cRev||0}
+              edit={edit} showCtrl={showCtrl} edited={!!(sheet.concepts&&sheet.concepts[u.id])}
+              getHtml={uid=>(sheet.concepts&&sheet.concepts[uid])||GS.conceptHTML(u,{blank:cfg.blankConcept})}
+              onEdit={h=>ops.onConceptEdit(id,u.id,h)} onReset={()=>ops.onConceptReset(id,u.id)}/>}
             {ex.length>0&&<h3>풀이 예시</h3>}
             {ex.map(r=><GedProblemCard key={r.key} rec={r} unit={u} no={r.no} {...cardProps}/>)}
             {qs.length>0&&<h3>실전 문제</h3>}
@@ -284,7 +330,9 @@ function GedWorksheetTab(){
   const openDoc=(id,autoPrint)=>{
     const s=getSheet(id);if(!s)return;
     if(!s.problems.length){showToast('문항이 없는 학습지입니다.');return;}
-    const gs=gedGroups(s.problems).map(g=>({unit:g.unit,recs:g.recs.map(r=>({...r,override:ovRef.current[r.key]||null}))}));
+    const gs=gedGroups(s.problems).map(g=>({unit:g.unit,
+      conceptHtml:(s.concepts&&s.concepts[g.unit.id])||null,
+      recs:g.recs.map(r=>({...r,override:ovRef.current[r.key]||null}))}));
     const w=window.open('','_blank');
     if(!w){showToast('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.');return;}
     w.document.open();w.document.write(GS.docHTML(s.cfg,gs,{autoPrint}));w.document.close();
@@ -293,7 +341,7 @@ function GedWorksheetTab(){
   /* ---------- 반출 : JSON ---------- */
   const exportJSON=id=>{
     const s=getSheet(id);if(!s)return;
-    const data={v:2,cfg:s.cfg,selected:[...new Set(s.problems.map(p=>p.uid))],problems:withOv(s.problems)};
+    const data={v:2,cfg:s.cfg,selected:[...new Set(s.problems.map(p=>p.uid))],problems:withOv(s.problems),concepts:s.concepts||{}};
     const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
     a.download=`${gedSafeName(s.cfg.title)}_${todayStr()}.json`;a.click();
@@ -305,7 +353,8 @@ function GedWorksheetTab(){
       const list=Array.isArray(d.sheets)?d.sheets:(d.cfg&&Array.isArray(d.problems)?[d]:null);
       if(!list||!list.length)throw 0;
       const added=list.map(x=>{(x.problems||[]).forEach(p=>{if(p.override)ovRef.current[p.key]=p.override;});
-        return gedMakeSheet({...GED_DEF_CFG,...(x.cfg||{})},(x.problems||[]).map(p=>({...p,rev:0})),null);});
+        const sh=gedMakeSheet({...GED_DEF_CFG,...(x.cfg||{})},gedMigrateProblems(x.problems).map(p=>({...p,rev:0})),null);
+        sh.concepts=x.concepts||{};return sh;});
       setSheets(ss=>[...added,...ss.map(s=>({...s,collapsed:true}))]);setShowSetup(false);
       showToast(`📥 학습지 ${added.length}장을 불러왔습니다.`);
     }catch(err){showToast('❌ 파일 형식을 확인해 주세요.');}};
@@ -322,7 +371,7 @@ function GedWorksheetTab(){
     try{
       const gs=gedGroups(s.problems);
       const data={title:s.cfg.title,cfg:s.cfg,selected:[...new Set(s.problems.map(p=>p.uid))],problems:withOv(s.problems),
-        count:s.problems.filter(p=>p.idx!==0).length,units:gs.map(g=>g.unit.tag+' '+g.unit.title),updatedAt:new Date()};
+        concepts:s.concepts||{},count:s.problems.filter(p=>p.idx!==0).length,units:gs.map(g=>g.unit.tag+' '+g.unit.title),updatedAt:new Date()};
       if(s.docId){await db.collection('gedSheets').doc(s.docId).set(data,{merge:true});showToast('✅ 덮어쓰기 저장했습니다.');}
       else{const ref=await db.collection('gedSheets').add({...data,createdAt:new Date()});patchSheet(id,x=>({...x,docId:ref.id}));showToast('✅ 클라우드에 저장했습니다.');}
       loadList();
@@ -339,7 +388,8 @@ function GedWorksheetTab(){
     try{const d=await db.collection('gedSheets').doc(cid).get();
       if(!d.exists){showToast('문서를 찾을 수 없습니다.');setBusy(false);return;}
       const x=d.data();(x.problems||[]).forEach(p=>{if(p.override)ovRef.current[p.key]=p.override;});
-      const sh=gedMakeSheet({...GED_DEF_CFG,...(x.cfg||{})},(x.problems||[]).map(p=>({...p,rev:0})),cid);
+      const sh=gedMakeSheet({...GED_DEF_CFG,...(x.cfg||{})},gedMigrateProblems(x.problems).map(p=>({...p,rev:0})),cid);
+      sh.concepts=x.concepts||{};
       setSheets(ss=>[sh,...ss.map(s=>({...s,collapsed:true}))]);setShowSetup(false);showToast('📂 작업대에 열었습니다.');
       setTimeout(()=>{const el=document.getElementById('ged-sheet-'+sh.id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},60);
     }catch(e){showToast('❌ 불러오기 실패');}
@@ -353,7 +403,18 @@ function GedWorksheetTab(){
     }catch(e){showToast('❌ 삭제 실패');}
   };
 
-  const ops={setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride};
+  /* ---------- 개념 카드 편집 ---------- */
+  const cTimer=useRef(null);
+  const onConceptEdit=(id,uid,html)=>{
+    clearTimeout(cTimer.current);
+    cTimer.current=setTimeout(()=>patchSheet(id,s=>({...s,concepts:{...(s.concepts||{}),[uid]:html}})),500);
+  };
+  const onConceptReset=(id,uid)=>patchSheet(id,s=>{
+    const c={...(s.concepts||{})};delete c[uid];
+    return{...s,concepts:c,cRev:(s.cRev||0)+1};
+  });
+
+  const ops={setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset};
   const Btn=({on,children,...rest})=><button {...rest} className={`px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap ${on?'bg-indigo-600 text-white':'bg-gray-100 text-gray-700'}`} style={{minHeight:'40px'}}>{children}</button>;
 
   return<div className="p-4 space-y-4 fade-in">
@@ -413,6 +474,7 @@ function GedWorksheetTab(){
             <Btn on={setupCfg.includeConcept} onClick={()=>setSetupCfg({includeConcept:!setupCfg.includeConcept})}>📖 개념 카드</Btn>
             <Btn on={setupCfg.includeExample} onClick={()=>setSetupCfg({includeExample:!setupCfg.includeExample})}>💡 예제(풀이 공개)</Btn>
             <Btn on={setupCfg.intro} onClick={()=>setSetupCfg({intro:!setupCfg.intro})}>📌 사용법 안내 상자</Btn>
+            <Btn on={setupCfg.blankConcept} onClick={()=>setSetupCfg({blankConcept:!setupCfg.blankConcept})}>✍️ 개념 빈칸 뚫기</Btn>
             <Btn on={setupCfg.format==='choice'} onClick={()=>setSetupCfg({format:'choice'})}>사지선다</Btn>
             <Btn on={setupCfg.format==='open'} onClick={()=>setSetupCfg({format:'open'})}>서술형(보기 없음)</Btn>
           </div>

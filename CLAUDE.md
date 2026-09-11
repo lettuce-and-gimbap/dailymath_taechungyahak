@@ -106,10 +106,13 @@ js/
 - `js/worksheet/gedCore.js` — 네임스페이스 `GS`. 수식 표기(nf/tex/poly…), 보기 생성(numChoices/coordChoices…),
   SVG 렌더러(planeSVG 좌표평면·수직선·내분점·조립제법·사상도), 카드/문서 HTML 템플릿, `SHEET_CSS`(미리보기·인쇄 공용).
   기존 전역(`pick`, `shuffle` 등)과 충돌하지 않도록 **모든 도우미는 `GS.` 안에만** 둔다.
-- `js/worksheet/gedUnits.js` — `GED_AREAS`, `GED_UNITS`(23유형), `GED_PRESETS`.
+- `js/worksheet/gedUnits.js` — `GED_AREAS`, `GED_UNITS`(26유형), `GED_PRESETS`.
   유형 하나 = `{id, tag, area, title, src, coord?, concept[], fields[], def, rand(), build(p)}`.
   `build`는 `{q, figure?, choices[4], raw?, layout?, ans, answerTex|answerRaw, sol[]}` 또는 `{err}`를 돌려준다.
   새 유형을 추가할 때는 이 배열에 객체 하나만 넣으면 탭·프리셋·인쇄에 자동 반영된다. `coord:true`면 ★(좌표 중심) 표시.
+- `js/worksheet/gedConcepts.js` — 유형별 **개념 설명 데이터**(`GED_CONCEPTS`). 초등 5학년 수준의 말 + 그림(SVG) + 예시 + 팁으로 구성한다.
+  `[[핵심말]]` 마커를 쓰면 빈칸 뚫기 대상이 된다 (보통은 진한 글씨, 빈칸 모드에서는 밑줄 빈칸, 정답 보이기를 켜면 답이 보인다).
+  **개념 글은 여기에만 둔다.** `gedUnits.js` 에는 문제 생성 로직만 두고 개념 텍스트를 중복해서 적지 않는다.
 - `js/teacher/gedWorksheet.js` — React 탭 `GedWorksheetTab`. **작업대(여러 장 보관) 방식**:
   `sheets:[{id,cfg,problems,docId,collapsed,edit,showCtrl,createdAt}]` 배열을 들고 있고, [새 학습지 추가]는 기존 장을
   지우지 않고 맨 앞에 한 장을 더한다(기존 장은 자동으로 접힘). 접힌 장은 DOM을 아예 그리지 않아 여러 장이어도 가볍다.
@@ -121,6 +124,9 @@ js/
   (예: 3번은 나머지 R / 몫 / 나머지정리 대입 / 나누어떨어지는 조건, 15번은 개수 / 원소 / 차집합).
   세부 유형을 추가할 때는 해당 unit의 `fields[0].sel`에 이름을 넣고 `build(p)` 앞부분에 분기를 하나 더한다.
   **기존 저장본 호환**을 위해 옛 필드(op, ask, type…)를 kind로 옮겨 읽는 줄을 지우지 말 것.
+- **유형 id 를 나눌 때**는 `gedWorksheet.js` 의 `GED_UID_MIGRATE` / `gedMigrateIds` 에 옮김 규칙을 함께 넣는다.
+  그러지 않으면 예전에 저장해 둔 학습지의 문항이 `gedGroups` 에서 조용히 사라진다.
+  (2026-09-11 : `u8`→`u8a`/`u8b`, `u17`→`u17a`/`u17b`, `u18`→`u18a`/`u18b`)
 - 검증 스크립트(브라우저 콘솔): `GED_UNITS`를 순회하며 **모든 kind마다** `rand()`→`build()`를 60회씩 돌려
   err/NaN/보기 중복/정답 인덱스가 정상인지 확인한다 (23유형 x 99종 x 60회 = 약 6천 건).
 

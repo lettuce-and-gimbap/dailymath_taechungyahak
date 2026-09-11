@@ -21,6 +21,7 @@ FILES = [
     "js/generators/high/setFunction.js",
     "js/generators/high/probStat.js",
     "js/worksheet/gedCore.js",
+    "js/worksheet/gedConcepts.js",
     "js/worksheet/gedUnits.js",
     "js/ui/auth.js",
     "js/ui/splash.js",
