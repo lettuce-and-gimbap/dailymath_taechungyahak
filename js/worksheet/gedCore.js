@@ -99,8 +99,11 @@ var GS=(function(){
     /* 눈금 */
     if(g.ticks!==false){
       const step=(xmax-xmin)>14?2:1;
-      for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" text-anchor="middle">${i}</text>`;}
-      for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" text-anchor="end">${j}</text>`;}
+      /* 눈금 숫자도 [숫자·수식 크기](--ms)를 따른다. 칸이 좁으면 옆 숫자와 겹치지 않게 키우는 한도를 둔다 */
+      const cap=s*step>=30?1.4:s*step>=24?1.25:1.1;
+      const tk=`style="font-size:calc(min(var(--ms,1),${cap})*${fsz}px)"`;
+      for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" ${tk} text-anchor="middle">${i}</text>`;}
+      for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" ${tk} text-anchor="end">${j}</text>`;}
     }
     o+=`<text x="${X(0)-5}" y="${Y(0)+fsz+8}" font-size="${fsz-2}" text-anchor="end">O</text>`;
     /* 요소 */
@@ -289,6 +292,23 @@ var GS=(function(){
     }
     return t.innerHTML;
   }
+  /* 문제 글 속 맨 숫자(수식 밖에 적힌 3개, 5명 …)를 <span class="nm"> 으로 감싼다.
+     수식(KaTeX)과 함께 [숫자·수식 크기] 조절을 받게 하려는 것. 수식·그림·문항 번호는 건드리지 않는다. */
+  function numSpan(html){
+    if(!html||typeof document==='undefined')return html;
+    const t=document.createElement('template');t.innerHTML=html;
+    const skip=n=>{for(let p=n.parentNode;p&&p!==t.content;p=p.parentNode){
+      if(p.nodeType===1&&(p.matches('.tx,.katex,svg,.qno,.nm,.ci,style,script')))return true;}return false;};
+    const w=document.createTreeWalker(t.content,NodeFilter.SHOW_TEXT);const list=[];
+    while(w.nextNode()){const n=w.currentNode;if(/\d/.test(n.nodeValue)&&!skip(n))list.push(n);}
+    list.forEach(n=>{
+      const f=document.createDocumentFragment();
+      n.nodeValue.split(/(\d+(?:\.\d+)?)/).forEach((s,i)=>{if(!s)return;
+        if(i%2){const sp=document.createElement('span');sp.className='nm';sp.textContent=s;f.appendChild(sp);}
+        else f.appendChild(document.createTextNode(s));});
+      n.replaceWith(f);});
+    return t.innerHTML;
+  }
   /* 문제 카드 안쪽 HTML.  idx 0 = 예제(풀이 공개), 그 외 = 실전(풀이는 ansOnly) */
   function probHTML(unit,params,idx,no,opts){
     let r;
@@ -299,12 +319,12 @@ var GS=(function(){
     const sol=Array.isArray(r.sol)?r.sol.map(s=>`<p>${s}</p>`).join(''):r.sol;
     const ansBody=r.answerRaw!==undefined?r.answerRaw:tex(r.answerTex!==undefined?r.answerTex:String(r.choices[r.ans]));
     return`<div class="gen">
-      <div class="qtext"><span class="qno">${isEx?'예제':no}</span>${r.q}</div>
+      <div class="qtext"><span class="qno">${isEx?'예제':no}</span>${numSpan(r.q)}</div>
       ${r.figure||''}
-      ${choicesHTML(r.choices,one,r.raw)}
+      ${numSpan(choicesHTML(r.choices,one,r.raw))}
       ${isEx?'':'<div class="blank">풀이 &amp; 답 :</div>'}
-      <div class="sol${isEx?'':' ansOnly'}"><b>${isEx?'함께 풀어봅시다':'풀이'}</b>${sol}</div>
-      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; <span class="ansIdx">${CIRC[r.ans]}</span> ${ansBody}</div>
+      <div class="sol${isEx?'':' ansOnly'}"><b>${isEx?'함께 풀어봅시다':'풀이'}</b>${numSpan(sol)}</div>
+      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; <span class="ansIdx">${CIRC[r.ans]}</span> ${numSpan(ansBody)}</div>
     </div>`;
   }
 
@@ -364,9 +384,9 @@ var GS=(function(){
 .gsheet .cwarn{margin:9px 0 0;font-size:.82em;color:#a33;background:#fdf0f0;border-radius:10px;padding:6px 12px}
 .gsheet .qno{display:inline-block;background:var(--ink);color:#fff;border-radius:10px;padding:1px 13px;margin-right:10px;font-size:.76em}
 .gsheet .card.ex .qno{background:var(--navy)}
-.gsheet .qtext{margin:4px 0 10px}
-.gsheet .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;margin:8px 0 6px 6px;font-size:.95em}
-.gsheet .choices.one{grid-template-columns:repeat(4,auto);justify-content:start;gap:6px 34px}
+.gsheet .qtext{margin:4px 0 10px;font-size:calc(var(--qs,1)*1em)}
+.gsheet .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;margin:8px 0 6px 6px;font-size:calc(var(--qs,1)*.95em)}
+.gsheet .choices.one{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px 34px}
 .gsheet .choices .cs{display:inline-block;vertical-align:middle;width:230px;max-width:80%}
 .gsheet .choices .cs svg{width:100%;height:auto}
 .gsheet .fig{text-align:center;margin:8px 0 6px}
@@ -381,7 +401,9 @@ var GS=(function(){
 .gsheet.noans .ansOnly{display:none!important}
 .gsheet.open .choices,.gsheet.open .ansIdx{display:none!important}
 .gsheet .tx{white-space:nowrap}
-.gsheet .katex{font-size:1.05em!important}
+/* [숫자·수식 크기] : --ms 배율. 수식(KaTeX)과 글 속 맨 숫자(.nm)가 같이 커진다 */
+.gsheet .katex{font-size:calc(var(--ms,1)*1.05em)!important}
+.gsheet .nm{font-size:calc(var(--ms,1)*1em);line-height:1}
 .gsheet.cols2 .qgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;align-items:start}
 .gsheet.cols2 .qgrid .card{font-size:.8em;padding:12px 14px 14px}
 .gsheet.cols2 .qgrid .fig svg{max-width:300px!important}
@@ -418,7 +440,9 @@ var GS=(function(){
     const title=esc(cfg.title||'고졸 검정고시 수학 · 만능 학습지');
     const bar=`<div id="gsbar" class="noprint">
       <b>${title}</b>
-      <span class="g">글자 <input type="range" id="fsRange" min="16" max="40" value="${cfg.fs||24}"><span id="fsVal">${cfg.fs||24}px</span></span>
+      <span class="g">전체 글자 <input type="range" id="fsRange" min="16" max="40" value="${cfg.fs||24}"><span id="fsVal">${cfg.fs||24}px</span></span>
+      <span class="g">문제 글자 <input type="range" id="qsRange" min="80" max="160" step="5" value="${Math.round((cfg.qs||1)*100)}"><span id="qsVal">${Math.round((cfg.qs||1)*100)}%</span></span>
+      <span class="g">숫자·수식 <input type="range" id="msRange" min="80" max="200" step="5" value="${Math.round((cfg.ms||1)*100)}"><span id="msVal">${Math.round((cfg.ms||1)*100)}%</span></span>
       <button id="btnAns" class="${cfg.showAns?'on':''}">${cfg.showAns?'정답 숨기기':'정답 보이기'}</button>
       <button id="btnCols" class="${cfg.cols2?'on':''}">실전문제 2단</button>
       <button id="btnPrint">🖨️ 인쇄 / PDF 저장</button>
@@ -429,6 +453,8 @@ var GS=(function(){
       function rt(){if(!window.katex){setTimeout(rt,150);return;}document.querySelectorAll('.tx[data-tex]').forEach(function(el){try{katex.render(el.dataset.tex,el,{throwOnError:false});}catch(e){el.textContent=el.dataset.tex;}});${opts.autoPrint?'setTimeout(function(){window.print();},500);':''}}
       rt();
       document.getElementById('fsRange').oninput=function(e){sh.style.setProperty('--fs',e.target.value+'px');document.getElementById('fsVal').textContent=e.target.value+'px';};
+      document.getElementById('qsRange').oninput=function(e){sh.style.setProperty('--qs',e.target.value/100);document.getElementById('qsVal').textContent=e.target.value+'%';};
+      document.getElementById('msRange').oninput=function(e){sh.style.setProperty('--ms',e.target.value/100);document.getElementById('msVal').textContent=e.target.value+'%';};
       document.getElementById('btnAns').onclick=function(){var on=sh.classList.toggle('noans');this.classList.toggle('on',!on);this.textContent=on?'정답 보이기':'정답 숨기기';};
       document.getElementById('btnCols').onclick=function(){var on=sh.classList.toggle('cols2');this.classList.toggle('on',on);};
       document.getElementById('btnPrint').onclick=function(){window.print();};`;
@@ -449,7 +475,7 @@ html,body{margin:0;padding:0;background:#dfe4ea}
 .wrap{padding:22px 12px 80px}
 ${SHEET_CSS}
 @media print{@page{size:A4;margin:12mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
-</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px">${bodyHTML(cfg,groups)}</div></div>
+</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1}">${bodyHTML(cfg,groups)}</div></div>
 <script>${script}<${'/'}script></body></html>`;
   }
 

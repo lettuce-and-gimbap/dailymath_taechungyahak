@@ -4990,8 +4990,11 @@ var GS=(function(){
     /* 눈금 */
     if(g.ticks!==false){
       const step=(xmax-xmin)>14?2:1;
-      for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" text-anchor="middle">${i}</text>`;}
-      for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" text-anchor="end">${j}</text>`;}
+      /* 눈금 숫자도 [숫자·수식 크기](--ms)를 따른다. 칸이 좁으면 옆 숫자와 겹치지 않게 키우는 한도를 둔다 */
+      const cap=s*step>=30?1.4:s*step>=24?1.25:1.1;
+      const tk=`style="font-size:calc(min(var(--ms,1),${cap})*${fsz}px)"`;
+      for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" ${tk} text-anchor="middle">${i}</text>`;}
+      for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" ${tk} text-anchor="end">${j}</text>`;}
     }
     o+=`<text x="${X(0)-5}" y="${Y(0)+fsz+8}" font-size="${fsz-2}" text-anchor="end">O</text>`;
     /* 요소 */
@@ -5180,6 +5183,23 @@ var GS=(function(){
     }
     return t.innerHTML;
   }
+  /* 문제 글 속 맨 숫자(수식 밖에 적힌 3개, 5명 …)를 <span class="nm"> 으로 감싼다.
+     수식(KaTeX)과 함께 [숫자·수식 크기] 조절을 받게 하려는 것. 수식·그림·문항 번호는 건드리지 않는다. */
+  function numSpan(html){
+    if(!html||typeof document==='undefined')return html;
+    const t=document.createElement('template');t.innerHTML=html;
+    const skip=n=>{for(let p=n.parentNode;p&&p!==t.content;p=p.parentNode){
+      if(p.nodeType===1&&(p.matches('.tx,.katex,svg,.qno,.nm,.ci,style,script')))return true;}return false;};
+    const w=document.createTreeWalker(t.content,NodeFilter.SHOW_TEXT);const list=[];
+    while(w.nextNode()){const n=w.currentNode;if(/\d/.test(n.nodeValue)&&!skip(n))list.push(n);}
+    list.forEach(n=>{
+      const f=document.createDocumentFragment();
+      n.nodeValue.split(/(\d+(?:\.\d+)?)/).forEach((s,i)=>{if(!s)return;
+        if(i%2){const sp=document.createElement('span');sp.className='nm';sp.textContent=s;f.appendChild(sp);}
+        else f.appendChild(document.createTextNode(s));});
+      n.replaceWith(f);});
+    return t.innerHTML;
+  }
   /* 문제 카드 안쪽 HTML.  idx 0 = 예제(풀이 공개), 그 외 = 실전(풀이는 ansOnly) */
   function probHTML(unit,params,idx,no,opts){
     let r;
@@ -5190,12 +5210,12 @@ var GS=(function(){
     const sol=Array.isArray(r.sol)?r.sol.map(s=>`<p>${s}</p>`).join(''):r.sol;
     const ansBody=r.answerRaw!==undefined?r.answerRaw:tex(r.answerTex!==undefined?r.answerTex:String(r.choices[r.ans]));
     return`<div class="gen">
-      <div class="qtext"><span class="qno">${isEx?'예제':no}</span>${r.q}</div>
+      <div class="qtext"><span class="qno">${isEx?'예제':no}</span>${numSpan(r.q)}</div>
       ${r.figure||''}
-      ${choicesHTML(r.choices,one,r.raw)}
+      ${numSpan(choicesHTML(r.choices,one,r.raw))}
       ${isEx?'':'<div class="blank">풀이 &amp; 답 :</div>'}
-      <div class="sol${isEx?'':' ansOnly'}"><b>${isEx?'함께 풀어봅시다':'풀이'}</b>${sol}</div>
-      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; <span class="ansIdx">${CIRC[r.ans]}</span> ${ansBody}</div>
+      <div class="sol${isEx?'':' ansOnly'}"><b>${isEx?'함께 풀어봅시다':'풀이'}</b>${numSpan(sol)}</div>
+      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; <span class="ansIdx">${CIRC[r.ans]}</span> ${numSpan(ansBody)}</div>
     </div>`;
   }
 
@@ -5255,9 +5275,9 @@ var GS=(function(){
 .gsheet .cwarn{margin:9px 0 0;font-size:.82em;color:#a33;background:#fdf0f0;border-radius:10px;padding:6px 12px}
 .gsheet .qno{display:inline-block;background:var(--ink);color:#fff;border-radius:10px;padding:1px 13px;margin-right:10px;font-size:.76em}
 .gsheet .card.ex .qno{background:var(--navy)}
-.gsheet .qtext{margin:4px 0 10px}
-.gsheet .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;margin:8px 0 6px 6px;font-size:.95em}
-.gsheet .choices.one{grid-template-columns:repeat(4,auto);justify-content:start;gap:6px 34px}
+.gsheet .qtext{margin:4px 0 10px;font-size:calc(var(--qs,1)*1em)}
+.gsheet .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;margin:8px 0 6px 6px;font-size:calc(var(--qs,1)*.95em)}
+.gsheet .choices.one{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px 34px}
 .gsheet .choices .cs{display:inline-block;vertical-align:middle;width:230px;max-width:80%}
 .gsheet .choices .cs svg{width:100%;height:auto}
 .gsheet .fig{text-align:center;margin:8px 0 6px}
@@ -5272,7 +5292,9 @@ var GS=(function(){
 .gsheet.noans .ansOnly{display:none!important}
 .gsheet.open .choices,.gsheet.open .ansIdx{display:none!important}
 .gsheet .tx{white-space:nowrap}
-.gsheet .katex{font-size:1.05em!important}
+/* [숫자·수식 크기] : --ms 배율. 수식(KaTeX)과 글 속 맨 숫자(.nm)가 같이 커진다 */
+.gsheet .katex{font-size:calc(var(--ms,1)*1.05em)!important}
+.gsheet .nm{font-size:calc(var(--ms,1)*1em);line-height:1}
 .gsheet.cols2 .qgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;align-items:start}
 .gsheet.cols2 .qgrid .card{font-size:.8em;padding:12px 14px 14px}
 .gsheet.cols2 .qgrid .fig svg{max-width:300px!important}
@@ -5309,7 +5331,9 @@ var GS=(function(){
     const title=esc(cfg.title||'고졸 검정고시 수학 · 만능 학습지');
     const bar=`<div id="gsbar" class="noprint">
       <b>${title}</b>
-      <span class="g">글자 <input type="range" id="fsRange" min="16" max="40" value="${cfg.fs||24}"><span id="fsVal">${cfg.fs||24}px</span></span>
+      <span class="g">전체 글자 <input type="range" id="fsRange" min="16" max="40" value="${cfg.fs||24}"><span id="fsVal">${cfg.fs||24}px</span></span>
+      <span class="g">문제 글자 <input type="range" id="qsRange" min="80" max="160" step="5" value="${Math.round((cfg.qs||1)*100)}"><span id="qsVal">${Math.round((cfg.qs||1)*100)}%</span></span>
+      <span class="g">숫자·수식 <input type="range" id="msRange" min="80" max="200" step="5" value="${Math.round((cfg.ms||1)*100)}"><span id="msVal">${Math.round((cfg.ms||1)*100)}%</span></span>
       <button id="btnAns" class="${cfg.showAns?'on':''}">${cfg.showAns?'정답 숨기기':'정답 보이기'}</button>
       <button id="btnCols" class="${cfg.cols2?'on':''}">실전문제 2단</button>
       <button id="btnPrint">🖨️ 인쇄 / PDF 저장</button>
@@ -5320,6 +5344,8 @@ var GS=(function(){
       function rt(){if(!window.katex){setTimeout(rt,150);return;}document.querySelectorAll('.tx[data-tex]').forEach(function(el){try{katex.render(el.dataset.tex,el,{throwOnError:false});}catch(e){el.textContent=el.dataset.tex;}});${opts.autoPrint?'setTimeout(function(){window.print();},500);':''}}
       rt();
       document.getElementById('fsRange').oninput=function(e){sh.style.setProperty('--fs',e.target.value+'px');document.getElementById('fsVal').textContent=e.target.value+'px';};
+      document.getElementById('qsRange').oninput=function(e){sh.style.setProperty('--qs',e.target.value/100);document.getElementById('qsVal').textContent=e.target.value+'%';};
+      document.getElementById('msRange').oninput=function(e){sh.style.setProperty('--ms',e.target.value/100);document.getElementById('msVal').textContent=e.target.value+'%';};
       document.getElementById('btnAns').onclick=function(){var on=sh.classList.toggle('noans');this.classList.toggle('on',!on);this.textContent=on?'정답 보이기':'정답 숨기기';};
       document.getElementById('btnCols').onclick=function(){var on=sh.classList.toggle('cols2');this.classList.toggle('on',on);};
       document.getElementById('btnPrint').onclick=function(){window.print();};`;
@@ -5340,7 +5366,7 @@ html,body{margin:0;padding:0;background:#dfe4ea}
 .wrap{padding:22px 12px 80px}
 ${SHEET_CSS}
 @media print{@page{size:A4;margin:12mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
-</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px">${bodyHTML(cfg,groups)}</div></div>
+</style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1}">${bodyHTML(cfg,groups)}</div></div>
 <script>${script}<${'/'}script></body></html>`;
   }
 
@@ -5756,6 +5782,8 @@ var GED_UNITS=(function(){
   const{nf,par,xm,ym,tail,tex,pr,rnd,pick,nz,CIRC,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,NAVY,RED,GREEN,GREY}=GS;
   const fig=svg=>`<div class="fig">${svg}</div>`;
+  /* 조사 고르기 : 앞말 끝 글자에 받침이 있으면 withB(이/을), 없으면 noB(가/를).  4명이 · 4개가 · 3권을 · 2가지를 */
+  const josa=(w,withB,noB)=>{const c=String(w).slice(-1).charCodeAt(0)-0xAC00;return(c>=0&&c<11172&&c%28)?withB:noB;};
   const quadName=(x,y)=>x>0&&y>0?1:(x<0&&y>0?2:(x<0&&y<0?3:(x>0&&y<0?4:0)));
   const lineTex=(a,b)=>`y=${a===1?'':(a===-1?'-':nf(a))}x${tail(b)}`;
 
@@ -6765,7 +6793,7 @@ var GED_UNITS=(function(){
       const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
       const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
-      const q=`${e.a} ${nf(n)}${e.u}가 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}를 ${e.v} 경우의 수는?`;
+      const q=`${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
       const fac=Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ');
       const sol=[`순서가 있으므로 순열입니다. ${tex(`{}_{${nf(n)}}\\mathrm{P}_{${nf(r)}}`)}`,`${tex(nf(n))}부터 1씩 줄이며 ${tex(nf(r))}개를 곱합니다 : ${tex(`${fac}=${nf(ans)}`)}`];
       return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
@@ -6780,7 +6808,7 @@ var GED_UNITS=(function(){
       const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
       const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
-      const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}가 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}를 ${e.v} 경우의 수는?`;
+      const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
       const fn=Array.from({length:r},(_,i)=>nf(n-i)).join('\\times '),fd=Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ');
       const sol=[`순서를 따지지 않으므로 조합입니다. ${tex(`{}_{${nf(n)}}\\mathrm{C}_{${nf(r)}}`)}`,`${tex(`\\dfrac{${fn}}{${fd}}=\\dfrac{${nf(num)}}{${nf(den)}}=${nf(ans)}`)}`];
       return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
@@ -14096,7 +14124,27 @@ var GED_LS_KEY='ged_sheet_builder_v2';
 var GED_LS_KEY_V1='ged_sheet_builder_v1';
 
 var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:'좌표 기초 · 대칭이동 · 평행이동 · 이차함수 · 원의 방정식 · 유리·무리함수 · 내분점 — 2024년 이후 출제 유형 중심',
-  fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false};
+  fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false,
+  qs:1,      // 문제 글자 배율 (문제 본문·보기)
+  ms:1.2};   // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
+
+/* 글자 크기 조절 — [−] 막대 [+] 와 빠른 단계 버튼. 값은 배율(1 = 100%) */
+var GED_SIZE_STEPS=[['작게',.9],['보통',1],['크게',1.25],['아주 크게',1.5]];
+function GedSizeCtl({label,value,min,max,onChange,steps}){
+  const v=value||1;
+  const set=x=>onChange(Math.round(Math.min(max,Math.max(min,x))*100)/100);
+  const b='px-2.5 py-1.5 rounded-lg font-black text-xs';
+  return<div className="flex flex-wrap items-center gap-1.5 bg-gray-100 rounded-xl px-3 py-1.5" style={{minHeight:'44px'}}>
+    <span className="text-xs font-black text-gray-700 w-20 flex-none whitespace-nowrap">{label}</span>
+    <button onClick={()=>set(v-.05)} className={b+' bg-white text-gray-700'} style={{minHeight:'34px',minWidth:'34px'}}>−</button>
+    <input type="range" min={min*100} max={max*100} step="5" value={Math.round(v*100)} onChange={e=>set(+e.target.value/100)} style={{width:90,minHeight:0}}/>
+    <button onClick={()=>set(v+.05)} className={b+' bg-white text-gray-700'} style={{minHeight:'34px',minWidth:'34px'}}>＋</button>
+    <span className="text-xs font-black text-indigo-700 w-12 text-right whitespace-nowrap">{Math.round(v*100)}%</span>
+    {(steps||GED_SIZE_STEPS).map(([t,x])=><button key={t} onClick={()=>set(x)}
+      className={b+(Math.abs(v-x)<.001?' bg-indigo-600 text-white':' bg-white text-gray-600')} style={{minHeight:'34px'}}>{t}</button>)}
+  </div>;
+}
+var GED_NUM_STEPS=[['보통',1],['크게',1.2],['더 크게',1.4],['아주 크게',1.7]];
 
 /* 유형을 세분화하면서 바뀐 id — 예전에 저장해 둔 학습지도 그대로 열리도록 옮겨 준다 */
 var GED_UID_MIGRATE={
@@ -14301,8 +14349,13 @@ function GedSheetView({sheet,seq,busy,ops}){
         <Btn on={cfg.blankConcept} onClick={()=>setCfg({blankConcept:!cfg.blankConcept})}>✍️ 개념 빈칸</Btn>
         <Btn on={cfg.cols2} onClick={()=>setCfg({cols2:!cfg.cols2})}>🖨️ 실전 2단</Btn>
         <Btn on={cfg.format==='open'} onClick={()=>setCfg({format:cfg.format==='open'?'choice':'open'})}>{cfg.format==='open'?'서술형':'사지선다'}</Btn>
-        <label className="flex items-center gap-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl px-3" style={{minHeight:'40px'}}>글자
+        <label className="flex items-center gap-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl px-3" style={{minHeight:'40px'}}>전체 글자
           <input type="range" min="16" max="40" value={cfg.fs} onChange={e=>setCfg({fs:+e.target.value})} style={{width:90,minHeight:0}}/>{cfg.fs}px</label>
+      </div>
+      {/* 글자 크기 : 문제 글 / 숫자·수식 따로 — 인쇄·PDF에도 그대로 반영된다 */}
+      <div className="flex flex-col gap-1.5 mt-2">
+        <GedSizeCtl label="문제 글자" value={cfg.qs} min={.8} max={1.6} onChange={x=>setCfg({qs:x})}/>
+        <GedSizeCtl label="숫자·수식" value={cfg.ms} min={.8} max={2} steps={GED_NUM_STEPS} onChange={x=>setCfg({ms:x})}/>
       </div>
       <div className="grid grid-cols-1 gap-2 mt-2">
         <input value={cfg.title} onChange={e=>setCfg({title:e.target.value})} placeholder="학습지 제목" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-indigo-400" style={{minHeight:'42px'}}/>
@@ -14311,7 +14364,7 @@ function GedSheetView({sheet,seq,busy,ops}){
       {edit&&<div className="text-[11px] text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mt-2 font-medium">글자 편집 모드: 문제·풀이 글을 바로 고칠 수 있습니다. 고친 카드는 노란 테두리가 되고, 조건 상자의 [↩ 생성 상태로]로 되돌릴 수 있습니다. (수식 자체는 조건 숫자로 바꾸는 편이 안전합니다)</div>}
 
       {/* ── 미리보기 ── */}
-      <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px'}}>
+      <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px','--qs':cfg.qs||1,'--ms':cfg.ms||1}}>
         <h1>{cfg.title||'고졸 검정고시 수학 · 만능 학습지'}</h1>
         {cfg.subtitle&&<p className="sub">{cfg.subtitle}</p>}
         <div className="namebox"><span>이름 : ______________</span><span>날짜 : ______ 월 ______ 일</span></div>
@@ -14605,6 +14658,11 @@ function GedWorksheetTab(){
             <Btn on={setupCfg.blankConcept} onClick={()=>setSetupCfg({blankConcept:!setupCfg.blankConcept})}>✍️ 개념 빈칸 뚫기</Btn>
             <Btn on={setupCfg.format==='choice'} onClick={()=>setSetupCfg({format:'choice'})}>사지선다</Btn>
             <Btn on={setupCfg.format==='open'} onClick={()=>setSetupCfg({format:'open'})}>서술형(보기 없음)</Btn>
+          </div>
+          {/* 글자 크기 — 새 학습지의 처음 값 (만든 뒤에도 학습지마다 바꿀 수 있다) */}
+          <div className="flex flex-col gap-1.5 mt-3">
+            <GedSizeCtl label="문제 글자" value={setupCfg.qs} min={.8} max={1.6} onChange={x=>setSetupCfg({qs:x})}/>
+            <GedSizeCtl label="숫자·수식" value={setupCfg.ms} min={.8} max={2} steps={GED_NUM_STEPS} onChange={x=>setSetupCfg({ms:x})}/>
           </div>
           {/* 내 개념 설명 — 고쳐 둔 설명이 새 학습지에 그대로 들어간다 */}
           <div className="mt-3 bg-emerald-50 rounded-2xl px-3 py-2">

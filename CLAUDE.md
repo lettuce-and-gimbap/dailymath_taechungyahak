@@ -136,6 +136,10 @@ js/
   문항별 조건 편집은 React, 문제 본문은 `GS.probHTML` 문자열을 `dangerouslySetInnerHTML`로 넣고 KaTeX를 `GS.renderTex`로 렌더링.
   글자 편집(override)은 `ovRef`(문항 key → HTML)에 보관해 커서가 튀지 않게 한다. 문항 key는 장을 넘어 유일하다.
   임시저장 키는 `ged_sheet_builder_v2`이며, 예전 단일 학습지(`..._v1`)는 `gedLoadInit()`이 한 장으로 자동 이관한다.
+- **글자 크기 3단** : 전체 글자 `cfg.fs`(px) · 문제 글자 `cfg.qs`(배율, `.qtext`·`.choices`) · 숫자·수식 `cfg.ms`(배율, `.katex`·`.nm`·좌표평면 눈금).
+  `.gsheet` 의 CSS 변수 `--fs/--qs/--ms` 로 들어가며, 인쇄 때 `fs` 는 21px 로 묶이지만 `qs/ms` 는 em 배율이라 인쇄·PDF에도 반영된다.
+  글 속 맨 숫자(3개, 5명)는 `GS.probHTML` 안의 `numSpan()` 이 `<span class="nm">` 으로 감싼다 (수식·SVG·문항 번호는 제외).
+  planeSVG 눈금 숫자는 칸 너비에 따라 키우는 한도(`cap`)가 있어 옆 숫자와 겹치지 않는다.
 - **내 개념 설명(유형별 기본값)** : 학습지에서 개념 카드를 고치면 그 글이 유형 id 별로 저장되고,
   다음 [새 학습지 추가] 때 처음 설명 대신 들어간다 (`gedLoadCLib`/`gedCLibFor`, 로컬 `ged_concept_lib_v1`
   + Firestore `teacherSettings/gedConcepts`). 항목은 `{html, updatedAt}`, `html:null` = 처음 설명으로 되돌림(기기 간 병합용).

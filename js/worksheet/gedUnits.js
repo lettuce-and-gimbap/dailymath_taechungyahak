@@ -20,6 +20,8 @@ var GED_UNITS=(function(){
   const{nf,par,xm,ym,tail,tex,pr,rnd,pick,nz,CIRC,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,NAVY,RED,GREEN,GREY}=GS;
   const fig=svg=>`<div class="fig">${svg}</div>`;
+  /* 조사 고르기 : 앞말 끝 글자에 받침이 있으면 withB(이/을), 없으면 noB(가/를).  4명이 · 4개가 · 3권을 · 2가지를 */
+  const josa=(w,withB,noB)=>{const c=String(w).slice(-1).charCodeAt(0)-0xAC00;return(c>=0&&c<11172&&c%28)?withB:noB;};
   const quadName=(x,y)=>x>0&&y>0?1:(x<0&&y>0?2:(x<0&&y<0?3:(x>0&&y<0?4:0)));
   const lineTex=(a,b)=>`y=${a===1?'':(a===-1?'-':nf(a))}x${tail(b)}`;
 
@@ -1029,7 +1031,7 @@ var GED_UNITS=(function(){
       const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
       const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
-      const q=`${e.a} ${nf(n)}${e.u}가 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}를 ${e.v} 경우의 수는?`;
+      const q=`${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
       const fac=Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ');
       const sol=[`순서가 있으므로 순열입니다. ${tex(`{}_{${nf(n)}}\\mathrm{P}_{${nf(r)}}`)}`,`${tex(nf(n))}부터 1씩 줄이며 ${tex(nf(r))}개를 곱합니다 : ${tex(`${fac}=${nf(ans)}`)}`];
       return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
@@ -1044,7 +1046,7 @@ var GED_UNITS=(function(){
       const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
       const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
-      const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}가 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}를 ${e.v} 경우의 수는?`;
+      const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
       const fn=Array.from({length:r},(_,i)=>nf(n-i)).join('\\times '),fd=Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ');
       const sol=[`순서를 따지지 않으므로 조합입니다. ${tex(`{}_{${nf(n)}}\\mathrm{C}_{${nf(r)}}`)}`,`${tex(`\\dfrac{${fn}}{${fd}}=\\dfrac{${nf(num)}}{${nf(den)}}=${nf(ans)}`)}`];
       return{q,choices:ch.list,ans:ch.ans,sol,answerTex:nf(ans)};
