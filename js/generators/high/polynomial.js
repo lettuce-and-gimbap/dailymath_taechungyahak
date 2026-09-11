@@ -32,7 +32,7 @@ function gen_poly_arith(){
 function gen_poly_identity(){
   const A=randInt(2,7),B=randInt(-5,5);
   const ans=A+B;
-  const Bs=B>=0?`+${B}`:String(B);
+  const Bs=_pltail([[B,'']]);                    // B가 0이면 항을 아예 쓰지 않는다
   const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2,ans+4,ans-4].filter(w=>w!==ans).slice(0,3).map(String));
   return{topic:'항등식',q:`등식 x²+ax${Bs}=x²+${A}x+b가 x에 대한 항등식일 때, 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
     sol:[
@@ -49,16 +49,20 @@ function gen_poly_remainder(){
   const a=randInt(1,4),b=randInt(-4,4),c=randInt(-5,5);
   const r=pick([1,2,-1,-2]);
   const rem=a*r*r+b*r+c;
-  const bs=b>=0?`+${b}x`:`${b}x`,cs=c>=0?`+${c}`:String(c);
+  const fStr=_pl([[a,'x²'],[b,'x'],[c,'']]);
   const rs=r>0?`x−${r}`:`x+${-r}`;
   const pn=v=>v<0?`(${v})`:String(v);
   const{choices,answer}=makeChoices(String(rem),[rem+2,rem-2,rem+4,rem-4].filter(w=>w!==rem).slice(0,3).map(String));
-  return{topic:'나머지 정리',q:`다항식 ${a}x²${bs}${cs}을 ${rs}로 나누었을 때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+  const sub=[];                                   // 0인 항은 대입 과정에서도 빼고 보여 준다
+  if(a!==0)sub.push(`${a===1?'':a+'×'}${pn(r)}²`);
+  if(b!==0)sub.push(`${b===1?'':pn(b)+'×'}${pn(r)}`);
+  if(c!==0)sub.push(pn(c));
+  return{topic:'나머지 정리',q:`다항식 ${fStr}을 ${rs}로 나누었을 때, 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
     sol:[
       `나머지 정리: f(x)를 ${rs}로 나눈 나머지는 f(${r})로 구합니다.`,
-      `f(x) = ${a}x²${bs}${cs}에서 x = ${r}을 직접 대입합니다.`,
-      `f(${r}) = ${a}×${pn(r)}² + ${pn(b)}×${pn(r)} + ${pn(c)}`,
-      `= ${a*r*r} + ${b*r} + ${c} = ${rem}`,
+      `f(x) = ${fStr}에서 x = ${r}을 직접 대입합니다.`,
+      `f(${r}) = ${sub.join(' + ')}`,
+      `= ${_sumStr([a*r*r,b*r,c])} = ${rem}`,
       `따라서 나머지는 ${rem}입니다.`
     ]};
 }
@@ -74,18 +78,21 @@ function gen_poly_divisible(){
   }while(att<30);
   if(att>=30){r=2;b=-3;c=0;a=-(8-6)/4;} // fallback
   if(!Number.isInteger(a)){return gen_poly_remainder();}
-  const bs=b>=0?`+${b}x`:`${b}x`,cs=c>=0?`+${c}`:String(c);
-  const aS=a>=0?`+${a}x²`:`${a}x²`;
+  /* 문제에는 구해야 할 상수를 글자 a 그대로 둔다 (예전에는 a의 값이 그대로 찍혀 문제가 성립하지 않았다) */
+  const tailStr=_pltail([[b,'x'],[c,'']]);
   const rs=r>0?`x−${r}`:`x+${-r}`;
   const{choices,answer}=makeChoices(String(a),[a+1,a-1,a+2,a-2].filter(w=>w!==a).slice(0,3).map(String));
   const pn=v=>v<0?`(${v})`:String(v);
-  const f_r=r**3+a*r**2+b*r+c;
-  return{topic:'나누어떨어지는 조건',q:`다항식 x³${aS}${bs}${cs}가 ${rs}로 나누어떨어질 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+  const sub=[`${pn(r)}³`,`a×${pn(r)}²`];
+  if(b!==0)sub.push(`${b===1?'':pn(b)+'×'}${pn(r)}`);
+  if(c!==0)sub.push(pn(c));
+  const known=_sumStr([r**3,b*r,c]);
+  return{topic:'나누어떨어지는 조건',q:`다항식 x³+ax²${tailStr}가 ${rs}로 나누어떨어질 때, 상수 a의 값은?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
     sol:[
       `f(x)가 (x−r)로 나누어떨어지면 나머지정리에 의해 f(r)=0입니다.`,
       `여기서 나누는 식이 ${rs}이므로 x=${r}을 f(x)에 대입합니다.`,
-      `f(${r}) = ${r}³ + a×${pn(r)}² + ${b}×${pn(r)} + ${c} = 0`,
-      `${r**3} + ${r**2}a + ${b*r} + ${c} = 0 → ${r**2}a = ${-(r**3+b*r+c)} → a = ${a}`,
+      `f(${r}) = ${sub.join(' + ')} = 0`,
+      `${known} + ${r**2===1?'':r**2}a = 0 → ${r**2===1?'':r**2}a = ${-(r**3+b*r+c)} → a = ${a}`,
       `따라서 a = ${a}입니다.`
     ]};
 }
@@ -120,16 +127,22 @@ function gen_poly_synthetic(){
   const a=pick([1,2,-1,3,-2]);
   const b=randInt(-3,3),c=randInt(-3,3),d=randInt(-4,4);
   const rem=a**3+b*a**2+c*a+d;
-  const bS=b>=0?`+${b}x²`:`${b}x²`,cS=c>=0?`+${c}x`:`${c}x`,dS=d>=0?`+${d}`:String(d);
+  const fStr='x³'+_pltail([[b,'x²'],[c,'x'],[d,'']]);
   const divStr=a>=0?`x−${a}`:`x+${-a}`;
   const wrongs=[rem+1,rem-1,rem+2,rem-2].filter(w=>w!==rem).slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(rem),wrongs);
   const bv=b*a**2, cv=c*a;
-  return{topic:'나머지 정리',q:`다항식 x³${bS}${cS}${dS}을 ${divStr}로 나누었을 때의 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
+  const pn=v=>v<0?`(${v})`:String(v);
+  const sub=[`${pn(a)}³`];
+  if(b!==0)sub.push(`${b===1?'':pn(b)+'×'}${pn(a)}²`);
+  if(c!==0)sub.push(`${c===1?'':pn(c)+'×'}${pn(a)}`);
+  if(d!==0)sub.push(pn(d));
+  return{topic:'나머지 정리',q:`다항식 ${fStr}을 ${divStr}로 나누었을 때의 나머지는?`,choices,answer,meta:{category:'poly',type:'다항식 계산',diff:'기초'},
     sol:[
       `나머지 정리: f(x)를 x−a로 나눈 나머지 = f(a)`,
-      `f(x)=x³${bS}${cS}${dS}이므로 f(${a})를 구합니다.`,
-      `f(${a})=${a}³+${b}×${a}²+${c}×${a}+${d}=${a**3}+${bv}+${cv}+${d}=${rem}`,
+      `f(x)=${fStr}이므로 f(${a})를 구합니다.`,
+      `f(${a}) = ${sub.join(' + ')}`,
+      `= ${_sumStr([a**3,bv,cv,d])} = ${rem}`,
       `따라서 나머지는 ${rem}입니다.`
     ]};
 }

@@ -28,7 +28,7 @@ function gen_two_point_dist(){
     sol:[
       `두 점 A(x₁,y₁), B(x₂,y₂) 사이의 거리 = √((x₂−x₁)²+(y₂−y₁)²)`,
       `x의 차: ${x2}−${pn(x1)} = ${x2-x1},  y의 차: ${y2}−${pn(y1)} = ${y2-y1}`,
-      `거리 = √(${x2-x1}²+${y2-y1}²) = √(${(x2-x1)**2}+${(y2-y1)**2}) = √${(x2-x1)**2+(y2-y1)**2}`,
+      `거리 = √(${pn(x2-x1)}²+${pn(y2-y1)}²) = √(${(x2-x1)**2}+${(y2-y1)**2}) = √${(x2-x1)**2+(y2-y1)**2}`,
       `= ${correct}입니다.`
     ]};
 }
@@ -51,7 +51,7 @@ function gen_internal_1d(){
     sol:[
       `내분점 공식: 선분 AB를 m:n으로 내분하는 점은 (m×B+n×A)÷(m+n)으로 구합니다.`,
       `여기서 m=${m}, n=${n}, A=${a}, B=${b}입니다.`,
-      `P=(${m}×${pn(b)}+${n}×${pn(a)})÷(${m}+${n})=(${m*b}+${n*a})÷${m+n}=${m*b+n*a}÷${m+n}=${p}`,
+      `P=(${m}×${pn(b)}+${n}×${pn(a)})÷(${m}+${n})=(${_add(m*b,n*a)})÷${m+n}=${m*b+n*a}÷${m+n}=${p}`,
       `따라서 점 P의 좌표는 ${p}입니다.`
     ]};
 }
@@ -79,8 +79,8 @@ function gen_internal_2d(){
   return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_2d',ax,ay,bx,by,px,py,m,n},
     sol:[
       `내분점 공식을 x좌표, y좌표에 각각 적용합니다. m:n=${m}:${n}, A(${ax}, ${ay}), B(${bx}, ${by}).`,
-      `x좌표=(${m}×${pn(bx)}+${n}×${pn(ax)})÷${s}=(${m*bx}+${n*ax})÷${s}=${m*bx+n*ax}÷${s}=${px}`,
-      `y좌표=(${m}×${pn(by)}+${n}×${pn(ay)})÷${s}=(${m*by}+${n*ay})÷${s}=${m*by+n*ay}÷${s}=${py}`,
+      `x좌표=(${m}×${pn(bx)}+${n}×${pn(ax)})÷${s}=(${_add(m*bx,n*ax)})÷${s}=${m*bx+n*ax}÷${s}=${px}`,
+      `y좌표=(${m}×${pn(by)}+${n}×${pn(ay)})÷${s}=(${_add(m*by,n*ay)})÷${s}=${m*by+n*ay}÷${s}=${py}`,
       `따라서 내분점의 좌표는 (${px}, ${py})입니다.`
     ]};
 }
@@ -90,7 +90,10 @@ function gen_line_eq(){
   const slope=pick([-2,-1,1,2]),px=pick([0,1,2,-1]),py=randInt(-3,4);
   const b=py-slope*px;
   const correct=_fmtLine(slope,b);
-  const w=[_fmtLine(slope,b+1),_fmtLine(slope+1,b),_fmtLine(slope,b-1)].filter(x=>x!==correct);
+  /* 오답 후보를 넉넉히 준다. 모자라면 makeChoices 가 숫자를 기계적으로 바꿔
+     "y=x+0" 같은 어색한 보기를 만들기 때문이다. */
+  const w=[...new Set([_fmtLine(slope,b+1),_fmtLine(slope,b-1),_fmtLine(-slope,b),
+    _fmtLine(slope,b+2),_fmtLine(-slope,b+1)])].filter(x=>x!==correct);
   const{choices,answer}=makeChoices(correct,w);
   const pn=v=>v<0?`(${v})`:String(v);
   return{topic:'직선 방정식',q:`기울기가 ${slope}이고 점 (${px}, ${py})를 지나는 직선의 방정식은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
@@ -112,18 +115,19 @@ function gen_parallel_perp_line(){
   if(!intNewSlope) return gen_line_eq();
   const b=py-intNewSlope*px;
   const refB=b+randInt(1,4);
-  const refLine=`y=${slope===1?'':slope}x${refB>=0?`+${refB}`:refB}`;
+  const refLine=_fmtLine(slope,refB);            // 계수 −1 이 "-1x" 로 찍히지 않게
   const correct=_fmtLine(intNewSlope,b);
-  const w=[_fmtLine(intNewSlope,b+1),_fmtLine(slope,b),_fmtLine(intNewSlope,b-1)].filter(x=>x!==correct);
+  const w=[...new Set([_fmtLine(intNewSlope,b+1),_fmtLine(intNewSlope,b-1),_fmtLine(slope,b),
+    _fmtLine(-intNewSlope,b),_fmtLine(intNewSlope,b+2)])].filter(x=>x!==correct);
   const{choices,answer}=makeChoices(correct,w);
   const desc=isParallel?`직선 ${refLine}에 평행하고 점 (${px}, ${py})를 지나는`:`직선 ${refLine}에 수직이고 점 (${px}, ${py})를 지나는`;
   const pnv=v=>v<0?`(${v})`:String(v);
-  const yintercept_calc=`${py}−${intNewSlope}×${pnv(px)}=${py}−${intNewSlope*px}=${b}`;
+  const yintercept_calc=`${py}−${pnv(intNewSlope)}×${pnv(px)}=${_add(py,-(intNewSlope*px))}=${b}`;
   return{topic:isParallel?'평행 직선':'수직 직선',q:`${desc} 직선의 방정식은?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:isParallel?[
       `평행한 직선은 기울기가 같습니다. 기준 직선의 기울기 = ${slope}`,
       `구하는 직선의 기울기도 ${slope}입니다.`,
-      `점 (${px}, ${py})를 지나므로 y절편 b를 구합니다: ${py} = ${slope}×${pnv(px)} + b → b = ${b}`,
+      `점 (${px}, ${py})를 지나므로 y절편 b를 구합니다: ${py} = ${pnv(slope)}×${pnv(px)} + b → b = ${b}`,
       `따라서 방정식은 ${correct}입니다.`
     ]:[
       `수직인 직선의 기울기: 기준 기울기 ${slope}의 역수이고 부호를 바꿉니다. → ${intNewSlope}`,
@@ -263,7 +267,7 @@ function gen_circle_diameter_pts(){
   return{topic:'원의 방정식(지름)',q:`두 점 A(${A[0]}, ${A[1]}), B(${B[0]}, ${B[1]})을 지름의 양 끝 점으로 하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
     sol:[
       `지름의 두 끝점 A(${A[0]},${A[1]}), B(${B[0]},${B[1]})이 주어지면 → 중심 = 두 점의 중점입니다.`,
-      `중심 x좌표: (${A[0]}+${B[0]})÷2=${h2}÷2=${h},  y좌표: (${A[1]}+${B[1]})÷2=${k2}÷2=${k}`,
+      `중심 x좌표: (${_add(A[0],B[0])})÷2=${h2}÷2=${h},  y좌표: (${_add(A[1],B[1])})÷2=${k2}÷2=${k}`,
       `반지름 r = 중심~A 거리 = √((${h}−${pn(A[0])})²+(${k}−${pn(A[1])})²) = √${r2} = ${r}`,
       `원의 방정식: (x중심이 ${h}, y중심이 ${k}, r=${r}) → ${correct}`,
       `따라서 정답은 ${correct}입니다.`
@@ -306,11 +310,11 @@ function gen_origin_line_dist(){
   const item=pick(CASES);
   const{a,b,c,dist}=item;
   const cStr=c>=0?`+${c}`:String(c);
-  const bStr=b>=0?`+${b}y`:String(b)+'y';
+  const lineStr=_pl([[a,'x'],[b,'y'],[c,'']]);   // 계수 1이 "1x" 로 찍히지 않게
   // 같은 dist값이 여러 케이스에 있을 수 있으므로 완전히 다른 값만 오답으로
   const wrongs=[...new Set(CASES.filter(x=>x.dist!==dist).map(x=>x.dist))].slice(0,3);
   const{choices,answer}=makeChoices(dist,wrongs);
-  return{topic:'원점→직선 거리',q:`원점과 직선 ${a}x${bStr}${cStr}=0 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
+  return{topic:'원점→직선 거리',q:`원점과 직선 ${lineStr}=0 사이의 거리는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
       `점 (x₀,y₀)에서 직선 Ax+By+C=0까지의 거리 = |Ax₀+By₀+C|÷√(A²+B²)`,
       `원점 (0,0)을 대입: 거리 = |${a}×0+${b}×0${cStr}|÷√(${a}²+${b}²)`,

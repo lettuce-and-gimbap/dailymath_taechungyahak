@@ -11,12 +11,13 @@ function gen_quad_double_root(){
   const b0=a0**2/4;
   const ans=Math.abs(a0); // 보통 양수 물음
   const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2<0?ans+4:ans-2,ans+4].filter(w=>w!==ans).slice(0,3).map(String));
-  const aS=a0>=0?`+${a0}x`:`${a0}x`;
+  const aS=_pltail([[a0,'x']]);
+  const half=a0/2, halfS=`(x${half>=0?'+':'−'}${Math.abs(half)})`;
   return{topic:'이차방정식 중근',q:`이차방정식 x²${aS}+${b0}=0이 중근을 가질 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `중근: 이차방정식의 두 근이 같은 경우. 판별식 D = a²−4b = 0 이 조건입니다.`,
       `이 식에서 a=${a0}, b=${b0}이므로 D = ${a0}²−4×${b0} = ${a0*a0}−${4*b0} = 0. ✓`,
-      `검산: x²${aS}+${b0} = (x+${a0/2})² = 0 → x = ${-a0/2} (중근)`,
+      `검산: x²${aS}+${b0} = ${halfS}² = 0 → x = ${-a0/2} (중근)`,
       `문제에서 a의 값(양수)을 묻고 있으므로 |${a0}| = ${ans}입니다.`
     ]};
 }
@@ -27,10 +28,9 @@ function gen_quad_vieta(){
   const askSum=Math.random()<0.5;
   const ans=askSum?-p:q; // x²+px+q=0 → α+β=−p, αβ=q
   const label=askSum?'α+β':'αβ';
-  const ps=p>=0?`+${p}x`:p<0?`${p}x`:''
-  const qs=q>=0?`+${q}`:String(q);
+  const tailStr=_pltail([[p,'x'],[q,'']]);       // 0인 항은 빼고, 계수 1은 감춘다
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2,ans-2].filter(w=>w!==ans).slice(0,3).map(String));
-  return{topic:'이차방정식 근과 계수',q:`이차방정식 x²${ps}${qs}=0의 두 근을 α, β라고 할 때, ${label}의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+  return{topic:'이차방정식 근과 계수',q:`이차방정식 x²${tailStr}=0의 두 근을 α, β라고 할 때, ${label}의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `근과 계수의 관계(비에타 공식): x²+px+q=0의 두 근 α, β에 대해`,
       `α+β = −(x의 계수) = −${p} = ${-p}`,
@@ -76,15 +76,19 @@ function gen_cubic_quartic_root(){
     const p=randInt(-2,3),q=randInt(-3,3);
     const a=-(root**3+p*root**2+q*root);
     if(Math.abs(a)>15) return gen_cubic_quartic_root();
-    const ps2=p>=0?`+${p}x²`:`${p}x²`, qs2=q>=0?`+${q}x`:`${q}x`;
+    const tail3=_pltail([[p,'x²'],[q,'x']]);
     const pn=v=>v<0?`(${v})`:String(v);
     const r2=root**2,r3=root**3;
     const{choices,answer}=makeChoices(String(a),[a+2,a-2,a+4,a-4].filter(w=>w!==a).slice(0,3).map(String));
-    return{topic:'삼차방정식 한 근',q:`삼차방정식 x³${ps2}${qs2}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    const sub=[`${pn(root)}³`];
+    if(p!==0)sub.push(`${p===1?'':pn(p)+'×'}${pn(root)}²`);
+    if(q!==0)sub.push(`${q===1?'':pn(q)+'×'}${pn(root)}`);
+    sub.push('a');
+    return{topic:'삼차방정식 한 근',q:`삼차방정식 x³${tail3}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
       sol:[
         `한 근이 ${root}이므로 x=${root}을 방정식에 대입하면 등식이 성립합니다.`,
-        `${root}³ + ${p}×${pn(root)}² + ${q}×${pn(root)} + a = 0`,
-        `${r3} + ${p*r2} + ${q*root} + a = 0`,
+        `${sub.join(' + ')} = 0`,
+        `${_sumStr([r3,p*r2,q*root])} + a = 0`,
         `${r3+p*r2+q*root} + a = 0 → a = ${a}`,
         `따라서 a = ${a}입니다.`
       ]};
@@ -93,15 +97,15 @@ function gen_cubic_quartic_root(){
   const p2=randInt(-4,4);
   const a=-(root**4+p2*root**2);
   if(Math.abs(a)>20) return gen_cubic_quartic_root();
-  const p2s=p2>=0?`+${p2}x²`:`${p2}x²`;
+  const p2s=_pltail([[p2,'x²']]);
   const pn=v=>v<0?`(${v})`:String(v);
   const r2=root**2,r4=root**4;
   const{choices,answer}=makeChoices(String(a),[a+2,a-2,a+4].filter(w=>w!==a).slice(0,3).map(String));
   return{topic:'사차방정식 한 근',q:`사차방정식 x⁴${p2s}+a=0의 한 근이 ${root}일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `한 근이 ${root}이므로 x=${root}을 방정식에 대입하면 등식이 성립합니다.`,
-      `${root}⁴ + ${p2}×${pn(root)}² + a = 0`,
-      `${r4} + ${p2*r2} + a = 0`,
+      `${pn(root)}⁴${p2===0?'':` + ${p2===1?'':pn(p2)+'×'}${pn(root)}²`} + a = 0`,
+      `${_sumStr([r4,p2*r2])} + a = 0`,
       `${r4+p2*r2} + a = 0 → a = ${a}`,
       `따라서 a = ${a}입니다.`
     ]};
@@ -166,7 +170,7 @@ function gen_system_eq(){
 function gen_quad_ineq(){
   const r1=randInt(-3,1),r2=r1+randInt(2,5);
   const op=pick(['≤0','≥0']);
-  const lhs=`(x${r1>=0?`−${r1}`:`+${-r1}`})(x${r2>=0?`−${r2}`:`+${-r2}`})`;
+  const lhs=`${_fac(r1)}${_fac(r2)}`;            // 근이 0이면 (x−0) 대신 그냥 x
   const corrLE=`${r1}≤x≤${r2}`;
   const corrGE=`x≤${r1} 또는 x≥${r2}`;
   const correct=op==='≤0'?corrLE:corrGE;
@@ -199,11 +203,11 @@ function gen_system_ineq(){
   const diff2=c2-d2;
   const{choices,answer}=makeChoices(String(hi),[hi+1,hi+2,hi-1].filter(w=>w!==hi&&w>lo).map(String));
   return{topic:'연립부등식',q:`연립부등식의 해가 ${lo}<x<a일 때, 상수 a의 값은?`,choices,answer,
-    graph:{type:'system_eq',eqs:[`${a1}x > ${b1}`,`${c2}x < ${d2}x${e2s}`]},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+    graph:{type:'system_eq',eqs:[`${_cf(a1)}x > ${b1}`,`${_cf(c2)}x < ${_cf(d2)}x${e2s}`]},meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `각 부등식을 따로 풀고 나서 공통 범위를 구합니다.`,
       `① ${a1}x > ${b1} → x > ${b1}÷${a1} = ${lo}`,
-      `② ${c2}x < ${d2}x${e2s} → ${c2}x−${d2}x < ${e2} → ${diff2}x < ${e2} → x < ${e2}÷${diff2} = ${hi}`,
+      `② ${_cf(c2)}x < ${_cf(d2)}x${e2s} → ${_cf(c2)}x−${_cf(d2)}x < ${e2} → ${_cf(diff2)}x < ${e2} → x < ${e2}÷${diff2} = ${hi}`,
       `공통 범위: ${lo} < x < ${hi}`,
       `해가 ${lo}<x<a이므로 a = ${hi}입니다.`
     ]};

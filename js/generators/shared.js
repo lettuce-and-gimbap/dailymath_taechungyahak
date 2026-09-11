@@ -92,18 +92,45 @@ var _ps=(n,first=false)=>first?String(n):(n>=0?`+${n}`:String(n)); // 부호+숫
 var _cf=(n)=>n===1?'':n===-1?'−':String(n);   // 계수(1,-1 생략)
 
 var _fmtLine=(slope,intercept)=>{               // y=ax+b 문자열
-  const ss=slope===1?'':slope===-1?'−':String(slope);
-  const bs=intercept===0?'':intercept>0?`+${intercept}`:String(intercept);
+  if(slope===0)return `y=${intercept}`;         // 기울기가 0이면 가로선 y=b
+  const ss=slope===1?'':slope===-1?'−':(slope<0?`−${-slope}`:String(slope));
+  const bs=intercept===0?'':intercept>0?`+${intercept}`:`−${-intercept}`;
   return `y=${ss}x${bs}`;
 };
 
-var _p2=(a,b,c)=>{                              // ax²+bx+c 문자열
-  let s='';
-  if(a!==0)s+=`${_cf(a)}x²`;
-  if(b!==0)s+=`${b>0&&s?'+':''}${_cf(b)}x`;
-  if(c!==0)s+=_ps(c,!s);
+/* ── 다항식 표기 ──────────────────────────────────────────────
+   사람이 쓰는 모양으로 적는다. 계수 1은 감추고, 계수 0인 항은 통째로 빼고,
+   부호를 항 앞에 붙인다.  (1x², 0x, +0 같은 표기가 나오지 않게 하는 것이 목적)
+     _pl([[1,'x³'],[0,'x²'],[-1,'x'],[3,'']])  →  "x³−x+3"
+     'x³'+_pltail([[0,'x²'],[2,'x']])          →  "x³+2x"
+     _fac(0)  →  "x"      _fac(2) → "(x−2)"
+   ───────────────────────────────────────────────────────────── */
+var _tm=(c,v,first)=>{                          // 항 하나
+  if(c===0)return'';
+  let s=c<0?'−':(first?'':'+');
+  const a=Math.abs(c);
+  s+=(v==='')?String(a):((a===1?'':String(a))+v);
+  return s;
+};
+var _pl=terms=>{                                // 다항식 전체
+  let s='',first=true;
+  for(const[c,v]of terms){const t=_tm(c,v,first);if(t){s+=t;first=false;}}
   return s||'0';
 };
+var _pltail=terms=>{                            // 앞 항이 이미 적힌 뒤에 이어 붙일 꼬리
+  let s='';for(const[c,v]of terms)s+=_tm(c,v,false);return s;
+};
+var _fac=r=>r===0?'x':(r>0?`(x−${r})`:`(x+${-r})`);   // 인수 (x−r)
+/* 더하는 과정을 사람이 쓰는 모양으로. _add(9,-4) → "9−4"  (9+-4 처럼 부호가 겹치지 않게) */
+var _add=(...vals)=>vals.map((v,i)=>i===0?String(v):(v<0?`−${-v}`:`+${v}`)).join('');
+/* 값 목록을 부호를 붙여 한 줄로. 0인 항은 빼고 쓴다. [8,0,-6] → "8 − 6" */
+var _sumStr=vals=>{
+  const v=vals.filter(x=>x!==0);
+  if(!v.length)return'0';
+  return v.map((x,i)=>i===0?String(x):(x>0?`+ ${x}`:`− ${-x}`)).join(' ');
+};
+
+var _p2=(a,b,c)=>_pl([[a,'x²'],[b,'x'],[c,'']]);   // ax²+bx+c 문자열
 
 function weightedGen(items){
   const bag=[];items.forEach(([fn,w])=>{for(let i=0;i<w;i++)bag.push(fn);});

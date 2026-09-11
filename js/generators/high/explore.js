@@ -66,17 +66,18 @@ function genDistanceQ(){
     for(const delta of[-2,-1,1,2,3,-3,4]){const wNum=num+delta;if(wNum<=0)continue;const w=distFracStr(wNum,denSq);if(w!==correct&&!wrongs.includes(w))wrongs.push(w);if(wrongs.length>=3)break}
     if(wrongs.length<3)continue;
     const{choices,answer}=makeChoices(correct,wrongs);
-    const lbD=lb>=0?`+${lb}`:String(lb),lcD=lc>=0?`+${lc}`:String(lc);
+    /* 계수 1은 감추고 0인 항은 빼서 사람이 쓰는 모양으로 적는다 (1x, +0 방지) */
+    const lineStr=_pl([[la,'x'],[lb,'y'],[lc,'']]);
     const p=v=>v<0?`(${v})`:String(v);
-    const t1=la*x0,t2=lb*y0,t2s=t2>=0?`+${t2}`:String(t2),lcs=lc>=0?`+${lc}`:String(lc);
+    const t1=la*x0,t2=lb*y0;
     const sol=[
       `점과 직선 거리 공식: 직선 ax+by+c=0과 점(x₀,y₀) → 거리 = |ax₀+by₀+c| ÷ √(a²+b²)`,
       `a=${la}, b=${lb}, c=${lc}, 점=(${x0}, ${y0}) 대입`,
-      `분자: |${la}×${p(x0)}+${lb}×${p(y0)}+${p(lc)}| = |${t1}${t2s}${lcs}| = ${num}`,
-      `분모: √(${la}²+${lb}²) = √(${la**2}+${lb**2}) = √${denSq}`,
+      `분자: |${p(la)}×${p(x0)} + ${p(lb)}×${p(y0)} + ${p(lc)}| = |${_add(t1,t2,lc)}| = ${num}`,
+      `분모: √(${p(la)}²+${p(lb)}²) = √(${la**2}+${lb**2}) = √${denSq}`,
       `거리 = ${num}/√${denSq} = ${correct}`
     ];
-    return{topic:'점과 직선 거리',q:`점 (${x0}, ${y0})에서 직선 ${la}x${lbD}y${lcD} = 0까지의 거리는?`,choices,answer,graph:{type:'distance',ptX:x0,ptY:y0,la,lb,lc},sol};
+    return{topic:'점과 직선 거리',q:`점 (${x0}, ${y0})에서 직선 ${lineStr} = 0까지의 거리는?`,choices,answer,graph:{type:'distance',ptX:x0,ptY:y0,la,lb,lc},sol};
   }
   return{topic:'점과 직선 거리',q:'점 (3, 1)에서 직선 3x − 4y + 5 = 0까지의 거리는?',choices:['2','8/5','3','12/5'],answer:0,
     graph:{type:'distance',ptX:3,ptY:1,la:3,lb:-4,lc:5},
@@ -117,7 +118,7 @@ function genCircleQ(){
       sol:[
         `원의 방정식 (x−a)²+(y−b)²=r²에서 중심은 (a, b)입니다.`,
         `${eq}를 보면 x항이 (x${hSign})² → a=${h}, y항이 (y${kSign})² → b=${k}`,
-        `(주의: (x−${h})²이면 중심 x좌표는 ${h}입니다. 부호를 바꾸지 마세요!)`,
+        `(주의: ${fmtCircleTerm(h,'x')}이면 중심 x좌표는 ${h}입니다. 부호를 바꾸지 마세요!)`,
         `따라서 중심의 좌표는 (${h}, ${k})입니다.`
       ]};
   }
