@@ -136,6 +136,11 @@ js/
   문항별 조건 편집은 React, 문제 본문은 `GS.probHTML` 문자열을 `dangerouslySetInnerHTML`로 넣고 KaTeX를 `GS.renderTex`로 렌더링.
   글자 편집(override)은 `ovRef`(문항 key → HTML)에 보관해 커서가 튀지 않게 한다. 문항 key는 장을 넘어 유일하다.
   임시저장 키는 `ged_sheet_builder_v2`이며, 예전 단일 학습지(`..._v1`)는 `gedLoadInit()`이 한 장으로 자동 이관한다.
+- **내 개념 설명(유형별 기본값)** : 학습지에서 개념 카드를 고치면 그 글이 유형 id 별로 저장되고,
+  다음 [새 학습지 추가] 때 처음 설명 대신 들어간다 (`gedLoadCLib`/`gedCLibFor`, 로컬 `ged_concept_lib_v1`
+  + Firestore `teacherSettings/gedConcepts`). 항목은 `{html, updatedAt}`, `html:null` = 처음 설명으로 되돌림(기기 간 병합용).
+  html 은 항상 보통 모드(`<b class="kw">`)로 저장하고, 보여 줄 때 `GS.conceptMode(html, blank)` 로 빈칸 모양을 바꾼다.
+  이미 만든 학습지는 바뀌지 않는다 (학습지마다 `concepts` 에 사본을 가진다).
 - **유형마다 `문제 종류`(kind) 선택칸이 있다.** 23개 유형 x 세부 유형 99가지 — 2021~2026 기출을 대조해 나눴다
   (예: 3번은 나머지 R / 몫 / 나머지정리 대입 / 나누어떨어지는 조건, 15번은 개수 / 원소 / 차집합).
   세부 유형을 추가할 때는 해당 unit의 `fields[0].sel`에 이름을 넣고 `build(p)` 앞부분에 분기를 하나 더한다.

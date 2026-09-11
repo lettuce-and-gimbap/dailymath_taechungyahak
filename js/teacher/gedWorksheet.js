@@ -43,6 +43,27 @@ function gedMigrateIds(ids){
   return[...new Set(out)];
 }
 
+/* ── 내 개념 설명 (유형별 기본값) ─────────────────────────────
+   학습지에서 개념 카드를 고치면 그 글이 유형 id 별로 여기에 저장되고,
+   다음에 [새 학습지 추가]를 누르면 처음 설명 대신 이 글이 들어간다.
+   - 브라우저(localStorage)와 Firestore(teacherSettings/gedConcepts) 두 곳에 둔다.
+   - 항목 = {html, updatedAt}.  html:null 은 "처음 설명으로 되돌림" 표시(다른 기기와 맞출 때 쓴다).
+   - html 은 빈칸 모드와 무관하게 보통 모드(진한 글씨)로 저장한다. 보여 줄 때 GS.conceptMode 로 바꾼다. */
+var GED_CLIB_KEY='ged_concept_lib_v1';
+function gedLoadCLib(){try{return JSON.parse(localStorage.getItem(GED_CLIB_KEY)||'{}')||{};}catch(e){return{};}}
+function gedSaveCLibLocal(lib){try{localStorage.setItem(GED_CLIB_KEY,JSON.stringify(lib));}catch(e){}}
+/* 두 저장본을 유형마다 더 최근 것으로 합친다 */
+function gedMergeCLib(a,b){
+  const out={...a};
+  Object.keys(b||{}).forEach(k=>{const x=b[k];if(!x||typeof x!=='object')return;
+    if(!out[k]||(x.updatedAt||0)>(out[k].updatedAt||0))out[k]=x;});
+  return out;
+}
+/* 새 학습지에 넣을 개념 글 : 고른 유형 중 내 설명이 있는 것만 */
+function gedCLibFor(lib,uids){
+  const c={};(uids||[]).forEach(u=>{if(lib[u]&&lib[u].html)c[u]=lib[u].html;});return c;
+}
+
 function gedNewRec(u,idx,params){return{key:`${u.id}-${idx}-${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`,uid:u.id,idx,params,override:null,rev:0};}
 
 function gedSafeBuild(u,p){try{const r=u.build(p);return r&&!r.err?r:null;}catch(e){return null;}}
@@ -137,8 +158,9 @@ function GedProblemCard({rec,unit,no,edit,showCtrl,onParam,onRandom,onRemove,onR
 
 /* 개념 카드 — 글자 편집 모드에서 설명을 직접 고칠 수 있다.
    빈칸 뚫기를 켜면 [[핵심말]]이 밑줄 빈칸이 되고, 정답 보이기를 켜면 빈칸 안의 답이 나타난다.
-   고친 내용은 그 학습지에 저장되고, [↩ 처음 설명으로] 로 되돌릴 수 있다. */
-function GedConceptCard({unit,blank,rev,edit,showCtrl,edited,getHtml,onEdit,onReset}){
+   고친 내용은 그 학습지에 저장되고, 동시에 '내 설명'으로 저장되어 다음 학습지에도 들어간다.
+   [↩ 처음 설명으로] 는 이 카드와 '내 설명'을 모두 처음 설명으로 되돌린다. */
+function GedConceptCard({unit,blank,rev,edit,showCtrl,edited,saved,getHtml,onEdit,onReset}){
   const ref=useRef();
   const html=useMemo(()=>getHtml(unit.id),[unit.id,blank,rev]);
   useEffect(()=>{GS.renderTex(ref.current);},[html]);
@@ -147,8 +169,9 @@ function GedConceptCard({unit,blank,rev,edit,showCtrl,edited,getHtml,onEdit,onRe
       onInput={e=>onEdit(e.currentTarget.innerHTML)}
       dangerouslySetInnerHTML={{__html:html}}/>
     {showCtrl&&<div className="ctrl noprint"><span className="tag">개념 설명</span>
-      <span style={{fontSize:'12px',color:'#666'}}>{edit?'글자를 눌러 바로 고칠 수 있습니다':'[✏️ 글자 편집]을 켜면 여기를 고칠 수 있습니다'}</span>
-      {edited&&<button onClick={onReset}>↩ 처음 설명으로</button>}</div>}
+      <span style={{fontSize:'12px',color:'#666'}}>{edit?'글자를 눌러 바로 고칠 수 있습니다 · 고친 글은 다음 학습지에도 그대로 들어갑니다':'[✏️ 글자 편집]을 켜면 여기를 고칠 수 있습니다'}</span>
+      {saved&&<span style={{fontSize:'12px',color:'#0a7a45',fontWeight:700}}>📌 내 설명 (다음 학습지에도 적용)</span>}
+      {(edited||saved)&&<button onClick={onReset}>↩ 처음 설명으로</button>}</div>}
   </div>;
 }
 
@@ -228,9 +251,9 @@ function GedSheetView({sheet,seq,busy,ops}){
               <button onClick={()=>ops.addProblem(id,u.id)}>＋ 실전 문항 추가</button>
               <button className="danger" onClick={()=>{if(confirm(`'${u.title}' 유형을 이 학습지에서 뺄까요?`))ops.removeUnit(id,u.id);}}>✕ 이 유형 빼기</button></div>}
             {cfg.includeConcept&&<GedConceptCard unit={u} blank={!!cfg.blankConcept} rev={sheet.cRev||0}
-              edit={edit} showCtrl={showCtrl} edited={!!(sheet.concepts&&sheet.concepts[u.id])}
-              getHtml={uid=>(sheet.concepts&&sheet.concepts[uid])||GS.conceptHTML(u,{blank:cfg.blankConcept})}
-              onEdit={h=>ops.onConceptEdit(id,u.id,h)} onReset={()=>ops.onConceptReset(id,u.id)}/>}
+              edit={edit} showCtrl={showCtrl} edited={!!(sheet.concepts&&sheet.concepts[u.id])} saved={ops.cLibHas(u.id)}
+              getHtml={uid=>(sheet.concepts&&sheet.concepts[uid])?GS.conceptMode(sheet.concepts[uid],!!cfg.blankConcept):GS.conceptHTML(u,{blank:cfg.blankConcept})}
+              onEdit={h=>ops.onConceptEdit(id,u.id,h)} onReset={()=>{if(confirm(`'${u.title}' 개념 설명을 처음 설명으로 되돌릴까요?\n(이 학습지와, 앞으로 만들 학습지 모두 처음 설명으로 돌아갑니다)`))ops.onConceptReset(id,u.id);}}/>}
             {ex.length>0&&<h3>풀이 예시</h3>}
             {ex.map(r=><GedProblemCard key={r.key} rec={r} unit={u} no={r.no} {...cardProps}/>)}
             {qs.length>0&&<h3>실전 문제</h3>}
@@ -260,6 +283,8 @@ function GedWorksheetTab(){
   const[quotaWarn,setQuotaWarn]=useState(false);
   const ovRef=useRef({});
   const fileRef=useRef();
+  const[cLib,setCLib]=useState(gedLoadCLib);          // 내 개념 설명 (유형 id → {html,updatedAt})
+  const[showCLib,setShowCLib]=useState(false);
   useEffect(()=>{init.sheets.forEach(s=>(s.problems||[]).forEach(p=>{if(p.override)ovRef.current[p.key]=p.override;}));},[]);
 
   const showToast=m=>{setToast(m);clearTimeout(showToast._t);showToast._t=setTimeout(()=>setToast(''),2800);};
@@ -312,6 +337,7 @@ function GedWorksheetTab(){
     if(!selected.length){showToast('유형을 하나 이상 골라 주세요.');return;}
     const list=[];UNITS.forEach(u=>{if(selected.includes(u.id))list.push(...gedGenUnit(u,setupCfg.count,setupCfg.includeExample));});
     const sh=gedMakeSheet(setupCfg,list,null);
+    sh.concepts=gedCLibFor(cLib,selected);   // 고쳐 둔 '내 설명'이 있는 유형은 그 글로 시작
     const before=sheets.length;
     setSheets(ss=>[sh,...ss.map(s=>({...s,collapsed:true}))]);
     setShowSetup(false);
@@ -403,18 +429,42 @@ function GedWorksheetTab(){
     }catch(e){showToast('❌ 삭제 실패');}
   };
 
-  /* ---------- 개념 카드 편집 ---------- */
-  const cTimer=useRef(null);
-  const onConceptEdit=(id,uid,html)=>{
-    clearTimeout(cTimer.current);
-    cTimer.current=setTimeout(()=>patchSheet(id,s=>({...s,concepts:{...(s.concepts||{}),[uid]:html}})),500);
+  /* ---------- 내 개념 설명 : 불러오기 · 저장 ---------- */
+  useEffect(()=>{
+    db.collection('teacherSettings').doc('gedConcepts').get()
+      .then(snap=>{if(!snap.exists)return;const d=snap.data()||{};delete d.updatedAt;
+        setCLib(prev=>{const m=gedMergeCLib(prev,d);gedSaveCLibLocal(m);return m;});})
+      .catch(()=>{});
+  },[]);
+  const putCLib=(uid,html)=>{
+    const item={html,updatedAt:Date.now()};
+    setCLib(prev=>{const m={...prev,[uid]:item};gedSaveCLibLocal(m);return m;});
+    db.collection('teacherSettings').doc('gedConcepts').set({[uid]:item,updatedAt:Date.now()},{merge:true}).catch(()=>{});
   };
-  const onConceptReset=(id,uid)=>patchSheet(id,s=>{
-    const c={...(s.concepts||{})};delete c[uid];
-    return{...s,concepts:c,cRev:(s.cRev||0)+1};
-  });
+  const cLibHas=uid=>!!(cLib[uid]&&cLib[uid].html);
+  const cLibCount=Object.keys(cLib).filter(cLibHas).length;
+  const resetCLib=uid=>{putCLib(uid,null);const u=byId(uid);showToast(`↩ '${u?u.title:uid}' 개념 설명을 처음 설명으로 되돌렸습니다.`);};
 
-  const ops={setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset};
+  /* ---------- 개념 카드 편집 ---------- */
+  const cTimer=useRef({});   // 카드마다 따로 (여러 카드를 이어서 고쳐도 앞 편집이 사라지지 않게)
+  const onConceptEdit=(id,uid,html)=>{
+    const tk=id+'|'+uid;
+    clearTimeout(cTimer.current[tk]);
+    cTimer.current[tk]=setTimeout(()=>{
+      const norm=GS.conceptMode(html,false);   // 빈칸 모드에서 고쳐도 보통 모드 모양으로 저장
+      patchSheet(id,s=>({...s,concepts:{...(s.concepts||{}),[uid]:norm}}));
+      putCLib(uid,norm);                       // 다음 학습지에도 이 글이 들어가게
+    },500);
+  };
+  const onConceptReset=(id,uid)=>{
+    patchSheet(id,s=>{
+      const c={...(s.concepts||{})};delete c[uid];
+      return{...s,concepts:c,cRev:(s.cRev||0)+1};
+    });
+    putCLib(uid,null);
+  };
+
+  const ops={setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset,cLibHas};
   const Btn=({on,children,...rest})=><button {...rest} className={`px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap ${on?'bg-indigo-600 text-white':'bg-gray-100 text-gray-700'}`} style={{minHeight:'40px'}}>{children}</button>;
 
   return<div className="p-4 space-y-4 fade-in">
@@ -477,6 +527,23 @@ function GedWorksheetTab(){
             <Btn on={setupCfg.blankConcept} onClick={()=>setSetupCfg({blankConcept:!setupCfg.blankConcept})}>✍️ 개념 빈칸 뚫기</Btn>
             <Btn on={setupCfg.format==='choice'} onClick={()=>setSetupCfg({format:'choice'})}>사지선다</Btn>
             <Btn on={setupCfg.format==='open'} onClick={()=>setSetupCfg({format:'open'})}>서술형(보기 없음)</Btn>
+          </div>
+          {/* 내 개념 설명 — 고쳐 둔 설명이 새 학습지에 그대로 들어간다 */}
+          <div className="mt-3 bg-emerald-50 rounded-2xl px-3 py-2">
+            <button onClick={()=>setShowCLib(s=>!s)} className="w-full flex items-center gap-2 text-left" style={{minHeight:'36px'}}>
+              <span className="text-xs font-black text-emerald-800 flex-1">📌 내가 고친 개념 설명 {cLibCount}개
+                <span className="font-bold text-emerald-700"> — 새 학습지에 이 설명이 그대로 들어갑니다</span></span>
+              <span className="text-[11px] font-bold text-emerald-700">{showCLib?'접기 ▲':'보기 ▼'}</span>
+            </button>
+            {showCLib&&<div className="mt-1 space-y-1">
+              {cLibCount===0&&<div className="text-[11px] text-emerald-800 font-medium py-1">아직 없습니다. 학습지에서 [✏️ 글자 편집]을 켜고 개념 카드를 고치면 여기에 쌓입니다.</div>}
+              {UNITS.filter(u=>cLibHas(u.id)).map(u=><div key={u.id} className="flex items-center gap-2 bg-white rounded-xl px-2 py-1">
+                <span className="flex-1 text-xs font-bold text-gray-700 truncate">{u.tag}. {u.title}
+                  <span className="text-[10px] text-gray-400"> · {gedFmtTime(cLib[u.id].updatedAt)} 고침</span></span>
+                <button onClick={()=>{if(confirm(`'${u.title}' 개념 설명을 처음 설명으로 되돌릴까요?\n(이미 만든 학습지는 그대로 두고, 앞으로 만들 학습지부터 처음 설명이 들어갑니다)`))resetCLib(u.id);}}
+                  className="text-[11px] px-2 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold" style={{minHeight:'32px'}}>↩ 처음 설명으로</button>
+              </div>)}
+            </div>}
           </div>
           <div className="grid grid-cols-1 gap-2 mt-3">
             <input value={setupCfg.title} onChange={e=>setSetupCfg({title:e.target.value})} placeholder="학습지 제목" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-indigo-400" style={{minHeight:'44px'}}/>

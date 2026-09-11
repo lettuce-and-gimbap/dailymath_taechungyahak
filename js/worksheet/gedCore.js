@@ -270,6 +270,25 @@ var GS=(function(){
     if(c.tip)h+=`<p class="ctip">💡 ${markKw(c.tip,blank)}</p>`;
     return h;
   }
+  /* 선생님이 고친 개념 HTML을 빈칸/보통 모드에 맞게 바꾼다.
+     고친 글은 어느 모드에서 고쳤든 저장해 두었다가, 보여 줄 때 핵심말을
+     진한 글씨(<b class="kw">) ↔ 밑줄 빈칸(<span class="bl"><span class="ba">) 으로 바꿔 끼운다. */
+  function conceptMode(html,blank){
+    if(!html||typeof document==='undefined')return html||'';
+    const t=document.createElement('template');t.innerHTML=html;
+    if(blank){
+      t.content.querySelectorAll('b.kw').forEach(b=>{
+        const s=document.createElement('span');s.className='bl';
+        const a=document.createElement('span');a.className='ba';a.innerHTML=b.innerHTML;
+        s.appendChild(a);b.replaceWith(s);});
+    }else{
+      t.content.querySelectorAll('span.bl').forEach(s=>{
+        const a=s.querySelector('.ba');
+        const b=document.createElement('b');b.className='kw';b.innerHTML=a?a.innerHTML:s.innerHTML;
+        s.replaceWith(b);});
+    }
+    return t.innerHTML;
+  }
   /* 문제 카드 안쪽 HTML.  idx 0 = 예제(풀이 공개), 그 외 = 실전(풀이는 ansOnly) */
   function probHTML(unit,params,idx,no,opts){
     let r;
@@ -302,7 +321,7 @@ var GS=(function(){
     groups.forEach(gr=>{
       const u=gr.unit;
       h+=`<h2 id="${u.id}">${u.tag}. ${esc(u.title)}<small>${u.src||''}</small></h2>`;
-      if(cfg.includeConcept!==false)h+=`<div class="card concept">${gr.conceptHtml||conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
+      if(cfg.includeConcept!==false)h+=`<div class="card concept">${gr.conceptHtml?conceptMode(gr.conceptHtml,cfg.blankConcept):conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
       const ex=gr.recs.filter(r=>r.idx===0),qs=gr.recs.filter(r=>r.idx!==0);
       ex.forEach(r=>{h+=`<h3>풀이 예시</h3><div class="card ex">${r.override||probHTML(u,r.params,0,'예제')}</div>`;});
       if(qs.length){h+=`<h3>실전 문제</h3><div class="qgrid">`;qs.forEach(r=>{h+=`<div class="card">${r.override||probHTML(u,r.params,r.idx,r.no)}</div>`;});h+=`</div>`;}
@@ -436,6 +455,6 @@ ${SHEET_CSS}
 
   return{nf,par,xm,ym,tail,esc,tex,pr,rnd,pick,nz,CIRC,isInt,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,choicesHTML,
-    planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,probHTML,bodyHTML,docHTML,SHEET_CSS,
+    planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
     NAVY,RED,GREEN,GREY};
 })();
