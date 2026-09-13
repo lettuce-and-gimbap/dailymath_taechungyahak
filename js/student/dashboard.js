@@ -4,6 +4,25 @@
    학생 화면의 탭 묶음과 하단 네비게이션
    -------------------------------------------------------------------- */
 
+/* 좌표평면·수직선 눈금 숫자 크기 — 100%→130%→160%→200% 순으로 돌아가며 커진다.
+   전역 CSS 변수 --ms 를 바꿔서 index.html 의 svg text[...] 규칙(눈금 숫자)과
+   GS.planeSVG(좌표10 등)의 눈금 숫자가 함께 커지도록 한다. 학생마다 이 브라우저에 저장된다. */
+var NUM_SIZE_STEPS=[1,1.3,1.6,2];
+var NUM_SIZE_KEY='yakHakNumSize';
+function loadNumSize(){try{const v=parseFloat(localStorage.getItem(NUM_SIZE_KEY));return NUM_SIZE_STEPS.includes(v)?v:1;}catch(e){return 1;}}
+function applyNumSize(v){try{document.documentElement.style.setProperty('--ms',v);localStorage.setItem(NUM_SIZE_KEY,String(v));}catch(e){}}
+function NumSizeToggle(){
+  const[v,setV]=useState(()=>{const x=loadNumSize();applyNumSize(x);return x;});
+  const next=()=>{const i=NUM_SIZE_STEPS.indexOf(v);const nv=NUM_SIZE_STEPS[(i+1)%NUM_SIZE_STEPS.length];setV(nv);applyNumSize(nv);};
+  // DarkToggle과 같은 동그란 아이콘 단추 — 좁은 화면에서도 헤더가 넘치지 않도록 글자는 넣지 않는다.
+  // 지금 배율은 title(길게 누르면 보이는 설명)과, 켜져 있을 때(1보다 클 때) 오른쪽 위 작은 점으로만 표시한다.
+  return<button onClick={next} title={`좌표평면·수직선 눈금 숫자 크기 ${Math.round(v*100)}% (눌러서 변경)`}
+    className="dark-toggle relative flex-shrink-0" style={{fontSize:18}}>
+    🔢
+    {v>1&&<span className="absolute -top-0.5 -right-0.5 bg-indigo-500 text-white rounded-full text-[9px] font-black px-1 leading-tight">{Math.round(v*100)}</span>}
+  </button>;
+}
+
 /* 하던 공부 알림 — 문제 푸는 화면을 가리지 않게 머리글 바로 아래에 한 줄로 작게 뜬다.
    - [이어서] : 문제풀기 탭으로 가서 저장된 문제부터 바로 이어 푼다
    - 위·아래·옆으로 밀거나 [✕] : 오른쪽 위의 작은 📚 단추로 접힌다 (누르면 다시 펼쳐짐)
@@ -141,16 +160,19 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
 
   return(<div className="flex flex-col min-h-screen max-w-lg mx-auto bg-gray-50 relative" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <div className="sticky top-0 z-20">
-    <header className="bg-white border-b px-4 py-3 flex items-center gap-3 shadow-sm">
-      <div className="text-2xl">🎓</div>
-      <h1 className="text-lg font-black text-gray-800 flex-1">태청야학 수학반</h1>
-      <span className="text-sm font-bold text-gray-500">{userData.name}</span>
-      {switchTarget&&<button onClick={handleSwitchClick} title={`${switchTarget} 계정으로 전환`}
-        className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 active:scale-95 transition-transform">
-        👨‍🏫 전환
-      </button>}
-      <DarkToggle/>
-      <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100">로그아웃</button>
+    <header className="bg-white border-b px-4 py-3 flex items-center gap-2 shadow-sm">
+      <div className="text-2xl flex-shrink-0">🎓</div>
+      <h1 className="text-lg font-black text-gray-800 flex-1 min-w-0 truncate">태청야학 수학반</h1>
+      <span className="text-sm font-bold text-gray-500 truncate max-w-[64px] flex-shrink">{userData.name}</span>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {switchTarget&&<button onClick={handleSwitchClick} title={`${switchTarget} 계정으로 전환`}
+          className="flex items-center text-xs font-black px-2 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 active:scale-95 transition-transform whitespace-nowrap">
+          👨‍🏫 전환
+        </button>}
+        <NumSizeToggle/>
+        <DarkToggle/>
+        <button onClick={onLogout} className="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg bg-gray-100 whitespace-nowrap">로그아웃</button>
+      </div>
     </header>
     {/* 하던 공부 알림 (홈·문제풀기 탭은 화면 안에 따로 안내가 있어서 뺀다) */}
     {hasSavedSession&&tab!=='practice'&&tab!=='home'&&

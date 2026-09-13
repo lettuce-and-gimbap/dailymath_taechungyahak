@@ -170,6 +170,40 @@ js/
   저장/그만하기를 고른 뒤에 전환한다(`pendingSwitch` 플래그로 탭 이동과 전환을 구분).
 - 새 짝을 추가할 때는 `QUICK_SWITCH_PAIRS`에 한 줄만 더하면 된다. 이름이 바뀌면 이 배열도 같이 고칠 것.
 
+## 🖐️ svg{touch-action:none} 전역 규칙을 지웠다 (index.html head)
+
+2026-09-13 이전에는 `<style>` 안에 `svg{touch-action:none}`이 있어서, 드래그할 점이 없는 **정적인**
+좌표평면·수직선 그림(문제풀기·좌표10·기하학 퀴즈·모의고사·만능학습지 미리보기) 위에서도 손가락 스크롤이
+막혔다 — 그림이 그냥 이미지인데도 스크롤이 안 됐다.
+
+- 실제로 점을 드래그하는 곳(기하학 탭의 **그래프 탐험**)은 `js/math/primitives.js`의 `SVG_PROPS`가
+  그 `<svg>`에 `touchAction:'none'`을 **직접(인라인 style로)** 붙이므로, 전역 규칙을 지워도 그쪽은 그대로 막힌 채 남는다.
+- 새 정적 SVG를 추가할 때 드래그가 필요하면 `{...SVG_PROPS}`를 쓰고, 필요 없으면 아무것도 안 붙이면 된다(기본이 스크롤 가능).
+
+## 🔢 좌표평면·수직선 눈금 숫자 크기 (--ms) — 학습지 + 학생 화면 공통
+
+만능 학습지는 학습지마다 `cfg.ms`로 눈금 숫자 배율을 정하고(`.gsheet`에 로컬 `--ms`를 따로 심는다, 위 참고),
+**학생이 문제를 풀 때 보는 화면**(문제풀기·좌표10·기하학·모의고사)은 같은 CSS 변수 `--ms`를
+`document.documentElement`(전역)에 심어서 공유한다. 학습지의 로컬 `--ms`가 더 안쪽이라 서로 안 섞인다.
+
+- `js/student/dashboard.js`의 `NumSizeToggle`(헤더의 🔢 단추, DarkToggle과 같은 동그란 아이콘) —
+  100%→130%→160%→200% 순으로 돌며, `localStorage(yakHakNumSize)`에 저장하고
+  `document.documentElement.style.setProperty('--ms', v)`로 전역에 적용한다.
+- `js/worksheet/gedCore.js`의 `planeSVG`처럼 **자체적으로 `--ms`를 읽는 SVG 문자열**은 그대로 커진다
+  (`js/student/coordDaily.js`가 `GS.planeSVG`를 그대로 쓰므로 좌표10은 여기 해당).
+- `js/math/graphPreview.js`·`js/math/primitives.js`의 눈금 숫자는 React 속성 `fontSize={9|10|17}`로
+  박혀 있어 CSS 변수를 직접 못 읽는다. 대신 index.html head의 속성 선택자로 덮어쓴다:
+  ```css
+  svg text[fill="#9ca3af"][font-size="9"]{font-size:clamp(9px,calc(var(--ms,1)*9px),15px)!important}
+  svg text[fill="#9ca3af"][font-size="10"]{font-size:clamp(10px,calc(var(--ms,1)*10px),16px)!important}
+  svg text[fill="#475569"][font-size="17"]{font-size:clamp(17px,calc(var(--ms,1)*17px),26px)!important}
+  ```
+  **새 눈금 숫자를 추가할 때**도 이 두 색(`#9ca3af`=graphPreview 회색 눈금, `#475569`=primitives.js Grid 눈금)과
+  기존 fontSize 값을 그대로 맞추면 자동으로 커진다. 다른 색·크기를 새로 쓰면 위 목록에 규칙을 한 줄 추가할 것.
+- 헤더에 단추를 더 넣을 때는 `js/student/dashboard.js`/`js/teacher/dashboard.js`의 헤더처럼
+  제목에 `truncate min-w-0`, 오른쪽 버튼 묶음에 `flex-shrink-0`을 줘서 좁은 화면에서 넘치지 않게 할 것
+  (2026-09-13 : 전환 단추 + 🔢 단추를 추가했다가 375px 폭에서 헤더가 넘쳐 로그아웃 단추가 잘렸던 적이 있다).
+
 ## 📚 학생 화면 · 하던 공부(저장된 문제풀기 세션) 알림 (js/student/dashboard.js)
 
 - 저장본은 localStorage `yakHakSavedSession_<이름>`. 좌표10·기하학·모의고사·기록 탭에서는 머리글 아래 **한 줄짜리 `SavedSessionBar`** 로만 알린다
