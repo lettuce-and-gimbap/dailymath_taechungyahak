@@ -235,6 +235,8 @@ dailymath_taechungyahak/
 │                            고친 뒤 반드시 scripts_rebuild_index.py 실행
 ├── index.html               js/ 의 번들 결과물 (직접 편집 금지)
 ├── scripts_rebuild_index.py
+├── automation/              저장소 밖(Google Apps Script)에서 도는 자동화 — 붙여 넣어 쓰는 원본
+│   └── dailyBriefing.gs     매일 9시 학습 브리핑 메일 (README.md 에 설치법)
 └── 커리큘럼_2026-2학기~2027-1학기/   수업 운영 문서
     ├── 01_수학반 커리큘럼_2026.09-2027.04.md   9월~4월 주차별 계획 · 90분 운영 표준
     ├── 02_학생 성장지표 설계서 및 기록양식.md   학생용 5지표 · ★판정 기준 · 기록 양식
@@ -259,3 +261,16 @@ dailymath_taechungyahak/
   A4 한 장에 `.page` 하나가 들어가야 한다(9쪽). 넘치면 print 미디어의 `zoom` 을 0.01씩 낮춘다.
 - **학생 이름을 코드에 하드코딩하지 않는다.** `curriculum.html` 의 학생 명단은 Firestore
   (`curriculumBoard/2026-2027`)에만 저장되므로 저장소에는 남지 않는다.
+
+## 📬 아침 학습 브리핑 메일 (automation/)
+
+`automation/dailyBriefing.gs` 는 앱 번들(`index.html`)에 들어가지 않는다. 선생님이 script.google.com 에 붙여 넣어
+돌리는 Google Apps Script 원본이다. **여기를 고쳐도 자동으로 반영되지 않으므로**, 고친 뒤에는 선생님께 다시 붙여 넣기를 안내한다.
+
+- Firestore REST(공개 apiKey)로 `math_logs`(date ≥ 8일 전)와 `users`(mask: name·role·lastDate)만 읽는다.
+  `users` 를 mask 없이 읽으면 logs 배열까지 받아 무거워진다.
+- 받는 주소는 `Session.getEffectiveUser().getEmail()` — **메일 주소를 코드에 적지 않는다**(공개 저장소).
+- 보고서 조립은 `buildBriefing_(logs, students, now)` 순수 함수. 수정 후에는 브라우저에서 `UrlFetchApp`/`Utilities` 를
+  흉내 내고 이 함수를 실제 기록으로 돌려 '기록 있는 날'과 '데이터 없음' 두 경우를 모두 확인한다.
+- 앱에서 새 기록 종류를 만들 때 `math_logs` 에 `studentName · date · type · questions[{isOk, meta.type}] · totalSec` 를
+  같은 모양으로 남기면 브리핑에도 자동으로 잡힌다.
