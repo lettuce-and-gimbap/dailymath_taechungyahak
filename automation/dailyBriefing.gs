@@ -2,7 +2,7 @@
    태청야학 수학반 · 아침 학습 브리핑 메일 (Google Apps Script)
 
    무엇을 하나
-   - 매일 아침 9시(한국 시간) 무렵, 어제 하루 학생들이 앱에서 문제 푼 기록을 모아
+   - 매일 아침 8시~9시(한국 시간) 사이, 어제 하루 학생들이 앱에서 문제 푼 기록을 모아
      선생님 본인 Gmail로 '나에게 보내기'처럼 보고서를 보낸다.
    - 어제 기록이 없으면 '데이터 없음'과 함께, 학생들에게 보낼 격려·독려 문구를 추천한다.
 
@@ -22,7 +22,7 @@
    2. 프로젝트 설정(톱니) → 'appsscript.json 매니페스트 파일 표시' 체크 →
       같은 폴더의 appsscript.json 내용으로 바꾸기 (시간대 Asia/Seoul)
    3. 편집기 위 함수 목록에서 previewBriefing 실행 → 권한 허용 → 메일함 확인
-   4. installTrigger 실행 → 매일 9시 발송 예약 끝
+   4. installTrigger 실행 → 매일 8시~9시 발송 예약 끝
    끄고 싶으면 removeTrigger 실행.
    ===================================================================== */
 
@@ -30,7 +30,7 @@ var CONFIG = {
   PROJECT_ID: 'math-solving-daily',
   API_KEY: 'AIzaSyB91eiFNRs_ziJnzWMjvg-TKSq447oPasY',   // index.html 에 이미 공개된 웹 키
   TZ: 'Asia/Seoul',
-  SEND_HOUR: 9,
+  SEND_HOUR: 8,              // Google 예약은 이 시각부터 1시간 안에 실행된다 → 8시~9시 사이 도착
   COMPARE_DAYS: 7,          // 어제와 비교할 '지난 며칠 평균'
   NUDGE_AFTER_DAYS: 3,      // 마지막 접속(users.lastDate)이 이만큼 지나면 독려 대상
   NUDGE_WITHIN_DAYS: 30,    // 이보다 오래 쉰 사람은 '장기 미접속'으로만 센다
@@ -65,7 +65,7 @@ function previewBriefing() {
   });
 }
 
-/** 매일 9시 발송 예약 (같은 예약이 이미 있으면 지우고 다시 만든다) */
+/** 매일 8시~9시 발송 예약 (같은 예약이 이미 있으면 지우고 다시 만든다) */
 function installTrigger() {
   removeTrigger();
   ScriptApp.newTrigger('sendDailyBriefing')
@@ -373,7 +373,7 @@ function shell_(title, sub) {
 }
 function foot_() {
   return '<div style="border-top:1px solid #DCDED4;margin-top:22px;padding-top:10px;font-size:11px;color:#7C837C">'
-    + '매일 ' + CONFIG.SEND_HOUR + '시 무렵 자동 발송 · 교사 계정과 확인용 계정은 집계에서 제외 · 끄려면 Apps Script에서 removeTrigger 실행</div></div>';
+    + '매일 ' + CONFIG.SEND_HOUR + '시~' + (CONFIG.SEND_HOUR + 1) + '시 사이 자동 발송 · 교사 계정과 확인용 계정은 집계에서 제외 · 끄려면 Apps Script에서 removeTrigger 실행</div></div>';
 }
 function sec_(t) { return '<div style="font-size:15px;font-weight:700;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid #B7BCB0">' + t + '</div>'; }
 function kpi_(label, value, note, noteColor) {

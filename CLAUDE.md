@@ -236,7 +236,7 @@ dailymath_taechungyahak/
 ├── index.html               js/ 의 번들 결과물 (직접 편집 금지)
 ├── scripts_rebuild_index.py
 ├── automation/              저장소 밖(Google Apps Script)에서 도는 자동화 — 붙여 넣어 쓰는 원본
-│   └── dailyBriefing.gs     매일 9시 학습 브리핑 메일 (README.md 에 설치법)
+│   └── dailyBriefing.gs     매일 8~9시 학습 브리핑 메일 (README.md 에 설치법)
 └── 커리큘럼_2026-2학기~2027-1학기/   수업 운영 문서
     ├── 01_수학반 커리큘럼_2026.09-2027.04.md   9월~4월 주차별 계획 · 90분 운영 표준
     ├── 02_학생 성장지표 설계서 및 기록양식.md   학생용 5지표 · ★판정 기준 · 기록 양식
