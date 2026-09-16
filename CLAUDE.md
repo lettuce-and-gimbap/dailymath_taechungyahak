@@ -264,6 +264,11 @@ dailymath_taechungyahak/
 
 ## 📬 아침 학습 브리핑 메일 (automation/)
 
+브리핑을 보내는 길이 **두 갈래**다. 둘이 만드는 메일 본문은 같아야 하므로
+**보고서 내용을 고칠 때는 `dailyBriefing.gs` 와 `build_briefing.py` 를 함께 고친다** (한쪽만 고치면 설치 방식에 따라 다른 메일이 간다).
+- `automation/dailyBriefing.gs` — 구글 서버에서 도는 Apps Script. 컴퓨터가 꺼져 있어도 온다. 선생님이 붙여 넣어야 설치된다.
+- `automation/build_briefing.py` — 이 컴퓨터에서 본문만 만들고, Claude 앱 예약 작업(`taechung-math-morning-briefing`, 매일 8시)이 Gmail로 보낸다. 앱이 켜져 있어야 한다.
+
 `automation/dailyBriefing.gs` 는 앱 번들(`index.html`)에 들어가지 않는다. 선생님이 script.google.com 에 붙여 넣어
 돌리는 Google Apps Script 원본이다. **여기를 고쳐도 자동으로 반영되지 않으므로**, 고친 뒤에는 선생님께 다시 붙여 넣기를 안내한다.
 
