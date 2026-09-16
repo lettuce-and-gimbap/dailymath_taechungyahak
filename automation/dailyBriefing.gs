@@ -43,26 +43,66 @@ var CONFIG = {
 
 /* ─────────────────────────── 진입점 ─────────────────────────── */
 
-/** 트리거가 매일 부르는 함수 */
+/** 받는 사람 = 이 스크립트를 돌리는 계정(선생님 Gmail) */
+function me_() {
+  var addr = Session.getEffectiveUser().getEmail();
+  if (!addr) throw new Error('받는 주소를 알 수 없습니다. previewBriefing 을 한 번 실행해 권한을 허용해 주세요.');
+  return addr;
+}
+
+/** 트리거가 매일 부르는 함수
+    ※ 무인으로 도는 작업이라, 실패했을 때 아무 일도 없었던 것처럼 조용히 넘어가면 안 된다.
+       실패하면 그 사실을 알리는 짧은 메일이라도 오게 한다. */
 function sendDailyBriefing() {
-  var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
-  MailApp.sendEmail({
-    to: Session.getEffectiveUser().getEmail(),
-    subject: r.subject,
-    htmlBody: r.html,
-    name: CONFIG.SENDER_NAME
-  });
+  try {
+    var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
+    MailApp.sendEmail({ to: me_(), subject: r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+  } catch (e) {
+    notifyFailure_(e);
+    throw e;                        // 실행 기록에도 남도록 다시 던진다
+  }
 }
 
 /** 설치 확인용 — 지금 바로 한 통 보내 본다 (제목 앞에 [미리보기]) */
 function previewBriefing() {
   var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
-  MailApp.sendEmail({
-    to: Session.getEffectiveUser().getEmail(),
-    subject: '[미리보기] ' + r.subject,
-    htmlBody: r.html,
-    name: CONFIG.SENDER_NAME
-  });
+  MailApp.sendEmail({ to: me_(), subject: '[미리보기] ' + r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+}
+
+/** 실패 알림 — 하루에 한 통까지만 (같은 오류로 메일함이 밀리지 않게) */
+function notifyFailure_(e) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var today = Utilities.formatDate(new Date(), CONFIG.TZ, 'yyyy-MM-dd');
+    if (props.getProperty('lastFailMail') === today) return;
+    props.setProperty('lastFailMail', today);
+    MailApp.sendEmail({
+      to: me_(),
+      subject: '[태청야학 수학반] 아침 브리핑을 만들지 못했습니다',
+      htmlBody: '<div style="font-family:sans-serif;font-size:14px;line-height:1.7">'
+        + '오늘 아침 브리핑을 만드는 중에 문제가 생겨 메일을 보내지 못했습니다.<br>'
+        + '내일 아침에 다시 시도합니다. 계속 같은 일이 생기면 아래 내용을 알려 주세요.'
+        + '<pre style="background:#F3F4F1;padding:10px;font-size:12px;white-space:pre-wrap">'
+        + (e && e.message ? e.message : String(e)) + '</pre></div>',
+      name: CONFIG.SENDER_NAME
+    });
+  } catch (ignore) { /* 알림조차 실패하면 더 할 수 있는 일이 없다 */ }
+}
+
+/** 설치가 제대로 됐는지 확인 — 실행한 뒤 아래 '실행 로그'를 보면 된다 */
+function checkSetup() {
+  var ts = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'sendDailyBriefing'; });
+  var lines = [
+    '받는 주소      : ' + (Session.getEffectiveUser().getEmail() || '(알 수 없음 — previewBriefing 먼저 실행)'),
+    '보낼 시각      : 매일 ' + CONFIG.SEND_HOUR + '시~' + (CONFIG.SEND_HOUR + 1) + '시 사이',
+    '예약 개수      : ' + ts.length + (ts.length === 1 ? ' (정상)' : ts.length === 0 ? ' ← installTrigger 를 실행해 주세요' : ' ← 중복입니다. installTrigger 를 한 번 더 실행하면 하나로 정리됩니다'),
+    '스크립트 시간대: ' + Session.getScriptTimeZone() + (Session.getScriptTimeZone() === CONFIG.TZ ? ' (정상)' : ' ← 날짜 계산은 코드가 ' + CONFIG.TZ + ' 로 하므로 그대로 두셔도 됩니다'),
+    '오늘 남은 메일 : ' + MailApp.getRemainingDailyQuota() + '통'
+  ];
+  var logs = fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1));
+  lines.push('읽어 온 기록   : 최근 ' + (CONFIG.COMPARE_DAYS + 1) + '일 ' + logs.length + '건 (0이면 데이터 연결을 확인해 주세요)');
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
 }
 
 /** 매일 8시~9시 발송 예약 (같은 예약이 이미 있으면 지우고 다시 만든다) */
