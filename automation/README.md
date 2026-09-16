@@ -64,3 +64,16 @@ PYTHONIOENCODING=utf-8 python automation/build_briefing.py 2026-09-13   # 그날
 - 결과 미리보기 : `automation/out/briefing.html` 을 브라우저로 열기
 - 예약 관리 : Claude 앱 사이드바 **Scheduled** → 〈【매일 8시】태청야학 수학반 학습 브리핑 메일〉
 - `automation/out/` 은 학생 이름이 들어가므로 `.gitignore` 로 빼 두었습니다.
+
+## 누적 학습 분석 보고서 (필요할 때만)
+
+매일 오는 브리핑이 '어제 하루'라면, 이쪽은 **지금까지 전부**입니다. 월말·학기말에 한 번씩 돌려 보세요.
+
+```bash
+PYTHONIOENCODING=utf-8 python automation/build_analysis.py
+```
+
+- 결과 : `automation/out/analysis.html` (브라우저로 열어 보기) · `analysis.json` (메일용)
+- 담긴 것 : 전체 요약 · **영역별 성취(검정고시 문항 번호와 함께)** · 월별 추이 · 학생별 누적 ·
+  데이터가 말하는 것 · 정리하면 좋을 계정(이름이 겹치는 계정 후보)
+- 메일로 받고 싶으시면 Claude에게 "누적 분석 보고서 메일로 보내줘"라고 하시면 됩니다.

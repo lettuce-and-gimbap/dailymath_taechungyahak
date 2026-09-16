@@ -32,7 +32,7 @@ CONFIG = {
     'NUDGE_WITHIN_DAYS': 30,
     'LOW_RATE': 60,
     'HIGH_RATE': 90,
-    'EXCLUDE_NAMES': ['박소명_학생'],
+    'EXCLUDE_NAMES': ['박소명_학생', '박소명_테스트'],
 }
 
 BASE = 'https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents' % CONFIG['PROJECT_ID']

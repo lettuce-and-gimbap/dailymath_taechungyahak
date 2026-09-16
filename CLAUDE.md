@@ -277,5 +277,8 @@ dailymath_taechungyahak/
 - 받는 주소는 `Session.getEffectiveUser().getEmail()` — **메일 주소를 코드에 적지 않는다**(공개 저장소).
 - 보고서 조립은 `buildBriefing_(logs, students, now)` 순수 함수. 수정 후에는 브라우저에서 `UrlFetchApp`/`Utilities` 를
   흉내 내고 이 함수를 실제 기록으로 돌려 '기록 있는 날'과 '데이터 없음' 두 경우를 모두 확인한다.
+- `automation/build_analysis.py` — **누적** 분석 보고서(필요할 때만 수동 실행). `build_briefing.py` 의
+  데이터 읽기·HTML 조각을 그대로 가져다 쓰므로, 그쪽 함수 이름을 바꾸면 여기도 깨진다.
+  영역 이름 → 검정고시 문항 번호 대응은 `AREA_MAP` 에 있다(`meta.type` 값이 늘면 여기에도 한 줄 추가).
 - 앱에서 새 기록 종류를 만들 때 `math_logs` 에 `studentName · date · type · questions[{isOk, meta.type}] · totalSec` 를
   같은 모양으로 남기면 브리핑에도 자동으로 잡힌다.
