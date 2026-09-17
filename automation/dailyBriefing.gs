@@ -43,10 +43,16 @@ var CONFIG = {
 
 /* ─────────────────────────── 진입점 ─────────────────────────── */
 
-/** 받는 사람 = 이 스크립트를 돌리는 계정(선생님 Gmail) */
+/** 받는 사람
+    1순위 : 스크립트 속성 RECIPIENT (프로젝트 설정 → 스크립트 속성에서 넣는다. 코드에 주소를 적지 않기 위함)
+    2순위 : 이 스크립트를 돌리는 계정
+    ※ 2026-09-17 : 브라우저에 구글 계정이 여러 개 로그인된 상태에서 프로젝트가 '다른 계정'으로
+       만들어지면, 메일이 그 계정으로 가서 선생님 메일함에는 한 통도 오지 않는다. 그래서 받는 주소를
+       속성으로 못 박을 수 있게 했다. */
 function me_() {
-  var addr = Session.getEffectiveUser().getEmail();
-  if (!addr) throw new Error('받는 주소를 알 수 없습니다. previewBriefing 을 한 번 실행해 권한을 허용해 주세요.');
+  var fixed = PropertiesService.getScriptProperties().getProperty('RECIPIENT');
+  var addr = (fixed && fixed.trim()) || Session.getEffectiveUser().getEmail();
+  if (!addr) throw new Error('받는 주소를 알 수 없습니다. 프로젝트 설정 → 스크립트 속성에 RECIPIENT 를 넣어 주세요.');
   return addr;
 }
 
@@ -66,7 +72,9 @@ function sendDailyBriefing() {
 /** 설치 확인용 — 지금 바로 한 통 보내 본다 (제목 앞에 [미리보기]) */
 function previewBriefing() {
   var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
-  MailApp.sendEmail({ to: me_(), subject: '[미리보기] ' + r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+  var to = me_();
+  MailApp.sendEmail({ to: to, subject: '[미리보기] ' + r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+  Logger.log('보냈습니다 → ' + to + ' / ' + r.subject);   // 실행 로그에서 어디로 갔는지 바로 보이게
 }
 
 /** 실패 알림 — 하루에 한 통까지만 (같은 오류로 메일함이 밀리지 않게) */
@@ -92,8 +100,12 @@ function notifyFailure_(e) {
 /** 설치가 제대로 됐는지 확인 — 실행한 뒤 아래 '실행 로그'를 보면 된다 */
 function checkSetup() {
   var ts = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'sendDailyBriefing'; });
+  var runner = Session.getEffectiveUser().getEmail() || '(알 수 없음)';
+  var fixed = PropertiesService.getScriptProperties().getProperty('RECIPIENT');
   var lines = [
-    '받는 주소      : ' + (Session.getEffectiveUser().getEmail() || '(알 수 없음 — previewBriefing 먼저 실행)'),
+    '실행 계정      : ' + runner + '  ← 이 스크립트가 누구 계정에서 도는지',
+    '받는 주소      : ' + (fixed ? fixed + ' (스크립트 속성 RECIPIENT)' : runner + ' (실행 계정과 같음)')
+      + (!fixed ? '  ← 메일이 안 오면 여기가 선생님 주소가 맞는지 확인' : ''),
     '보낼 시각      : 매일 ' + CONFIG.SEND_HOUR + '시~' + (CONFIG.SEND_HOUR + 1) + '시 사이',
     '예약 개수      : ' + ts.length + (ts.length === 1 ? ' (정상)' : ts.length === 0 ? ' ← installTrigger 를 실행해 주세요' : ' ← 중복입니다. installTrigger 를 한 번 더 실행하면 하나로 정리됩니다'),
     '스크립트 시간대: ' + Session.getScriptTimeZone() + (Session.getScriptTimeZone() === CONFIG.TZ ? ' (정상)' : ' ← 날짜 계산은 코드가 ' + CONFIG.TZ + ' 로 하므로 그대로 두셔도 됩니다'),
