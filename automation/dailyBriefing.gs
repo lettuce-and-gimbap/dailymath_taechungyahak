@@ -43,6 +43,17 @@ var CONFIG = {
 
 /* ─────────────────────────── 진입점 ─────────────────────────── */
 
+/** ▶ 설치·점검을 한 번에 — 편집기 함수 목록에서 기본으로 선택되도록 **맨 위**에 둔다.
+    (2026-09-17 : 목록 맨 위가 sendDailyBriefing 이라, checkSetup 을 누르려다 그게 실행돼
+     로그에 아무것도 안 찍히는 일이 있었다. 맨 위 함수는 늘 '눌러도 안전하고 결과를 말해 주는' 것으로 둔다.) */
+function setupAll() {
+  installTrigger();                 // 예약을 (다시) 걸어 하나만 남긴다
+  var report = checkSetup();        // 실행 계정 · 받는 주소 · 예약 개수 · 기록 건수
+  previewBriefing();                // [미리보기] 메일 한 통
+  Logger.log('──── 설치 완료. 메일함에 [미리보기] 메일이 왔는지 확인하세요. ────');
+  return report;
+}
+
 /** 받는 사람
     1순위 : 스크립트 속성 RECIPIENT (프로젝트 설정 → 스크립트 속성에서 넣는다. 코드에 주소를 적지 않기 위함)
     2순위 : 이 스크립트를 돌리는 계정
@@ -62,7 +73,9 @@ function me_() {
 function sendDailyBriefing() {
   try {
     var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
-    MailApp.sendEmail({ to: me_(), subject: r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+    var to = me_();
+    MailApp.sendEmail({ to: to, subject: r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+    Logger.log('보냈습니다 → ' + to + ' / ' + r.subject);
   } catch (e) {
     notifyFailure_(e);
     throw e;                        // 실행 기록에도 남도록 다시 던진다
