@@ -236,7 +236,11 @@ dailymath_taechungyahak/
 ├── index.html               js/ 의 번들 결과물 (직접 편집 금지)
 ├── scripts_rebuild_index.py
 ├── automation/              저장소 밖(Google Apps Script)에서 도는 자동화 — 붙여 넣어 쓰는 원본
-│   └── dailyBriefing.gs     매일 8~9시 학습 브리핑 메일 (README.md 에 설치법)
+│   ├── dailyBriefing.gs     매일 8~9시 학습 브리핑 메일 (README.md 에 설치법)
+│   └── templates/           다른 교사에게 공유하는 일반판 (구글 시트 기록 → 아침 메일)
+│       ├── dailyMailTemplate.gs   붙여 넣는 기본 틀 — 함정 5가지를 막아 둔 판
+│       ├── guide.src.html         공유용 안내 페이지 원본 ({{CODE}} 자리에 위 .gs 가 들어간다)
+│       └── guide.html             조립된 안내 페이지 (Artifact 로 게시)
 └── 커리큘럼_2026-2학기~2027-1학기/   수업 운영 문서
     ├── 01_수학반 커리큘럼_2026.09-2027.04.md   9월~4월 주차별 계획 · 90분 운영 표준
     ├── 02_학생 성장지표 설계서 및 기록양식.md   학생용 5지표 · ★판정 기준 · 기록 양식
@@ -282,3 +286,9 @@ dailymath_taechungyahak/
   영역 이름 → 검정고시 문항 번호 대응은 `AREA_MAP` 에 있다(`meta.type` 값이 늘면 여기에도 한 줄 추가).
 - 앱에서 새 기록 종류를 만들 때 `math_logs` 에 `studentName · date · type · questions[{isOk, meta.type}] · totalSec` 를
   같은 모양으로 남기면 브리핑에도 자동으로 잡힌다.
+
+- **예약(트리거)은 코드가 스스로 건다** (`ensureTrigger_`). 2026-09-18 : "직접 누르면 오는데 아침엔 안 온다" —
+  설치 단계에서 예약 걸기를 건너뛴 것이 원인이었다. 공유용 템플릿도 같은 구조다.
+  `removeTrigger` 는 `AUTO_OFF` 속성을 남겨 일부러 끈 예약이 되살아나지 않게 한다.
+- 공유용 안내(`templates/guide.html`)는 `dailyMailTemplate.gs` 를 그대로 끼워 넣어 조립한다.
+  템플릿을 고치면 안내 페이지도 다시 조립·게시해야 둘이 어긋나지 않는다.

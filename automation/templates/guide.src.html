@@ -1,0 +1,276 @@
+<title>노트북을 덮어도 오는 아침 메일</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#F6F7F3; --card:#FFFFFF; --ink:#1D2420; --soft:#4A534D; --faint:#7B837D;
+    --rule:#DCDFD6; --rule2:#BCC1B6;
+    --green:#2A6E4C; --green-bg:#E7F0EA;
+    --amber:#9A6412; --amber-bg:#F7EEDC;
+    --red:#A8382F; --red-bg:#F7E9E7;
+    --code-bg:#1E2521; --code-ink:#E4E9E3; --code-dim:#8FA096;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#131614; --card:#1A1E1B; --ink:#E9EDE8; --soft:#B5BDB6; --faint:#848C85;
+      --rule:#2B312C; --rule2:#414842;
+      --green:#72C096; --green-bg:#1B2A21;
+      --amber:#D9A650; --amber-bg:#2A2317;
+      --red:#E48A80; --red-bg:#2E1E1C;
+      --code-bg:#0D100E; --code-ink:#DDE4DC; --code-dim:#7D8E84;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#131614; --card:#1A1E1B; --ink:#E9EDE8; --soft:#B5BDB6; --faint:#848C85;
+    --rule:#2B312C; --rule2:#414842;
+    --green:#72C096; --green-bg:#1B2A21;
+    --amber:#D9A650; --amber-bg:#2A2317;
+    --red:#E48A80; --red-bg:#2E1E1C;
+    --code-bg:#0D100E; --code-ink:#DDE4DC; --code-dim:#7D8E84;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif;
+    font-size:16px;line-height:1.7;padding-inline:20px;padding-block:40px 72px}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+  h1,h2,h3{font-family:"Gowun Batang","Batang",serif;margin:0;text-wrap:balance;line-height:1.3}
+  h1{font-size:clamp(28px,5vw,40px);font-weight:700;letter-spacing:-.01em}
+  h2{font-size:23px;font-weight:700;margin-bottom:12px}
+  h3{font-size:17px;font-weight:700}
+  p{margin:0 0 10px;max-width:66ch}
+  .eyebrow{font-size:12px;letter-spacing:.16em;color:var(--faint);font-weight:600;margin-bottom:10px}
+  .lede{font-size:18px;color:var(--soft);margin-top:14px;max-width:58ch}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.9em}
+  :not(pre)>code{background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:3px}
+  b{font-weight:600}
+  a{color:var(--green)}
+
+  /* 두 세계 비교 */
+  .worlds{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+  @media (max-width:620px){.worlds{grid-template-columns:1fr}}
+  .world{border:1px solid var(--rule);background:var(--card);padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px}
+  .world .tag{font-size:12px;letter-spacing:.12em;font-weight:600}
+  .world.local .tag{color:var(--red)} .world.cloud .tag{color:var(--green)}
+  .world h3{font-size:19px}
+  .timeline{display:flex;gap:3px;margin:4px 0 2px}
+  .timeline span{flex:1;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;
+    font-family:"IBM Plex Mono",monospace;color:var(--faint);background:var(--paper);border:1px solid var(--rule)}
+  .timeline span.on{background:var(--green);border-color:var(--green);color:#fff}
+  .timeline span.off{background:var(--red-bg);border-color:transparent;color:var(--red)}
+  .timeline span.hit{outline:2px solid var(--amber);outline-offset:-2px;font-weight:600}
+  .world ul{margin:0;padding-left:18px;color:var(--soft);font-size:14.5px}
+  .world .verdict{font-size:14.5px;font-weight:600}
+  .world.local .verdict{color:var(--red)} .world.cloud .verdict{color:var(--green)}
+
+  /* 단계 */
+  .steps{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--rule)}
+  .step{display:grid;grid-template-columns:52px 1fr;gap:14px;padding:20px 0;border-bottom:1px solid var(--rule)}
+  .step .n{font-family:"Gowun Batang",serif;font-size:30px;font-weight:700;color:var(--green);line-height:1}
+  .step p{color:var(--soft)}
+  .step .where{font-size:14px;color:var(--faint);margin-top:4px}
+  .ok{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .ok div{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+  .ok div::before{content:"✓";color:var(--green);font-weight:700}
+  .note{border-left:3px solid var(--amber);background:var(--amber-bg);padding:10px 14px;font-size:14.5px;margin-top:10px}
+  .note b{color:var(--amber)}
+
+  /* 코드 */
+  .codebox{background:var(--code-bg);color:var(--code-ink);border-radius:4px;overflow:hidden}
+  .codebar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #2E3832;gap:10px;flex-wrap:wrap}
+  .codebar .fn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--code-dim)}
+  .copy{font:600 13px "IBM Plex Sans KR",sans-serif;background:#2A6E4C;color:#fff;border:0;padding:7px 14px;border-radius:3px;cursor:pointer}
+  .copy:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  pre{margin:0;padding:16px;overflow-x:auto;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.6;max-height:520px}
+  .edit{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14.5px;margin-top:12px}
+  .edit code{justify-self:start}
+
+  /* 함정 표 */
+  .tablewrap{overflow-x:auto;border:1px solid var(--rule);background:var(--card)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:560px}
+  th{text-align:left;font-size:12px;letter-spacing:.06em;color:var(--faint);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--rule2);background:var(--paper)}
+  td{padding:13px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td:first-child{font-weight:600;width:30%}
+  .fixed{display:inline-block;font-size:11px;font-weight:600;color:var(--green);background:var(--green-bg);padding:1px 7px;border-radius:2px;margin-top:6px}
+
+  .checklist{display:flex;flex-direction:column;gap:8px}
+  .checklist label{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;cursor:pointer}
+  .checklist input{margin-top:6px;accent-color:var(--green);width:16px;height:16px;flex:none}
+  .foot{font-size:13px;color:var(--faint);border-top:1px solid var(--rule);padding-top:16px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">대학원 교사 모임 공유 · 2026년 9월</div>
+    <h1>노트북을 덮어도 오는<br>아침 메일</h1>
+    <p class="lede">Google Apps Script로 매일 아침 8~9시, 어제의 기록을 요약한 메일을 나에게 보내는 방법입니다. 한 번 설치하면 노트북을 덮든, 끄든, 출장 중이든 옵니다. 비용은 없고, 비밀번호를 어디에도 적지 않습니다.</p>
+  </header>
+
+  <section>
+    <h2>왜 노트북을 덮으면 안 오는 방법이 있고, 오는 방법이 있을까</h2>
+    <p>자동화가 <b>어디서 도는지</b>가 전부입니다. 같은 "매일 8시에 보내기"라도 내 노트북에서 돌면 노트북이 잠들 때 같이 잠듭니다.</p>
+    <div class="worlds">
+      <div class="world local">
+        <div class="tag">내 노트북에서 도는 자동화</div>
+        <h3>노트북이 자면 같이 잔다</h3>
+        <div class="timeline" aria-label="하루 시간대별 작동 여부 — 노트북">
+          <span class="off">0시</span><span class="off">4시</span><span class="off hit">8시</span><span class="on">12시</span><span class="on">16시</span><span class="off">20시</span>
+        </div>
+        <ul>
+          <li>엑셀 매크로, 파이썬 예약, 윈도우 작업 스케줄러</li>
+          <li>AI 앱의 예약 작업 (앱이 켜져 있어야 함)</li>
+        </ul>
+        <div class="verdict">8시에 노트북이 덮여 있으면 그날은 안 옴</div>
+      </div>
+      <div class="world cloud">
+        <div class="tag">구글 서버에서 도는 자동화</div>
+        <h3>내 기기와 상관없이 돈다</h3>
+        <div class="timeline" aria-label="하루 시간대별 작동 여부 — 구글 서버">
+          <span class="on">0시</span><span class="on">4시</span><span class="on hit">8시</span><span class="on">12시</span><span class="on">16시</span><span class="on">20시</span>
+        </div>
+        <ul>
+          <li><b>Google Apps Script</b> — 구글 계정만 있으면 무료</li>
+          <li>구글 시트·Gmail·캘린더를 바로 읽고 쓸 수 있음</li>
+        </ul>
+        <div class="verdict">노트북을 꺼도 8~9시 사이에 옴</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>설치 — 처음 한 번, 약 5분</h2>
+    <p>준비물은 <b>구글 계정</b>과 <b>기록이 쌓이는 구글 시트</b> 하나입니다. 날짜가 한 열에 있으면 어떤 표든 됩니다(출석부, 숙제 제출, 상담 기록 등).</p>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <div>
+          <h3>기록 시트에서 Apps Script 열기</h3>
+          <p>기록이 있는 구글 시트를 열고 메뉴 <b>확장 프로그램 → Apps Script</b>. 새 탭에 편집기가 열립니다.</p>
+          <div class="note"><b>먼저 확인</b> — 오른쪽 위 프로필 사진이 <b>메일을 받을 계정</b>인지 보세요. 브라우저에 구글 계정이 여러 개 로그인돼 있으면 다른 계정으로 만들어지기 쉽고, 그러면 메일이 그 계정으로 갑니다.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div>
+          <h3>아래 코드를 붙여 넣고 세 줄만 고치기</h3>
+          <p><code>Code.gs</code>에 있는 내용을 모두 지우고 아래 코드를 붙여 넣은 뒤, 맨 위 <code>SETTING</code>에서 이 세 가지만 고칩니다. 그리고 💾 저장.</p>
+          <div class="edit">
+            <code>SHEET_NAME</code><span>기록이 있는 탭 이름 (시트 아래쪽 탭 글자 그대로)</span>
+            <code>DATE_COL</code><span>날짜가 있는 열 번호 — A열이면 1, B열이면 2</span>
+            <code>TITLE</code><span>메일 제목 앞머리 — 예: <code>[3학년 2반] 아침 브리핑</code></span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div>
+          <h3><code>setupAll</code>을 ▶ 실행하고 권한 허용</h3>
+          <p>편집기 위쪽 함수 목록에 <code>setupAll</code>이 선택된 것을 확인하고 ▶ 실행. 처음에는 권한을 묻습니다.</p>
+          <p class="where">권한 검토 → 계정 선택 → "Google에서 확인하지 않은 앱" 화면 → <b>고급</b> → <b>(프로젝트 이름)(으)로 이동</b> → <b>허용</b></p>
+          <div class="note"><b>"확인하지 않은 앱" 경고는 정상입니다.</b> 내가 방금 만든 스크립트라 구글 심사를 받지 않았다는 뜻일 뿐, 내 계정 밖으로 나가는 것은 없습니다.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">4</div>
+        <div>
+          <h3>두 가지가 보이면 끝</h3>
+          <div class="ok">
+            <div>메일함에 <b>[미리보기]</b>로 시작하는 메일이 한 통 왔다</div>
+            <div>편집기 왼쪽 <b>⏰ 트리거</b> 화면에 <code>dailyJob · 시간 기반 · 매일</code>이 <b>한 줄</b> 있다</div>
+          </div>
+          <p style="margin-top:10px">이제 노트북을 덮으셔도 됩니다. 내일 아침 8~9시 사이에 첫 메일이 옵니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>코드</h2>
+    <p>그대로 붙여 넣어 쓰는 기본 틀입니다. 어제 날짜의 줄만 골라 표로 보내고, 기록이 없는 날은 "기록 없음"을 보냅니다. 내용을 바꾸고 싶으면 <code>build_</code> 함수만 고치면 됩니다.</p>
+    <div class="codebox">
+      <div class="codebar">
+        <span class="fn">Code.gs · 약 110줄</span>
+        <button class="copy" id="copyBtn" type="button">코드 복사</button>
+      </div>
+      <pre id="code">{{CODE}}</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>실제로 겪은 함정 — 그리고 코드에서 막아 둔 것</h2>
+    <p>태청야학 수학반에서 이 자동화를 설치하며 일주일 동안 실제로 부딪힌 일들입니다. 위 코드는 이 다섯 가지를 처음부터 막아 두었습니다.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>이런 일이 생기면</th><th>원인</th><th>어떻게 풀었나</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>직접 ▶ 누르면 오는데, 아침엔 안 온다</td>
+            <td>매일 실행해 줄 <b>예약(트리거)이 없다.</b> 예약을 거는 단계를 따로 눌러야 했는데 건너뜀</td>
+            <td>어떤 함수를 한 번이라도 누르면 예약이 없을 때 스스로 건다<br><span class="fixed">코드에서 막음</span></td>
+          </tr>
+          <tr>
+            <td>설치까지 다 했는데 한 통도 안 온다</td>
+            <td>프로젝트가 <b>다른 구글 계정</b>으로 만들어져 메일이 그 계정으로 감</td>
+            <td>1단계에서 프로필 확인. 이미 만들었다면 <b>프로젝트 설정 → 스크립트 속성</b>에 <code>RECIPIENT</code> = 받을 주소<br><span class="fixed">코드에서 막음</span></td>
+          </tr>
+          <tr>
+            <td>실행 로그에 "시작·완료" 두 줄만 뜬다</td>
+            <td>함수 목록은 <b>맨 위 함수가 기본 선택</b>이라, 고른 줄 알았던 함수가 아니라 다른 함수가 실행됨</td>
+            <td>맨 위에 눌러도 안전하고 결과를 알려 주는 <code>setupAll</code>을 둔다<br><span class="fixed">코드에서 막음</span></td>
+          </tr>
+          <tr>
+            <td>어느 날 조용히 안 온다</td>
+            <td>시트 이름이 바뀌었거나 일시적인 오류. 원래는 아무 소식도 없음</td>
+            <td>실패하면 "오늘은 만들지 못했습니다" 메일과 오류 내용이 대신 온다<br><span class="fixed">코드에서 막음</span></td>
+          </tr>
+          <tr>
+            <td>정각 8시에 안 오고 8시 40분에 온다</td>
+            <td>구글 예약은 <b>정한 시각부터 1시간 안</b>에 실행된다</td>
+            <td>정상입니다. 9시 전에 받고 싶으면 <code>SEND_HOUR: 8</code>, 7시대면 <code>7</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>공유 후 확인 목록</h2>
+    <div class="checklist">
+      <label><input type="checkbox" id="c1">오른쪽 위 프로필이 메일 받을 계정이다</label>
+      <label><input type="checkbox" id="c2"><code>SETTING</code>의 탭 이름·날짜 열을 내 시트에 맞게 고쳤다</label>
+      <label><input type="checkbox" id="c3"><code>setupAll</code>을 실행하고 권한을 허용했다</label>
+      <label><input type="checkbox" id="c4">[미리보기] 메일이 왔다</label>
+      <label><input type="checkbox" id="c5">⏰ 트리거 화면에 <code>dailyJob</code>이 한 줄 있다</label>
+      <label><input type="checkbox" id="c6">다음 날 아침, 노트북을 덮은 채로 메일이 왔다</label>
+    </div>
+  </section>
+
+  <section>
+    <h2>더 나아가려면</h2>
+    <p>기본 틀은 "어제 날짜 줄을 표로"까지만 합니다. 태청야학 수학반에서는 같은 뼈대 위에 학습 앱의 풀이 기록을 읽어 <b>정답률·지난 7일 대비 추이·가장 많이 틀린 유형·안부 전할 학생</b>까지 정리해 받고 있습니다. 기록이 없는 날에는 학생들에게 보낼 격려 문구를 추천하게 했습니다.</p>
+    <p>전체 코드와 설치 기록: <a href="https://github.com/lettuce-and-gimbap/dailymath_taechungyahak/tree/main/automation">github.com/lettuce-and-gimbap/dailymath_taechungyahak · automation</a></p>
+  </section>
+
+  <div class="foot">태청야학 수학반 · 박소명 · 이 안내의 코드는 저장소 <span class="mono">automation/templates/dailyMailTemplate.gs</span>와 같습니다.</div>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('copyBtn'), code=document.getElementById('code');
+  btn.addEventListener('click',function(){
+    var text=code.textContent;
+    var done=function(){btn.textContent='복사했습니다';setTimeout(function(){btn.textContent='코드 복사';},1800);};
+    var fallback=function(){var r=document.createRange();r.selectNodeContents(code);var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+      btn.textContent='선택됨 — Ctrl+C';setTimeout(function(){btn.textContent='코드 복사';},2500);};
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fallback);} else fallback(); }
+    catch(e){ fallback(); }
+  });
+  // 확인 목록은 이 브라우저에만 기억 (없어도 문제없이 동작)
+  document.querySelectorAll('.checklist input').forEach(function(cb){
+    try{ cb.checked=localStorage.getItem('guide_'+cb.id)==='1'; }catch(e){}
+    cb.addEventListener('change',function(){ try{ localStorage.setItem('guide_'+cb.id, cb.checked?'1':'0'); }catch(e){} });
+  });
+})();
+</script>
