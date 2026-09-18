@@ -18,12 +18,11 @@
    - users     : name · role · lastDate 만 골라 읽는다 (mask) — logs 배열까지 받으면 무거워짐.
 
    설치 (처음 한 번, 약 3분)
-   1. https://script.google.com → [새 프로젝트] → 이 파일 내용을 Code.gs 에 붙여 넣기
-   2. 프로젝트 설정(톱니) → 'appsscript.json 매니페스트 파일 표시' 체크 →
-      같은 폴더의 appsscript.json 내용으로 바꾸기 (시간대 Asia/Seoul)
-   3. 편집기 위 함수 목록에서 previewBriefing 실행 → 권한 허용 → 메일함 확인
-   4. installTrigger 실행 → 매일 8시~9시 발송 예약 끝
-   끄고 싶으면 removeTrigger 실행.
+   1. https://script.google.com → [새 프로젝트]  (오른쪽 위 프로필이 메일 받을 계정인지 확인)
+   2. 이 파일 내용을 Code.gs 에 붙여 넣고 저장
+   3. 함수 목록 기본값 setupAll 을 그대로 ▶ 실행 → 권한 허용
+   4. [미리보기] 메일 도착 + 왼쪽 ⏰ 트리거 화면에 sendDailyBriefing 한 줄 → 끝
+   어느 함수를 누르든 매일 예약이 없으면 스스로 건다. 끄려면 removeTrigger.
    ===================================================================== */
 
 var CONFIG = {
@@ -48,6 +47,7 @@ var CONFIG = {
      로그에 아무것도 안 찍히는 일이 있었다. 맨 위 함수는 늘 '눌러도 안전하고 결과를 말해 주는' 것으로 둔다.) */
 function setupAll() {
   installTrigger();                 // 예약을 (다시) 걸어 하나만 남긴다
+  // (ensureTrigger_ 가 아래 함수들 안에서도 돌지만, 여기서는 확실히 새로 건다)
   var report = checkSetup();        // 실행 계정 · 받는 주소 · 예약 개수 · 기록 건수
   previewBriefing();                // [미리보기] 메일 한 통
   Logger.log('──── 설치 완료. 메일함에 [미리보기] 메일이 왔는지 확인하세요. ────');
@@ -71,6 +71,7 @@ function me_() {
     ※ 무인으로 도는 작업이라, 실패했을 때 아무 일도 없었던 것처럼 조용히 넘어가면 안 된다.
        실패하면 그 사실을 알리는 짧은 메일이라도 오게 한다. */
 function sendDailyBriefing() {
+  ensureTrigger_();
   try {
     var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
     var to = me_();
@@ -84,6 +85,7 @@ function sendDailyBriefing() {
 
 /** 설치 확인용 — 지금 바로 한 통 보내 본다 (제목 앞에 [미리보기]) */
 function previewBriefing() {
+  ensureTrigger_();
   var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
   var to = me_();
   MailApp.sendEmail({ to: to, subject: '[미리보기] ' + r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
@@ -133,13 +135,32 @@ function checkSetup() {
 /** 매일 8시~9시 발송 예약 (같은 예약이 이미 있으면 지우고 다시 만든다) */
 function installTrigger() {
   removeTrigger();
+  PropertiesService.getScriptProperties().deleteProperty('AUTO_OFF');   // 다시 켠다
   ScriptApp.newTrigger('sendDailyBriefing')
     .timeBased().everyDays(1).atHour(CONFIG.SEND_HOUR).nearMinute(0).inTimezone(CONFIG.TZ)
     .create();
 }
 
-/** 예약 끄기 */
+/** 예약이 없으면 조용히 건다 — '예약 거는 단계'를 따로 기억해 누르지 않아도 되게.
+    (2026-09-18 : 직접 ▶ 누른 발송은 도착했는데 아침 자동 발송은 한 번도 오지 않았다.
+     설치 안내 5번 installTrigger 를 건너뛰어 예약이 아예 없었던 것. 한 사람만의 실수가 아니라
+     공유했을 때 누구나 빠뜨릴 단계라서, 어느 함수를 눌러도 예약이 생기게 했다.)
+    removeTrigger 로 일부러 끈 경우에는 다시 켜지 않는다 (속성 AUTO_OFF). */
+function ensureTrigger_() {
+  try {
+    if (PropertiesService.getScriptProperties().getProperty('AUTO_OFF') === '1') return;
+    var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sendDailyBriefing'; });
+    if (!has) {
+      ScriptApp.newTrigger('sendDailyBriefing')
+        .timeBased().everyDays(1).atHour(CONFIG.SEND_HOUR).nearMinute(0).inTimezone(CONFIG.TZ).create();
+      Logger.log('매일 ' + CONFIG.SEND_HOUR + '시 예약이 없어서 새로 걸었습니다.');
+    }
+  } catch (e) { Logger.log('예약 확인 실패: ' + e.message); }
+}
+
+/** 예약 끄기 (끈 상태를 기억해서, 다른 함수를 눌러도 다시 켜지지 않게 한다) */
 function removeTrigger() {
+  PropertiesService.getScriptProperties().setProperty('AUTO_OFF', '1');
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'sendDailyBriefing') ScriptApp.deleteTrigger(t);
   });
