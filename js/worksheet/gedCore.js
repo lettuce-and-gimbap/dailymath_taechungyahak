@@ -81,7 +81,7 @@ var GS=(function(){
     const W=(xmax-xmin)*s+pad*2,H=(ymax-ymin)*s+pad*2;
     const X=x=>Math.round((pad+(x-xmin)*s)*10)/10,Y=y=>Math.round((pad+(ymax-y)*s)*10)/10;
     const id='gsclip'+(++UID);
-    const fsz=Math.max(15,Math.min(21,Math.round(s*0.6)));
+    const fsz=Math.max(17,Math.min(24,Math.round(s*0.76)));
     const L=(x1,y1,x2,y2,c,w,dash='')=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''} stroke-linecap="square"/>`;
     let o=`<svg class="plane" viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" ${F}>`;
     o+=`<defs><clipPath id="${id}"><rect x="${X(xmin)-2}" y="${Y(ymax)-2}" width="${(xmax-xmin)*s+4}" height="${(ymax-ymin)*s+4}"/></clipPath></defs>`;
@@ -99,13 +99,14 @@ var GS=(function(){
     /* 눈금 */
     if(g.ticks!==false){
       const step=(xmax-xmin)>14?2:1;
-      /* 눈금 숫자도 [숫자·수식 크기](--ms)를 따른다. 칸이 좁으면 옆 숫자와 겹치지 않게 키우는 한도를 둔다 */
-      const cap=s*step>=30?1.4:s*step>=24?1.25:1.1;
-      const tk=`style="font-size:calc(min(var(--ms,1),${cap})*${fsz}px)"`;
+      /* 눈금 숫자도 [숫자·수식 크기](--ms)를 따른다. 칸 너비의 0.9배(px)를 넘지 않게 해서 옆 숫자('-6' 두 글자)와 겹치지 않는다 */
+      const maxPx=Math.max(14,Math.floor(s*step*0.9));
+      const tk=`style="font-size:min(calc(var(--ms,1)*${fsz}px),${maxPx}px);font-weight:600"`;
       for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" ${tk} text-anchor="middle">${i}</text>`;}
       for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" ${tk} text-anchor="end">${j}</text>`;}
     }
-    o+=`<text x="${X(0)-5}" y="${Y(0)+fsz+8}" font-size="${fsz-2}" text-anchor="end">O</text>`;
+    /* O 는 원점 바로 왼쪽 아래 구석에 작게 — 눈금 숫자(-1)와 붙어 '-1O' 처럼 보이지 않게 */
+    o+=`<text x="${X(0)-5}" y="${Y(0)+fsz-3}" font-size="${fsz-5}" text-anchor="end">O</text>`;
     /* 요소 */
     let c='';
     for(const it of(items||[])){

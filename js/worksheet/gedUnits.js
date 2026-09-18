@@ -99,8 +99,8 @@ var GED_UNITS=(function(){
       const q=p.kind==='그대로'
         ?`점 ${tex(pr(p.x,p.y))}은 제몇 사분면 위의 점인가?`
         :`점 ${tex(pr(p.x,p.y))}을 <b>${p.kind}</b>이동한 점은 제몇 사분면 위의 점인가?`;
-      const items=[{t:'text',x:2.2,y:2.8,s:'제1',size:22,color:'#888'},{t:'text',x:-3.6,y:2.8,s:'제2',size:22,color:'#888'},{t:'text',x:-3.6,y:-3.2,s:'제3',size:22,color:'#888'},{t:'text',x:2.2,y:-3.2,s:'제4',size:22,color:'#888'},
-        {t:'pt',x:p.x,y:p.y,label:'P',guide:true,r:8}];
+      /* 문제 그림에는 '제1~제4' 칸 이름을 적지 않는다 (답이 그림에 보이면 부호로 판단하지 않게 된다) */
+      const items=[{t:'pt',x:p.x,y:p.y,label:'P',guide:true,r:8}];
       const figure=fig(planeSVG({xmin:-6,xmax:6,ymin:-6,ymax:6,s:32},items));
       const sol=[
         `점 P${tex(pr(p.x,p.y))}의 부호는 (${p.x>0?'+':'−'}, ${p.y>0?'+':'−'}) 입니다.`,
