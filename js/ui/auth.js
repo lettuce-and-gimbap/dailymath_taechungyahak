@@ -22,7 +22,9 @@ function AuthScreen({onLogin}){
     if(!name.trim()||pin.length!==4){setErr('이름과 4자리 PIN을 모두 입력해주세요.');return}
     setLoading(true);setErr('');
     try{
-      const doc=await db.collection('users').doc(name.trim()).get();
+      // 이름이 바뀐 계정은 표지판을 따라가 새 계정으로 로그인시킨다
+      const found=await resolveUser(name.trim());
+      const doc={exists:found.exists,data:()=>found.data};
       if(isReg){
         if(pin!==pinC){setErr('PIN 번호가 서로 다릅니다.');setLoading(false);return}
         if(doc.exists){setErr('이미 같은 이름의 계정이 있습니다. 혹시 본인 계정인지 다시 확인해보시고, 이미 계정이 있으시면 로그인을 해주세요.');setLoading(false);return}

@@ -4,7 +4,61 @@
    종합 · 행동패턴 · 영역성취 · 세션기록
    -------------------------------------------------------------------- */
 
-function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent}){
+/* 학생 이름 바꾸기
+   이름이 곧 계정 id라 기록·피드백·숙제까지 한 번에 옮겨야 한다 (db.js renameUser).
+   학생은 다시 로그인하지 않아도 된다 — 옛 이름 자리에 표지판이 남아 새 계정으로 이어진다. */
+function StudentRenamePanel({student,onRenamed}){
+  const[open,setOpen]=useState(false);
+  const[val,setVal]=useState(student.name||student.id||'');
+  const[busy,setBusy]=useState('');
+  const[err,setErr]=useState('');
+  const cur=student.name||student.id;
+  const go=async()=>{
+    const next=val.trim();
+    setErr('');
+    if(!next||next===cur){setErr('새 이름을 입력해주세요.');return;}
+    if(!confirm(`'${cur}' → '${next}'
+
+학습 기록·피드백·숙제 명단까지 함께 옮깁니다.
+학생은 다시 로그인하지 않아도 됩니다.
+바꿀까요?`))return;
+    setBusy('시작하는 중…');
+    try{
+      const r=await renameUser(cur,next,m=>setBusy(m));
+      setBusy('');setOpen(false);
+      alert(`이름을 바꿨습니다.
+
+학습 기록 ${r.logs}건 · 선생님 피드백 ${r.feedback}건 · 학생 의견 ${r.studentFeedback}건`);
+      if(onRenamed)onRenamed(cur,next,r);
+    }catch(e){setBusy('');setErr(e.message||'실패했습니다.');}
+  };
+  return(<div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-bold text-gray-500">✏️ 이름:</span>
+      <span className="text-sm font-black text-gray-800">{cur}</span>
+      <button onClick={()=>{setOpen(o=>!o);setVal(cur);setErr('');}}
+        className="ml-auto text-xs px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-bold border border-indigo-100">
+        {open?'닫기':'이름 수정'}
+      </button>
+    </div>
+    {open&&(<div className="mt-3 space-y-2">
+      <input lang="ko" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&!busy&&go()}
+        className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-base font-bold focus:border-indigo-400 outline-none"
+        placeholder="새 이름"/>
+      <div className="text-[11px] text-gray-400 leading-relaxed">
+        학습 기록 · 피드백 · 학생 의견 · 숙제 명단 · 폴더 배정까지 함께 옮깁니다.<br/>
+        학생은 로그아웃되지 않고, 옛 이름으로 로그인해도 새 계정으로 들어옵니다.
+      </div>
+      {err&&<div className="text-xs font-bold text-red-500">{err}</div>}
+      <button onClick={go} disabled={!!busy}
+        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm disabled:bg-gray-300">
+        {busy||'이름 바꾸기'}
+      </button>
+    </div>)}
+  </div>);
+}
+
+function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed}){
   const[open,setOpen]=useState(null);
   const[tab,setTab]=useState('overview');
   const[qStats,setQStats]=useState({});
@@ -966,6 +1020,9 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
 
     {/* ── 피드백 주기 ── */}
     <QuickFeedbackPanel student={student}/>
+
+    {/* ── 이름 수정 ── */}
+    <StudentRenamePanel student={student} onRenamed={onRenamed}/>
 
     {/* ── 폴더 배정 / 삭제 ── */}
     {(customFolders||[]).length>0&&(()=>{

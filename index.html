@@ -640,16 +640,139 @@ function classifyRevision(revisionCount, isOk){
 // === js/core/db.js ===
 /* --------------------------------------------------------------------
    Firestore 접근
-   사용자 불러오기/저장 · 학습 기록 저장
+   사용자 불러오기/저장 · 학습 기록 저장 · 학생 이름 바꾸기
    -------------------------------------------------------------------- */
 
 var db=window._db;
 
-var saveUser=async(data)=>{try{await db.collection('users').doc(data.name).set(data,{merge:true})}catch(e){console.error(e)}};
 
-var loadUser=async(name)=>{try{const d=await db.collection('users').doc(name).get();return d.exists?d.data():null}catch(e){return null}};
+
+/* 이름이 바뀐 계정 따라가기
+   users 문서의 id 가 곧 이름이라, 이름을 바꾸면 옛 이름 문서 자리에
+   { renamedTo:'새 이름' } 만 남는다. 옛 이름으로 들어와도 이 표지판을 따라가
+   새 계정을 찾아 주기 때문에, 이름이 바뀌어도 다시 로그인할 필요가 없다.
+   표지판이 표지판을 가리키는 경우(두 번 바뀐 이름)까지 따라가되 무한 반복은 막는다. */
+var resolveUser=async(name)=>{
+  var cur=String(name||'').trim();
+  const seen=new Set();
+  for(var i=0;i<5;i++){
+    if(!cur||seen.has(cur))break;
+    seen.add(cur);
+    const d=await db.collection('users').doc(cur).get();
+    if(!d.exists)return{name:cur,data:null,exists:false};
+    const v=d.data()||{};
+    if(v.renamedTo&&v.renamedTo!==cur){cur=v.renamedTo;continue;}
+    return{name:cur,data:v,exists:true};
+  }
+  return{name:cur,data:null,exists:false};
+};
+
+/* 저장도 표지판을 따라간다 — 학생이 앱을 켜 둔 채로 선생님이 이름을 바꿔도
+   옛 이름 자리(표지판)에 기록이 덮어써지지 않게 한다. */
+var saveUser=async(data)=>{try{
+  const r=await resolveUser(data.name);
+  const name=r.name||data.name;
+  await db.collection('users').doc(name).set({...data,name},{merge:true});
+}catch(e){console.error(e)}};
+
+/* opt.throwOnError:true 를 주면 통신 실패를 예외로 알려 준다.
+   (없으면 '계정 없음'과 '인터넷 끊김'을 구분할 수 없어 로그인 화면으로 튕긴다) */
+var loadUser=async(name,opt)=>{
+  try{const r=await resolveUser(name);return r.data;}
+  catch(e){if(opt&&opt.throwOnError)throw e;return null;}
+};
 
 var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
+
+/* ── 학생 이름 바꾸기 ──────────────────────────────────────────────
+   이름이 users 문서의 id이자 다른 컬렉션의 studentName 값이라,
+   한 군데만 고치면 기록·피드백·숙제가 옛 이름에 남아 흩어진다.
+   그래서 아래 순서로 한 번에 옮긴다. onStep 으로 진행 상황을 알려 준다.
+   옛 이름 자리에는 표지판(renamedTo)을 남겨 접속이 끊기지 않게 한다. */
+var renameUser=async(oldName,newName,onStep)=>{
+  const step=m=>{try{onStep&&onStep(m);}catch(e){}};
+  oldName=String(oldName||'').trim();
+  newName=String(newName||'').trim();
+  if(!oldName||!newName)throw new Error('이름이 비어 있습니다.');
+  if(oldName===newName)throw new Error('지금과 같은 이름입니다.');
+  if(newName.indexOf('/')>=0)throw new Error("이름에 '/' 는 쓸 수 없습니다.");
+
+  const oldSnap=await db.collection('users').doc(oldName).get();
+  if(!oldSnap.exists)throw new Error(`'${oldName}' 계정을 찾을 수 없습니다.`);
+  const oldData=oldSnap.data()||{};
+  if(oldData.renamedTo)throw new Error(`'${oldName}' 은 이미 '${oldData.renamedTo}' 으로 바뀐 이름입니다.`);
+  const newSnap=await db.collection('users').doc(newName).get();
+  if(newSnap.exists&&!(newSnap.data()||{}).renamedTo)
+    throw new Error(`'${newName}' 이름을 쓰는 계정이 이미 있습니다. 먼저 그 계정을 정리해 주세요.`);
+
+  // 1) 계정 문서를 새 이름으로 옮긴다
+  step('계정 옮기는 중…');
+  const moved={...oldData,name:newName,renamedFrom:oldName,renamedAt:new Date()};
+  delete moved.renamedTo;
+  await db.collection('users').doc(newName).set(moved);
+
+  // 2) 학습 기록 · 피드백 · 학생 의견의 이름 값
+  const swap=async(col,field,label)=>{
+    const snap=await db.collection(col).where(field,'==',oldName).get();
+    if(snap.empty)return 0;
+    step(`${label} ${snap.size}건 고치는 중…`);
+    const docs=[];snap.forEach(d=>docs.push(d.ref));
+    for(var i=0;i<docs.length;i+=400){
+      const batch=db.batch();
+      docs.slice(i,i+400).forEach(ref=>batch.set(ref,{[field]:newName},{merge:true}));
+      await batch.commit();
+    }
+    return docs.length;
+  };
+  const nLogs=await swap('math_logs','studentName','학습 기록');
+  const nFb=await swap('feedback','studentName','선생님 피드백');
+  const nSf=await swap('studentFeedback','studentName','학생 의견');
+
+  // 3) 숙제의 받는 사람 / 제출한 사람 목록 (배열 안에 이름이 들어 있다)
+  step('숙제 명단 고치는 중…');
+  const hwSnap=await db.collection('homework').get();
+  for(const d of hwSnap.docs){
+    const v=d.data()||{};
+    const patch={};
+    if(Array.isArray(v.assignedTo)&&v.assignedTo.includes(oldName))
+      patch.assignedTo=v.assignedTo.map(x=>x===oldName?newName:x);
+    else if(v.assignedTo===oldName)patch.assignedTo=newName;
+    if(Array.isArray(v.completedBy)&&v.completedBy.includes(oldName))
+      patch.completedBy=v.completedBy.map(x=>x===oldName?newName:x);
+    if(Object.keys(patch).length)await d.ref.set(patch,{merge:true});
+  }
+
+  // 4) 세션 인쇄본 편집 내용 (문서 id 가 '이름_날짜_시각')
+  step('세션 편집본 옮기는 중…');
+  try{
+    const FP=firebase.firestore.FieldPath.documentId();
+    const seSnap=await db.collection('sessionEdits').orderBy(FP)
+      .startAt(oldName+'_').endAt(oldName+'_').get();
+    for(const d of seSnap.docs){
+      await db.collection('sessionEdits').doc(newName+d.id.slice(oldName.length)).set(d.data());
+      await d.ref.delete();
+    }
+  }catch(e){console.error('sessionEdits 이동 실패',e);}
+
+  // 5) 접속중 표시 (옛 이름 것은 지운다 — 새 이름으로 다시 올라온다)
+  try{await db.collection('onlineStatus').doc(oldName).delete();}catch(e){}
+
+  // 6) 선생님 폴더 배정 (학생 id = 이름)
+  step('폴더 배정 고치는 중…');
+  var folders=null;
+  try{
+    const fSnap=await db.collection('teacherSettings').doc('folders').get();
+    if(fSnap.exists&&Array.isArray((fSnap.data()||{}).folders)){
+      folders=fSnap.data().folders.map(f=>({...f,ids:(f.ids||[]).map(x=>x===oldName?newName:x)}));
+      await db.collection('teacherSettings').doc('folders').set({folders,updatedAt:Date.now()},{merge:true});
+    }
+  }catch(e){console.error('폴더 갱신 실패',e);}
+
+  // 7) 옛 이름 자리에 표지판을 남긴다 (이 학생이 로그인한 채로 있어도 끊기지 않는다)
+  await db.collection('users').doc(oldName).set({renamedTo:newName,renamedAt:new Date()});
+
+  return{oldName,newName,logs:nLogs,feedback:nFb,studentFeedback:nSf,folders};
+};
 
 
 // ========== js\math\primitives.js ==========
@@ -6882,7 +7005,9 @@ function AuthScreen({onLogin}){
     if(!name.trim()||pin.length!==4){setErr('이름과 4자리 PIN을 모두 입력해주세요.');return}
     setLoading(true);setErr('');
     try{
-      const doc=await db.collection('users').doc(name.trim()).get();
+      // 이름이 바뀐 계정은 표지판을 따라가 새 계정으로 로그인시킨다
+      const found=await resolveUser(name.trim());
+      const doc={exists:found.exists,data:()=>found.data};
       if(isReg){
         if(pin!==pinC){setErr('PIN 번호가 서로 다릅니다.');setLoading(false);return}
         if(doc.exists){setErr('이미 같은 이름의 계정이 있습니다. 혹시 본인 계정인지 다시 확인해보시고, 이미 계정이 있으시면 로그인을 해주세요.');setLoading(false);return}
@@ -11906,6 +12031,12 @@ function StudentAnalysisTab(){
     onAssignFolder={(fid,sid)=>{assignFolder(fid,sid);}}
     onClearFolder={(sid)=>{clearFolder(sid);}}
     onDeleteStudent={(s)=>{deleteStudent(s);setSelected(null);}}
+    onRenamed={(oldName,newName,r)=>{
+      // 목록 · 폴더 · 열려 있는 상세 화면을 새 이름으로 맞춘다 (다시 불러오지 않아도 되게)
+      setStudents(prev=>prev.map(x=>x.id===oldName?{...x,id:newName,name:newName}:x));
+      if(r&&r.folders){setFolders(r.folders);try{localStorage.setItem('teacherFolders',JSON.stringify(r.folders));}catch(e){}}
+      setSelected(prev=>prev?{...prev,id:newName,name:newName}:prev);
+    }}
   />;
 
   const curFolder=folders.find(f=>f.id===activeFolder)||folders[0];
@@ -12126,7 +12257,61 @@ function QuickFeedbackPanel({student}){
    종합 · 행동패턴 · 영역성취 · 세션기록
    -------------------------------------------------------------------- */
 
-function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent}){
+/* 학생 이름 바꾸기
+   이름이 곧 계정 id라 기록·피드백·숙제까지 한 번에 옮겨야 한다 (db.js renameUser).
+   학생은 다시 로그인하지 않아도 된다 — 옛 이름 자리에 표지판이 남아 새 계정으로 이어진다. */
+function StudentRenamePanel({student,onRenamed}){
+  const[open,setOpen]=useState(false);
+  const[val,setVal]=useState(student.name||student.id||'');
+  const[busy,setBusy]=useState('');
+  const[err,setErr]=useState('');
+  const cur=student.name||student.id;
+  const go=async()=>{
+    const next=val.trim();
+    setErr('');
+    if(!next||next===cur){setErr('새 이름을 입력해주세요.');return;}
+    if(!confirm(`'${cur}' → '${next}'
+
+학습 기록·피드백·숙제 명단까지 함께 옮깁니다.
+학생은 다시 로그인하지 않아도 됩니다.
+바꿀까요?`))return;
+    setBusy('시작하는 중…');
+    try{
+      const r=await renameUser(cur,next,m=>setBusy(m));
+      setBusy('');setOpen(false);
+      alert(`이름을 바꿨습니다.
+
+학습 기록 ${r.logs}건 · 선생님 피드백 ${r.feedback}건 · 학생 의견 ${r.studentFeedback}건`);
+      if(onRenamed)onRenamed(cur,next,r);
+    }catch(e){setBusy('');setErr(e.message||'실패했습니다.');}
+  };
+  return(<div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-bold text-gray-500">✏️ 이름:</span>
+      <span className="text-sm font-black text-gray-800">{cur}</span>
+      <button onClick={()=>{setOpen(o=>!o);setVal(cur);setErr('');}}
+        className="ml-auto text-xs px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-bold border border-indigo-100">
+        {open?'닫기':'이름 수정'}
+      </button>
+    </div>
+    {open&&(<div className="mt-3 space-y-2">
+      <input lang="ko" value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&!busy&&go()}
+        className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-base font-bold focus:border-indigo-400 outline-none"
+        placeholder="새 이름"/>
+      <div className="text-[11px] text-gray-400 leading-relaxed">
+        학습 기록 · 피드백 · 학생 의견 · 숙제 명단 · 폴더 배정까지 함께 옮깁니다.<br/>
+        학생은 로그아웃되지 않고, 옛 이름으로 로그인해도 새 계정으로 들어옵니다.
+      </div>
+      {err&&<div className="text-xs font-bold text-red-500">{err}</div>}
+      <button onClick={go} disabled={!!busy}
+        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm disabled:bg-gray-300">
+        {busy||'이름 바꾸기'}
+      </button>
+    </div>)}
+  </div>);
+}
+
+function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed}){
   const[open,setOpen]=useState(null);
   const[tab,setTab]=useState('overview');
   const[qStats,setQStats]=useState({});
@@ -13088,6 +13273,9 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
 
     {/* ── 피드백 주기 ── */}
     <QuickFeedbackPanel student={student}/>
+
+    {/* ── 이름 수정 ── */}
+    <StudentRenamePanel student={student} onRenamed={onRenamed}/>
 
     {/* ── 폴더 배정 / 삭제 ── */}
     {(customFolders||[]).length>0&&(()=>{
@@ -14891,14 +15079,58 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
 function App(){
   const[user,setUser]=useState(null);const[checking,setChecking]=useState(true);
   const[showSplash,setShowSplash]=useState(false);
+  const[netError,setNetError]=useState(false);   // 통신 실패 — 로그인 상태는 그대로 두고 다시 시도하게 한다
 
-  useEffect(()=>{
+  /* 자정이 지났으면 오늘 기록을 비우고, 주가 바뀌었으면 도장판을 넘긴다.
+     첫 로드 · 재시도 · 계정 전환이 모두 같은 전처리를 거치도록 한 군데에 모았다. */
+  const freshen=d0=>{
+    const d={...d0};
+    const curMon=getKSTMonday();
+    if(d.lastDate!==todayStr()){d.todayLessons=0;d.todayCorrect=0;d.todayWrong=0;d.lastDate=todayStr();}
+    if(!d.currentWeekStart)d.currentWeekStart=curMon;
+    else if(d.currentWeekStart!==curMon){
+      if(!d.stampArchive)d.stampArchive=[];
+      const oldDates=(d.activeDates||[]).filter(x=>x>=d.currentWeekStart&&x<curMon);
+      if(oldDates.length>0)d.stampArchive.unshift({weekStart:d.currentWeekStart,activeDates:oldDates});
+      d.currentWeekStart=curMon;
+    }
+    d.lastLoginAt=`${todayStr()} ${timeStr()}`;
+    return d;
+  };
+
+  /* 선생님이 이름을 바꾼 학생은 저장된 옛 이름으로 찾아도 새 계정이 온다 (db.js resolveUser).
+     이때 저장해 둔 이름과 '하던 공부' 저장본을 새 이름으로 옮겨서, 다시 로그인하지 않아도 되게 한다. */
+  const adoptName=(savedName,d)=>{
+    if(!d||!d.name||d.name===savedName)return;
+    try{
+      localStorage.setItem('yakHakUser2',JSON.stringify({name:d.name}));
+      const saved=localStorage.getItem('yakHakSavedSession_'+savedName);
+      if(saved){localStorage.setItem('yakHakSavedSession_'+d.name,saved);localStorage.removeItem('yakHakSavedSession_'+savedName);}
+    }catch(e){}
+  };
+
+  const restore=React.useCallback(async()=>{
     const saved=localStorage.getItem('yakHakUser2');
-    if(saved){const{name}=JSON.parse(saved);loadUser(name).then(data=>{if(data){const d={...data};const curMon=getKSTMonday();if(d.lastDate!==todayStr()){d.todayLessons=0;d.todayCorrect=0;d.todayWrong=0;d.lastDate=todayStr()}if(!d.currentWeekStart)d.currentWeekStart=curMon;else if(d.currentWeekStart!==curMon){if(!d.stampArchive)d.stampArchive=[];const oldDates=(d.activeDates||[]).filter(x=>x>=d.currentWeekStart&&x<curMon);if(oldDates.length>0)d.stampArchive.unshift({weekStart:d.currentWeekStart,activeDates:oldDates});d.currentWeekStart=curMon}d.lastLoginAt=`${todayStr()} ${timeStr()}`;saveUser(d);setUser(d);
+    if(!saved){setChecking(false);return;}
+    setNetError(false);setChecking(true);
+    var savedName='';
+    try{savedName=JSON.parse(saved).name;}catch(e){setChecking(false);return;}
+    try{
+      const data=await loadUser(savedName,{throwOnError:true});
+      if(!data){setChecking(false);return;}   // 계정이 정말 없어졌을 때만 로그인 화면으로
+      adoptName(savedName,data);
+      const d=freshen(data);
+      saveUser(d);setUser(d);
       // 자동 로그인: 이번 탭 세션에 아직 스플래시를 안 봤을 때만 노출
       if(!sessionStorage.getItem('yakHakSplashDone'))setShowSplash(true);
-    }setChecking(false)})}else setChecking(false);
+    }catch(e){
+      // 인터넷이 끊겼을 뿐이므로 로그아웃시키지 않는다 — 다시 시도 화면을 보여 준다
+      setNetError(true);
+    }
+    setChecking(false);
   },[]);
+
+  useEffect(()=>{restore()},[restore]);
 
   // 명시적 로그인: 마찬가지로 세션 플래그 확인
   const login=data=>{localStorage.setItem('yakHakUser2',JSON.stringify({name:data.name}));setUser(data);if(!sessionStorage.getItem('yakHakSplashDone'))setShowSplash(true);};
@@ -14914,12 +15146,7 @@ function App(){
     try{
       const data=await loadUser(name);
       if(!data){alert(`'${name}' 계정을 찾을 수 없습니다. 먼저 그 이름으로 가입해 주세요.`);setChecking(false);return;}
-      const d={...data};
-      const curMon=getKSTMonday();
-      if(d.lastDate!==todayStr()){d.todayLessons=0;d.todayCorrect=0;d.todayWrong=0;d.lastDate=todayStr();}
-      if(!d.currentWeekStart)d.currentWeekStart=curMon;
-      else if(d.currentWeekStart!==curMon){if(!d.stampArchive)d.stampArchive=[];const oldDates=(d.activeDates||[]).filter(x=>x>=d.currentWeekStart&&x<curMon);if(oldDates.length>0)d.stampArchive.unshift({weekStart:d.currentWeekStart,activeDates:oldDates});d.currentWeekStart=curMon;}
-      d.lastLoginAt=`${todayStr()} ${timeStr()}`;
+      const d=freshen(data);
       await saveUser(d);
       localStorage.setItem('yakHakUser2',JSON.stringify({name:d.name}));
       setUser(d);
@@ -14930,6 +15157,13 @@ function App(){
   const handleSplashDone=()=>{sessionStorage.setItem('yakHakSplashDone','1');setShowSplash(false);};
 
   if(checking)return<div className="min-h-screen flex items-center justify-center text-2xl font-black text-indigo-600">🎓 불러오는 중...</div>;
+  /* 통신 실패 : 로그인 상태(localStorage)는 그대로 두고 다시 시도만 하게 한다 */
+  if(netError&&!user)return(<div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+    <div className="text-5xl">📡</div>
+    <div className="text-xl font-black text-gray-700">인터넷 연결을 확인해주세요</div>
+    <div className="text-sm text-gray-500 font-semibold">로그인은 그대로 있어요. 연결되면 바로 이어집니다.</div>
+    <button onClick={restore} className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black">다시 시도</button>
+  </div>);
   if(!user)return<AuthScreen onLogin={login}/>;
   const main = user.role==='admin'
     ? <TeacherDashboard userData={user} onLogout={logout} onUpdate={update} onSwitchUser={switchUser}/>

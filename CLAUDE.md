@@ -268,10 +268,10 @@ dailymath_taechungyahak/
 
 ## 📬 아침 학습 브리핑 메일 (automation/)
 
-브리핑을 보내는 길이 **두 갈래**다. 둘이 만드는 메일 본문은 같아야 하므로
+브리핑을 보내는 길은 **`dailyBriefing.gs` 하나**다(아래 두 번째 항목 참고). 다만 보고서 조립 로직은 `build_briefing.py` 에도 같은 모양으로 남아 있다. 둘이 만드는 메일 본문은 같아야 하므로
 **보고서 내용을 고칠 때는 `dailyBriefing.gs` 와 `build_briefing.py` 를 함께 고친다** (한쪽만 고치면 설치 방식에 따라 다른 메일이 간다).
 - `automation/dailyBriefing.gs` — 구글 서버에서 도는 Apps Script. 컴퓨터가 꺼져 있어도 온다. 선생님이 붙여 넣어야 설치된다.
-- `automation/build_briefing.py` — 이 컴퓨터에서 본문만 만들고, Claude 앱 예약 작업(`taechung-math-morning-briefing`, 매일 8시)이 Gmail로 보낸다. 앱이 켜져 있어야 한다.
+- `automation/build_briefing.py` — **수동 확인용**. 예전에는 Claude 앱 예약 작업이 이 결과를 Gmail로 보냈으나, 2026-09-19 부터 쓰지 않는다: 클라우드 예약 작업이 저장소에서 내려받은 코드를 실행하려 하면 자동 승인 분류기가 `Code from External` 로 차단한다. **아침 발송 경로는 `dailyBriefing.gs` 하나다.**
 
 `automation/dailyBriefing.gs` 는 앱 번들(`index.html`)에 들어가지 않는다. 선생님이 script.google.com 에 붙여 넣어
 돌리는 Google Apps Script 원본이다. **여기를 고쳐도 자동으로 반영되지 않으므로**, 고친 뒤에는 선생님께 다시 붙여 넣기를 안내한다.
@@ -292,3 +292,20 @@ dailymath_taechungyahak/
   `removeTrigger` 는 `AUTO_OFF` 속성을 남겨 일부러 끈 예약이 되살아나지 않게 한다.
 - 공유용 안내(`templates/guide.html`)는 `dailyMailTemplate.gs` 를 그대로 끼워 넣어 조립한다.
   템플릿을 고치면 안내 페이지도 다시 조립·게시해야 둘이 어긋나지 않는다.
+
+## 🪪 학생 이름 바꾸기 — 이름이 곧 계정 id다 (js/core/db.js · js/teacher/studentDetail.js)
+
+`users` 문서의 **id 가 학생 이름**이고, `math_logs` 등 다른 컬렉션은 `studentName` 문자열로 그 이름을 가리킨다.
+그래서 이름을 한 군데만 고치면 기록·피드백·숙제가 옛 이름에 남아 흩어진다.
+
+- `renameUser(old, new, onStep)` 가 한 번에 옮긴다 : `users` 문서 이동 → `math_logs`/`feedback`/`studentFeedback` 의
+  `studentName` → `homework` 의 `assignedTo`·`completedBy` 배열 → `sessionEdits`(문서 id 가 `이름_날짜_시각`) →
+  `onlineStatus` → `teacherSettings/folders` 의 학생 id.
+- **옛 이름 자리에는 표지판**(`{renamedTo:'새 이름'}`)만 남긴다. `resolveUser()` 가 이 표지판을 따라가므로
+  **학생은 다시 로그인하지 않아도 되고**(app.js 가 `yakHakUser2` 와 `yakHakSavedSession_<이름>` 을 새 이름으로 옮긴다),
+  옛 이름으로 로그인해도 새 계정으로 들어온다. `saveUser` 도 표지판을 따라가므로 앱을 켜 둔 채 이름이 바뀌어도
+  표지판 위에 기록이 덮어써지지 않는다.
+- **새 컬렉션에 학생 이름을 저장하면 `renameUser` 에도 한 줄 추가할 것.** 안 그러면 그 자료만 옛 이름에 남는다.
+- 선생님 화면 : 학생 상세 → `✏️ 이름` 칸 → [이름 수정].
+- `loadUser(name,{throwOnError:true})` : 통신 실패와 '계정 없음'을 구분한다. app.js 는 통신 실패 때
+  로그아웃시키지 않고 **[다시 시도]** 화면을 보여 준다 (로그인 상태는 localStorage 에 그대로 있다).

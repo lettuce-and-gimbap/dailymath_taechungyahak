@@ -23,6 +23,10 @@
    3. 함수 목록 기본값 setupAll 을 그대로 ▶ 실행 → 권한 허용
    4. [미리보기] 메일 도착 + 왼쪽 ⏰ 트리거 화면에 sendDailyBriefing 한 줄 → 끝
    어느 함수를 누르든 매일 예약이 없으면 스스로 건다. 끄려면 removeTrigger.
+
+   받는 사람 (프로젝트 설정 → 스크립트 속성)
+   - RECIPIENT     : 받는 사람 한 명 (비워 두면 실행 계정)
+   - RECIPIENT_BCC : 함께 받을 다른 선생님들, 쉼표로 구분 — 숨은참조라 서로의 주소가 보이지 않는다
    ===================================================================== */
 
 var CONFIG = {
@@ -67,6 +71,26 @@ function me_() {
   return addr;
 }
 
+/** 숨은참조(BCC) — 브리핑을 함께 받을 다른 선생님들
+    스크립트 속성 RECIPIENT_BCC 에 쉼표로 이어 적는다 (예: a@x.com, b@y.com).
+    ※ 왜 BCC 인가 : 브리핑 본문에는 학생 실명이 들어간다. 받는 사람 칸에 주소를 나란히 두면
+       수신자들끼리 서로의 주소를 보게 되므로, 명단을 드러내지 않는 BCC 로 보낸다.
+    ※ 주소는 코드에 적지 않는다 — 이 저장소는 공개다. */
+function bcc_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('RECIPIENT_BCC') || '';
+  var list = raw.split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x; });
+  return list.join(',');
+}
+
+/** sendEmail 에 넘길 항목을 만든다 — BCC 가 비어 있으면 bcc 키를 아예 넣지 않는다
+    (빈 문자열을 넘기면 Apps Script 가 주소 형식 오류로 막는 경우가 있다). */
+function mail_(opt) {
+  var b = bcc_();
+  if (b) opt.bcc = b;
+  opt.name = CONFIG.SENDER_NAME;
+  return opt;
+}
+
 /** 트리거가 매일 부르는 함수
     ※ 무인으로 도는 작업이라, 실패했을 때 아무 일도 없었던 것처럼 조용히 넘어가면 안 된다.
        실패하면 그 사실을 알리는 짧은 메일이라도 오게 한다. */
@@ -75,7 +99,7 @@ function sendDailyBriefing() {
   try {
     var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
     var to = me_();
-    MailApp.sendEmail({ to: to, subject: r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+    MailApp.sendEmail(mail_({ to: to, subject: r.subject, htmlBody: r.html }));
     Logger.log('보냈습니다 → ' + to + ' / ' + r.subject);
   } catch (e) {
     notifyFailure_(e);
@@ -88,7 +112,7 @@ function previewBriefing() {
   ensureTrigger_();
   var r = buildBriefing_(fetchLogsSince_(daysAgo_(CONFIG.COMPARE_DAYS + 1)), fetchStudents_(), new Date());
   var to = me_();
-  MailApp.sendEmail({ to: to, subject: '[미리보기] ' + r.subject, htmlBody: r.html, name: CONFIG.SENDER_NAME });
+  MailApp.sendEmail(mail_({ to: to, subject: '[미리보기] ' + r.subject, htmlBody: r.html }));
   Logger.log('보냈습니다 → ' + to + ' / ' + r.subject);   // 실행 로그에서 어디로 갔는지 바로 보이게
 }
 
@@ -99,6 +123,7 @@ function notifyFailure_(e) {
     var today = Utilities.formatDate(new Date(), CONFIG.TZ, 'yyyy-MM-dd');
     if (props.getProperty('lastFailMail') === today) return;
     props.setProperty('lastFailMail', today);
+    // 실패 알림은 관리하는 사람만 받으면 된다 — BCC(mail_) 를 일부러 쓰지 않는다
     MailApp.sendEmail({
       to: me_(),
       subject: '[태청야학 수학반] 아침 브리핑을 만들지 못했습니다',
@@ -121,6 +146,7 @@ function checkSetup() {
     '실행 계정      : ' + runner + '  ← 이 스크립트가 누구 계정에서 도는지',
     '받는 주소      : ' + (fixed ? fixed + ' (스크립트 속성 RECIPIENT)' : runner + ' (실행 계정과 같음)')
       + (!fixed ? '  ← 메일이 안 오면 여기가 선생님 주소가 맞는지 확인' : ''),
+    '숨은참조(BCC)  : ' + (bcc_() ? bcc_().split(',').length + '명 — ' + bcc_() + ' (스크립트 속성 RECIPIENT_BCC)' : '없음'),
     '보낼 시각      : 매일 ' + CONFIG.SEND_HOUR + '시~' + (CONFIG.SEND_HOUR + 1) + '시 사이',
     '예약 개수      : ' + ts.length + (ts.length === 1 ? ' (정상)' : ts.length === 0 ? ' ← installTrigger 를 실행해 주세요' : ' ← 중복입니다. installTrigger 를 한 번 더 실행하면 하나로 정리됩니다'),
     '스크립트 시간대: ' + Session.getScriptTimeZone() + (Session.getScriptTimeZone() === CONFIG.TZ ? ' (정상)' : ' ← 날짜 계산은 코드가 ' + CONFIG.TZ + ' 로 하므로 그대로 두셔도 됩니다'),

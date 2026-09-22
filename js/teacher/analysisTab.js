@@ -110,6 +110,12 @@ function StudentAnalysisTab(){
     onAssignFolder={(fid,sid)=>{assignFolder(fid,sid);}}
     onClearFolder={(sid)=>{clearFolder(sid);}}
     onDeleteStudent={(s)=>{deleteStudent(s);setSelected(null);}}
+    onRenamed={(oldName,newName,r)=>{
+      // 목록 · 폴더 · 열려 있는 상세 화면을 새 이름으로 맞춘다 (다시 불러오지 않아도 되게)
+      setStudents(prev=>prev.map(x=>x.id===oldName?{...x,id:newName,name:newName}:x));
+      if(r&&r.folders){setFolders(r.folders);try{localStorage.setItem('teacherFolders',JSON.stringify(r.folders));}catch(e){}}
+      setSelected(prev=>prev?{...prev,id:newName,name:newName}:prev);
+    }}
   />;
 
   const curFolder=folders.find(f=>f.id===activeFolder)||folders[0];
