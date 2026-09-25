@@ -6,3 +6,6 @@ _비공개/
 
 # 브리핑 스크립트가 만들어 내는 결과물 (커밋하지 않는다 — 학생 이름이 들어 있음)
 automation/out/
+
+worker/.wrangler/
+worker/node_modules/
