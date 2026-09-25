@@ -603,20 +603,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{finishingRef.current=false;savedRef.current=null;setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
 
   // 🔥 감정 성찰 (메타인지) 화면 렌더링 🔥
-  if(phase==='reflection') {
-    return(
-      <div className="p-4 flex flex-col items-center justify-center min-h-screen text-center pb-36 fade-in">
-        <div className="text-7xl mb-6">🧠</div>
-        <h2 className="text-2xl font-black text-gray-800 mb-2">10문제 달성 완료!</h2>
-        <p className="text-gray-500 mb-8 font-bold text-lg">스스로 생각하기에<br/>오늘 푼 문제들은 어떠셨나요?</p>
-        <div className="flex flex-col gap-4 w-full max-w-xs mx-auto">
-          <button onClick={() => chooseFeeling('easy')} className="py-5 bg-green-100 text-green-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">쉬웠어요 😊</button>
-          <button onClick={() => chooseFeeling('normal')} className="py-5 bg-blue-100 text-blue-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">적당했어요 😐</button>
-          <button onClick={() => chooseFeeling('hard')} className="py-5 bg-red-100 text-red-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">어려웠어요 😥</button>
-        </div>
-      </div>
-    );
-  }
+  if(phase==='reflection')return<FeelingPicker title="10문제 달성 완료!" onPick={chooseFeeling}/>;
 
   const pct=(correctCount/10)*100;
   return(<div className="p-4 space-y-4 pb-36">

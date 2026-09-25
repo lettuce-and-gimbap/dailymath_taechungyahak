@@ -111,6 +111,26 @@ function genCoordQ(level){
 }
 
 /* ── 탭 본체 ─────────────────────────────────────────────────── */
+/* 다 풀고 나서 고르는 자기보고식 소감 — 좌표10 · 문제풀기 공용. 한 번에 누를 수 있게 크게 그린다. */
+function FeelingPicker({title,onPick}){
+  const OPTS=[['easy','😊','쉬웠어요','bg-green-50 border-green-300 text-green-700'],
+              ['normal','😐','적당했어요','bg-blue-50 border-blue-300 text-blue-700'],
+              ['hard','😥','어려웠어요','bg-red-50 border-red-300 text-red-700']];
+  return(<div className="p-4 pb-36 flex flex-col items-center text-center fade-in">
+    <div className="text-6xl mt-4 mb-3">🧠</div>
+    <div className="text-2xl font-black text-gray-800">{title}</div>
+    <div className="text-lg font-bold text-gray-500 mt-2 mb-6">오늘 푼 문제, 어떠셨나요?</div>
+    <div className="w-full max-w-sm flex flex-col gap-4">
+      {OPTS.map(([k,e,l,c])=>(
+        <button key={k} onClick={()=>onPick(k)}
+          className={`w-full flex items-center gap-4 px-6 py-6 rounded-3xl border-4 font-black text-2xl shadow-sm active:scale-95 transition-transform ${c}`}>
+          <span className="text-5xl">{e}</span><span>{l}</span>
+        </button>))}
+    </div>
+    <div className="text-sm text-gray-400 font-bold mt-5">기록은 이미 저장됐어요</div>
+  </div>);
+}
+
 function CoordDailyTab({userData,onUpdate}){
   const TOTAL=10;
   const ORD=['①','②','③','④'];
@@ -125,6 +145,7 @@ function CoordDailyTab({userData,onUpdate}){
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
   const savingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다
+  const savedRef=React.useRef(null);     // {id, upd} — 소감을 고르면 이 기록에 덧붙인다
 
   const today=todayStr();
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
@@ -134,7 +155,7 @@ function CoordDailyTab({userData,onUpdate}){
     const list=[];for(let i=0;i<TOTAL;i++)list.push(genCoordQ(k));
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
-    savingRef.current=false;
+    savingRef.current=false;savedRef.current=null;
   };
 
   const q=qs[idx];
@@ -176,7 +197,7 @@ function CoordDailyTab({userData,onUpdate}){
       todayWrong:(userData.todayWrong||0)+(TOTAL-correct),
       lastDate:today,activeDates:newActiveDates,
       logs:[log,...(userData.logs||[]).slice(0,49)]};
-    try{await saveUser(upd);await saveLog(log);updateQStats(all.map(r=>({...r,meta:r.meta})));}catch(e){}
+    try{await saveUser(upd);const id=await saveLog(log);savedRef.current={id,upd};updateQStats(all.map(r=>({...r,meta:r.meta})));}catch(e){}
     onUpdate&&onUpdate(upd);
   };
 
@@ -185,7 +206,12 @@ function CoordDailyTab({userData,onUpdate}){
       setIdx(idx+1);setSel(null);setFirstClick(null);setQStartAt(Date.now());setPhase('quiz');
       return;
     }
+    setPhase('reflect');
+  };
+  const chooseFeeling=async(feeling)=>{
     setPhase('done');
+    const sv=savedRef.current;
+    if(sv){const upd=await patchLogFeeling(sv.id,sv.upd,feeling);onUpdate&&onUpdate(upd);}
   };
 
   /* ── 난이도 고르기 ── */
@@ -231,6 +257,8 @@ function CoordDailyTab({userData,onUpdate}){
       </div>
     </div>);
   }
+
+  if(phase==='reflect')return<FeelingPicker title="좌표 10문제 끝!" onPick={chooseFeeling}/>;
 
   /* ── 다 풀었을 때 ── */
   if(phase==='done'){
