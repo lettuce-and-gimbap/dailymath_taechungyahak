@@ -267,7 +267,7 @@ function QuickFeedbackPanel({student}){
         logStr=`${fmtDate(l.date)} ${l.time||''} | ${l.type||''} | 점수: ${l.score||''}`;
       }
       const voiceId=voice?await saveVoice({from:'선생님',to:student.name,blob:voice.blob,sec:voice.sec}):null;
-      await db.collection('feedback').add({
+      const ref=await db.collection('feedback').add({
         studentName:student.name,
         message:msg.trim()||'🎙 음성 피드백',
         voiceId,voiceSec:voice?Math.round(voice.sec):null,
@@ -275,6 +275,7 @@ function QuickFeedbackPanel({student}){
         read:false,
         createdAt:new Date()
       });
+      pushNotify('feedback',ref.id);   // 학생 휴대폰 알림
       setMsg('');setSent(true);setVoice(null);setVKey(k=>k+1);
       setTimeout(()=>setSent(false),2000);
     }catch(e){alert('피드백 저장 실패: '+e.message);}

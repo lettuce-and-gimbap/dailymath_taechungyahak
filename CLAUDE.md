@@ -328,3 +328,11 @@ dailymath_taechungyahak/
 - TensorFlow.js(cdnjs) 를 탭을 열 때만 불러오고, 처음 한 번 MNIST 2만 장으로 그 브라우저에서 학습해 IndexedDB 에 저장한다.
 - `m.fit` 에 **`yieldEvery:'never'`** 를 꼭 둔다. 기본값은 rAF 로 쉬는데 창이 가려지면 rAF 가 멈춰 학습이 0% 에서 멈춘다.
 - 확신도 70% 미만 글자가 하나라도 있으면 자동 채점하지 않고 '선생님 확인'으로 돌린다. 학생 화면에는 아직 붙이지 않았다.
+
+## 🔔 휴대폰 알림 (js/ui/push.js · sw.js · worker/)
+
+- 서버는 Cloudflare Worker `taechung-push` (daily-bible-reading 과 같은 방식, 같은 Cloudflare 계정). 설치·배포는 `worker/README.md`.
+- 앱은 저장 직후 `pushNotify(kind, docId)` 만 부른다 : 학생 의견 `studentFeedback`→선생님, 피드백 `feedback`→그 학생, 공지 `notice`→학생 전체.
+  **새로 알림이 필요한 저장 지점이 생기면 이 한 줄을 붙이고, 서버 `KINDS` 에도 종류를 추가**한다.
+- 서버가 Firestore 문서를 직접 읽어 대상을 정하므로 임의 문구 알림은 불가. 잠금 화면용이라 본문은 싣지 않는다.
+- 구독은 이름으로 대상을 고르므로, 이름이 바뀌면 `PushCard` 의 `pushRefresh` 가 다음 접속 때 새 이름으로 다시 등록한다.

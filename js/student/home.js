@@ -21,6 +21,7 @@ function StudentSentFeedback({name,refreshSignal}){
   const[loading,setLoading]=React.useState(true);
   const[editId,setEditId]=React.useState(null);
   const[editText,setEditText]=React.useState('');
+  const[open,setOpen]=React.useState(false);   // 보낸 의견 목록 접기/펼치기
   const load=async()=>{
     setLoading(true);
     try{
@@ -51,8 +52,11 @@ function StudentSentFeedback({name,refreshSignal}){
   if(loading&&items.length===0)return null;
   if(items.length===0)return null;
   return(<div className="mt-4 pt-4 border-t border-gray-100">
-    <div className="text-xs font-bold text-gray-400 uppercase mb-2">📨 내가 보낸 의견</div>
-    <div className="space-y-2">
+    <button onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between py-1">
+      <span className="text-sm font-black text-gray-500">📨 내가 보낸 의견 ({items.length})</span>
+      <span className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold">{open?'접기 ▲':'펼쳐보기 ▼'}</span>
+    </button>
+    {open&&<div className="space-y-2 mt-2">
       {items.map(it=>{
         const unread=!it.read;
         return(<div key={it.id} className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
@@ -82,7 +86,7 @@ function StudentSentFeedback({name,refreshSignal}){
           )}
         </div>);
       })}
-    </div>
+    </div>}
   </div>);
 }
 
@@ -215,7 +219,8 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
   const[fbVoice,setFbVoice]=React.useState(null);const[fbVKey,setFbVKey]=React.useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
   const sendStudentFeedback=async()=>{if(!feedbackMsg.trim()&&!fbVoice)return;try{
     const voiceId=fbVoice?await saveVoice({from:name,to:'선생님',blob:fbVoice.blob,sec:fbVoice.sec}):null;
-    await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim()||'🎙 음성 의견',voiceId,voiceSec:fbVoice?Math.round(fbVoice.sec):null,sentAt:new Date(),read:false});
+    const ref=await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim()||'🎙 음성 의견',voiceId,voiceSec:fbVoice?Math.round(fbVoice.sec):null,sentAt:new Date(),read:false});
+    pushNotify('studentFeedback',ref.id);   // 선생님 휴대폰 알림
     setFbSent(true);setFeedbackMsg('');setFbVoice(null);setFbVKey(k=>k+1);setSentFbRefresh(x=>x+1);setTimeout(()=>setFbSent(false),3000);}catch(e){alert('전송 실패'+(e&&e.message?': '+e.message:''));}};
   // 취약 영역 감지
   const weakAreaCheck = (() => {
@@ -364,6 +369,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
     {/* 학생 의견 보내기 */}
     <div className="bg-white rounded-3xl p-5 shadow-md">
+      <StudentReceivedFeedback name={name}/>
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 선생님께 의견 보내기</div>
       <textarea lang="ko" value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
       <div className="mb-3"><VoiceRecorder key={fbVKey} onChange={setFbVoice}/></div>
@@ -372,5 +378,35 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
       </button>
       <StudentSentFeedback name={name} refreshSignal={sentFbRefresh}/>
     </div>
+
+    {/* 휴대폰 알림 (ui/push.js) */}
+    <PushCard userData={userData}/>
+  </div>);
+}
+
+/* 받은 선생님 피드백 — 홈에서 접었다 펼치기 (기록 탭에도 같은 목록이 있다) */
+function StudentReceivedFeedback({name}){
+  const[items,setItems]=React.useState([]);const[open,setOpen]=React.useState(false);
+  React.useEffect(()=>{
+    db.collection('feedback').where('studentName','==',name).get().then(snap=>{
+      const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
+      const t=x=>x.createdAt?.toDate?x.createdAt.toDate().getTime():new Date(x.createdAt).getTime();
+      arr.sort((a,b)=>t(b)-t(a));setItems(arr.slice(0,20));
+    }).catch(()=>{});
+  },[name]);
+  if(!items.length)return null;
+  const unread=items.filter(f=>!f.read).length;
+  return(<div className="mb-4 pb-4 border-b border-gray-100">
+    <button onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between py-1">
+      <span className="text-sm font-black text-indigo-700">💌 받은 선생님 피드백 ({items.length}){unread?<span className="ml-1.5 text-[11px] bg-red-500 text-white px-2 py-0.5 rounded-full">새 {unread}</span>:null}</span>
+      <span className="text-xs px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg font-bold">{open?'접기 ▲':'펼쳐보기 ▼'}</span>
+    </button>
+    {open&&<div className="space-y-2 mt-2">{items.map(fb=>(
+      <div key={fb.id} className="bg-indigo-50 rounded-2xl p-3 border border-indigo-100">
+        {fb.relatedLog&&<div className="text-[11px] text-indigo-500 font-black mb-1">📋 {fb.relatedLog}</div>}
+        <div className="text-base font-bold text-gray-800 leading-relaxed break-keep">{fb.message}</div>
+        {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec}/>}
+        <div className="text-[11px] text-gray-400 mt-1.5 text-right">{fb.createdAt?.toDate?.()?.toLocaleDateString('ko-KR')||''}</div>
+      </div>))}</div>}
   </div>);
 }

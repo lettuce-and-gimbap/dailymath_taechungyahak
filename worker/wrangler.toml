@@ -1,0 +1,14 @@
+name = "taechung-push"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[kv_namespaces]]
+binding = "SUBS"
+id = "707ed9a289d947c38944e1a4d54dd3bf"
+
+[vars]
+VAPID_SUBJECT = "https://lettuce-and-gimbap.github.io/dailymath_taechungyahak/"
+FIREBASE_PROJECT = "math-solving-daily"
+# index.html 에 이미 공개된 웹 키 (Firestore 문서를 읽어 알림 대상을 확인하는 데만 쓴다)
+FIREBASE_API_KEY = "AIzaSyB91eiFNRs_ziJnzWMjvg-TKSq447oPasY"
+# VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY 는 npx wrangler secret put 으로 등록 (worker/README.md)

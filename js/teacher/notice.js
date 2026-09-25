@@ -30,7 +30,8 @@ function NoticeTab(){
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+3);
       const voiceId=voice?await saveVoice({from:'선생님',to:'전체',blob:voice.blob,sec:voice.sec}):null;
-      await db.collection('notices').add({text:noticeText.trim()||'🎙 음성 공지',voiceId,voiceSec:voice?Math.round(voice.sec):null,createdAt:now,expiresAt:exp});
+      const ref=await db.collection('notices').add({text:noticeText.trim()||'🎙 음성 공지',voiceId,voiceSec:voice?Math.round(voice.sec):null,createdAt:now,expiresAt:exp});
+      pushNotify('notice',ref.id);   // 학생 휴대폰 알림
       setNoticeText('');setVoice(null);setVKey(k=>k+1);loadAll();
     }catch(e){alert('등록 실패');}
     setPosting(false);

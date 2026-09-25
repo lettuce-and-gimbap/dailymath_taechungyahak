@@ -7781,6 +7781,82 @@ function VoicePlayer({voiceId,sec,big}){
 }
 
 
+// ========== js\ui\push.js ==========
+// === js/ui/push.js ===
+/* --------------------------------------------------------------------
+   휴대폰 알림 (웹 푸시) — 선생님·학생 공용
+   서버 : worker/ (Cloudflare Worker taechung-push). 설치·운영은 worker/README.md.
+   - PushCard : 🔔 알림 켜기 / 끄기 / 테스트 카드
+   - pushNotify(kind, docId) : 새 문서를 저장한 뒤 부른다. 서버가 그 문서를 직접 읽어 받을 사람을 정한다.
+       'studentFeedback' → 선생님들 · 'feedback' → 그 학생 · 'notice' → 학생 전체
+   - pushRefresh(userData) : 화면을 열 때 구독을 현재 이름으로 다시 등록한다 (이름이 바뀐 학생 대비)
+   -------------------------------------------------------------------- */
+
+var PUSH_SERVER='https://taechung-push.gimbap-lettuce.workers.dev';
+var PUSH_KEY='taechungPush_v1';   // localStorage {id, name}
+
+var _pushApi=async(path,body)=>{
+  const r=await fetch(PUSH_SERVER+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:undefined);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||('서버 응답 '+r.status));
+  return j;
+};
+var _pushInfo=()=>{try{return JSON.parse(localStorage.getItem(PUSH_KEY))||{};}catch(e){return{};}};
+var pushSupported=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+var pushIsOn=()=>pushSupported()&&!!_pushInfo().id&&Notification.permission==='granted';
+
+var _b64u=s=>{const b=atob(s.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-s.length%4)%4));return Uint8Array.from(b,c=>c.charCodeAt(0));};
+
+var pushEnable=async(userData)=>{
+  if(!pushSupported())throw new Error('이 브라우저는 알림을 지원하지 않습니다. 홈 화면에 추가한 앱에서 켜 주세요.');
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted')throw new Error('알림이 차단되어 있습니다. 휴대폰 설정 → 앱/사이트 알림에서 허용해 주세요.');
+  const reg=await navigator.serviceWorker.register('sw.js');await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  if(!sub){const{publicKey}=await _pushApi('/vapid');sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64u(publicKey)});}
+  const{id}=await _pushApi('/subscribe',{subscription:sub.toJSON(),name:userData.name,role:userData.role==='admin'?'admin':'student'});
+  localStorage.setItem(PUSH_KEY,JSON.stringify({id,name:userData.name}));
+  return id;
+};
+var pushDisable=async()=>{
+  const info=_pushInfo();
+  try{const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();}catch(e){}
+  if(info.id)_pushApi('/unsubscribe',{id:info.id}).catch(()=>{});
+  localStorage.removeItem(PUSH_KEY);
+};
+var pushRefresh=(userData)=>{
+  if(!pushIsOn())return;
+  if(_pushInfo().name===userData.name)return;
+  pushEnable(userData).catch(()=>{});
+};
+var pushNotify=(kind,docId)=>{if(docId)_pushApi('/notify',{kind,docId}).catch(()=>{});};
+
+function PushCard({userData,compact}){
+  const[on,setOn]=useState(pushIsOn());const[busy,setBusy]=useState(false);const[msg,setMsg]=useState('');
+  React.useEffect(()=>{pushRefresh(userData);},[userData.name]);
+  const isT=userData.role==='admin';
+  const enable=async()=>{setBusy(true);setMsg('');try{await pushEnable(userData);setOn(true);setMsg('✅ 켜졌어요. [테스트]로 확인해 보세요.');}catch(e){setMsg(e.message);}setBusy(false);};
+  const disable=async()=>{setBusy(true);await pushDisable();setOn(false);setMsg('알림을 껐어요.');setBusy(false);};
+  const test=async()=>{setBusy(true);setMsg('');try{await _pushApi('/test',{id:_pushInfo().id});setMsg('보냈어요. 몇 초 안에 알림이 와야 합니다.');}catch(e){setMsg(e.message);if(/다시 켜/.test(e.message)){localStorage.removeItem(PUSH_KEY);setOn(false);}}setBusy(false);};
+  if(!pushSupported())return null;
+  return(<div className={`rounded-2xl p-4 border-2 ${on?'bg-emerald-50 border-emerald-200':'bg-amber-50 border-amber-200'}`}>
+    <div className="flex items-center gap-2">
+      <div className="text-2xl">{on?'🔔':'🔕'}</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-black text-gray-800 text-sm">휴대폰 알림 {on?'켜짐':'꺼짐'}</div>
+        <div className="text-xs text-gray-500 font-medium">{isT?'새 학생 의견이 오면 알려 드려요':'선생님 피드백·공지가 오면 알려 드려요'}</div>
+      </div>
+      {on?<div className="flex gap-1.5 flex-shrink-0">
+          <button onClick={test} disabled={busy} className="text-xs px-3 py-2 bg-white border border-emerald-300 text-emerald-700 rounded-lg font-black">테스트</button>
+          <button onClick={disable} disabled={busy} className="text-xs px-3 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg font-black">끄기</button>
+        </div>
+        :<button onClick={enable} disabled={busy} className="flex-shrink-0 text-sm px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-black">{busy?'…':'알림 켜기'}</button>}
+    </div>
+    {msg&&<div className="text-xs font-bold text-gray-600 mt-2">{msg}</div>}
+  </div>);
+}
+
+
 // ========== js\student\exploreModules.js ==========
 // === js/student/exploreModules.js ===
 /* --------------------------------------------------------------------
@@ -8537,6 +8613,7 @@ function StudentSentFeedback({name,refreshSignal}){
   const[loading,setLoading]=React.useState(true);
   const[editId,setEditId]=React.useState(null);
   const[editText,setEditText]=React.useState('');
+  const[open,setOpen]=React.useState(false);   // 보낸 의견 목록 접기/펼치기
   const load=async()=>{
     setLoading(true);
     try{
@@ -8567,8 +8644,11 @@ function StudentSentFeedback({name,refreshSignal}){
   if(loading&&items.length===0)return null;
   if(items.length===0)return null;
   return(<div className="mt-4 pt-4 border-t border-gray-100">
-    <div className="text-xs font-bold text-gray-400 uppercase mb-2">📨 내가 보낸 의견</div>
-    <div className="space-y-2">
+    <button onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between py-1">
+      <span className="text-sm font-black text-gray-500">📨 내가 보낸 의견 ({items.length})</span>
+      <span className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold">{open?'접기 ▲':'펼쳐보기 ▼'}</span>
+    </button>
+    {open&&<div className="space-y-2 mt-2">
       {items.map(it=>{
         const unread=!it.read;
         return(<div key={it.id} className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
@@ -8598,7 +8678,7 @@ function StudentSentFeedback({name,refreshSignal}){
           )}
         </div>);
       })}
-    </div>
+    </div>}
   </div>);
 }
 
@@ -8731,7 +8811,8 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
   const[fbVoice,setFbVoice]=React.useState(null);const[fbVKey,setFbVKey]=React.useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
   const sendStudentFeedback=async()=>{if(!feedbackMsg.trim()&&!fbVoice)return;try{
     const voiceId=fbVoice?await saveVoice({from:name,to:'선생님',blob:fbVoice.blob,sec:fbVoice.sec}):null;
-    await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim()||'🎙 음성 의견',voiceId,voiceSec:fbVoice?Math.round(fbVoice.sec):null,sentAt:new Date(),read:false});
+    const ref=await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim()||'🎙 음성 의견',voiceId,voiceSec:fbVoice?Math.round(fbVoice.sec):null,sentAt:new Date(),read:false});
+    pushNotify('studentFeedback',ref.id);   // 선생님 휴대폰 알림
     setFbSent(true);setFeedbackMsg('');setFbVoice(null);setFbVKey(k=>k+1);setSentFbRefresh(x=>x+1);setTimeout(()=>setFbSent(false),3000);}catch(e){alert('전송 실패'+(e&&e.message?': '+e.message:''));}};
   // 취약 영역 감지
   const weakAreaCheck = (() => {
@@ -8880,6 +8961,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
     {/* 학생 의견 보내기 */}
     <div className="bg-white rounded-3xl p-5 shadow-md">
+      <StudentReceivedFeedback name={name}/>
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 선생님께 의견 보내기</div>
       <textarea lang="ko" value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
       <div className="mb-3"><VoiceRecorder key={fbVKey} onChange={setFbVoice}/></div>
@@ -8888,6 +8970,36 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
       </button>
       <StudentSentFeedback name={name} refreshSignal={sentFbRefresh}/>
     </div>
+
+    {/* 휴대폰 알림 (ui/push.js) */}
+    <PushCard userData={userData}/>
+  </div>);
+}
+
+/* 받은 선생님 피드백 — 홈에서 접었다 펼치기 (기록 탭에도 같은 목록이 있다) */
+function StudentReceivedFeedback({name}){
+  const[items,setItems]=React.useState([]);const[open,setOpen]=React.useState(false);
+  React.useEffect(()=>{
+    db.collection('feedback').where('studentName','==',name).get().then(snap=>{
+      const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
+      const t=x=>x.createdAt?.toDate?x.createdAt.toDate().getTime():new Date(x.createdAt).getTime();
+      arr.sort((a,b)=>t(b)-t(a));setItems(arr.slice(0,20));
+    }).catch(()=>{});
+  },[name]);
+  if(!items.length)return null;
+  const unread=items.filter(f=>!f.read).length;
+  return(<div className="mb-4 pb-4 border-b border-gray-100">
+    <button onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between py-1">
+      <span className="text-sm font-black text-indigo-700">💌 받은 선생님 피드백 ({items.length}){unread?<span className="ml-1.5 text-[11px] bg-red-500 text-white px-2 py-0.5 rounded-full">새 {unread}</span>:null}</span>
+      <span className="text-xs px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg font-bold">{open?'접기 ▲':'펼쳐보기 ▼'}</span>
+    </button>
+    {open&&<div className="space-y-2 mt-2">{items.map(fb=>(
+      <div key={fb.id} className="bg-indigo-50 rounded-2xl p-3 border border-indigo-100">
+        {fb.relatedLog&&<div className="text-[11px] text-indigo-500 font-black mb-1">📋 {fb.relatedLog}</div>}
+        <div className="text-base font-bold text-gray-800 leading-relaxed break-keep">{fb.message}</div>
+        {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec}/>}
+        <div className="text-[11px] text-gray-400 mt-1.5 text-right">{fb.createdAt?.toDate?.()?.toLocaleDateString('ko-KR')||''}</div>
+      </div>))}</div>}
   </div>);
 }
 
@@ -11740,9 +11852,10 @@ function StudentFeedbackPanel(){
   const allChecked=msgs.length>0&&msgs.every(m=>selIds.has(m.id));
   const toggleAll=()=>setSelIds(allChecked?new Set():new Set(msgs.map(m=>m.id)));
 
-  return(<div className="bg-white rounded-3xl p-5 shadow-md mb-4">
+  const unreadN=msgs.filter(m=>!m.read).length;   // 읽지 않은 의견이 있으면 카드 전체를 빨갛게 표시
+  return(<div className={`rounded-3xl p-5 shadow-md mb-4 ${unreadN?'bg-red-50 border-2 border-red-300':'bg-white'}`}>
     <div className="flex items-center justify-between mb-3">
-      <div className="text-sm font-bold text-gray-400 uppercase">💬 학생 의견 수신함</div>
+      <div className={`text-sm font-bold uppercase flex items-center gap-2 ${unreadN?'text-red-600':'text-gray-400'}`}>💬 학생 의견 수신함{unreadN>0&&<span className="text-[11px] bg-red-500 text-white px-2 py-0.5 rounded-full normal-case animate-pulse">읽지 않음 {unreadN}</span>}</div>
       <div className="flex gap-2 flex-wrap justify-end">
         {selIds.size>0&&<button onClick={delSelected} className="text-xs px-3 py-1 bg-red-500 text-white rounded-lg font-bold">🗑️ 선택 {selIds.size}개 삭제</button>}
         <button onClick={load} className="text-xs px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold">새로고침</button>
@@ -11859,7 +11972,7 @@ function FeedbackTab(){
          logStr = `${fmtDate(l.date)} ${l.time} | ${l.type} | 점수: ${l.score}`;
       }
       const voiceId=voice?await saveVoice({from:'선생님',to:sid.trim(),blob:voice.blob,sec:voice.sec}):null;
-      await db.collection('feedback').add({
+      const ref=await db.collection('feedback').add({
         studentName: sid.trim(),
         message: msg.trim()||'🎙 음성 피드백',
         voiceId, voiceSec: voice?Math.round(voice.sec):null,
@@ -11867,6 +11980,7 @@ function FeedbackTab(){
         read: false,
         createdAt: new Date()
       });
+      pushNotify('feedback',ref.id);   // 학생 휴대폰 알림
       setMsg(''); setRelatedLogIdx(''); setSent(true); setVoice(null); setVKey(k=>k+1);
       setTimeout(()=>setSent(false), 2000);
       search();
@@ -12046,7 +12160,8 @@ function NoticeTab(){
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+3);
       const voiceId=voice?await saveVoice({from:'선생님',to:'전체',blob:voice.blob,sec:voice.sec}):null;
-      await db.collection('notices').add({text:noticeText.trim()||'🎙 음성 공지',voiceId,voiceSec:voice?Math.round(voice.sec):null,createdAt:now,expiresAt:exp});
+      const ref=await db.collection('notices').add({text:noticeText.trim()||'🎙 음성 공지',voiceId,voiceSec:voice?Math.round(voice.sec):null,createdAt:now,expiresAt:exp});
+      pushNotify('notice',ref.id);   // 학생 휴대폰 알림
       setNoticeText('');setVoice(null);setVKey(k=>k+1);loadAll();
     }catch(e){alert('등록 실패');}
     setPosting(false);
@@ -12394,7 +12509,7 @@ function QuickFeedbackPanel({student}){
         logStr=`${fmtDate(l.date)} ${l.time||''} | ${l.type||''} | 점수: ${l.score||''}`;
       }
       const voiceId=voice?await saveVoice({from:'선생님',to:student.name,blob:voice.blob,sec:voice.sec}):null;
-      await db.collection('feedback').add({
+      const ref=await db.collection('feedback').add({
         studentName:student.name,
         message:msg.trim()||'🎙 음성 피드백',
         voiceId,voiceSec:voice?Math.round(voice.sec):null,
@@ -12402,6 +12517,7 @@ function QuickFeedbackPanel({student}){
         read:false,
         createdAt:new Date()
       });
+      pushNotify('feedback',ref.id);   // 학생 휴대폰 알림
       setMsg('');setSent(true);setVoice(null);setVKey(k=>k+1);
       setTimeout(()=>setSent(false),2000);
     }catch(e){alert('피드백 저장 실패: '+e.message);}
@@ -15464,7 +15580,10 @@ function HandwritingLab(){
 
 function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   const[tab,setTab]=useState('analysis');
-  React.useEffect(()=>{purgeExpiredVoices();},[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
+  React.useEffect(()=>{purgeExpiredVoices();},[]);
+  // 읽지 않은 학생 의견 수 (실시간) — 학생관리 탭에 빨간 숫자로 표시
+  const[unreadFb,setUnreadFb]=useState(0);
+  React.useEffect(()=>db.collection('studentFeedback').where('read','==',false).onSnapshot(s=>setUnreadFb(s.size),()=>{}),[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'hwlab',icon:'✍️',lbl:'필기인식'}];
   const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
@@ -15482,6 +15601,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
       </div>
     </header>
     <div className="flex-1 overflow-auto scroll-body">
+      {tab==='analysis'&&<div className="px-4 pt-4"><PushCard userData={userData}/></div>}
       {tab==='analysis'&&<StudentAnalysisTab/>}
       {tab==='worksheets'&&<WorksheetTab/>}
       {tab==='gedsheet'&&<GedWorksheetTab/>}
@@ -15490,7 +15610,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
     </div>
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-2xl mx-auto">
       <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>setTab(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 ${tab===t.k?'text-indigo-600':'text-gray-400'}`}>
-        <span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span>
+        <span className="text-2xl relative">{t.icon}{t.k==='analysis'&&unreadFb>0&&<span className="absolute -top-1 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">{unreadFb}</span>}</span><span className="text-xs font-bold">{t.lbl}</span>
       </button>)}</div>
     </nav>
   </div>);

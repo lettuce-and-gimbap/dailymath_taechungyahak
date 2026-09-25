@@ -212,9 +212,10 @@ function StudentFeedbackPanel(){
   const allChecked=msgs.length>0&&msgs.every(m=>selIds.has(m.id));
   const toggleAll=()=>setSelIds(allChecked?new Set():new Set(msgs.map(m=>m.id)));
 
-  return(<div className="bg-white rounded-3xl p-5 shadow-md mb-4">
+  const unreadN=msgs.filter(m=>!m.read).length;   // 읽지 않은 의견이 있으면 카드 전체를 빨갛게 표시
+  return(<div className={`rounded-3xl p-5 shadow-md mb-4 ${unreadN?'bg-red-50 border-2 border-red-300':'bg-white'}`}>
     <div className="flex items-center justify-between mb-3">
-      <div className="text-sm font-bold text-gray-400 uppercase">💬 학생 의견 수신함</div>
+      <div className={`text-sm font-bold uppercase flex items-center gap-2 ${unreadN?'text-red-600':'text-gray-400'}`}>💬 학생 의견 수신함{unreadN>0&&<span className="text-[11px] bg-red-500 text-white px-2 py-0.5 rounded-full normal-case animate-pulse">읽지 않음 {unreadN}</span>}</div>
       <div className="flex gap-2 flex-wrap justify-end">
         {selIds.size>0&&<button onClick={delSelected} className="text-xs px-3 py-1 bg-red-500 text-white rounded-lg font-bold">🗑️ 선택 {selIds.size}개 삭제</button>}
         <button onClick={load} className="text-xs px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold">새로고침</button>
@@ -331,7 +332,7 @@ function FeedbackTab(){
          logStr = `${fmtDate(l.date)} ${l.time} | ${l.type} | 점수: ${l.score}`;
       }
       const voiceId=voice?await saveVoice({from:'선생님',to:sid.trim(),blob:voice.blob,sec:voice.sec}):null;
-      await db.collection('feedback').add({
+      const ref=await db.collection('feedback').add({
         studentName: sid.trim(),
         message: msg.trim()||'🎙 음성 피드백',
         voiceId, voiceSec: voice?Math.round(voice.sec):null,
@@ -339,6 +340,7 @@ function FeedbackTab(){
         read: false,
         createdAt: new Date()
       });
+      pushNotify('feedback',ref.id);   // 학생 휴대폰 알림
       setMsg(''); setRelatedLogIdx(''); setSent(true); setVoice(null); setVKey(k=>k+1);
       setTimeout(()=>setSent(false), 2000);
       search();

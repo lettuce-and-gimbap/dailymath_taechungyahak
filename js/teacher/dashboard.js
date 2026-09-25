@@ -6,7 +6,10 @@
 
 function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   const[tab,setTab]=useState('analysis');
-  React.useEffect(()=>{purgeExpiredVoices();},[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
+  React.useEffect(()=>{purgeExpiredVoices();},[]);
+  // 읽지 않은 학생 의견 수 (실시간) — 학생관리 탭에 빨간 숫자로 표시
+  const[unreadFb,setUnreadFb]=useState(0);
+  React.useEffect(()=>db.collection('studentFeedback').where('read','==',false).onSnapshot(s=>setUnreadFb(s.size),()=>{}),[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'hwlab',icon:'✍️',lbl:'필기인식'}];
   const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
@@ -24,6 +27,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
       </div>
     </header>
     <div className="flex-1 overflow-auto scroll-body">
+      {tab==='analysis'&&<div className="px-4 pt-4"><PushCard userData={userData}/></div>}
       {tab==='analysis'&&<StudentAnalysisTab/>}
       {tab==='worksheets'&&<WorksheetTab/>}
       {tab==='gedsheet'&&<GedWorksheetTab/>}
@@ -32,7 +36,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
     </div>
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-2xl mx-auto">
       <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>setTab(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 ${tab===t.k?'text-indigo-600':'text-gray-400'}`}>
-        <span className="text-2xl">{t.icon}</span><span className="text-xs font-bold">{t.lbl}</span>
+        <span className="text-2xl relative">{t.icon}{t.k==='analysis'&&unreadFb>0&&<span className="absolute -top-1 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">{unreadFb}</span>}</span><span className="text-xs font-bold">{t.lbl}</span>
       </button>)}</div>
     </nav>
   </div>);
