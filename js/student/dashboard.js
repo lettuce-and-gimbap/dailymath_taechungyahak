@@ -244,6 +244,7 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
               <div key={fb.id} className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 shadow-sm">
                 {fb.relatedLog && <div className="text-xs text-indigo-600 font-black mb-2 bg-white px-2.5 py-1.5 rounded-lg inline-block border border-indigo-100">📋 {fb.relatedLog}</div>}
                 <div className="text-gray-800 font-bold text-base leading-relaxed">{fb.message}</div>
+                {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec} big/>}
               </div>
             ))}
           </div>

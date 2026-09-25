@@ -73,6 +73,7 @@ function StudentSentFeedback({name,refreshSignal}){
                 <span className="text-[11px] text-gray-400 ml-auto">{fmt(it.sentAt)}</span>
               </div>
               <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep">{it.message}</p>
+              {it.voiceId&&<VoicePlayer voiceId={it.voiceId} sec={it.voiceSec}/>}
               <div className="flex gap-2 mt-2 justify-end">
                 {unread&&<button onClick={()=>startEdit(it)} className="text-[11px] px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold">✏️ 수정</button>}
                 <button onClick={()=>del(it.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>
@@ -211,7 +212,11 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
   const[feedbackMsg,setFeedbackMsg]=React.useState('');const[fbSent,setFbSent]=React.useState(false);
   const[sentFbRefresh,setSentFbRefresh]=React.useState(0);
-  const sendStudentFeedback=async()=>{if(!feedbackMsg.trim())return;try{await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim(),sentAt:new Date(),read:false});setFbSent(true);setFeedbackMsg('');setSentFbRefresh(x=>x+1);setTimeout(()=>setFbSent(false),3000);}catch(e){alert('전송 실패');}};
+  const[fbVoice,setFbVoice]=React.useState(null);const[fbVKey,setFbVKey]=React.useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
+  const sendStudentFeedback=async()=>{if(!feedbackMsg.trim()&&!fbVoice)return;try{
+    const voiceId=fbVoice?await saveVoice({from:name,to:'선생님',blob:fbVoice.blob,sec:fbVoice.sec}):null;
+    await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim()||'🎙 음성 의견',voiceId,voiceSec:fbVoice?Math.round(fbVoice.sec):null,sentAt:new Date(),read:false});
+    setFbSent(true);setFeedbackMsg('');setFbVoice(null);setFbVKey(k=>k+1);setSentFbRefresh(x=>x+1);setTimeout(()=>setFbSent(false),3000);}catch(e){alert('전송 실패'+(e&&e.message?': '+e.message:''));}};
   // 취약 영역 감지
   const weakAreaCheck = (() => {
     const counts = { geo: 0, set: 0, stat: 0 };
@@ -360,6 +365,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 선생님께 의견 보내기</div>
       <textarea lang="ko" value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
+      <div className="mb-3"><VoiceRecorder key={fbVKey} onChange={setFbVoice}/></div>
       <button onClick={sendStudentFeedback} className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black text-base active:scale-95 transition-transform">
         {fbSent?'✅ 전송되었어요!':'선생님께 보내기 📩'}
       </button>

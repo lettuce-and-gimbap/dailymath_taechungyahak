@@ -309,7 +309,22 @@ dailymath_taechungyahak/
   **학생은 다시 로그인하지 않아도 되고**(app.js 가 `yakHakUser2` 와 `yakHakSavedSession_<이름>` 을 새 이름으로 옮긴다),
   옛 이름으로 로그인해도 새 계정으로 들어온다. `saveUser` 도 표지판을 따라가므로 앱을 켜 둔 채 이름이 바뀌어도
   표지판 위에 기록이 덮어써지지 않는다.
+- `voiceMsgs` 의 `from`/`to` 도 옮긴다(음성 피드백).
 - **새 컬렉션에 학생 이름을 저장하면 `renameUser` 에도 한 줄 추가할 것.** 안 그러면 그 자료만 옛 이름에 남는다.
 - 선생님 화면 : 학생 상세 → `✏️ 이름` 칸 → [이름 수정].
 - `loadUser(name,{throwOnError:true})` : 통신 실패와 '계정 없음'을 구분한다. app.js 는 통신 실패 때
   로그아웃시키지 않고 **[다시 시도]** 화면을 보여 준다 (로그인 상태는 localStorage 에 그대로 있다).
+
+## 🎙 음성 피드백 (js/ui/voiceMsg.js)
+
+- **Firebase Storage 를 쓰지 않는다** — 2026-02-03 부터 무료(Spark) 요금제에서는 Storage 버킷에 접근할 수 없다.
+  녹음을 opus 24kbps 로 만들어 base64 로 `voiceMsgs` 문서 하나에 담는다(60초 ≈ 240KB, 문서 한도 1MiB).
+- `feedback`·`studentFeedback` 문서에는 `voiceId`·`voiceSec` 만 둔다 → 목록을 읽을 때 음성까지 받지 않는다. 재생할 때 내려받는다.
+- 길이 `VOICE_MAX_SEC`(60), 보관 `VOICE_KEEP_DAYS`(30). 선생님 화면을 열면 `purgeExpiredVoices()` 가 하루 한 번
+  `expiresAt` 이 지난 음성을 완전히 지운다(글 피드백은 남고, 재생 칸에 '지워진 음성'으로 나온다). 💾 로 휴대폰에 저장할 수 있다.
+
+## ✍️ 필기 숫자 인식 시험판 (js/teacher/handwritingLab.js) — 교사 화면 `필기인식` 탭
+
+- TensorFlow.js(cdnjs) 를 탭을 열 때만 불러오고, 처음 한 번 MNIST 2만 장으로 그 브라우저에서 학습해 IndexedDB 에 저장한다.
+- `m.fit` 에 **`yieldEvery:'never'`** 를 꼭 둔다. 기본값은 rAF 로 쉬는데 창이 가려지면 rAF 가 멈춰 학습이 0% 에서 멈춘다.
+- 확신도 70% 미만 글자가 하나라도 있으면 자동 채점하지 않고 '선생님 확인'으로 돌린다. 학생 화면에는 아직 붙이지 않았다.

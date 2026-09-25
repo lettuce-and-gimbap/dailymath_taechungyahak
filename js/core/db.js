@@ -99,6 +99,8 @@ var renameUser=async(oldName,newName,onStep)=>{
   const nLogs=await swap('math_logs','studentName','학습 기록');
   const nFb=await swap('feedback','studentName','선생님 피드백');
   const nSf=await swap('studentFeedback','studentName','학생 의견');
+  await swap('voiceMsgs','from','음성(보낸)');
+  await swap('voiceMsgs','to','음성(받은)');
 
   // 3) 숙제의 받는 사람 / 제출한 사람 목록 (배열 안에 이름이 들어 있다)
   step('숙제 명단 고치는 중…');

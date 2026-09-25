@@ -32,6 +32,7 @@ function HistoryTab({userData, feedbacks}){
                 {!fb.read && <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></div>}
                 {fb.relatedLog && <div className="text-xs text-indigo-500 font-black mb-2 inline-block bg-indigo-50 px-2 py-1 rounded">📋 {fb.relatedLog}</div>}
                 <div className="text-base font-bold text-gray-800 leading-relaxed">{fb.message}</div>
+                {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec} big/>}
                 <div className="text-xs text-gray-400 mt-3 font-semibold text-right">{fb.createdAt?.toDate?.()?.toLocaleDateString('ko-KR') || new Date(fb.createdAt).toLocaleDateString('ko-KR')}</div>
               </div>
             ))}

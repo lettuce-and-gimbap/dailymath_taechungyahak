@@ -240,6 +240,7 @@ function StudentFeedbackPanel(){
             <span className="text-[11px] text-gray-400 ml-auto">{fmtTime(m.sentAt)}</span>
           </div>
           <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep">{m.message}</p>
+          {m.voiceId&&<VoicePlayer voiceId={m.voiceId} sec={m.voiceSec}/>}
           <div className="flex gap-2 mt-2.5 justify-end">
             {!m.read&&<button onClick={()=>markRead(m.id)} className="text-[11px] px-3 py-1.5 bg-green-50 text-green-600 rounded-lg font-bold">✓ 읽음 처리</button>}
             <button onClick={()=>del(m.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>
@@ -267,6 +268,7 @@ function FeedbackTab(){
   const[loading,setLoading]=useState(false);
   const[feedbacks,setFeedbacks]=useState([]);
   const[sent,setSent]=useState(false);
+  const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);
   const[editFbId,setEditFbId]=useState(null);
   const[editFbText,setEditFbText]=useState('');
   const[recentSessions,setRecentSessions]=useState([]);
@@ -321,21 +323,23 @@ function FeedbackTab(){
   };
 
   const send=async()=>{
-    if(!msg.trim())return;
+    if(!msg.trim()&&!voice)return;
     try{
       let logStr = '';
       if(relatedLogIdx !== '' && student?.logs?.[relatedLogIdx]) {
          const l = student.logs[relatedLogIdx];
          logStr = `${fmtDate(l.date)} ${l.time} | ${l.type} | 점수: ${l.score}`;
       }
+      const voiceId=voice?await saveVoice({from:'선생님',to:sid.trim(),blob:voice.blob,sec:voice.sec}):null;
       await db.collection('feedback').add({
         studentName: sid.trim(),
-        message: msg.trim(),
+        message: msg.trim()||'🎙 음성 피드백',
+        voiceId, voiceSec: voice?Math.round(voice.sec):null,
         relatedLog: logStr,
         read: false,
         createdAt: new Date()
       });
-      setMsg(''); setRelatedLogIdx(''); setSent(true);
+      setMsg(''); setRelatedLogIdx(''); setSent(true); setVoice(null); setVKey(k=>k+1);
       setTimeout(()=>setSent(false), 2000);
       search();
     }catch(e){
@@ -437,6 +441,7 @@ function FeedbackTab(){
 
           <div className="text-sm font-bold text-gray-600 mb-2">✍️ 피드백 메시지 작성</div>
           <textarea lang="ko" value={msg} onChange={e=>setMsg(e.target.value)} rows={3} placeholder="예: 나눗셈 계산은 잘했어요! 약수 부분을 좀 더 연습해봐요 😊" className="w-full border-2 border-gray-200 rounded-xl p-4 text-base font-bold resize-none focus:border-indigo-400 outline-none mb-3"/>
+          <div className="mb-3"><VoiceRecorder key={vKey} onChange={setVoice}/></div>
           <button onClick={send} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">{sent?'✅ 전송완료!':'피드백 저장 및 전송 💌'}</button>
         </div>
 
@@ -464,6 +469,7 @@ function FeedbackTab(){
             ):(
               <>
                 <div className="text-gray-800 font-bold text-base leading-relaxed break-keep">{fb.message}</div>
+                {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec}/>}
                 <div className="flex gap-2 mt-3 justify-end">
                   {!fb.read&&<button onClick={()=>startFbEdit(fb)} className="text-[11px] px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold">✏️ 수정</button>}
                   <button onClick={()=>deleteFb(fb.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>

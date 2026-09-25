@@ -26,6 +26,7 @@ FILES = [
     "js/ui/auth.js",
     "js/ui/splash.js",
     "js/ui/sessionPrint.js",
+    "js/ui/voiceMsg.js",
     "js/student/exploreModules.js",
     "js/student/explore.js",
     "js/student/home.js",
@@ -44,6 +45,7 @@ FILES = [
     "js/teacher/studentDetail.js",
     "js/teacher/worksheet.js",
     "js/teacher/gedWorksheet.js",
+    "js/teacher/handwritingLab.js",
     "js/teacher/dashboard.js",
     "js/app.js",
 ]

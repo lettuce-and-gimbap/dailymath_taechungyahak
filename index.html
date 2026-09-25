@@ -744,6 +744,8 @@ var renameUser=async(oldName,newName,onStep)=>{
   const nLogs=await swap('math_logs','studentName','학습 기록');
   const nFb=await swap('feedback','studentName','선생님 피드백');
   const nSf=await swap('studentFeedback','studentName','학생 의견');
+  await swap('voiceMsgs','from','음성(보낸)');
+  await swap('voiceMsgs','to','음성(받은)');
 
   // 3) 숙제의 받는 사람 / 제출한 사람 목록 (배열 안에 이름이 들어 있다)
   step('숙제 명단 고치는 중…');
@@ -7661,6 +7663,124 @@ function SessionPrintModal({log,studentName,studentId,onClose}){
 }
 
 
+// ========== js\ui\voiceMsg.js ==========
+// === js/ui/voiceMsg.js ===
+/* --------------------------------------------------------------------
+   음성 피드백 — 녹음기 · 재생기 · 보관 기간 정리 (선생님↔학생 공용)
+
+   왜 Firestore 에 넣나 : Firebase Storage 는 2026-02-03 부터 무료(Spark) 요금제에서 쓸 수 없다.
+   그래서 녹음을 opus 24kbps 로 작게 만들어 base64 로 voiceMsgs 문서 하나에 담는다.
+   60초 ≈ 180KB(base64 240KB) → Firestore 문서 한도(1MiB) 안에 여유 있게 들어간다.
+   feedback / studentFeedback 문서에는 voiceId 만 적어 둬서, 목록을 읽을 때 음성까지 내려받지 않는다.
+   보관 기간(VOICE_KEEP_DAYS)이 지나면 선생님 화면을 열 때 purgeExpiredVoices() 가 완전히 지운다.
+   학생 이름이 from/to 에 들어가므로 db.js renameUser 에도 등록되어 있다.
+   -------------------------------------------------------------------- */
+
+var VOICE_MAX_SEC=60;        // 한 번에 녹음할 수 있는 길이
+var VOICE_KEEP_DAYS=30;      // 이 날짜가 지나면 음성 파일을 완전히 지운다 (글 피드백은 남는다)
+
+var _blobToB64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
+var _b64ToBlob=(b64,mime)=>{const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:mime});};
+
+/* 녹음 한 개를 저장하고 문서 id 를 돌려준다 */
+var saveVoice=async({from,to,blob,sec})=>{
+  const data=await _blobToB64(blob);
+  if(data.length>950000)throw new Error('녹음이 너무 깁니다. 짧게 다시 녹음해주세요.');
+  const now=new Date();
+  const ref=await db.collection('voiceMsgs').add({from,to,mime:blob.type||'audio/webm',data,sec:Math.round(sec),
+    createdAt:now,expiresAt:new Date(now.getTime()+VOICE_KEEP_DAYS*86400000)});
+  return ref.id;
+};
+
+var deleteVoice=async(id)=>{if(!id)return;try{await db.collection('voiceMsgs').doc(id).delete();}catch(e){}};
+
+/* 보관 기간이 지난 음성을 지운다 — 하루에 한 번만 (선생님 화면에서 부른다) */
+var purgeExpiredVoices=async()=>{
+  const k='voicePurgeDay',today=todayStr();
+  try{if(localStorage.getItem(k)===today)return 0;}catch(e){}
+  try{
+    const snap=await db.collection('voiceMsgs').where('expiresAt','<',new Date()).get();
+    const refs=[];snap.forEach(d=>refs.push(d.ref));
+    for(let i=0;i<refs.length;i+=400){const b=db.batch();refs.slice(i,i+400).forEach(r=>b.delete(r));await b.commit();}
+    try{localStorage.setItem(k,today);}catch(e){}
+    return refs.length;
+  }catch(e){console.error('음성 정리 실패',e);return 0;}
+};
+
+/* 🎙 녹음기 : 녹음 → 들어보기 → onChange({blob,sec}) / 지우면 onChange(null) */
+function VoiceRecorder({onChange,compact}){
+  const[st,setSt]=useState('idle');      // idle | rec | done
+  const[sec,setSec]=useState(0);
+  const[url,setUrl]=useState(null);
+  const recRef=React.useRef(null);const timerRef=React.useRef(null);const t0=React.useRef(0);
+  const stop=()=>{try{recRef.current&&recRef.current.state!=='inactive'&&recRef.current.stop();}catch(e){}clearInterval(timerRef.current);};
+  React.useEffect(()=>()=>{stop();},[]);
+  const start=async()=>{
+    if(!navigator.mediaDevices||!window.MediaRecorder){alert('이 기기에서는 녹음을 지원하지 않습니다.');return;}
+    let stream;
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}
+    catch(e){alert('마이크 사용을 허용해주세요.\n(주소창 왼쪽 자물쇠 → 마이크 → 허용)');return;}
+    const mime=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    const rec=new MediaRecorder(stream,mime?{mimeType:mime,audioBitsPerSecond:24000}:{audioBitsPerSecond:24000});
+    const chunks=[];
+    rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    rec.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const s=(Date.now()-t0.current)/1000;
+      const blob=new Blob(chunks,{type:rec.mimeType||mime||'audio/webm'});
+      setUrl(URL.createObjectURL(blob));setSec(Math.round(s));setSt('done');
+      onChange&&onChange({blob,sec:s});
+    };
+    recRef.current=rec;t0.current=Date.now();setSec(0);setSt('rec');rec.start();
+    timerRef.current=setInterval(()=>{
+      const s=Math.floor((Date.now()-t0.current)/1000);setSec(s);
+      if(s>=VOICE_MAX_SEC)stop();
+    },250);
+  };
+  const clear=()=>{if(url)URL.revokeObjectURL(url);setUrl(null);setSt('idle');setSec(0);onChange&&onChange(null);};
+
+  if(st==='rec')return(<button type="button" onClick={stop}
+    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500 text-white font-black text-sm animate-pulse">
+    ■ 녹음 끝내기 <span className="tabular-nums">{sec}초 / {VOICE_MAX_SEC}초</span></button>);
+  if(st==='done')return(<div className="flex items-center gap-2 bg-white border-2 border-indigo-200 rounded-xl p-2">
+    <audio src={url} controls className="flex-1 min-w-0 h-9"/>
+    <button type="button" onClick={clear} className="px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-500 text-xs font-black whitespace-nowrap">다시</button>
+  </div>);
+  return(<button type="button" onClick={start}
+    className={`w-full flex items-center justify-center gap-2 ${compact?'py-2.5':'py-3'} rounded-xl bg-white border-2 border-dashed border-indigo-300 text-indigo-600 font-black text-sm`}>
+    🎙 목소리로 녹음하기 <span className="text-xs font-bold text-gray-400">(최대 {VOICE_MAX_SEC}초)</span></button>);
+}
+
+/* ▶ 재생기 : 누를 때 내려받아 재생. 💾 로 휴대폰에 저장할 수 있다. */
+function VoicePlayer({voiceId,sec,big}){
+  const[st,setSt]=useState('idle');   // idle | loading | ready | gone
+  const[url,setUrl]=useState(null);const[mime,setMime]=useState('');
+  const audioRef=React.useRef(null);
+  React.useEffect(()=>()=>{if(url)URL.revokeObjectURL(url);},[url]);
+  const load=async()=>{
+    setSt('loading');
+    try{
+      const d=await db.collection('voiceMsgs').doc(voiceId).get();
+      if(!d.exists){setSt('gone');return;}
+      const v=d.data();const blob=_b64ToBlob(v.data,v.mime);
+      setMime(v.mime);setUrl(URL.createObjectURL(blob));setSt('ready');
+      setTimeout(()=>{try{const p=audioRef.current&&audioRef.current.play();p&&p.catch(()=>{});}catch(e){}},50);
+    }catch(e){setSt('idle');alert('음성을 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');}
+  };
+  if(!voiceId)return null;
+  if(st==='gone')return<div className="text-xs font-bold text-gray-400 mt-2">🔇 보관 기간({VOICE_KEEP_DAYS}일)이 지나 지워진 음성입니다</div>;
+  if(st==='ready')return(<div className="flex items-center gap-2 mt-2">
+    <audio ref={audioRef} src={url} controls className="flex-1 min-w-0 h-10"/>
+    <a href={url} download={`음성피드백_${todayStr()}.${/mp4/.test(mime)?'m4a':'webm'}`}
+      className="px-2.5 py-2 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black whitespace-nowrap">💾 저장</a>
+  </div>);
+  return(<button type="button" onClick={load} disabled={st==='loading'}
+    className={`mt-2 flex items-center gap-2 rounded-2xl bg-indigo-600 text-white font-black active:scale-95 transition-transform ${big?'w-full justify-center py-4 text-lg':'px-4 py-2.5 text-sm'}`}>
+    {st==='loading'?'불러오는 중…':<>▶ 목소리 듣기{sec?<span className="opacity-80 font-bold">({sec}초)</span>:null}</>}
+  </button>);
+}
+
+
 // ========== js\student\exploreModules.js ==========
 // === js/student/exploreModules.js ===
 /* --------------------------------------------------------------------
@@ -8469,6 +8589,7 @@ function StudentSentFeedback({name,refreshSignal}){
                 <span className="text-[11px] text-gray-400 ml-auto">{fmt(it.sentAt)}</span>
               </div>
               <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep">{it.message}</p>
+              {it.voiceId&&<VoicePlayer voiceId={it.voiceId} sec={it.voiceSec}/>}
               <div className="flex gap-2 mt-2 justify-end">
                 {unread&&<button onClick={()=>startEdit(it)} className="text-[11px] px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold">✏️ 수정</button>}
                 <button onClick={()=>del(it.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>
@@ -8607,7 +8728,11 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
 
   const[feedbackMsg,setFeedbackMsg]=React.useState('');const[fbSent,setFbSent]=React.useState(false);
   const[sentFbRefresh,setSentFbRefresh]=React.useState(0);
-  const sendStudentFeedback=async()=>{if(!feedbackMsg.trim())return;try{await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim(),sentAt:new Date(),read:false});setFbSent(true);setFeedbackMsg('');setSentFbRefresh(x=>x+1);setTimeout(()=>setFbSent(false),3000);}catch(e){alert('전송 실패');}};
+  const[fbVoice,setFbVoice]=React.useState(null);const[fbVKey,setFbVKey]=React.useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
+  const sendStudentFeedback=async()=>{if(!feedbackMsg.trim()&&!fbVoice)return;try{
+    const voiceId=fbVoice?await saveVoice({from:name,to:'선생님',blob:fbVoice.blob,sec:fbVoice.sec}):null;
+    await db.collection('studentFeedback').add({studentName:name,message:feedbackMsg.trim()||'🎙 음성 의견',voiceId,voiceSec:fbVoice?Math.round(fbVoice.sec):null,sentAt:new Date(),read:false});
+    setFbSent(true);setFeedbackMsg('');setFbVoice(null);setFbVKey(k=>k+1);setSentFbRefresh(x=>x+1);setTimeout(()=>setFbSent(false),3000);}catch(e){alert('전송 실패'+(e&&e.message?': '+e.message:''));}};
   // 취약 영역 감지
   const weakAreaCheck = (() => {
     const counts = { geo: 0, set: 0, stat: 0 };
@@ -8756,6 +8881,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">💬 선생님께 의견 보내기</div>
       <textarea lang="ko" value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)} placeholder="선생님께 전하고 싶은 말을 남겨주세요" rows={3} className="w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-base font-medium resize-none focus:border-indigo-400 outline-none mb-3"/>
+      <div className="mb-3"><VoiceRecorder key={fbVKey} onChange={setFbVoice}/></div>
       <button onClick={sendStudentFeedback} className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black text-base active:scale-95 transition-transform">
         {fbSent?'✅ 전송되었어요!':'선생님께 보내기 📩'}
       </button>
@@ -10045,6 +10171,7 @@ function HistoryTab({userData, feedbacks}){
                 {!fb.read && <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></div>}
                 {fb.relatedLog && <div className="text-xs text-indigo-500 font-black mb-2 inline-block bg-indigo-50 px-2 py-1 rounded">📋 {fb.relatedLog}</div>}
                 <div className="text-base font-bold text-gray-800 leading-relaxed">{fb.message}</div>
+                {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec} big/>}
                 <div className="text-xs text-gray-400 mt-3 font-semibold text-right">{fb.createdAt?.toDate?.()?.toLocaleDateString('ko-KR') || new Date(fb.createdAt).toLocaleDateString('ko-KR')}</div>
               </div>
             ))}
@@ -10736,6 +10863,7 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
               <div key={fb.id} className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 shadow-sm">
                 {fb.relatedLog && <div className="text-xs text-indigo-600 font-black mb-2 bg-white px-2.5 py-1.5 rounded-lg inline-block border border-indigo-100">📋 {fb.relatedLog}</div>}
                 <div className="text-gray-800 font-bold text-base leading-relaxed">{fb.message}</div>
+                {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec} big/>}
               </div>
             ))}
           </div>
@@ -11639,6 +11767,7 @@ function StudentFeedbackPanel(){
             <span className="text-[11px] text-gray-400 ml-auto">{fmtTime(m.sentAt)}</span>
           </div>
           <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep">{m.message}</p>
+          {m.voiceId&&<VoicePlayer voiceId={m.voiceId} sec={m.voiceSec}/>}
           <div className="flex gap-2 mt-2.5 justify-end">
             {!m.read&&<button onClick={()=>markRead(m.id)} className="text-[11px] px-3 py-1.5 bg-green-50 text-green-600 rounded-lg font-bold">✓ 읽음 처리</button>}
             <button onClick={()=>del(m.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>
@@ -11666,6 +11795,7 @@ function FeedbackTab(){
   const[loading,setLoading]=useState(false);
   const[feedbacks,setFeedbacks]=useState([]);
   const[sent,setSent]=useState(false);
+  const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);
   const[editFbId,setEditFbId]=useState(null);
   const[editFbText,setEditFbText]=useState('');
   const[recentSessions,setRecentSessions]=useState([]);
@@ -11720,21 +11850,23 @@ function FeedbackTab(){
   };
 
   const send=async()=>{
-    if(!msg.trim())return;
+    if(!msg.trim()&&!voice)return;
     try{
       let logStr = '';
       if(relatedLogIdx !== '' && student?.logs?.[relatedLogIdx]) {
          const l = student.logs[relatedLogIdx];
          logStr = `${fmtDate(l.date)} ${l.time} | ${l.type} | 점수: ${l.score}`;
       }
+      const voiceId=voice?await saveVoice({from:'선생님',to:sid.trim(),blob:voice.blob,sec:voice.sec}):null;
       await db.collection('feedback').add({
         studentName: sid.trim(),
-        message: msg.trim(),
+        message: msg.trim()||'🎙 음성 피드백',
+        voiceId, voiceSec: voice?Math.round(voice.sec):null,
         relatedLog: logStr,
         read: false,
         createdAt: new Date()
       });
-      setMsg(''); setRelatedLogIdx(''); setSent(true);
+      setMsg(''); setRelatedLogIdx(''); setSent(true); setVoice(null); setVKey(k=>k+1);
       setTimeout(()=>setSent(false), 2000);
       search();
     }catch(e){
@@ -11836,6 +11968,7 @@ function FeedbackTab(){
 
           <div className="text-sm font-bold text-gray-600 mb-2">✍️ 피드백 메시지 작성</div>
           <textarea lang="ko" value={msg} onChange={e=>setMsg(e.target.value)} rows={3} placeholder="예: 나눗셈 계산은 잘했어요! 약수 부분을 좀 더 연습해봐요 😊" className="w-full border-2 border-gray-200 rounded-xl p-4 text-base font-bold resize-none focus:border-indigo-400 outline-none mb-3"/>
+          <div className="mb-3"><VoiceRecorder key={vKey} onChange={setVoice}/></div>
           <button onClick={send} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">{sent?'✅ 전송완료!':'피드백 저장 및 전송 💌'}</button>
         </div>
 
@@ -11863,6 +11996,7 @@ function FeedbackTab(){
             ):(
               <>
                 <div className="text-gray-800 font-bold text-base leading-relaxed break-keep">{fb.message}</div>
+                {fb.voiceId&&<VoicePlayer voiceId={fb.voiceId} sec={fb.voiceSec}/>}
                 <div className="flex gap-2 mt-3 justify-end">
                   {!fb.read&&<button onClick={()=>startFbEdit(fb)} className="text-[11px] px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-bold">✏️ 수정</button>}
                   <button onClick={()=>deleteFb(fb.id)} className="text-[11px] px-3 py-1.5 bg-red-50 text-red-500 rounded-lg font-bold">🗑️ 삭제</button>
@@ -12242,25 +12376,28 @@ function QuickFeedbackPanel({student}){
   const[sessionIdx,setSessionIdx]=useState('');
   const[msg,setMsg]=useState('');
   const[sent,setSent]=useState(false);
+  const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
 
   const selLog=mode==='session'&&sessionIdx!==''?student?.logs?.[Number(sessionIdx)]:null;
 
   const send=async()=>{
-    if(!msg.trim())return;
+    if(!msg.trim()&&!voice)return;
     try{
       let logStr='';
       if(mode==='session'&&sessionIdx!==''&&student?.logs?.[Number(sessionIdx)]){
         const l=student.logs[Number(sessionIdx)];
         logStr=`${fmtDate(l.date)} ${l.time||''} | ${l.type||''} | 점수: ${l.score||''}`;
       }
+      const voiceId=voice?await saveVoice({from:'선생님',to:student.name,blob:voice.blob,sec:voice.sec}):null;
       await db.collection('feedback').add({
         studentName:student.name,
-        message:msg.trim(),
+        message:msg.trim()||'🎙 음성 피드백',
+        voiceId,voiceSec:voice?Math.round(voice.sec):null,
         relatedLog:logStr,
         read:false,
         createdAt:new Date()
       });
-      setMsg('');setSent(true);
+      setMsg('');setSent(true);setVoice(null);setVKey(k=>k+1);
       setTimeout(()=>setSent(false),2000);
     }catch(e){alert('피드백 저장 실패: '+e.message);}
   };
@@ -12308,6 +12445,7 @@ function QuickFeedbackPanel({student}){
       <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={3} lang="ko"
         placeholder={mode==='session'&&selLog?`[${fmtDate(selLog.date)} ${selLog.type||''}] 세션에 대한 피드백...`:'학생에게 전달할 피드백 메시지...'}
         className="w-full border-2 border-gray-200 rounded-xl p-3 text-sm font-bold resize-none focus:border-indigo-400 outline-none"/>
+      <VoiceRecorder key={vKey} onChange={setVoice} compact/>
       <button onClick={send}
         className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm active:scale-95 transition-transform">
         {sent?'✅ 전송완료!':'💌 피드백 전송'}
@@ -15095,6 +15233,223 @@ function GedWorksheetTab(){
 }
 
 
+// ========== js\teacher\handwritingLab.js ==========
+// === js/teacher/handwritingLab.js ===
+/* --------------------------------------------------------------------
+   ✍️ 필기 숫자 인식 — 교사 화면 전용 시험판 (프로토타입)
+
+   학생이 손으로 쓴 답(화면에 손가락으로 쓰기 · 종이 사진)을 숫자로 읽어 정답과 맞는지 판단한다.
+   - 인식 : TensorFlow.js 작은 CNN. 처음 한 번 MNIST 손글씨 2만 장으로 이 브라우저에서 학습(약 1분)하고
+            IndexedDB 에 저장해 다음부터는 바로 쓴다. 서버·API 키·요금이 없다.
+   - 여러 자리 : 잉크 덩어리를 나눠 왼쪽부터 한 글자씩 읽는다. 납작한 덩어리는 '−' 로 본다.
+   - 확신도가 낮은 글자가 있으면 ⭕/❌ 대신 '선생님 확인'으로 돌린다 (자동 채점을 믿기 전 안전장치).
+   학생 화면에는 아직 넣지 않았다. 정확도를 교사가 먼저 확인한 뒤 붙인다.
+   -------------------------------------------------------------------- */
+
+var HW_TF_URL='https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.20.0/tf.min.js';
+var HW_MODEL_KEY='indexeddb://taechung-hw-digits-v1';
+var HW_MNIST_IMG='https://storage.googleapis.com/learnjs-data/model-builder/mnist_images.png';
+var HW_MNIST_LBL='https://storage.googleapis.com/learnjs-data/model-builder/mnist_labels_uint8';
+
+var hwLoadTf=()=>window.tf?Promise.resolve(window.tf):new Promise((res,rej)=>{
+  const s=document.createElement('script');s.src=HW_TF_URL;s.onload=()=>res(window.tf);s.onerror=()=>rej(new Error('TensorFlow.js 를 불러오지 못했습니다'));document.head.appendChild(s);});
+
+/* MNIST 스프라이트에서 n장 읽기 (한 줄 = 28x28 한 장) */
+var hwLoadMnist=async(n)=>{
+  const img=new Image();img.crossOrigin='anonymous';
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('학습 자료를 내려받지 못했습니다'));img.src=HW_MNIST_IMG;});
+  const cv=document.createElement('canvas');cv.width=784;const ctx=cv.getContext('2d',{willReadFrequently:true});
+  const x=new Float32Array(n*784);const CH=5000;
+  for(let off=0;off<n;off+=CH){
+    const rows=Math.min(CH,n-off);cv.height=rows;
+    ctx.drawImage(img,0,off,784,rows,0,0,784,rows);
+    const d=ctx.getImageData(0,0,784,rows).data;
+    for(let i=0;i<rows*784;i++)x[off*784+i]=d[i*4]/255;
+  }
+  const lb=new Uint8Array(await (await fetch(HW_MNIST_LBL)).arrayBuffer()).slice(0,n*10);
+  return{x,y:lb};
+};
+
+var hwGetModel=async(tf,onMsg)=>{
+  try{const m=await tf.loadLayersModel(HW_MODEL_KEY);onMsg('저장해 둔 인식 모델을 불러왔습니다');return m;}catch(e){}
+  const N=20000;
+  onMsg('처음 한 번만 : 손글씨 학습 자료 내려받는 중… (약 10MB)');
+  const {x,y}=await hwLoadMnist(N);
+  const xs=tf.tensor4d(x,[N,28,28,1]),ys=tf.tensor2d(y,[N,10],'float32');
+  const m=tf.sequential();
+  m.add(tf.layers.conv2d({inputShape:[28,28,1],filters:16,kernelSize:5,activation:'relu'}));
+  m.add(tf.layers.maxPooling2d({poolSize:2}));
+  m.add(tf.layers.conv2d({filters:32,kernelSize:3,activation:'relu'}));
+  m.add(tf.layers.maxPooling2d({poolSize:2}));
+  m.add(tf.layers.flatten());
+  m.add(tf.layers.dropout({rate:0.25}));
+  m.add(tf.layers.dense({units:64,activation:'relu'}));
+  m.add(tf.layers.dense({units:10,activation:'softmax'}));
+  m.compile({optimizer:'adam',loss:'categoricalCrossentropy',metrics:['accuracy']});
+  const EP=3,BPE=Math.ceil(N*0.9/128);let curEp=0;
+  onMsg('학습 중… (1분쯤 걸립니다)');
+  await m.fit(xs,ys,{epochs:EP,batchSize:128,validationSplit:0.1,shuffle:true,yieldEvery:'never',callbacks:{   // 기본값은 rAF 로 쉬는데, 창이 가려지면 rAF 가 멈춰 학습이 멈춘다
+    onEpochEnd:(ep,l)=>onMsg(`학습 중… ${ep+1}/${EP}회차 · 검증 정확도 ${Math.round((l.val_acc||l.val_accuracy||0)*1000)/10}%`),
+    onBatchEnd:async(b)=>{if(b%20===0){onMsg(`학습 중… ${curEp+1}/${EP}회차 · ${Math.round(b/BPE*100)}%`);if(!document.hidden)await new Promise(r=>setTimeout(r,0));}},   // 가끔 쉬어 화면이 멈추지 않게
+    onEpochBegin:ep=>{curEp=ep;}}});
+  xs.dispose();ys.dispose();
+  try{await m.save(HW_MODEL_KEY);}catch(e){}
+  onMsg('학습 완료 — 이 브라우저에 저장했습니다 (다음부터 바로 시작)');
+  return m;
+};
+
+/* 캔버스 → 잉크(1)/바탕(0) 격자. 사진은 오츠 방식으로 문턱값을 정한다. */
+var hwBinarize=(ctx,w,h)=>{
+  const d=ctx.getImageData(0,0,w,h).data;const g=new Uint8Array(w*h);const hist=new Array(256).fill(0);
+  for(let i=0;i<w*h;i++){const v=(d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11)|0;g[i]=v;hist[v]++;}
+  let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];
+  let sB=0,wB=0,best=0,th=128;
+  for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=w*h-wB;if(!wF)break;sB+=t*hist[t];
+    const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;th=t;}}
+  th=Math.min(th,200);
+  const b=new Uint8Array(w*h);for(let i=0;i<w*h;i++)b[i]=g[i]<th?1:0;return b;
+};
+
+/* 잉크 덩어리 찾기 → x 범위가 많이 겹치는 덩어리는 한 글자로 합친다 */
+var hwSegments=(b,w,h)=>{
+  const lab=new Int32Array(w*h);const comps=[];let id=0;
+  const NB=[-1,1,-w,w,-w-1,-w+1,w-1,w+1];
+  for(let p=0;p<w*h;p++){
+    if(!b[p]||lab[p])continue;id++;
+    let x0=w,x1=0,y0=h,y1=0;const st=[p];lab[p]=id;const px=[];
+    while(st.length){const q=st.pop();px.push(q);const x=q%w,y=(q/w)|0;
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      for(const o of NB){const nq=q+o;
+        if(nq<0||nq>=w*h||lab[nq]||!b[nq])continue;if(Math.abs((nq%w)-x)>1)continue;lab[nq]=id;st.push(nq);}}
+    comps.push({x0,x1,y0,y1,n:px.length,px});
+  }
+  const maxN=Math.max(0,...comps.map(c=>c.n));
+  const segs=comps.filter(c=>c.n>Math.max(20,maxN*0.02)).sort((a,b)=>a.x0-b.x0);
+  const out=[];
+  for(const c of segs){
+    const last=out[out.length-1];
+    if(last){const ov=Math.min(last.x1,c.x1)-Math.max(last.x0,c.x0);const nar=Math.min(last.x1-last.x0,c.x1-c.x0)+1;
+      if(ov>nar*0.5){last.x0=Math.min(last.x0,c.x0);last.x1=Math.max(last.x1,c.x1);last.y0=Math.min(last.y0,c.y0);last.y1=Math.max(last.y1,c.y1);last.px=last.px.concat(c.px);last.n+=c.n;continue;}}
+    out.push({...c});
+  }
+  return out;
+};
+
+/* 한 글자 → MNIST 모양(28x28, 글자 20px, 무게중심 가운데) */
+var hwTo28=(seg,w)=>{
+  const sw=seg.x1-seg.x0+1,sh=seg.y1-seg.y0+1,sc=20/Math.max(sw,sh);
+  const cv=document.createElement('canvas');cv.width=28;cv.height=28;const c=cv.getContext('2d',{willReadFrequently:true});
+  const src=document.createElement('canvas');src.width=sw;src.height=sh;const s=src.getContext('2d');
+  const id=s.createImageData(sw,sh);
+  for(const p of seg.px){const x=p%w-seg.x0,y=((p/w)|0)-seg.y0;const k=(y*sw+x)*4;id.data[k]=id.data[k+1]=id.data[k+2]=255;id.data[k+3]=255;}
+  s.putImageData(id,0,0);
+  c.fillStyle='#000';c.fillRect(0,0,28,28);c.imageSmoothingEnabled=true;
+  const dw=sw*sc,dh=sh*sc;c.drawImage(src,(28-dw)/2,(28-dh)/2,dw,dh);
+  const d=c.getImageData(0,0,28,28).data;const a=new Float32Array(784);let m=0,cx=0,cy=0;
+  for(let i=0;i<784;i++){a[i]=d[i*4]/255;m+=a[i];cx+=a[i]*(i%28);cy+=a[i]*((i/28)|0);}
+  if(!m)return a;
+  const dx=Math.round(14-cx/m),dy=Math.round(14-cy/m),o=new Float32Array(784);
+  for(let y=0;y<28;y++)for(let x=0;x<28;x++){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<28&&ny>=0&&ny<28)o[ny*28+nx]=a[y*28+x];}
+  return o;
+};
+
+var hwRecognize=(tf,model,ctx,w,h)=>{
+  const b=hwBinarize(ctx,w,h);const segs=hwSegments(b,w,h);
+  if(!segs.length)return{text:'',chars:[]};
+  const maxH=Math.max(...segs.map(s=>s.y1-s.y0+1));
+  const chars=[];const batch=[];const idx=[];
+  segs.forEach((s,i)=>{
+    const sw=s.x1-s.x0+1,sh=s.y1-s.y0+1;
+    if(sh<sw*0.45&&sh<maxH*0.35){chars.push({ch:'-',p:1});return;}
+    chars.push(null);idx.push(i);batch.push(hwTo28(s,w));
+  });
+  if(batch.length){
+    const flat=new Float32Array(batch.length*784);batch.forEach((a,i)=>flat.set(a,i*784));
+    const pr=tf.tidy(()=>model.predict(tf.tensor4d(flat,[batch.length,28,28,1])).arraySync());
+    pr.forEach((p,j)=>{let k=0;for(let t=1;t<10;t++)if(p[t]>p[k])k=t;chars[idx[j]]={ch:String(k),p:p[k]};});
+  }
+  return{text:chars.map(c=>c.ch).join(''),chars};
+};
+
+var hwNewProb=()=>{
+  const k=Math.floor(Math.random()*3);
+  const a=Math.floor(Math.random()*40)+5,b=Math.floor(Math.random()*40)+5;
+  if(k===0)return{q:`${a} + ${b}`,ans:a+b};
+  if(k===1)return{q:`${a} − ${b}`,ans:a-b};
+  const c=Math.floor(Math.random()*8)+2,d=Math.floor(Math.random()*8)+2;return{q:`${c} × ${d}`,ans:c*d};
+};
+
+function HandwritingLab(){
+  const[msg,setMsg]=useState('');const[ready,setReady]=useState(false);const[busy,setBusy]=useState(false);
+  const[prob,setProb]=useState(()=>hwNewProb());
+  const[res,setRes]=useState(null);
+  const cvRef=React.useRef(null);const tfRef=React.useRef(null);const mRef=React.useRef(null);const drawing=React.useRef(false);
+  const W=720,H=240;
+  const clear=()=>{const c=cvRef.current.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,W,H);setRes(null);};
+  React.useEffect(()=>{clear();},[]);
+  const prep=async()=>{
+    setBusy(true);
+    try{const tf=await hwLoadTf();tfRef.current=tf;mRef.current=await hwGetModel(tf,setMsg);setReady(true);}
+    catch(e){setMsg('준비 실패 : '+e.message);}
+    setBusy(false);
+  };
+  const pos=e=>{const r=cvRef.current.getBoundingClientRect();return[(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height];};
+  const down=e=>{drawing.current=true;const c=cvRef.current.getContext('2d');const[x,y]=pos(e);c.beginPath();c.moveTo(x,y);cvRef.current.setPointerCapture(e.pointerId);};
+  const move=e=>{if(!drawing.current)return;const c=cvRef.current.getContext('2d');c.lineWidth=14;c.lineCap='round';c.lineJoin='round';c.strokeStyle='#111';const[x,y]=pos(e);c.lineTo(x,y);c.stroke();};
+  const up=()=>{drawing.current=false;};
+  const photo=e=>{
+    const f=e.target.files&&e.target.files[0];if(!f)return;
+    const img=new Image();img.onload=()=>{const c=cvRef.current.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,W,H);
+      const sc=Math.min(W/img.width,H/img.height);c.drawImage(img,(W-img.width*sc)/2,(H-img.height*sc)/2,img.width*sc,img.height*sc);URL.revokeObjectURL(img.src);setRes(null);};
+    img.src=URL.createObjectURL(f);e.target.value='';
+  };
+  const grade=()=>{
+    if(!mRef.current)return;
+    const r=hwRecognize(tfRef.current,mRef.current,cvRef.current.getContext('2d'),W,H);
+    const low=r.chars.some(c=>c.p<0.7);
+    const num=/^-?\d+$/.test(r.text)?parseInt(r.text,10):null;
+    setRes({...r,low,ok:num!==null&&num===prob.ans});
+  };
+  return(<div className="p-4 pb-36 space-y-4">
+    <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-sm text-amber-900 font-bold leading-relaxed">
+      ✍️ 필기 인식 시험판 — 선생님 화면에서만 보입니다. 학생 답을 손글씨로 받아 자동 채점할 수 있을지 확인하는 용도입니다.
+      <div className="font-medium text-amber-800 mt-1">처음 한 번은 이 기기에서 인식 모델을 학습합니다(약 1분). 다음부터는 바로 됩니다.</div>
+    </div>
+    {!ready&&<button onClick={prep} disabled={busy} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg disabled:bg-gray-300">{busy?'준비 중…':'인식 모델 준비하기'}</button>}
+    {msg&&<div className="text-xs font-bold text-gray-500">{msg}</div>}
+    <div className="bg-white rounded-3xl p-4 shadow-sm space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="text-2xl font-black text-gray-800 flex-1">{prob.q} = ?</div>
+        <button onClick={()=>{setProb(hwNewProb());clear();}} className="text-xs px-3 py-2 bg-gray-100 rounded-lg font-black text-gray-600">다른 문제</button>
+      </div>
+      <canvas ref={cvRef} width={W} height={H} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+        className="w-full rounded-2xl border-2 border-dashed border-gray-300 bg-white" style={{touchAction:'none',aspectRatio:`${W}/${H}`}}/>
+      <div className="text-xs text-gray-400 font-bold">칸 안에 답을 크게 쓰세요 (음수는 앞에 −). 종이에 쓴 답은 📷 로 찍어 올리면 됩니다.</div>
+      <div className="grid grid-cols-3 gap-2">
+        <button onClick={clear} className="py-3 bg-gray-100 rounded-xl font-black text-gray-600 text-sm">지우기</button>
+        <label className="py-3 bg-gray-100 rounded-xl font-black text-gray-600 text-sm text-center cursor-pointer">📷 사진<input type="file" accept="image/*" capture="environment" onChange={photo} className="hidden"/></label>
+        <button onClick={grade} disabled={!ready} className="py-3 bg-indigo-600 text-white rounded-xl font-black text-sm disabled:bg-gray-300">채점하기</button>
+      </div>
+      {res&&<div className={`rounded-2xl p-4 border-2 ${res.low?'bg-amber-50 border-amber-300':res.ok?'bg-emerald-50 border-emerald-300':'bg-red-50 border-red-300'}`}>
+        <div className="flex items-center gap-3">
+          <div className="text-4xl">{res.low?'🤔':res.ok?'⭕':'❌'}</div>
+          <div className="flex-1">
+            <div className="text-sm font-bold text-gray-500">읽은 답</div>
+            <div className="text-3xl font-black text-gray-800 tabular-nums">{res.text||'(글씨를 못 찾음)'}</div>
+          </div>
+          <div className="text-right text-sm font-bold text-gray-500">정답<div className="text-2xl font-black text-gray-800">{prob.ans}</div></div>
+        </div>
+        {res.low&&<div className="text-xs font-black text-amber-700 mt-2">확신이 낮은 글자가 있어 자동 채점하지 않고 선생님 확인으로 돌립니다.</div>}
+        <div className="flex gap-2 mt-3 flex-wrap">
+          {res.chars.map((c,i)=>(<div key={i} className={`px-2.5 py-1.5 rounded-lg text-center border ${c.p<0.7?'border-amber-400 bg-white':'border-gray-200 bg-white'}`}>
+            <div className="text-xl font-black">{c.ch}</div><div className="text-[10px] font-bold text-gray-400">{Math.round(c.p*100)}%</div></div>))}
+        </div>
+      </div>}
+    </div>
+  </div>);
+}
+
+
 // ========== js\teacher\dashboard.js ==========
 // === js/teacher/dashboard.js ===
 /* --------------------------------------------------------------------
@@ -15104,7 +15459,8 @@ function GedWorksheetTab(){
 
 function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   const[tab,setTab]=useState('analysis');
-  const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'}];
+  React.useEffect(()=>{purgeExpiredVoices();},[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
+  const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'hwlab',icon:'✍️',lbl:'필기인식'}];
   const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-2 sticky top-0 z-20 shadow-md">
@@ -15125,6 +15481,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
       {tab==='worksheets'&&<WorksheetTab/>}
       {tab==='gedsheet'&&<GedWorksheetTab/>}
       {tab==='notices'&&<NoticeTab/>}
+      {tab==='hwlab'&&<HandwritingLab/>}
     </div>
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20 max-w-2xl mx-auto">
       <div className="flex">{TABS.map(t=><button key={t.k} onClick={()=>setTab(t.k)} className={`flex-1 flex flex-col items-center py-3 gap-1 ${tab===t.k?'text-indigo-600':'text-gray-400'}`}>

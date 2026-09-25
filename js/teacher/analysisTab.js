@@ -254,25 +254,28 @@ function QuickFeedbackPanel({student}){
   const[sessionIdx,setSessionIdx]=useState('');
   const[msg,setMsg]=useState('');
   const[sent,setSent]=useState(false);
+  const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
 
   const selLog=mode==='session'&&sessionIdx!==''?student?.logs?.[Number(sessionIdx)]:null;
 
   const send=async()=>{
-    if(!msg.trim())return;
+    if(!msg.trim()&&!voice)return;
     try{
       let logStr='';
       if(mode==='session'&&sessionIdx!==''&&student?.logs?.[Number(sessionIdx)]){
         const l=student.logs[Number(sessionIdx)];
         logStr=`${fmtDate(l.date)} ${l.time||''} | ${l.type||''} | 점수: ${l.score||''}`;
       }
+      const voiceId=voice?await saveVoice({from:'선생님',to:student.name,blob:voice.blob,sec:voice.sec}):null;
       await db.collection('feedback').add({
         studentName:student.name,
-        message:msg.trim(),
+        message:msg.trim()||'🎙 음성 피드백',
+        voiceId,voiceSec:voice?Math.round(voice.sec):null,
         relatedLog:logStr,
         read:false,
         createdAt:new Date()
       });
-      setMsg('');setSent(true);
+      setMsg('');setSent(true);setVoice(null);setVKey(k=>k+1);
       setTimeout(()=>setSent(false),2000);
     }catch(e){alert('피드백 저장 실패: '+e.message);}
   };
@@ -320,6 +323,7 @@ function QuickFeedbackPanel({student}){
       <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={3} lang="ko"
         placeholder={mode==='session'&&selLog?`[${fmtDate(selLog.date)} ${selLog.type||''}] 세션에 대한 피드백...`:'학생에게 전달할 피드백 메시지...'}
         className="w-full border-2 border-gray-200 rounded-xl p-3 text-sm font-bold resize-none focus:border-indigo-400 outline-none"/>
+      <VoiceRecorder key={vKey} onChange={setVoice} compact/>
       <button onClick={send}
         className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm active:scale-95 transition-transform">
         {sent?'✅ 전송완료!':'💌 피드백 전송'}
