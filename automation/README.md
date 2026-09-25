@@ -107,3 +107,22 @@ PYTHONIOENCODING=utf-8 python automation/build_analysis.py
 - 담긴 것 : 전체 요약 · **영역별 성취(검정고시 문항 번호와 함께)** · 월별 추이 · 학생별 누적 ·
   데이터가 말하는 것 · 정리하면 좋을 계정(이름이 겹치는 계정 후보)
 - 메일로 받고 싶으시면 Claude에게 "누적 분석 보고서 메일로 보내줘"라고 하시면 됩니다.
+
+## 월간 학습 기록지 (`monthlyReport.gs`) — 매월 1일 8시~9시
+
+아침 브리핑과 **같은 Apps Script 프로젝트**에 파일을 하나 더 만들어 붙여 넣습니다
+(`CONFIG` · 받는 사람 · Firestore 읽기 함수를 `dailyBriefing.gs` 에서 빌려 쓰므로 따로 새 프로젝트에 붙이면 안 됩니다).
+
+1. 브리핑 프로젝트 편집기 → 왼쪽 **파일 +** → **스크립트** → 이름 `monthlyReport`
+2. [`monthlyReport.gs`](monthlyReport.gs) 전체를 붙여 넣고 💾 저장
+3. 함수 목록에서 **`setupMonthly`** 선택 → ▶ 실행
+   → 매월 1일 예약이 걸리고, **이번 달 지금까지** 기록으로 `[미리보기]` 메일이 한 통 옵니다.
+4. ⏰ 트리거 화면에 `sendMonthlyReport · 시간 기반 · 월 단위` 한 줄이 보이면 끝.
+
+담기는 것 : ① 학생별 정답률 순위 ② 세션당 평균 풀이 시간(학생별·종류별, 유휴 보정) ③ 학생마다 가장 빨리 / 가장 오래 걸린 실제 문항
+④ 학생별 요약(현재 상태·모멘텀·풀이 스타일·유휴·강점·취약점·제언 — 앱 `analysisEngine.js`·`logMetrics.js` 와 같은 기준)
+⑤ 추천 풀이 영역(좌표10 · 중졸 5영역 · 고졸 5영역 중에서 다시 다지기 → 다음 단계 → 새로 도전 순).
+
+- 다른 함수 : `previewMonthlyReport`(지난달로 지금 한 통) · `previewThisMonth`(이번 달 지금까지) · `removeMonthlyTrigger` / `installMonthlyTrigger`
+- 본문이 90KB 를 넘으면(Gmail 은 약 102KB 에서 자른다) 전체 기록지를 `.html` 첨부로 함께 보냅니다.
+- 앱 분석 기준(`IDLE_THRESHOLD_PER_Q`, 망설임 8초/30초, 강점 90%/보충 80%)을 바꾸면 `monthlyReport.gs` 의 같은 값도 함께 바꾸세요.

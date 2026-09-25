@@ -287,6 +287,10 @@ dailymath_taechungyahak/
 - 앱에서 새 기록 종류를 만들 때 `math_logs` 에 `studentName · date · type · questions[{isOk, meta.type}] · totalSec` 를
   같은 모양으로 남기면 브리핑에도 자동으로 잡힌다.
 
+- `automation/monthlyReport.gs` — **월간 기록지**(매월 1일 8~9시, 지난달). 브리핑과 같은 프로젝트의 두 번째 파일로 붙여 넣고
+  `dailyBriefing.gs` 의 `CONFIG`·`me_`·`bcc_`·`fetchLogsSince_`·`fetchStudents_`·`shell_`·`kpi_` 등을 그대로 쓴다 — **그쪽 함수 이름을 바꾸면 월간도 깨진다.**
+  보고서는 순수 함수 `buildMonthly_(logs, students, {from,to,partial}, now)`. 앱 분석 기준(유휴 3분·망설임 8/30초·강점 90/보충 80)을 옮겨 두었으므로
+  `js/core/logMetrics.js`·`js/teacher/analysisEngine.js` 기준을 바꾸면 여기도 고친다. 추천 영역 목록은 `MONTHLY_AREAS`(앱 메뉴와 맞출 것).
 - **예약(트리거)은 코드가 스스로 건다** (`ensureTrigger_`). 2026-09-18 : "직접 누르면 오는데 아침엔 안 온다" —
   설치 단계에서 예약 걸기를 건너뛴 것이 원인이었다. 공유용 템플릿도 같은 구조다.
   `removeTrigger` 는 `AUTO_OFF` 속성을 남겨 일부러 끈 예약이 되살아나지 않게 한다.
