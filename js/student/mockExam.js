@@ -11,6 +11,9 @@ function MockExamTab({userData,onUpdate}){
   const[sel,setSel]=useState({});
   const[isGraded,setIsGraded]=useState(false);
   const[saved,setSaved]=useState(false);
+  const[feelingDone,setFeelingDone]=useState(false);
+  const savingRef=React.useRef(false);   // 채점 순간 한 번만 저장
+  const savedUpdRef=React.useRef(null);  // 소감을 고르면 이 기록에 덧붙인다
   const[startTime,setStartTime]=useState(null);
   const[mode,setMode]=useState('');
   // ── 행동 추적 (신규) ──
@@ -74,12 +77,14 @@ function MockExamTab({userData,onUpdate}){
     }
     let safety=0;
     while(pool.length<10&&safety++<50){const q=safeGen(pick(Object.values(DOMAIN_GENS)));if(q)pool.push(q);}
-    setQuestions(pool.slice(0,10));setSel({});setIsGraded(false);setSaved(false);setStartTime(Date.now());setScreen('exam');
+    setQuestions(pool.slice(0,10));setSel({});setIsGraded(false);setSaved(false);setFeelingDone(false);savingRef.current=false;savedUpdRef.current=null;setStartTime(Date.now());setScreen('exam');
     setFirstClickTimes({});setRevisionCounts({});
   };
 
+  // 채점하는 순간 저장한다 (feeling:null) — 소감을 안 고르고 나가도 기록이 남게
   const saveResult=async(feeling)=>{
-    if(saved||!userData)return;
+    if(savingRef.current||!userData)return;
+    savingRef.current=true;
     const totalSec=Math.round((Date.now()-startTime)/1000);
     const correctCount=questions.filter((q,i)=>sel[i]===q.answer).length;
     const qs=questions.map((q,i)=>{
@@ -111,9 +116,17 @@ function MockExamTab({userData,onUpdate}){
     try{
       await db.collection('users').doc(upd.name).set(upd,{merge:true});
       if(onUpdate)onUpdate(upd);
+      savedUpdRef.current=upd;
       setSaved(true);
       updateQStats(qs); // fire-and-forget: qStats 집계 (실패해도 무시)
-    }catch(e){alert('저장 실패. 인터넷 연결을 확인해주세요.');}
+    }catch(e){savingRef.current=false;alert('저장 실패. 인터넷 연결을 확인해주세요.');}
+  };
+  const chooseFeeling=async(feeling)=>{
+    setFeelingDone(true);
+    const base=savedUpdRef.current;if(!base)return;
+    const logs=[...(base.logs||[])];if(logs[0])logs[0]={...logs[0],feeling};
+    const upd={...base,logs};
+    try{await db.collection('users').doc(upd.name).set(upd,{merge:true});if(onUpdate)onUpdate(upd);}catch(e){}
   };
 
   const ORD=['①','②','③','④'];
@@ -238,18 +251,18 @@ function MockExamTab({userData,onUpdate}){
         </div>);
       })}
       {answered===10&&!isGraded&&(<div className="fade-in">
-        <button onClick={()=>setIsGraded(true)} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-lg active:scale-95 transition-transform">채점하기 📝</button>
+        <button onClick={()=>{setIsGraded(true);saveResult(null);}} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-lg active:scale-95 transition-transform">채점하기 📝</button>
       </div>)}
-      {isGraded&&!saved&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">
+      {isGraded&&!feelingDone&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">
         <div className="text-2xl font-black text-indigo-700 mb-1">🎯 {correctCount}/10 정답!</div>
-        <div className="text-sm text-gray-500 mb-4">이번 모의고사는 어떠셨나요? 평가 후 기록이 저장됩니다.</div>
+        <div className="text-sm text-gray-500 mb-4">이번 모의고사는 어떠셨나요? 기록은 저장됐어요.</div>
         <div className="flex gap-2 justify-center">
-          <button onClick={()=>saveResult('easy')} className="flex-1 py-4 bg-green-100 text-green-700 rounded-2xl font-black active:scale-95 transition-transform">쉬웠어요 😊</button>
-          <button onClick={()=>saveResult('normal')} className="flex-1 py-4 bg-blue-100 text-blue-700 rounded-2xl font-black active:scale-95 transition-transform">적당해요 😐</button>
-          <button onClick={()=>saveResult('hard')} className="flex-1 py-4 bg-red-100 text-red-700 rounded-2xl font-black active:scale-95 transition-transform">어려워요 😥</button>
+          <button onClick={()=>chooseFeeling('easy')} className="flex-1 py-4 bg-green-100 text-green-700 rounded-2xl font-black active:scale-95 transition-transform">쉬웠어요 😊</button>
+          <button onClick={()=>chooseFeeling('normal')} className="flex-1 py-4 bg-blue-100 text-blue-700 rounded-2xl font-black active:scale-95 transition-transform">적당해요 😐</button>
+          <button onClick={()=>chooseFeeling('hard')} className="flex-1 py-4 bg-red-100 text-red-700 rounded-2xl font-black active:scale-95 transition-transform">어려워요 😥</button>
         </div>
       </div>)}
-      {isGraded&&saved&&(<div className="text-center fade-in space-y-3">
+      {isGraded&&feelingDone&&(<div className="text-center fade-in space-y-3">
         <div className="inline-block bg-green-100 text-green-700 font-bold px-6 py-4 rounded-2xl">✅ 학습 기록에 저장되었습니다!</div>
         <button onClick={()=>setScreen('start')} className="block w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-bold">다시 도전하기 →</button>
       </div>)}

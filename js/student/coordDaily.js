@@ -124,7 +124,7 @@ function CoordDailyTab({userData,onUpdate}){
   const[startAt,setStartAt]=useState(0);
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
-  const savingRef=React.useRef(false);   // 마지막 문항에서 [다음]을 여러 번 눌러도 기록을 한 번만 저장한다
+  const savingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다
 
   const today=todayStr();
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
@@ -134,6 +134,7 @@ function CoordDailyTab({userData,onUpdate}){
     const list=[];for(let i=0;i<TOTAL;i++)list.push(genCoordQ(k));
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
+    savingRef.current=false;
   };
 
   const q=qs[idx];
@@ -152,21 +153,18 @@ function CoordDailyTab({userData,onUpdate}){
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
       meta:{category:'geometry',type:q.topic,diff:q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'}};
-    setRecs(r=>[...r,rec]);
-    if(isOk)setCorrect(c=>c+1);
+    const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
+    setRecs(newRecs);setCorrect(newCorrect);
     setPhase('feedback');
+    if(idx+1>=TOTAL)saveSession(newRecs,newCorrect);
   };
 
-  const next=async()=>{
-    if(idx+1<TOTAL){
-      setIdx(idx+1);setSel(null);setFirstClick(null);setQStartAt(Date.now());setPhase('quiz');
-      return;
-    }
-    // 마지막 문항 → 기록 저장 (연타로 여러 번 저장되는 것을 막는다 : 2026-09 홍순길 학생 하루 144건 중복 저장 사례)
+  // 10번째 정답 확인 순간 저장한다 — [다음]/[한 번 더]를 안 누르고 홈으로 나가도 기록이 남게.
+  // savingRef : 한 묶음은 한 번만 저장 (연타로 같은 기록이 여러 건 쌓이던 버그 방지)
+  const saveSession=async(all,correct)=>{
     if(savingRef.current)return;
     savingRef.current=true;
     const badge=(COORD_LEVELS.find(l=>l.k===level)||{}).badge||'';
-    const all=recs;
     const totalSec=Math.round((Date.now()-startAt)/1000);
     const log={studentName:userData.name,date:today,time:timeStr(),
       type:`좌표 10문제 (${badge})`,score:`${correct} / ${TOTAL}`,questions:all,totalSec};
@@ -180,6 +178,13 @@ function CoordDailyTab({userData,onUpdate}){
       logs:[log,...(userData.logs||[]).slice(0,49)]};
     try{await saveUser(upd);await saveLog(log);updateQStats(all.map(r=>({...r,meta:r.meta})));}catch(e){}
     onUpdate&&onUpdate(upd);
+  };
+
+  const next=()=>{
+    if(idx+1<TOTAL){
+      setIdx(idx+1);setSel(null);setFirstClick(null);setQStartAt(Date.now());setPhase('quiz');
+      return;
+    }
     setPhase('done');
   };
 
@@ -325,7 +330,7 @@ function CoordDailyTab({userData,onUpdate}){
         className={`w-full py-4 rounded-2xl font-black text-lg transition-all active:scale-95 ${sel===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white'}`}>
         확인하기
       </button>
-      :<button onClick={()=>{if(!savingRef.current)next();}}
+      :<button onClick={next}
         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
         {idx+1<TOTAL?'다음 문제 →':'결과 보기 →'}
       </button>}

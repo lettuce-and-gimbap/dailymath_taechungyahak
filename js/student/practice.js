@@ -546,14 +546,18 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     const isExam=ver>=5;
     const shouldEnd=isExam?(questions.length+1>=10):(newCorrect>=10);
     if(shouldEnd){
+      // 결과가 나오는 순간 저장한다 — 소감을 안 고르고 홈으로 나가도 기록이 남게
+      finishLesson([...questions,newQ],newCorrect,newWrong);
       setTimeout(()=>setPhase('reflection'), 1200);
     }
   };
 
-  const finishingRef=React.useRef(false);   // 소감 버튼을 연타해도 한 번만 저장한다
-  const finishLesson=async(feeling)=>{
+  const finishingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다 (연타·중복 방지)
+  const savedRef=React.useRef(null);        // {id, upd} — 소감을 고르면 이 기록에 덧붙인다
+  const finishLesson=async(questions,correctCount,wrongCount)=>{
     if(finishingRef.current)return;
     finishingRef.current=true;
+    const feeling=null;
     const totalSec=Math.round((Date.now()-startTime)/1000);
     const today=todayStr();const newActiveDates=[...new Set([...(userData.activeDates||[]),today])];
     const typeMap=['기본 나눗셈','심화 나눗셈','혼합 나눗셈','약수 구하기','약수(하드)','중졸 검정고시 연습','고졸 검정고시 연습'];
@@ -563,10 +567,14 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     const log={studentName:userData.name,date:today,time:timeStr(),type:typeMap[ver]||'나눗셈',score,questions:questions,totalSec, feeling};
     const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,lastDate:today,activeDates:newActiveDates,logs:[log,...(userData.logs||[]).slice(0,49)]};
     
-    await saveUser(upd);await saveLog(log);onUpdate(upd);
+    await saveUser(upd);const id=await saveLog(log);onUpdate(upd);
+    savedRef.current={id,upd};
     localStorage.removeItem('yakHakSavedSession_'+userData.name);
     window.__yakHakActiveSession=null;
+  };
+  const chooseFeeling=async(feeling)=>{
     setPhase('done');
+    if(savedRef.current){const upd=await patchLogFeeling(savedRef.current.id,savedRef.current.upd,feeling);onUpdate(upd);}
   };
 
   const nextQ=()=>{
@@ -592,7 +600,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setPhase('question');setQStartTime(Date.now());setFirstActionTime(null);setShowConfirm(false);setActiveField('Q');
   };
 
-  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
+  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{finishingRef.current=false;savedRef.current=null;setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
 
   // 🔥 감정 성찰 (메타인지) 화면 렌더링 🔥
   if(phase==='reflection') {
@@ -602,9 +610,9 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
         <h2 className="text-2xl font-black text-gray-800 mb-2">10문제 달성 완료!</h2>
         <p className="text-gray-500 mb-8 font-bold text-lg">스스로 생각하기에<br/>오늘 푼 문제들은 어떠셨나요?</p>
         <div className="flex flex-col gap-4 w-full max-w-xs mx-auto">
-          <button onClick={() => finishLesson('easy')} className="py-5 bg-green-100 text-green-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">쉬웠어요 😊</button>
-          <button onClick={() => finishLesson('normal')} className="py-5 bg-blue-100 text-blue-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">적당했어요 😐</button>
-          <button onClick={() => finishLesson('hard')} className="py-5 bg-red-100 text-red-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">어려웠어요 😥</button>
+          <button onClick={() => chooseFeeling('easy')} className="py-5 bg-green-100 text-green-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">쉬웠어요 😊</button>
+          <button onClick={() => chooseFeeling('normal')} className="py-5 bg-blue-100 text-blue-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">적당했어요 😐</button>
+          <button onClick={() => chooseFeeling('hard')} className="py-5 bg-red-100 text-red-700 rounded-3xl font-black text-xl shadow-sm active:scale-95 transition-all">어려웠어요 😥</button>
         </div>
       </div>
     );

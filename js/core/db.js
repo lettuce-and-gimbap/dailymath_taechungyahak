@@ -43,7 +43,18 @@ var loadUser=async(name,opt)=>{
   catch(e){if(opt&&opt.throwOnError)throw e;return null;}
 };
 
-var saveLog=async(log)=>{try{await db.collection('math_logs').add(log)}catch(e){console.error(e)}};
+var saveLog=async(log)=>{try{const r=await db.collection('math_logs').add(log);return r.id}catch(e){console.error(e);return null}};
+
+/* 결과가 나오는 순간 먼저 저장해 두고(feeling:null), 학생이 소감을 고르면 그 기록에 소감만 덧붙인다.
+   소감을 고르지 않고 홈으로 나가도 기록은 남는다. */
+var patchLogFeeling=async(logId,userData,feeling)=>{
+  try{if(logId)await db.collection('math_logs').doc(logId).set({feeling},{merge:true});}catch(e){console.error(e);}
+  const logs=[...(userData.logs||[])];
+  if(logs[0])logs[0]={...logs[0],feeling};
+  const upd={...userData,logs};
+  await saveUser(upd);
+  return upd;
+};
 
 /* ── 학생 이름 바꾸기 ──────────────────────────────────────────────
    이름이 users 문서의 id이자 다른 컬렉션의 studentName 값이라,
