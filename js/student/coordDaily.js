@@ -124,6 +124,7 @@ function CoordDailyTab({userData,onUpdate}){
   const[startAt,setStartAt]=useState(0);
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
+  const savingRef=React.useRef(false);   // 마지막 문항에서 [다음]을 여러 번 눌러도 기록을 한 번만 저장한다
 
   const today=todayStr();
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
@@ -161,7 +162,9 @@ function CoordDailyTab({userData,onUpdate}){
       setIdx(idx+1);setSel(null);setFirstClick(null);setQStartAt(Date.now());setPhase('quiz');
       return;
     }
-    // 마지막 문항 → 기록 저장
+    // 마지막 문항 → 기록 저장 (연타로 여러 번 저장되는 것을 막는다 : 2026-09 홍순길 학생 하루 144건 중복 저장 사례)
+    if(savingRef.current)return;
+    savingRef.current=true;
     const badge=(COORD_LEVELS.find(l=>l.k===level)||{}).badge||'';
     const all=recs;
     const totalSec=Math.round((Date.now()-startAt)/1000);
@@ -322,7 +325,7 @@ function CoordDailyTab({userData,onUpdate}){
         className={`w-full py-4 rounded-2xl font-black text-lg transition-all active:scale-95 ${sel===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white'}`}>
         확인하기
       </button>
-      :<button onClick={next}
+      :<button onClick={()=>{if(!savingRef.current)next();}}
         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
         {idx+1<TOTAL?'다음 문제 →':'결과 보기 →'}
       </button>}

@@ -9301,7 +9301,10 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     }
   };
 
+  const finishingRef=React.useRef(false);   // 소감 버튼을 연타해도 한 번만 저장한다
   const finishLesson=async(feeling)=>{
+    if(finishingRef.current)return;
+    finishingRef.current=true;
     const totalSec=Math.round((Date.now()-startTime)/1000);
     const today=todayStr();const newActiveDates=[...new Set([...(userData.activeDates||[]),today])];
     const typeMap=['기본 나눗셈','심화 나눗셈','혼합 나눗셈','약수 구하기','약수(하드)','중졸 검정고시 연습','고졸 검정고시 연습'];
@@ -9622,6 +9625,7 @@ function CoordDailyTab({userData,onUpdate}){
   const[startAt,setStartAt]=useState(0);
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
+  const savingRef=React.useRef(false);   // 마지막 문항에서 [다음]을 여러 번 눌러도 기록을 한 번만 저장한다
 
   const today=todayStr();
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
@@ -9659,7 +9663,9 @@ function CoordDailyTab({userData,onUpdate}){
       setIdx(idx+1);setSel(null);setFirstClick(null);setQStartAt(Date.now());setPhase('quiz');
       return;
     }
-    // 마지막 문항 → 기록 저장
+    // 마지막 문항 → 기록 저장 (연타로 여러 번 저장되는 것을 막는다 : 2026-09 홍순길 학생 하루 144건 중복 저장 사례)
+    if(savingRef.current)return;
+    savingRef.current=true;
     const badge=(COORD_LEVELS.find(l=>l.k===level)||{}).badge||'';
     const all=recs;
     const totalSec=Math.round((Date.now()-startAt)/1000);
@@ -9820,7 +9826,7 @@ function CoordDailyTab({userData,onUpdate}){
         className={`w-full py-4 rounded-2xl font-black text-lg transition-all active:scale-95 ${sel===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white'}`}>
         확인하기
       </button>
-      :<button onClick={next}
+      :<button onClick={()=>{if(!savingRef.current)next();}}
         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
         {idx+1<TOTAL?'다음 문제 →':'결과 보기 →'}
       </button>}
@@ -10314,15 +10320,18 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
   const[startTime]=useState(Date.now());
   const q=homework.questions[idx];
   const total=homework.questions.length;
+  const finishingRef=React.useRef(false);   // 정답 확인 연타로 마지막 문항이 여러 번 제출되는 것을 막는다
 
   const check=()=>{
     if(selected===null)return;
+    if(idx+1>=total&&finishingRef.current)return;
     const isOk=selected===q.answer;
     const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
     setResults(newRes);
     const newCorrect=correctCount+(isOk?1:0);
     setCorrectCount(newCorrect);
     if(idx+1>=total){
+      finishingRef.current=true;
       finishHomework(newRes,newCorrect);
       setPhase('done');
     } else {

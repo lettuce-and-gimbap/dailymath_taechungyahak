@@ -15,15 +15,18 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
   const[startTime]=useState(Date.now());
   const q=homework.questions[idx];
   const total=homework.questions.length;
+  const finishingRef=React.useRef(false);   // 정답 확인 연타로 마지막 문항이 여러 번 제출되는 것을 막는다
 
   const check=()=>{
     if(selected===null)return;
+    if(idx+1>=total&&finishingRef.current)return;
     const isOk=selected===q.answer;
     const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
     setResults(newRes);
     const newCorrect=correctCount+(isOk?1:0);
     setCorrectCount(newCorrect);
     if(idx+1>=total){
+      finishingRef.current=true;
       finishHomework(newRes,newCorrect);
       setPhase('done');
     } else {

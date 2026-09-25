@@ -550,7 +550,10 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     }
   };
 
+  const finishingRef=React.useRef(false);   // 소감 버튼을 연타해도 한 번만 저장한다
   const finishLesson=async(feeling)=>{
+    if(finishingRef.current)return;
+    finishingRef.current=true;
     const totalSec=Math.round((Date.now()-startTime)/1000);
     const today=todayStr();const newActiveDates=[...new Set([...(userData.activeDates||[]),today])];
     const typeMap=['기본 나눗셈','심화 나눗셈','혼합 나눗셈','약수 구하기','약수(하드)','중졸 검정고시 연습','고졸 검정고시 연습'];
