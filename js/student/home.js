@@ -245,6 +245,7 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
       <div key={n.id} className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 shadow-sm">
         <div className="font-black text-blue-800 text-sm mb-1">📢 선생님 공지</div>
         <p className="text-sm text-blue-700 font-medium leading-relaxed break-keep">{n.text}</p>
+        {n.voiceId&&<VoicePlayer voiceId={n.voiceId} sec={n.voiceSec} big/>}
       </div>
     ))}
 

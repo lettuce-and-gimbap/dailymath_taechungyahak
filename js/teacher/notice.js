@@ -9,6 +9,7 @@ function NoticeTab(){
   const[notices,setNotices]=useState([]);
   const[homeworks,setHomeworks]=useState([]);
   const[posting,setPosting]=useState(false);
+  const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);   // 🎙 녹음 (ui/voiceMsg.js)
 
   const loadAll=async()=>{
     try{
@@ -24,12 +25,13 @@ function NoticeTab(){
   useEffect(()=>{loadAll();},[]);
 
   const postNotice=async()=>{
-    if(!noticeText.trim())return;
+    if(!noticeText.trim()&&!voice)return;
     setPosting(true);
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+3);
-      await db.collection('notices').add({text:noticeText.trim(),createdAt:now,expiresAt:exp});
-      setNoticeText('');loadAll();
+      const voiceId=voice?await saveVoice({from:'선생님',to:'전체',blob:voice.blob,sec:voice.sec}):null;
+      await db.collection('notices').add({text:noticeText.trim()||'🎙 음성 공지',voiceId,voiceSec:voice?Math.round(voice.sec):null,createdAt:now,expiresAt:exp});
+      setNoticeText('');setVoice(null);setVKey(k=>k+1);loadAll();
     }catch(e){alert('등록 실패');}
     setPosting(false);
   };
@@ -53,7 +55,8 @@ function NoticeTab(){
       <div className="text-sm font-black text-gray-600 mb-3">📢 전체 공지 작성</div>
       <div className="text-xs text-gray-400 mb-3">등록 후 3일간 모든 학생의 홈 화면에 표시됩니다.</div>
       <textarea value={noticeText} onChange={e=>setNoticeText(e.target.value)} placeholder="모든 학생에게 전달할 내용을 입력하세요" rows={4} className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm resize-none outline-none focus:border-indigo-400 mb-3"/>
-      <button onClick={postNotice} disabled={posting||!noticeText.trim()} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm disabled:opacity-40 active:scale-95 transition-all">
+      <div className="mb-3"><VoiceRecorder key={vKey} onChange={setVoice}/></div>
+      <button onClick={postNotice} disabled={posting||(!noticeText.trim()&&!voice)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm disabled:opacity-40 active:scale-95 transition-all">
         {posting?'등록 중...':'전체 공지 등록 📢'}
       </button>
     </div>
@@ -72,6 +75,7 @@ function NoticeTab(){
               <span className="text-xs text-gray-400 ml-auto">만료: {fmt(n.expiresAt)}</span>
             </div>
             <p className="text-sm text-gray-700 font-medium leading-relaxed break-keep mb-3">{n.text}</p>
+            {n.voiceId&&<div className="mb-3"><VoicePlayer voiceId={n.voiceId} sec={n.voiceSec}/></div>}
             <button onClick={()=>deleteNotice(n.id)} className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 rounded-lg active:scale-95">🗑️ 삭제</button>
           </div>);
         })}
