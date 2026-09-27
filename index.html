@@ -9889,24 +9889,31 @@ function genTopQ(lv){
 
   /* quad : 정해진 범위에서 이차함수의 최댓값·최솟값 */
   let a,h,k,al,be;
-  for(let g=0;g<80;g++){
-    a=pk([1,-1]);h=ri(-2,2);k=ri(-3,3);al=ri(h-3,h+1);be=al+ri(2,3);
+  // 범위가 꼭짓점을 품는 문제와 품지 않는 문제(한쪽으로만 올라가거나 내려가는 구간)를 반반 낸다
+  const wantIn=Math.random()<0.5;
+  for(let g=0;g<200;g++){
+    a=pk([1,-1,1,-1,2,-2,3]);h=ri(-3,4);k=ri(-4,7);
+    const w=ri(1,3);
+    al=wantIn?ri(h-w+1,h-1):(Math.random()<0.5?ri(h+1,h+2):ri(h-w-2,h-w-1));be=al+w;
+    if(wantIn&&!(al<h&&h<be))continue;
+    if(!wantIn&&al<=h&&h<=be)continue;
     const ys=[al,be].map(x=>a*(x-h)**2+k);
-    if(Math.max(...ys.map(Math.abs),Math.abs(k))<=7&&((al<h&&h<be)||Math.random()<0.35))break;
+    if(Math.max(...ys.map(Math.abs),Math.abs(k))<=9)break;
   }
   const F=x=>a*(x-h)**2+k;
   const inside=al<=h&&h<=be;
   const vals=[F(al),F(be)].concat(inside?[k]:[]);
   const mx=Math.max(...vals),mn=Math.min(...vals);
   const askMax=Math.random()<0.5,right=askMax?mx:mn;
-  const b=-2*a*h,c=a*h*h+k;
-  const poly=`${a===1?'':'-'}x^2${b?(b===1?'+x':b===-1?'-x':_sgn(b)+'x'):''}${c?_sgn(c):''}`;
+  // 식은 완전제곱식(꼭짓점) 꼴로만 : 3(x-4)^2-5
+  const poly=`${a===1?'':a===-1?'-':a}${h?`(${_lin(1,-h)})`:'x'}^2${k?_sgn(k):''}`;
   const cands=[askMax?mn:mx,inside?F(Math.abs(al-h)>=Math.abs(be-h)?be:al):k,right+1,right-1,-right,right+2,right-2];
   const wr=[];for(const v of cands)if(v!==right&&!wr.includes(v)&&wr.length<3)wr.push(v);
   const list=[right,...wr];
   for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
-  const ymin=Math.min(-2,Math.floor(Math.min(...vals))-1),ymax=Math.max(2,Math.ceil(Math.max(...vals))+1);
-  const xmin=Math.min(-2,al-1),xmax=Math.max(2,be+1);
+  // 꼭짓점이 범위 밖이어도 점선 곡선에 꼭짓점까지 보이게 그림 범위를 넓힌다 (개형이 보여야 한다)
+  const ymin=Math.min(-2,Math.floor(Math.min(...vals,k))-1),ymax=Math.max(2,Math.ceil(Math.max(...vals,k))+1);
+  const xmin=Math.min(-2,al-1,h-1),xmax=Math.max(2,be+1,h+1);
   /* 검정고시 그림처럼 : 범위 양 끝 점과 (범위 안이면) 꼭짓점에 점을 찍고, 각 점에서 두 축으로 점선을 내려
      x값은 x축에, y값은 y축에 같은 색으로 쓴다. 범위 밖 곡선은 점선. */
   const off=(ymax-ymin)*0.075, INK='#111';
@@ -9939,7 +9946,7 @@ function genTopQ(lv){
     qHtml:`다음 범위에서 이차함수의 <b>${askMax?'최댓값':'최솟값'}</b>은?${_eq(_tx(`y=${poly}`))}<div style="text-align:center;margin-top:-6px">${_tx(`(\\,${al}\\le x\\le ${be}\\,)`)}</div>`,
     q:`${al}≤x≤${be}, y=${poly} 의 ${askMax?'최댓값':'최솟값'}`,
     svg,svgAfter:svg,choices:list.map(String),ans:list.indexOf(right),answer:String(right),
-    sol:[`꼭짓점 꼴로 바꿉니다 : ${_tx(`y=${a===1?'':'-'}(${_lin(1,-h)})^2${k?_sgn(k):''}`)} → 꼭짓점 (${h}, ${k})`,
+    sol:[`완전제곱식 꼴이므로 꼭짓점은 바로 (${h}, ${k}) 입니다. ${a>0?'아래로 볼록(∪)':'위로 볼록(∩)'}`,
       inside?`꼭짓점의 x=${h} 가 범위 안에 있으므로 꼭짓점의 y값 <b>${k}</b> 도 후보입니다.`:`꼭짓점의 x=${h} 는 범위 밖이므로 <b>양 끝값만</b> 비교합니다.`,
       `양 끝 : x=${al} 일 때 y=${F(al)}, x=${be} 일 때 y=${F(be)}`,
       `후보 중 가장 큰 값 ${mx}, 가장 작은 값 ${mn} → ${askMax?'최댓값':'최솟값'} <b>${right}</b>`]};
