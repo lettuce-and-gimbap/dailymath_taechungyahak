@@ -85,8 +85,14 @@ function StudentAnalysisTab(){
 
   const[recentSessions,setRecentSessions]=useState([]);
   useEffect(()=>{
-    db.collection('math_logs').orderBy('date','desc').limit(10).get()
-      .then(snap=>{const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setRecentSessions(arr);})
+    // date만으로 orderBy하면 같은 날짜 안에서는 순서가 들쭉날쭉하므로,
+    // 넉넉히 받아 date+time 문자열로 다시 정렬해 최근 순 10개만 남긴다.
+    db.collection('math_logs').orderBy('date','desc').limit(30).get()
+      .then(snap=>{
+        const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
+        arr.sort((a,b)=>`${b.date||''} ${b.time||''}`.localeCompare(`${a.date||''} ${a.time||''}`));
+        setRecentSessions(arr.slice(0,10));
+      })
       .catch(()=>{});
   },[]);
 
@@ -155,7 +161,7 @@ function StudentAnalysisTab(){
             <div className="text-[9px] text-gray-500 truncate">{s.type||'학습'}</div>
             <div className="flex justify-between">
               <span className="text-[9px] text-gray-400">점수: {s.score||'-'}</span>
-              <span className="text-[9px] text-gray-400">{(s.date||'').slice(5)}</span>
+              <span className="text-[9px] text-gray-400">{(s.date||'').slice(5)}{s.time?` ${s.time}`:''}</span>
             </div>
           </button>
         ))}
