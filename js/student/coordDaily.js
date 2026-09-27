@@ -128,29 +128,37 @@ function genTopQ(lv){
         `그래프가 시작하는 점이 원점 (0, 0) 에서 <b>(${p}, ${q})</b> 로 옮겨졌습니다.`]};
   }
 
-  /* quad : 정해진 범위에서 이차함수의 최댓값·최솟값 */
-  let a,h,k,al,be;
+  /* quad : 정해진 범위에서 이차함수의 최댓값·최솟값
+     사지선다는 그림에 실제로 찍히는 좌표 숫자(각 점의 x좌표·y좌표)에서만 고른다 — 아무 오답이나
+     주지 않고 "이 값이 x좌표인지 y좌표인지, 어느 점의 것인지" 헷갈렸는지를 확인하게 한다.
+     점 2개(al,be)면 x 2개·y 2개 = 4개를 그대로 선지로, 점 3개(꼭짓점이 범위 안)면
+     x 3개·y 3개 = 6개 중 정답을 포함해 4개를 무작위로 고른다. */
+  let a,h,k,al,be,inside,pool;
   // 범위가 꼭짓점을 품는 문제와 품지 않는 문제(한쪽으로만 올라가거나 내려가는 구간)를 반반 낸다
   const wantIn=Math.random()<0.5;
-  for(let g=0;g<200;g++){
+  for(let g=0;g<400;g++){
     a=pk([1,-1,1,-1,2,-2,3]);h=ri(-3,4);k=ri(-4,7);
     const w=ri(1,3);
     al=wantIn?ri(h-w+1,h-1):(Math.random()<0.5?ri(h+1,h+2):ri(h-w-2,h-w-1));be=al+w;
     if(wantIn&&!(al<h&&h<be))continue;
     if(!wantIn&&al<=h&&h<=be)continue;
-    const ys=[al,be].map(x=>a*(x-h)**2+k);
-    if(Math.max(...ys.map(Math.abs),Math.abs(k))<=9)break;
+    const F0=x=>a*(x-h)**2+k;
+    const ys=[al,be].map(F0);
+    if(Math.max(...ys.map(Math.abs),Math.abs(k))>9)continue;
+    inside=al<=h&&h<=be;
+    const keyXs=inside&&h!==al&&h!==be?[al,be,h]:[al,be];
+    pool=new Set();keyXs.forEach(x=>{pool.add(x);pool.add(F0(x));});
+    if(pool.size>=4)break;
   }
   const F=x=>a*(x-h)**2+k;
-  const inside=al<=h&&h<=be;
   const vals=[F(al),F(be)].concat(inside?[k]:[]);
   const mx=Math.max(...vals),mn=Math.min(...vals);
   const askMax=Math.random()<0.5,right=askMax?mx:mn;
   // 식은 완전제곱식(꼭짓점) 꼴로만 : 3(x-4)^2-5
   const poly=`${a===1?'':a===-1?'-':a}${h?`(${_lin(1,-h)})`:'x'}^2${k?_sgn(k):''}`;
-  const cands=[askMax?mn:mx,inside?F(Math.abs(al-h)>=Math.abs(be-h)?be:al):k,right+1,right-1,-right,right+2,right-2];
-  const wr=[];for(const v of cands)if(v!==right&&!wr.includes(v)&&wr.length<3)wr.push(v);
-  const list=[right,...wr];
+  const others=[...pool].filter(v=>v!==right);
+  for(let i=others.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[others[i],others[j]]=[others[j],others[i]];}
+  const list=[right,...others.slice(0,3)];
   for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
   // 꼭짓점이 범위 밖이어도 점선 곡선에 꼭짓점까지 보이게 그림 범위를 넓힌다 (개형이 보여야 한다)
   const ymin=Math.min(-2,Math.floor(Math.min(...vals,k))-1),ymax=Math.max(2,Math.ceil(Math.max(...vals,k))+1);
