@@ -57,9 +57,16 @@ function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
   </g>);
 }
 
-function VF({n,d}){return(<span style={{display:'inline-flex',flexDirection:'column',alignItems:'center',lineHeight:1.05,fontSize:'0.78em',verticalAlign:'middle',margin:'0 1px'}}><span style={{borderBottom:'1.5px solid currentColor',padding:'0 3px'}}>{n}</span><span style={{padding:'0 3px'}}>{d}</span></span>)}
+/* 세로 분수. 분자가 음수면 '−' 를 분수 앞에 둔다 (분자에 붙이지 않는다) */
+function VF({n,d}){const t=String(n);const neg=/^[-−]/.test(t);const nn=neg?t.slice(1):t;
+  return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle'}}>{neg&&<span style={{marginRight:'1px'}}>−</span>}<span style={{display:'inline-flex',flexDirection:'column',alignItems:'center',lineHeight:1.05,fontSize:'0.78em',margin:'0 1px'}}><span style={{borderBottom:'1.5px solid currentColor',padding:'0 3px'}}>{nn}</span><span style={{padding:'0 3px'}}>{d}</span></span></span>)}
 
-function SqR({s='',sz=15}){return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',fontSize:sz+'px',lineHeight:1}}><span style={{fontSize:(sz*1.3)+'px',lineHeight:0.85,fontFamily:"Georgia,'Times New Roman',serif",marginRight:'1px',display:'inline-block'}}>√</span><span style={{borderTop:'1.8px solid currentColor',padding:'1px 2px 0',display:'inline-block',lineHeight:1.15,minWidth:'6px'}}>{s}</span></span>)}
+/* 루트 — KaTeX 로 √ 기호와 윗줄을 한 덩어리로 그린다 (예전 '√'+윗줄 테두리는 둘이 떨어져 보였다).
+   KaTeX 가 아직 안 불러와졌을 때만 예전 방식으로 그린다. */
+function SqR({s='',sz=15}){
+  if(window.katex){try{return<span style={{fontSize:(sz*1.05)+'px',whiteSpace:'nowrap'}} dangerouslySetInnerHTML={{__html:window.katex.renderToString('\\sqrt{'+String(s).replace(/−/g,'-')+'}',{throwOnError:false})}}/>;}catch(e){}}
+  return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',fontSize:sz+'px',lineHeight:1}}><span style={{fontSize:(sz*1.3)+'px',lineHeight:0.85,fontFamily:"Georgia,'Times New Roman',serif",marginRight:'1px',display:'inline-block'}}>√</span><span style={{borderTop:'1.8px solid currentColor',padding:'1px 2px 0',display:'inline-block',lineHeight:1.15,minWidth:'6px'}}>{s}</span></span>);
+}
 
 function KF({tex,block}){return<span dangerouslySetInnerHTML={{__html:autoMathHtml(block?`$$${tex}$$`:`$${tex}$`)}}/>;}
 

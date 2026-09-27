@@ -10,7 +10,7 @@
      ③ 학생마다 가장 빨리 푼 문제 / 가장 오래 걸린 문제 (실제 문항)
      ④ 학생별 요약 분석 — 앱의 '학생 맞춤형 학습 분석 리포트'와 같은 틀
         (현재 상태 · 학습 모멘텀 · 풀이 스타일(망설임 패턴) · 유휴 시간 · 강점 · 취약점 · 제언)
-     ⑤ 추천 풀이 영역 — 앱 [문제풀기]·[좌표10] 메뉴에 실제로 있는 영역 중에서 자동으로 고른다
+     ⑤ 추천 풀이 영역 — 앱 [문제풀기]·[좌표] 메뉴에 실제로 있는 영역 중에서 자동으로 고른다
 
    어디에 두나
    - 아침 브리핑(dailyBriefing.gs)과 **같은 Apps Script 프로젝트**에 파일을 하나 더 만들어 붙여 넣는다.
@@ -157,9 +157,9 @@ function lastMonthRange_(now) {
    ────────────────────────────────────────────────────────────────── */
 
 var MONTHLY_AREAS = [
-  { key: 'c_low',  track: 'coord', label: '좌표 읽기',        path: '좌표10 → 하',                    note: '고졸 10~14번의 첫걸음' },
-  { key: 'c_mid',  track: 'coord', label: '평행이동',          path: '좌표10 → 중',                    note: '고졸 10~14번' },
-  { key: 'c_high', track: 'coord', label: '대칭이동',          path: '좌표10 → 상',                    note: '고졸 10~14번' },
+  { key: 'c_low',  track: 'coord', label: '좌표 읽기',        path: '좌표 → 하',                    note: '고졸 10~14번의 첫걸음' },
+  { key: 'c_mid',  track: 'coord', label: '평행이동',          path: '좌표 → 중',                    note: '고졸 10~14번' },
+  { key: 'c_high', track: 'coord', label: '대칭이동',          path: '좌표 → 상',                    note: '고졸 10~14번' },
   { key: 'm_num',  track: 'mid',   label: '중졸 · 수와 연산',     path: '문제풀기 → 중졸 검정고시 연습 → 수와 연산',   note: '소인수분해 · 순환소수 · 지수' },
   { key: 'm_alg',  track: 'mid',   label: '중졸 · 문자와 식',     path: '문제풀기 → 중졸 검정고시 연습 → 문자와 식',   note: '일차·연립·이차방정식 · 부등식 · 근호' },
   { key: 'm_fn',   track: 'mid',   label: '중졸 · 함수',        path: '문제풀기 → 중졸 검정고시 연습 → 함수',       note: '일차함수 · 이차함수 · 사분면 · 이동' },

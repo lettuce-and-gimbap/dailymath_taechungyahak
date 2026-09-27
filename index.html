@@ -854,9 +854,16 @@ function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
   </g>);
 }
 
-function VF({n,d}){return(<span style={{display:'inline-flex',flexDirection:'column',alignItems:'center',lineHeight:1.05,fontSize:'0.78em',verticalAlign:'middle',margin:'0 1px'}}><span style={{borderBottom:'1.5px solid currentColor',padding:'0 3px'}}>{n}</span><span style={{padding:'0 3px'}}>{d}</span></span>)}
+/* 세로 분수. 분자가 음수면 '−' 를 분수 앞에 둔다 (분자에 붙이지 않는다) */
+function VF({n,d}){const t=String(n);const neg=/^[-−]/.test(t);const nn=neg?t.slice(1):t;
+  return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle'}}>{neg&&<span style={{marginRight:'1px'}}>−</span>}<span style={{display:'inline-flex',flexDirection:'column',alignItems:'center',lineHeight:1.05,fontSize:'0.78em',margin:'0 1px'}}><span style={{borderBottom:'1.5px solid currentColor',padding:'0 3px'}}>{nn}</span><span style={{padding:'0 3px'}}>{d}</span></span></span>)}
 
-function SqR({s='',sz=15}){return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',fontSize:sz+'px',lineHeight:1}}><span style={{fontSize:(sz*1.3)+'px',lineHeight:0.85,fontFamily:"Georgia,'Times New Roman',serif",marginRight:'1px',display:'inline-block'}}>√</span><span style={{borderTop:'1.8px solid currentColor',padding:'1px 2px 0',display:'inline-block',lineHeight:1.15,minWidth:'6px'}}>{s}</span></span>)}
+/* 루트 — KaTeX 로 √ 기호와 윗줄을 한 덩어리로 그린다 (예전 '√'+윗줄 테두리는 둘이 떨어져 보였다).
+   KaTeX 가 아직 안 불러와졌을 때만 예전 방식으로 그린다. */
+function SqR({s='',sz=15}){
+  if(window.katex){try{return<span style={{fontSize:(sz*1.05)+'px',whiteSpace:'nowrap'}} dangerouslySetInnerHTML={{__html:window.katex.renderToString('\\sqrt{'+String(s).replace(/−/g,'-')+'}',{throwOnError:false})}}/>;}catch(e){}}
+  return(<span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',fontSize:sz+'px',lineHeight:1}}><span style={{fontSize:(sz*1.3)+'px',lineHeight:0.85,fontFamily:"Georgia,'Times New Roman',serif",marginRight:'1px',display:'inline-block'}}>√</span><span style={{borderTop:'1.8px solid currentColor',padding:'1px 2px 0',display:'inline-block',lineHeight:1.15,minWidth:'6px'}}>{s}</span></span>);
+}
 
 function KF({tex,block}){return<span dangerouslySetInnerHTML={{__html:autoMathHtml(block?`$$${tex}$$`:`$${tex}$`)}}/>;}
 
@@ -9775,6 +9782,12 @@ var COORD_LEVELS=[
     border:'border-violet-200', chip:'bg-violet-100 text-violet-700'},
   {k:'mix', badge:'섞기', lbl:'섞어서 풀기',  desc:'하 · 중 · 상을 골고루',
     border:'border-amber-200', chip:'bg-amber-100 text-amber-700'},
+  {k:'rat', badge:'최상', logName:'최상 유리함수', lbl:'유리함수 평행이동', desc:'점근선이 어디로 옮겨졌는지 봅니다',
+    border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
+  {k:'irr', badge:'최상', logName:'최상 무리함수', lbl:'무리함수 평행이동', desc:'그래프가 시작하는 점이 어디로 옮겨졌는지 봅니다',
+    border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
+  {k:'quad',badge:'최상', logName:'최상 이차함수', lbl:'이차함수 최댓값·최솟값', desc:'정해진 범위에서 가장 큰 값·작은 값을 찾습니다',
+    border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
 ];
 
 /* 좌표 보기 만들기 — GS.coordChoices는 학습지(KaTeX)용이라 "(1,\ -2)" 처럼
@@ -9792,6 +9805,126 @@ function coordChoicesPlain(X,Y){
   return{list,ans:list.indexOf(correct)};
 }
 
+/* ── 최상 : 함수 그래프 3유형 (유리함수 평행이동 · 무리함수 평행이동 · 이차함수 최대·최소) ──
+   고졸 검정고시 그림처럼 모눈 없이 축만 두고, 답을 구하는 데 필요한 값만 표시한다.
+   (점근선 x=p · y=q 와 그 값 / 무리함수의 시작점 / 제한된 범위의 양 끝)
+   식은 KaTeX 로 그린다 — 분자가 음수면 '−' 를 분수 앞에 두고, 루트는 한 덩어리 기호로. */
+var TOP_LEVELS=['rat','irr','quad'];
+var _tx=t=>`<span class="tx" data-tex="${t.replace(/"/g,'&quot;')}"></span>`;
+var _sgn=(v,first)=>v<0?`-${-v}`:(first?`${v}`:`+${v}`);                 // 3 → "+3", -2 → "-2"
+/* 식은 글 줄 사이에 끼우지 않고 가운데 한 줄로 크게 — 분수가 윗줄과 겹치거나 식이 줄바꿈으로 잘리지 않게 */
+var _eq=(...ts)=>`<div style="text-align:center;font-size:1.15em;margin:12px 0;white-space:nowrap;overflow-x:auto;overflow-y:hidden;line-height:1.4;padding:2px 0">${ts.join('<span style="margin:0 10px;color:#6b7280">⟶</span>')}</div>`;
+var _lin=(a,c)=>`${a===1?'':a===-1?'-':a}x${c?_sgn(c):''}`;                // ax+c
+function topShiftChoices(p,q){
+  const f=(a,b)=>`x축으로 ${a}, y축으로 ${b}`;
+  const right=f(p,q);const out=[];
+  for(const [a,b] of [[-p,q],[p,-q],[q,p],[-p,-q],[-q,-p],[q,-p],[p+1,q],[p,q+1]]){const c=f(a,b);if(c!==right&&!out.includes(c))out.push(c);if(out.length===3)break;}
+  const list=[right,...out];
+  for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
+  return{list,ans:list.indexOf(right)};
+}
+function genTopQ(lv){
+  const G=window.GS;
+  const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  const nz=(a,b)=>{let v=0;while(!v)v=ri(a,b);return v;};
+  const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
+  const plane=(g,items)=>G.planeSVG({xmin:-5,xmax:5,ymin:-5,ymax:5,s:36,maxW:400,grid:false,ticks:false,...g},items);
+
+  if(lv==='rat'){
+    const k=pk([1,-1,2,-2,3,-3]),p=nz(-3,3),q=nz(-3,3);
+    const frac=`${k<0?'-':''}\\dfrac{${Math.abs(k)}}{`;
+    const base=`y=${frac}x}`,moved=`y=${frac}${_lin(1,-p)}}${_sgn(q)}`;
+    const f=x=>k/(x-p)+q;
+    // 점근선 값은 축 위에만 쓴다. 곡선과 겹치지 않도록 곡선이 축을 지나는 쪽의 반대편에 둔다.
+    const x0=p-k/q,y0=q-k/p;                      // 곡선이 x축·y축과 만나는 곳
+    const items=[
+      {t:'vline',x:p,color:'#555',width:2,dash:'8 6'},
+      {t:'hline',y:q,color:'#555',width:2,dash:'8 6'},
+      {t:'fn',f,from:-5,to:p-0.03},{t:'fn',f,from:p+0.03,to:5},
+      {t:'text',x:p+(x0>p?-0.4:0.4),y:(q>0||q<=-2)?-0.9:0.4,s:String(p),anchor:'middle',size:22},
+      {t:'text',x:-0.3,y:y0>q?q-0.75:q+0.2,s:String(q),anchor:'end',size:22},
+    ];
+    const ch=topShiftChoices(p,q);
+    return{lv,topic:'유리함수 평행이동',
+      qHtml:`유리함수의 그래프를 평행이동하였습니다.${_eq(_tx(base),_tx(moved))}x축과 y축으로 각각 얼마만큼 평행이동하였습니까?`,
+      q:`유리함수 ${base} → ${moved}`,
+      svg:plane({},items),svgAfter:plane({},items),
+      choices:ch.list,ans:ch.ans,answer:`x축으로 ${p}, y축으로 ${q}`,
+      sol:[`${_tx('y=\\dfrac{k}{x-p}+q')} 는 ${_tx('y=\\dfrac{k}{x}')} 를 <b>x축으로 p, y축으로 q</b> 만큼 옮긴 그래프입니다.`,
+        `분모 ${_tx(_lin(1,-p))} = x−(${p}) 이므로 x축으로 <b>${p}</b> ${p>0?'(오른쪽)':'(왼쪽)'}`,
+        `뒤에 붙은 ${_tx(_sgn(q))} 이므로 y축으로 <b>${q}</b> ${q>0?'(위)':'(아래)'}`,
+        `그림의 점선(점근선)이 x=0, y=0 에서 <b>x=${p}, y=${q}</b> 로 옮겨졌습니다.`]};
+  }
+
+  if(lv==='irr'){
+    const a=pk([1,-1,2,-2]),p=nz(-3,3),q=nz(-3,3);
+    const base=`y=\\sqrt{${_lin(a,0)}}`,moved=`y=\\sqrt{${_lin(a,-a*p)}}${_sgn(q)}`;
+    const f=x=>{const v=a*(x-p);return v<0?NaN:Math.sqrt(v)+q;};
+    const items=[
+      a>0?{t:'fn',f,from:p,to:5}:{t:'fn',f,from:-5,to:p},
+      {t:'seg',x1:p,y1:0,x2:p,y2:q,color:'#555',width:1.8,dash:'6 5'},
+      {t:'seg',x1:0,y1:q,x2:p,y2:q,color:'#555',width:1.8,dash:'6 5'},
+      {t:'pt',x:p,y:q,r:7,color:'#1d3b8f'},
+      // 시작점 좌표 : y 값은 점과 겹치지 않게 y축의 반대쪽에 쓴다
+      {t:'text',x:p,y:q>0?-0.95:0.45,s:String(p),anchor:'middle',size:22},
+      {t:'text',x:p>0?-0.3:0.3,y:q-0.3,s:String(q),anchor:p>0?'end':'start',size:22},
+    ];
+    const ch=topShiftChoices(p,q);
+    const inner=`${a===1?'':a===-1?'-':a}(${_lin(1,-p)})`;
+    return{lv,topic:'무리함수 평행이동',
+      qHtml:`무리함수의 그래프를 평행이동하였습니다.${_eq(_tx(base),_tx(moved))}x축과 y축으로 각각 얼마만큼 평행이동하였습니까?`,
+      q:`무리함수 ${base} → ${moved}`,
+      svg:plane({},items),svgAfter:plane({},items),
+      choices:ch.list,ans:ch.ans,answer:`x축으로 ${p}, y축으로 ${q}`,
+      sol:[`${_tx('y=\\sqrt{a(x-p)}+q')} 는 ${_tx('y=\\sqrt{ax}')} 를 <b>x축으로 p, y축으로 q</b> 만큼 옮긴 그래프입니다.`,
+        `루트 안을 묶으면 ${_tx(`\\sqrt{${_lin(a,-a*p)}}=\\sqrt{${inner}}`)} → x축으로 <b>${p}</b>`,
+        `루트 밖 ${_tx(_sgn(q))} → y축으로 <b>${q}</b>`,
+        `그래프가 시작하는 점이 원점 (0, 0) 에서 <b>(${p}, ${q})</b> 로 옮겨졌습니다.`]};
+  }
+
+  /* quad : 정해진 범위에서 이차함수의 최댓값·최솟값 */
+  let a,h,k,al,be;
+  for(let g=0;g<80;g++){
+    a=pk([1,-1]);h=ri(-2,2);k=ri(-3,3);al=ri(h-3,h+1);be=al+ri(2,3);
+    const ys=[al,be].map(x=>a*(x-h)**2+k);
+    if(Math.max(...ys.map(Math.abs),Math.abs(k))<=7&&((al<h&&h<be)||Math.random()<0.35))break;
+  }
+  const F=x=>a*(x-h)**2+k;
+  const inside=al<=h&&h<=be;
+  const vals=[F(al),F(be)].concat(inside?[k]:[]);
+  const mx=Math.max(...vals),mn=Math.min(...vals);
+  const askMax=Math.random()<0.5,right=askMax?mx:mn;
+  const b=-2*a*h,c=a*h*h+k;
+  const poly=`${a===1?'':'-'}x^2${b?(b===1?'+x':b===-1?'-x':_sgn(b)+'x'):''}${c?_sgn(c):''}`;
+  const cands=[askMax?mn:mx,inside?F(Math.abs(al-h)>=Math.abs(be-h)?be:al):k,right+1,right-1,-right,right+2,right-2];
+  const wr=[];for(const v of cands)if(v!==right&&!wr.includes(v)&&wr.length<3)wr.push(v);
+  const list=[right,...wr];
+  for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
+  const ymin=Math.min(-2,Math.floor(Math.min(...vals))-1),ymax=Math.max(2,Math.ceil(Math.max(...vals))+1);
+  const xmin=Math.min(-2,al-1),xmax=Math.max(2,be+1);
+  const off=(ymax-ymin)*0.075;
+  // 끝점 값은 곡선 반대쪽(축 위/아래)에. x=-1 은 원점 O 와 붙어 '-1O' 로 보이므로 축 위쪽 왼편에 둔다.
+  const lab=x=>x===-1?{t:'text',x:x-0.25,y:off*0.5,s:'-1',anchor:'end',size:22}
+    :{t:'text',x,y:F(x)>0?-off-0.15:off*0.5,s:String(x),anchor:'middle',size:22};
+  const items=[
+    {t:'fn',f:F,from:xmin,to:xmax,color:'#b3bac7',width:2,dash:'6 6'},
+    {t:'fn',f:F,from:al,to:be},
+    {t:'seg',x1:al,y1:0,x2:al,y2:F(al),color:'#555',width:1.8,dash:'6 5'},
+    {t:'seg',x1:be,y1:0,x2:be,y2:F(be),color:'#555',width:1.8,dash:'6 5'},
+    {t:'pt',x:al,y:F(al),r:6,color:'#1d3b8f'},{t:'pt',x:be,y:F(be),r:6,color:'#1d3b8f'},
+    ...[al,be].filter(x=>x!==0).map(lab),      // 0 은 원점 O 와 겹치므로 쓰지 않는다
+  ].concat(inside?[{t:'pt',x:h,y:k,r:6,color:'#c0392b'}]:[]);
+  const svg=G.planeSVG({xmin,xmax,ymin,ymax,s:30,maxW:400,grid:false,ticks:false},items);
+  return{lv:'quad',topic:'이차함수 최대·최소',
+    qHtml:`다음 범위에서 이차함수의 <b>${askMax?'최댓값':'최솟값'}</b>은?${_eq(_tx(`y=${poly}`))}<div style="text-align:center;margin-top:-6px">${_tx(`(\\,${al}\\le x\\le ${be}\\,)`)}</div>`,
+    q:`${al}≤x≤${be}, y=${poly} 의 ${askMax?'최댓값':'최솟값'}`,
+    svg,svgAfter:svg,choices:list.map(String),ans:list.indexOf(right),answer:String(right),
+    sol:[`꼭짓점 꼴로 바꿉니다 : ${_tx(`y=${a===1?'':'-'}(${_lin(1,-h)})^2${k?_sgn(k):''}`)} → 꼭짓점 (${h}, ${k})`,
+      inside?`꼭짓점의 x=${h} 가 범위 안에 있으므로 꼭짓점의 y값 <b>${k}</b> 도 후보입니다.`:`꼭짓점의 x=${h} 는 범위 밖이므로 <b>양 끝값만</b> 비교합니다.`,
+      `양 끝 : x=${al} 일 때 y=${F(al)}, x=${be} 일 때 y=${F(be)}`,
+      `후보 중 가장 큰 값 ${mx}, 가장 작은 값 ${mn} → ${askMax?'최댓값':'최솟값'} <b>${right}</b>`]};
+}
+
 /* ── 문항 생성 ───────────────────────────────────────────────── */
 function genCoordQ(level){
   const G=window.GS;
@@ -9799,6 +9932,7 @@ function genCoordQ(level){
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
   const lv=level==='mix'?pk(['low','mid','high']):level;
+  if(TOP_LEVELS.includes(lv))return genTopQ(lv);
   const x=nz(-5,5),y=nz(-5,5);
   const P={t:'pt',x,y,label:'P',guide:true,r:8};
   const plane=items=>G.planeSVG({xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400},items);
@@ -9897,7 +10031,9 @@ function CoordDailyTab({userData,onUpdate}){
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
   const savingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다
-  const savedRef=React.useRef(null);     // {id, upd} — 소감을 고르면 이 기록에 덧붙인다
+  const savedRef=React.useRef(null);
+  const texRef=React.useRef(null);   // 최상 문제의 식(KaTeX)을 그릴 자리
+  React.useEffect(()=>{if(texRef.current&&window.GS)GS.renderTex(texRef.current);});     // {id, upd} — 소감을 고르면 이 기록에 덧붙인다
 
   const today=todayStr();
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
@@ -9937,7 +10073,7 @@ function CoordDailyTab({userData,onUpdate}){
   const saveSession=async(all,correct)=>{
     if(savingRef.current)return;
     savingRef.current=true;
-    const badge=(COORD_LEVELS.find(l=>l.k===level)||{}).badge||'';
+    const L=COORD_LEVELS.find(l=>l.k===level)||{};const badge=L.logName||L.badge||'';
     const totalSec=Math.round((Date.now()-startAt)/1000);
     const log={studentName:userData.name,date:today,time:timeStr(),
       type:`좌표 10문제 (${badge})`,score:`${correct} / ${TOTAL}`,questions:all,totalSec};
@@ -9971,7 +10107,7 @@ function CoordDailyTab({userData,onUpdate}){
     return(<div className="p-4 space-y-4 pb-36">
       <style>{`svg.plane{max-width:100%;height:auto}`}</style>
       <div>
-        <div className="text-2xl font-black text-gray-800">📍 오늘의 좌표 10문제</div>
+        <div className="text-2xl font-black text-gray-800">📍 오늘의 좌표</div>
         <div className="text-sm font-bold text-gray-500 mt-1">하루 10문제면 충분합니다. 좌표는 검정고시 20문항 중 5문항입니다.</div>
       </div>
 
@@ -10046,7 +10182,7 @@ function CoordDailyTab({userData,onUpdate}){
 
   /* ── 문제 화면 ── */
   const lvInfo=COORD_LEVELS.find(l=>l.k===q.lv)||COORD_LEVELS[0];
-  return(<div className="p-4 space-y-4 pb-36">
+  return(<div ref={texRef} className="p-4 space-y-4 pb-36">
     <style>{`svg.plane{max-width:100%;height:auto}`}</style>
 
     <div className="flex items-center gap-3">
@@ -10064,15 +10200,18 @@ function CoordDailyTab({userData,onUpdate}){
         <span className="text-xs font-black px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700">{lvInfo.badge}</span>
         <span className="text-xs font-bold text-gray-400">{q.topic}</span>
       </div>
-      <div className="text-lg font-black text-gray-800 leading-relaxed break-keep mb-4">{q.q}</div>
+      {q.qHtml
+        ?<div className="text-lg font-black text-gray-800 leading-loose break-keep mb-4" dangerouslySetInnerHTML={{__html:q.qHtml}}/>
+        :<div className="text-lg font-black text-gray-800 leading-relaxed break-keep mb-4">{q.q}</div>}
       <div className="flex justify-center overflow-x-auto"
         dangerouslySetInnerHTML={{__html:phase==='feedback'?q.svgAfter:q.svg}}/>
-      {phase==='quiz'&&(q.lv!=='low')&&(
+      {phase==='quiz'&&(q.lv==='mid'||q.lv==='high')&&(
         <div className="text-center text-xs font-bold text-gray-400 mt-2">옮겨진 점은 일부러 그리지 않았습니다. 규칙으로 구해 보세요.</div>
       )}
     </div>
 
-    <div className="grid grid-cols-2 gap-3">
+    {/* 최상 유리·무리함수 보기는 글이 길어서 한 줄에 하나씩 (두 줄로 꺾이지 않게) */}
+    <div className={`grid gap-3 ${q.lv==='rat'||q.lv==='irr'?'grid-cols-1':'grid-cols-2'}`}>
       {q.choices.map((c,i)=>{
         const isSel=sel===i,isAns=i===q.ans;
         let cls='bg-white border-gray-200 text-gray-700';
@@ -10101,7 +10240,7 @@ function CoordDailyTab({userData,onUpdate}){
               dangerouslySetInnerHTML={{__html:`${i+1}. ${s}`}}/>
           ))}
         </ol>
-        <div className="text-xs font-bold text-gray-400 mt-3">위 그림의 초록 점이 옮겨진 자리입니다.</div>
+        {(q.lv==='mid'||q.lv==='high')&&<div className="text-xs font-bold text-gray-400 mt-3">위 그림의 초록 점이 옮겨진 자리입니다.</div>}
       </div>
     )}
 
@@ -10812,7 +10951,7 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     }
     onUpdateRaw(upd);
   };
-  const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표10'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
+  const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
 
   const handleSessionActive=(active)=>{
     setSessionActive(active);
