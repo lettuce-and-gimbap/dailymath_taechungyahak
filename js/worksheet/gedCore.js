@@ -139,7 +139,7 @@ var GS=(function(){
         if(it.label){const dx=it.lx!==undefined?it.lx:12,dy=it.ly!==undefined?it.ly:-12;
           c+=`<text x="${X(it.x)+dx}" y="${Y(it.y)+dy}" font-size="${fsz+3}" fill="${col}" font-weight="700">${it.label}</text>`;}
       }
-      else if(it.t==='text'){c+=`<text x="${X(it.x)}" y="${Y(it.y)}" font-size="${it.size||fsz}" fill="${it.color||'#111'}" text-anchor="${it.anchor||'start'}" ${it.italic?'font-style="italic"':''}>${it.s!==undefined?it.s:it.text}</text>`;}
+      else if(it.t==='text'){c+=`<text x="${X(it.x)}" y="${Y(it.y)}" font-size="${it.size||fsz}" fill="${it.color||'#111'}" text-anchor="${it.anchor||'start'}" ${it.italic?'font-style="italic"':''} ${it.halo?'paint-order="stroke" stroke="#fff" stroke-width="6" stroke-linejoin="round" font-weight="600"':''}>${it.s!==undefined?it.s:it.text}</text>`;}
       else if(it.t==='rangle'){const px=X(it.x),py=Y(it.y),k=9;const ux=it.u[0]*k,uy=-it.u[1]*k,vx=it.v[0]*k,vy=-it.v[1]*k;
         c+=`<path d="M ${px+ux} ${py+uy} L ${px+ux+vx} ${py+uy+vy} L ${px+vx} ${py+vy}" fill="none" stroke="#000" stroke-width="1.8"/>`;}
     }
