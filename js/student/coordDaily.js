@@ -19,13 +19,13 @@ var COORD_LEVELS=[
     border:'border-emerald-200', chip:'bg-emerald-100 text-emerald-700'},
   {k:'mid', badge:'기초 2', logName:'중', lbl:'평행이동',       desc:'점을 옆으로·위아래로 밀어 봅니다',
     border:'border-sky-200', chip:'bg-sky-100 text-sky-700'},
-  {k:'high',badge:'기초 3', logName:'상', lbl:'대칭이동',       desc:'점을 축·원점에 비추어 봅니다',
+  {k:'high',badge:'기초 3', logName:'상', lbl:'대칭이동',       desc:'점을 접는선에 따라 접어 봅니다',
     border:'border-violet-200', chip:'bg-violet-100 text-violet-700'},
   {k:'mix', badge:'섞기', logName:'섞기', lbl:'기초 문제 혼합 학습',  desc:'기초 1 · 2 · 3을 골고루',
     border:'border-amber-200', chip:'bg-amber-100 text-amber-700'},
-  {k:'rat', badge:'응용 1', logName:'최상 유리함수', lbl:'유리함수 평행이동', desc:'점근선이 어디로 옮겨졌는지 봅니다',
+  {k:'rat', badge:'응용 1', logName:'최상 유리함수', lbl:'유리함수 평행이동', desc:'점근선이 어디로 얼마나 밀렸는지 봅니다',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
-  {k:'irr', badge:'응용 2', logName:'최상 무리함수', lbl:'무리함수 평행이동', desc:'그래프가 시작하는 점이 어디로 옮겨졌는지 봅니다',
+  {k:'irr', badge:'응용 2', logName:'최상 무리함수', lbl:'무리함수 평행이동', desc:'그래프가 시작하는 점이 어디로 얼마나 밀렸는지 봅니다',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
   {k:'quad',badge:'응용 3', logName:'최상 이차함수', lbl:'이차함수 최댓값 · 최솟값', desc:'정해진 범위에서 가장 큰 값·작은 값을 찾습니다',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
@@ -354,7 +354,7 @@ function CoordDailyTab({userData,onUpdate}){
       <style>{`svg.plane{max-width:100%;height:auto}`}</style>
       <div>
         <div className="text-2xl font-black text-gray-800">📍 오늘의 좌표</div>
-        <div className="text-sm font-bold text-gray-500 mt-1">하루 10문제면 충분합니다. 좌표는 검정고시 20문항 중 5문항입니다.</div>
+        <div className="text-sm font-bold text-gray-500 mt-1">하루 10문제면 충분합니다. 오늘도 화이팅해보아요 😄</div>
       </div>
 
       {doneToday&&(
@@ -451,9 +451,6 @@ function CoordDailyTab({userData,onUpdate}){
         :<div className="text-lg font-black text-gray-800 leading-relaxed break-keep mb-4">{q.q}</div>}
       <div className="flex justify-center overflow-x-auto"
         dangerouslySetInnerHTML={{__html:phase==='feedback'?q.svgAfter:q.svg}}/>
-      {phase==='quiz'&&(q.lv==='mid'||q.lv==='high')&&(
-        <div className="text-center text-xs font-bold text-gray-400 mt-2">옮겨진 점은 일부러 그리지 않았습니다. 규칙으로 구해 보세요.</div>
-      )}
     </div>
 
     {/* 최상 유리·무리함수 보기는 글이 길어서 한 줄에 하나씩 (두 줄로 꺾이지 않게) */}
