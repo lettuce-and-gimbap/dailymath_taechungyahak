@@ -154,7 +154,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
               return(<label key={i} className={`flex items-start gap-2 px-3 py-2 cursor-pointer ${on?'bg-red-50':'hover:bg-gray-50'}`}>
                 <input type="checkbox" checked={on} onChange={()=>setWrongQSel(prev=>{const s=new Set(prev);on?s.delete(i):s.add(i);return s;})} className="mt-0.5 w-4 h-4 flex-shrink-0 rounded"/>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-bold text-gray-400 mb-0.5">{q._logDate} · {q._logType}</div>
+                  <div className="text-[10px] font-bold text-gray-400 mb-0.5">{q._logDate} · {fmtLogType(q._logType)}</div>
                   <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{restoreQText(q)||'(문제 없음)'}</div>
                   {effGraph&&<div className="mt-1 flex justify-center"><GraphPreview q={{...q,graph:effGraph}}/></div>}
                   {q.cAns&&<div className="text-xs text-indigo-600 mt-0.5">정답: {q.cAns}</div>}
@@ -329,7 +329,7 @@ function FeedbackTab(){
       let logStr = '';
       if(relatedLogIdx !== '' && student?.logs?.[relatedLogIdx]) {
          const l = student.logs[relatedLogIdx];
-         logStr = `${fmtDate(l.date)} ${l.time} | ${l.type} | 점수: ${l.score}`;
+         logStr = `${fmtDate(l.date)} ${l.time} | ${fmtLogType(l.type)} | 점수: ${l.score}`;
       }
       const voiceId=voice?await saveVoice({from:'선생님',to:sid.trim(),blob:voice.blob,sec:voice.sec}):null;
       const ref=await db.collection('feedback').add({
@@ -385,7 +385,7 @@ function FeedbackTab(){
             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
             <div className="flex-1 min-w-0">
               <div className="font-black text-gray-800 text-sm">{s.studentName||'?'}</div>
-              <div className="text-xs text-gray-500 font-semibold truncate">{s.type||'학습'} · 점수: {s.score||'-'}</div>
+              <div className="text-xs text-gray-500 font-semibold truncate">{fmtLogType(s.type)||'학습'} · 점수: {s.score||'-'}</div>
             </div>
             <div className="text-right flex-shrink-0">
               <div className="text-xs text-gray-400 font-bold">{s.date||''}</div>
@@ -419,7 +419,7 @@ function FeedbackTab(){
           <select value={relatedLogIdx} onChange={e=>setRelatedLogIdx(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl p-3 text-sm font-bold focus:border-indigo-400 outline-none mb-3 bg-gray-50 text-gray-700">
             <option value="">-- 특정 기록에 연결하지 않음 (일반 피드백) --</option>
             {student.logs?.slice(0, 15).map((log, i) => (
-               <option key={i} value={i}>{fmtDate(log.date)} {log.time} | {log.type} | 점수: {log.score}</option>
+               <option key={i} value={i}>{fmtDate(log.date)} {log.time} | {fmtLogType(log.type)} | 점수: {log.score}</option>
             ))}
           </select>
 

@@ -1384,7 +1384,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-gray-800 text-sm mb-1">{fmtDate(log.date)} {log.time} {feelIco}</div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-500">{log.type}</span>
+                  <span className="text-xs text-gray-500">{fmtLogType(log.type)}</span>
                   <span className="font-black text-indigo-600 text-xs">{log.score}</span>
                   {rawAcc!==null&&<span className="text-[10px] font-bold bg-indigo-50 text-indigo-500 px-1.5 py-0.5 rounded-full">정답률 {rawAcc}%</span>}
                   {log.totalSec&&<span className="text-xs text-gray-400">⏱️{Math.floor(activeSec/60)}분{activeSec%60}초{flagged?'(⚠️유휴있음)':''}</span>}

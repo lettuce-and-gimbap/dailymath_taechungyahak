@@ -158,7 +158,7 @@ function StudentAnalysisTab(){
               <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-[10px] flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
               <div className="font-black text-gray-800 text-xs truncate">{s.studentName||'?'}</div>
             </div>
-            <div className="text-[9px] text-gray-500 truncate">{s.type||'학습'}</div>
+            <div className="text-[9px] text-gray-500 truncate">{fmtLogType(s.type)||'학습'}</div>
             <div className="flex justify-between">
               <span className="text-[9px] text-gray-400">점수: {s.score||'-'}</span>
               <span className="text-[9px] text-gray-400">{(s.date||'').slice(5)}{s.time?` ${s.time}`:''}</span>
@@ -270,7 +270,7 @@ function QuickFeedbackPanel({student}){
       let logStr='';
       if(mode==='session'&&sessionIdx!==''&&student?.logs?.[Number(sessionIdx)]){
         const l=student.logs[Number(sessionIdx)];
-        logStr=`${fmtDate(l.date)} ${l.time||''} | ${l.type||''} | 점수: ${l.score||''}`;
+        logStr=`${fmtDate(l.date)} ${l.time||''} | ${fmtLogType(l.type)||''} | 점수: ${l.score||''}`;
       }
       const voiceId=voice?await saveVoice({from:'선생님',to:student.name,blob:voice.blob,sec:voice.sec}):null;
       const ref=await db.collection('feedback').add({
@@ -311,7 +311,7 @@ function QuickFeedbackPanel({student}){
         className="w-full border-2 border-gray-200 rounded-xl p-2.5 text-xs font-bold focus:border-indigo-400 outline-none bg-white">
         <option value="">-- 세션을 선택하세요 --</option>
         {(student.logs||[]).slice(0,15).map((log,i)=>(
-          <option key={i} value={i}>{fmtDate(log.date)} {log.time||''} | {log.type||''} | 점수: {log.score||'-'}</option>
+          <option key={i} value={i}>{fmtDate(log.date)} {log.time||''} | {fmtLogType(log.type)||''} | 점수: {log.score||'-'}</option>
         ))}
       </select>}
       {/* 선택 세션 정오표 미리보기 */}
@@ -328,7 +328,7 @@ function QuickFeedbackPanel({student}){
       </div>}
       {/* 메시지 입력 */}
       <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={3} lang="ko"
-        placeholder={mode==='session'&&selLog?`[${fmtDate(selLog.date)} ${selLog.type||''}] 세션에 대한 피드백...`:'학생에게 전달할 피드백 메시지...'}
+        placeholder={mode==='session'&&selLog?`[${fmtDate(selLog.date)} ${fmtLogType(selLog.type)||''}] 세션에 대한 피드백...`:'학생에게 전달할 피드백 메시지...'}
         className="w-full border-2 border-gray-200 rounded-xl p-3 text-sm font-bold resize-none focus:border-indigo-400 outline-none"/>
       <VoiceRecorder key={vKey} onChange={setVoice} compact/>
       <button onClick={send}

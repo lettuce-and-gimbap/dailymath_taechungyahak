@@ -10,6 +10,19 @@ var timeStr=()=>{const d=new Date();return`${String(d.getHours()).padStart(2,'0'
 
 var fmtDate=s=>{const d=new Date(s);const dy=['일','월','화','수','목','금','토'];return`${d.getMonth()+1}월 ${d.getDate()}일(${dy[d.getDay()]})`};
 
+// 선생님 화면에 보일 세션 유형 이름 — 원본 log.type(예: "좌표 10문제 (하)")은 절대 안 바꾼다
+// (automation/monthlyReport.gs 의 /^좌표 10문제/ 감지가 그 접두사에 기대고 있음, CLAUDE.md 참고).
+// 대신 화면에 보여줄 때만 이 표로 예쁜 이름으로 바꿔치기한다 — 지난 기록도 자동으로 새 이름으로 보인다.
+// 새 좌표 유형이 추가되면 js/student/coordDaily.js COORD_LEVELS 의 logName 값 → 여기 한 줄만 추가.
+var COORD_TYPE_LABELS={
+  '하':'좌표 - 위치읽기','중':'좌표 - 평행이동','상':'좌표 - 대칭이동','섞기':'좌표 - 기초 혼합',
+  '최상 유리함수':'좌표 - 유리함수','최상 무리함수':'좌표 - 무리함수','최상 이차함수':'좌표 - 이차함수',
+};
+var fmtLogType=type=>{
+  const m=/^좌표 10문제 \((.+)\)$/.exec(type||'');
+  return m?(COORD_TYPE_LABELS[m[1]]||type):type;
+};
+
 // 오늘로부터 며칠 전인지 (날짜 문자열 'YYYY-MM-DD' 기준, 자정 기준 정수 일수)
 var daysSince=s=>{
   if(!s)return 9999;
