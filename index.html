@@ -9917,9 +9917,15 @@ function genTopQ(lv){
   for(const P of keys){
     if(P.y)marks.push({t:'seg',x1:P.x,y1:0,x2:P.x,y2:P.y,color:'#666',width:1.6,dash:'5 5'});
     if(P.x)marks.push({t:'seg',x1:0,y1:P.y,x2:P.x,y2:P.y,color:'#666',width:1.6,dash:'5 5'});
-    if(P.x)marks.push({t:'text',x:P.x===-1?P.x-0.12:P.x,y:P.y>=0?-off-0.15:off*0.5,s:String(P.x),anchor:'middle',size:22,color:INK,halo:true});
+    /* 점이 x축 위에 있으면(y=0) 곡선이 없는 쪽(위/아래)에, 아니면 축 너머 반대편에 x값을 쓴다 */
+    const near=[P.x-0.4,P.x+0.4].filter(t=>t>=al&&t<=be).map(F);
+    const curveUp=near.length?near.reduce((u,v)=>u+v,0)>0:a>0;
+    const xAbove=P.y===0?!curveUp:P.y<0;
+    if(P.x)marks.push({t:'text',x:P.x===-1&&!xAbove?P.x-0.12:P.x,y:xAbove?off*0.55:-off-0.15,s:String(P.x),anchor:'middle',size:22,color:INK,halo:true});
+    /* 점이 y축 위에 있으면(x=0) 범위가 뻗은 반대쪽(좌/우)에 조금 더 떨어뜨려 y값을 쓴다 */
     if(P.y&&!seenY.has(P.y)){seenY.add(P.y);
-      marks.push({t:'text',x:ySide*0.25,y:P.y-off*0.35,s:String(P.y),anchor:ySide>0?'start':'end',size:22,color:INK,halo:true});}
+      const side=P.x===0?(be>0?-1:1):ySide, gap=P.x===0?0.38:0.25;
+      marks.push({t:'text',x:side*gap,y:P.y-off*0.35,s:String(P.y),anchor:side>0?'start':'end',size:22,color:INK,halo:true});}
   }
   const items=[
     {t:'fn',f:F,from:xmin,to:xmax,color:'#1d3b8f',width:2.2,dash:'6 6'},
