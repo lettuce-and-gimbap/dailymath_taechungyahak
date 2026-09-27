@@ -9859,27 +9859,30 @@ function genTopQ(lv){
   }
 
   if(lv==='irr'){
-    const a=pk([1,-1,2,-2]),p=nz(-3,3),q=nz(-3,3);
-    const base=`y=\\sqrt{${_lin(a,0)}}`,moved=`y=\\sqrt{${_lin(a,-a*p)}}${_sgn(q)}`;
-    const f=x=>{const v=a*(x-p);return v<0?NaN:Math.sqrt(v)+q;};
+    // x 의 계수는 1 로 고정 (검정고시 출제 범위). 원래 그래프 y=√x 와 옮긴 그래프를 함께 그린다.
+    const a=1,p=nz(-2,3),q=nz(-2,4);
+    const base=`y=\\sqrt{x}`,moved=`y=\\sqrt{${_lin(1,-p)}}${_sgn(q)}`;
+    const f=x=>x<p?NaN:Math.sqrt(x-p)+q, f0=x=>x<0?NaN:Math.sqrt(x);
+    const xmin=Math.min(-1,p-1),xmax=Math.max(6,p+5),ymin=Math.min(-1,q-1),ymax=Math.max(3,q+3);
     const items=[
-      a>0?{t:'fn',f,from:p,to:5}:{t:'fn',f,from:-5,to:p},
+      {t:'fn',f:f0,from:0,to:xmax,color:'#8a94ad',width:3},
+      {t:'text',x:xmax-0.2,y:Math.sqrt(xmax-0.2)-0.55,s:'y=√x',anchor:'end',size:19,color:'#6b7280',italic:true},
+      {t:'fn',f,from:p,to:xmax},
       {t:'seg',x1:p,y1:0,x2:p,y2:q,color:'#555',width:1.8,dash:'6 5'},
       {t:'seg',x1:0,y1:q,x2:p,y2:q,color:'#555',width:1.8,dash:'6 5'},
       {t:'pt',x:p,y:q,r:7,color:'#1d3b8f'},
-      // 시작점 좌표 : y 값은 점과 겹치지 않게 y축의 반대쪽에 쓴다
-      {t:'text',x:p,y:q>0?-0.95:0.45,s:String(p),anchor:'middle',size:22},
-      {t:'text',x:p>0?-0.3:0.3,y:q-0.3,s:String(q),anchor:p>0?'end':'start',size:22},
+      {t:'text',x:p,y:q>0?-0.8:0.4,s:String(p),anchor:'middle',size:22},
+      {t:'text',x:p>0?-0.25:0.25,y:q-0.3,s:String(q),anchor:p>0?'end':'start',size:22},
     ];
+    const plane=(g,it)=>G.planeSVG({xmin,xmax,ymin,ymax,s:36,maxW:400,grid:false,ticks:false},it);
     const ch=topShiftChoices(p,q);
-    const inner=`${a===1?'':a===-1?'-':a}(${_lin(1,-p)})`;
     return{lv,topic:'무리함수 평행이동',
       qHtml:`무리함수의 그래프를 평행이동하였습니다.${_eqStack(_tx(base),_tx(moved))}x축과 y축으로 각각 얼마만큼 평행이동하였습니까?`,
       q:`무리함수 ${base} → ${moved}`,
       svg:plane({},items),svgAfter:plane({},items),
       choices:ch.list,ans:ch.ans,answer:`x축으로 ${p}, y축으로 ${q}`,
       sol:[`${_tx('y=\\sqrt{a(x-p)}+q')} 는 ${_tx('y=\\sqrt{ax}')} 를 <b>x축으로 p, y축으로 q</b> 만큼 옮긴 그래프입니다.`,
-        `루트 안을 묶으면 ${_tx(`\\sqrt{${_lin(a,-a*p)}}=\\sqrt{${inner}}`)} → x축으로 <b>${p}</b>`,
+        `루트 안이 ${_tx(_lin(1,-p))} = x−(${p}) 이므로 x축으로 <b>${p}</b> ${p>0?'(오른쪽)':'(왼쪽)'}`,
         `루트 밖 ${_tx(_sgn(q))} → y축으로 <b>${q}</b>`,
         `그래프가 시작하는 점이 원점 (0, 0) 에서 <b>(${p}, ${q})</b> 로 옮겨졌습니다.`]};
   }
