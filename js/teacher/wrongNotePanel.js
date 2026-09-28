@@ -388,8 +388,8 @@ function FeedbackTab(){
               <div className="text-xs text-gray-500 font-semibold truncate">{fmtLogType(s.type)||'학습'} · 점수: {s.score||'-'}</div>
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-xs text-gray-400 font-bold">{s.date||''}</div>
-              <div className="text-xs text-gray-400">{s.time||''}</div>
+              <div className="text-xs text-gray-900 font-black">{s.date||''}</div>
+              <div className="text-xs text-gray-900 font-black">{s.time||''}</div>
             </div>
           </button>
         ))}

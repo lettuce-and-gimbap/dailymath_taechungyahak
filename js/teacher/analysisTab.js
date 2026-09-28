@@ -161,7 +161,7 @@ function StudentAnalysisTab(){
             <div className="text-[9px] text-gray-500 truncate">{fmtLogType(s.type)||'학습'}</div>
             <div className="flex justify-between">
               <span className="text-[9px] text-gray-400">점수: {s.score||'-'}</span>
-              <span className="text-[9px] text-gray-400">{(s.date||'').slice(5)}{s.time?` ${s.time}`:''}</span>
+              <span className="text-[9px] text-gray-900 font-black">{(s.date||'').slice(5)}{s.time?` ${s.time}`:''}</span>
             </div>
           </button>
         ))}

@@ -77,6 +77,9 @@ function genTopQ(lv){
     const k=pk([1,-1,2,-2,3,-3]),p=nz(-3,3),q=nz(-3,3);
     const frac=`${k<0?'-':''}\\dfrac{${Math.abs(k)}}{`;
     const base=`y=${frac}x}`,moved=`y=${frac}${_lin(1,-p)}}${_sgn(q)}`;
+    // 교사 화면(오답노트·세션기록)은 이 문자열을 KaTeX 없이 그대로 보여 주므로,
+    // 위 base/moved(LaTeX)와 별개로 사람이 읽는 일반 텍스트를 q에 담는다.
+    const baseTxt=`y=${k}/x`,movedTxt=`y=${k}/(${_lin(1,-p)})${_sgn(q)}`;
     const f=x=>k/(x-p)+q;
     // 점근선 값은 축 위에만 쓴다. 곡선과 겹치지 않도록 곡선이 축을 지나는 쪽의 반대편에 둔다.
     const x0=p-k/q,y0=q-k/p;                      // 곡선이 x축·y축과 만나는 곳
@@ -90,7 +93,7 @@ function genTopQ(lv){
     const ch=topShiftChoices(p,q);
     return{lv,topic:'유리함수 평행이동',
       qHtml:`유리함수의 그래프를 평행이동하였습니다.${_eqStack(_tx(base),_tx(moved))}x축과 y축으로 각각 얼마만큼 평행이동하였습니까?`,
-      q:`유리함수 ${base} → ${moved}`,
+      q:`유리함수 ${baseTxt} → ${movedTxt}`,
       svg:plane({},items),svgAfter:plane({},items),
       choices:ch.list,ans:ch.ans,answer:`x축으로 ${p}, y축으로 ${q}`,
       sol:[`${_tx('y=\\dfrac{k}{x-p}+q')} 는 ${_tx('y=\\dfrac{k}{x}')} 를 <b>x축으로 p, y축으로 q</b> 만큼 옮긴 그래프입니다.`,
@@ -103,6 +106,7 @@ function genTopQ(lv){
     // x 의 계수는 1 로 고정 (검정고시 출제 범위). 원래 그래프 y=√x 와 옮긴 그래프를 함께 그린다.
     const a=1,p=nz(-2,3),q=nz(-2,4);
     const base=`y=\\sqrt{x}`,moved=`y=\\sqrt{${_lin(1,-p)}}${_sgn(q)}`;
+    const baseTxt=`y=√x`,movedTxt=`y=√(${_lin(1,-p)})${_sgn(q)}`;
     const f=x=>x<p?NaN:Math.sqrt(x-p)+q, f0=x=>x<0?NaN:Math.sqrt(x);
     const xmin=Math.min(-1,p-1),xmax=Math.max(6,p+5),ymin=Math.min(-1,q-1),ymax=Math.max(3,q+3);
     const items=[
@@ -119,7 +123,7 @@ function genTopQ(lv){
     const ch=topShiftChoices(p,q);
     return{lv,topic:'무리함수 평행이동',
       qHtml:`무리함수의 그래프를 평행이동하였습니다.${_eqStack(_tx(base),_tx(moved))}x축과 y축으로 각각 얼마만큼 평행이동하였습니까?`,
-      q:`무리함수 ${base} → ${moved}`,
+      q:`무리함수 ${baseTxt} → ${movedTxt}`,
       svg:plane({},items),svgAfter:plane({},items),
       choices:ch.list,ans:ch.ans,answer:`x축으로 ${p}, y축으로 ${q}`,
       sol:[`${_tx('y=\\sqrt{a(x-p)}+q')} 는 ${_tx('y=\\sqrt{ax}')} 를 <b>x축으로 p, y축으로 q</b> 만큼 옮긴 그래프입니다.`,
@@ -333,7 +337,7 @@ function CoordDailyTab({userData,onUpdate}){
   const check=()=>{
     if(sel===null||!q)return;
     const isOk=sel===q.ans;
-    const rec={qTxt:q.q.slice(0,60),uAns:String(q.choices[sel]),cAns:String(q.choices[q.ans]),isOk,
+    const rec={qTxt:q.q.slice(0,60),qFull:q.q,uAns:String(q.choices[sel]),cAns:String(q.choices[q.ans]),isOk,
       timeSec:Math.round((Date.now()-qStartAt)/1000),
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
