@@ -83,18 +83,9 @@ function StudentAnalysisTab(){
     }catch(e){alert('삭제 실패: '+e.message);}
   };
 
-  const[recentSessions,setRecentSessions]=useState([]);
-  useEffect(()=>{
-    // date만으로 orderBy하면 같은 날짜 안에서는 순서가 들쭉날쭉하므로,
-    // 넉넉히 받아 date+time 문자열로 다시 정렬해 최근 순 10개만 남긴다.
-    db.collection('math_logs').orderBy('date','desc').limit(30).get()
-      .then(snap=>{
-        const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
-        arr.sort((a,b)=>`${b.date||''} ${b.time||''}`.localeCompare(`${a.date||''} ${a.time||''}`));
-        setRecentSessions(arr.slice(0,10));
-      })
-      .catch(()=>{});
-  },[]);
+  const[recentN,setRecentN]=useRecentCount();
+  const[showRecent,setShowRecent]=useState(true);
+  const recentSessions=useRecentSessions(recentN);
 
   const load=async()=>{
     setLoading(true);
@@ -148,8 +139,15 @@ function StudentAnalysisTab(){
 
     {/* ── 최근 학습 세션 ── */}
     {recentSessions.length>0&&<div className="bg-white rounded-2xl p-4 shadow-sm">
-      <div className="text-xs font-black text-gray-400 uppercase mb-2">🕐 최근 학습 세션</div>
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-black text-gray-400 uppercase">🕐 최근 학습 세션</div>
+        <button onClick={()=>setShowRecent(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{showRecent?'접기 ▲':'펼치기 ▼'}</button>
+      </div>
+      {showRecent&&<div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <RecentCountToggle n={recentN} onChange={setRecentN}/>
+        <FeelSummary sessions={recentSessions}/>
+      </div>}
+      {showRecent&&<div className="grid grid-cols-2 gap-1.5">
         {recentSessions.map((s,i)=>(
           <button key={s.id||i}
             onClick={()=>{const found=students.find(st=>st.name===s.studentName||st.id===s.studentName);if(found)setSelected(found);}}
@@ -159,13 +157,14 @@ function StudentAnalysisTab(){
               <div className="font-black text-gray-800 text-xs truncate">{s.studentName||'?'}</div>
             </div>
             <div className="text-[9px] text-gray-500 truncate">{fmtLogType(s.type)||'학습'}</div>
+            <div><FeelChip feeling={s.feeling} small/></div>
             <div className="flex justify-between">
               <span className="text-[9px] text-gray-400">점수: {s.score||'-'}</span>
               <span className="text-[9px] text-gray-900 font-black">{(s.date||'').slice(5)}{s.time?` ${s.time}`:''}</span>
             </div>
           </button>
         ))}
-      </div>
+      </div>}
     </div>}
 
     {/* ── 학생 그리드 헤더 ── */}

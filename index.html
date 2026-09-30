@@ -7877,6 +7877,70 @@ function PushCard({userData,compact}){
 }
 
 
+// ========== js\ui\recentSessions.js ==========
+// === js/ui/recentSessions.js ===
+/* --------------------------------------------------------------------
+   선생님 화면 '최근 학습 세션' 공용 조각 (학생관리 탭 · 오답노트 탭)
+   - useRecentSessions(n) : math_logs 최근 기록을 날짜+시각 순으로 n개 (한 번만 받아 5/10/20 전환은 다시 읽지 않는다)
+   - RecentCountToggle    : 5 / 10 / 20개 보기 단추 (선택은 localStorage 에 기억)
+   - FeelChip / FeelSummary : 학생이 세션 끝에 고른 소감(feeling) 표시
+   -------------------------------------------------------------------- */
+
+var RECENT_COUNTS=[5,10,20];
+var RECENT_COUNT_KEY='teacherRecentCount';
+var RECENT_FETCH=40;   // 같은 날짜 안에서 시각순으로 다시 정렬하므로 20개보다 넉넉히 받는다
+
+var FEEL_META={
+  easy:{ico:'😊',lbl:'쉬웠어요',cls:'bg-green-100 text-green-800 border-green-300'},
+  normal:{ico:'😐',lbl:'적당했어요',cls:'bg-blue-100 text-blue-800 border-blue-300'},
+  hard:{ico:'😥',lbl:'어려웠어요',cls:'bg-red-100 text-red-800 border-red-300'},
+};
+
+function useRecentCount(){
+  const[n,setN]=useState(()=>{
+    try{const v=parseInt(localStorage.getItem(RECENT_COUNT_KEY),10);if(RECENT_COUNTS.includes(v))return v;}catch(e){}
+    return 10;
+  });
+  const set=v=>{setN(v);try{localStorage.setItem(RECENT_COUNT_KEY,String(v));}catch(e){}};
+  return[n,set];
+}
+
+function useRecentSessions(n){
+  const[all,setAll]=useState([]);
+  useEffect(()=>{
+    db.collection('math_logs').orderBy('date','desc').limit(RECENT_FETCH).get().then(snap=>{
+      const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
+      arr.sort((a,b)=>`${b.date||''} ${b.time||''}`.localeCompare(`${a.date||''} ${a.time||''}`));
+      setAll(arr);
+    }).catch(()=>{});
+  },[]);
+  return all.slice(0,n);
+}
+
+function RecentCountToggle({n,onChange}){
+  return(<div className="flex items-center gap-1">
+    {RECENT_COUNTS.map(c=>(
+      <button key={c} onClick={()=>onChange(c)}
+        className={`text-xs px-2.5 py-1 rounded-lg font-black transition-all ${n===c?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>{c}개</button>
+    ))}
+  </div>);
+}
+
+function FeelChip({feeling,small}){
+  const m=FEEL_META[feeling];
+  if(!m)return<span className={`${small?'text-[9px]':'text-xs'} font-bold text-gray-400`}>소감 없음</span>;
+  return<span className={`${small?'text-[9px] px-1.5':'text-xs px-2'} inline-flex items-center gap-0.5 py-0.5 rounded-full border font-black ${m.cls}`}>{m.ico} {m.lbl}</span>;
+}
+
+function FeelSummary({sessions}){
+  const c={easy:0,normal:0,hard:0};
+  sessions.forEach(s=>{if(c[s.feeling]!==undefined)c[s.feeling]++;});
+  return(<div className="flex items-center gap-2 text-xs font-black text-gray-700">
+    {Object.keys(FEEL_META).map(k=><span key={k}>{FEEL_META[k].ico} {c[k]}</span>)}
+  </div>);
+}
+
+
 // ========== js\student\exploreModules.js ==========
 // === js/student/exploreModules.js ===
 /* --------------------------------------------------------------------
@@ -12100,14 +12164,8 @@ function FeedbackTab(){
   const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);
   const[editFbId,setEditFbId]=useState(null);
   const[editFbText,setEditFbText]=useState('');
-  const[recentSessions,setRecentSessions]=useState([]);
-
-  useEffect(()=>{
-    db.collection('math_logs').orderBy('date','desc').limit(10).get().then(snap=>{
-      const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
-      setRecentSessions(arr);
-    }).catch(()=>{});
-  },[]);
+  const[recentN,setRecentN]=useRecentCount();
+  const recentSessions=useRecentSessions(recentN);
 
   const jumpToStudent=async(name)=>{
     setSid(name);
@@ -12207,6 +12265,10 @@ function FeedbackTab(){
         <div className="text-sm font-bold text-gray-400 uppercase">🕐 최근 학습 세션 (클릭 → 바로 조회)</div>
         <button onClick={()=>setShowRecentSessions(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{showRecentSessions?'접기 ▲':'펼치기 ▼'}</button>
       </div>
+      {showRecentSessions&&<div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <RecentCountToggle n={recentN} onChange={setRecentN}/>
+        <FeelSummary sessions={recentSessions}/>
+      </div>}
       {showRecentSessions&&<div className="space-y-2">
         {recentSessions.map((s,i)=>(
           <button key={s.id||i} onClick={()=>jumpToStudent(s.studentName)} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
@@ -12214,6 +12276,7 @@ function FeedbackTab(){
             <div className="flex-1 min-w-0">
               <div className="font-black text-gray-800 text-sm">{s.studentName||'?'}</div>
               <div className="text-xs text-gray-500 font-semibold truncate">{fmtLogType(s.type)||'학습'} · 점수: {s.score||'-'}</div>
+              <div className="mt-1"><FeelChip feeling={s.feeling}/></div>
             </div>
             <div className="text-right flex-shrink-0">
               <div className="text-xs text-gray-900 font-black">{s.date||''}</div>
@@ -12513,18 +12576,9 @@ function StudentAnalysisTab(){
     }catch(e){alert('삭제 실패: '+e.message);}
   };
 
-  const[recentSessions,setRecentSessions]=useState([]);
-  useEffect(()=>{
-    // date만으로 orderBy하면 같은 날짜 안에서는 순서가 들쭉날쭉하므로,
-    // 넉넉히 받아 date+time 문자열로 다시 정렬해 최근 순 10개만 남긴다.
-    db.collection('math_logs').orderBy('date','desc').limit(30).get()
-      .then(snap=>{
-        const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
-        arr.sort((a,b)=>`${b.date||''} ${b.time||''}`.localeCompare(`${a.date||''} ${a.time||''}`));
-        setRecentSessions(arr.slice(0,10));
-      })
-      .catch(()=>{});
-  },[]);
+  const[recentN,setRecentN]=useRecentCount();
+  const[showRecent,setShowRecent]=useState(true);
+  const recentSessions=useRecentSessions(recentN);
 
   const load=async()=>{
     setLoading(true);
@@ -12578,8 +12632,15 @@ function StudentAnalysisTab(){
 
     {/* ── 최근 학습 세션 ── */}
     {recentSessions.length>0&&<div className="bg-white rounded-2xl p-4 shadow-sm">
-      <div className="text-xs font-black text-gray-400 uppercase mb-2">🕐 최근 학습 세션</div>
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-black text-gray-400 uppercase">🕐 최근 학습 세션</div>
+        <button onClick={()=>setShowRecent(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{showRecent?'접기 ▲':'펼치기 ▼'}</button>
+      </div>
+      {showRecent&&<div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+        <RecentCountToggle n={recentN} onChange={setRecentN}/>
+        <FeelSummary sessions={recentSessions}/>
+      </div>}
+      {showRecent&&<div className="grid grid-cols-2 gap-1.5">
         {recentSessions.map((s,i)=>(
           <button key={s.id||i}
             onClick={()=>{const found=students.find(st=>st.name===s.studentName||st.id===s.studentName);if(found)setSelected(found);}}
@@ -12589,13 +12650,14 @@ function StudentAnalysisTab(){
               <div className="font-black text-gray-800 text-xs truncate">{s.studentName||'?'}</div>
             </div>
             <div className="text-[9px] text-gray-500 truncate">{fmtLogType(s.type)||'학습'}</div>
+            <div><FeelChip feeling={s.feeling} small/></div>
             <div className="flex justify-between">
               <span className="text-[9px] text-gray-400">점수: {s.score||'-'}</span>
               <span className="text-[9px] text-gray-900 font-black">{(s.date||'').slice(5)}{s.time?` ${s.time}`:''}</span>
             </div>
           </button>
         ))}
-      </div>
+      </div>}
     </div>}
 
     {/* ── 학생 그리드 헤더 ── */}

@@ -272,14 +272,8 @@ function FeedbackTab(){
   const[voice,setVoice]=useState(null);const[vKey,setVKey]=useState(0);
   const[editFbId,setEditFbId]=useState(null);
   const[editFbText,setEditFbText]=useState('');
-  const[recentSessions,setRecentSessions]=useState([]);
-
-  useEffect(()=>{
-    db.collection('math_logs').orderBy('date','desc').limit(10).get().then(snap=>{
-      const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));
-      setRecentSessions(arr);
-    }).catch(()=>{});
-  },[]);
+  const[recentN,setRecentN]=useRecentCount();
+  const recentSessions=useRecentSessions(recentN);
 
   const jumpToStudent=async(name)=>{
     setSid(name);
@@ -379,6 +373,10 @@ function FeedbackTab(){
         <div className="text-sm font-bold text-gray-400 uppercase">🕐 최근 학습 세션 (클릭 → 바로 조회)</div>
         <button onClick={()=>setShowRecentSessions(v=>!v)} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-lg font-bold">{showRecentSessions?'접기 ▲':'펼치기 ▼'}</button>
       </div>
+      {showRecentSessions&&<div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <RecentCountToggle n={recentN} onChange={setRecentN}/>
+        <FeelSummary sessions={recentSessions}/>
+      </div>}
       {showRecentSessions&&<div className="space-y-2">
         {recentSessions.map((s,i)=>(
           <button key={s.id||i} onClick={()=>jumpToStudent(s.studentName)} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
@@ -386,6 +384,7 @@ function FeedbackTab(){
             <div className="flex-1 min-w-0">
               <div className="font-black text-gray-800 text-sm">{s.studentName||'?'}</div>
               <div className="text-xs text-gray-500 font-semibold truncate">{fmtLogType(s.type)||'학습'} · 점수: {s.score||'-'}</div>
+              <div className="mt-1"><FeelChip feeling={s.feeling}/></div>
             </div>
             <div className="text-right flex-shrink-0">
               <div className="text-xs text-gray-900 font-black">{s.date||''}</div>
