@@ -21,7 +21,9 @@ var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습
   fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false,
   qs:1,      // 문제 글자 배율 (문제 본문·보기)
   ms:1.2,     // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
-  cs:1};      // 개념 카드 글자 배율
+  cs:1,      // 개념 카드 글자 배율
+  /* 핵심 점 찍기(p1) 실전 문항을 만들 때 쓰는 설정 — 섞을 종류 · 식 보이기 · 모눈 · 좌표 쓰기 */
+  kp:{kinds:['무리함수 시작점','유리함수 점근선 교점','이차함수 최대·최소 점'],eq:'식 숨기기',grid:'모눈 있음',write:'동그라미만'}};
 
 /* 글자 크기 조절 — [−] 막대 [+] 와 빠른 단계 버튼. 값은 배율(1 = 100%) */
 var GED_SIZE_STEPS=[['작게',.9],['보통',1],['크게',1.25],['아주 크게',1.5]];
@@ -92,16 +94,19 @@ function gedSafeBuild(u,p){try{const r=u.build(p);return r&&!r.err?r:null;}catch
 
 function gedSheetId(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
-/* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지) */
-function gedGenUnit(u,count,withEx){
+/* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
+   opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다) */
+function gedGenUnit(u,count,withEx,opts){
   const out=[];
-  if(withEx)out.push(gedNewRec(u,0,{...u.def}));
+  if(withEx)out.push(gedNewRec(u,0,u.exDef?u.exDef(opts):{...u.def}));
   const seen=new Set();
   for(let i=1;i<=count;i++){
-    let params=null;
-    for(let t=0;t<20;t++){const c=u.rand();const r=gedSafeBuild(u,c);if(!r)continue;
+    let params=null,first=null;
+    /* 겹쳐서 다시 뽑을 때 reroll 이 있는 유형은 처음 뽑은 문제 종류를 지킨다 (p1 의 종류 섞기 순서가 밀리지 않게) */
+    const again=()=>first&&u.reroll?u.reroll(first):u.rand(opts);
+    for(let t=0;t<20;t++){const c=again();if(!first)first=c;const r=gedSafeBuild(u,c);if(!r)continue;
       const k=r.q+'|'+(r.answerTex||r.answerRaw||'');if(!seen.has(k)){seen.add(k);params=c;break;}}
-    if(!params){for(let t=0;t<10&&!params;t++){const c=u.rand();if(gedSafeBuild(u,c))params=c;}}
+    if(!params){for(let t=0;t<10&&!params;t++){const c=again();if(gedSafeBuild(u,c))params=c;}}
     out.push(gedNewRec(u,i,params||{...u.def}));
   }
   return out;
@@ -282,14 +287,34 @@ function GedSheetView({sheet,seq,busy,ops}){
               edit={edit} showCtrl={showCtrl} edited={!!(sheet.concepts&&sheet.concepts[u.id])} saved={ops.cLibHas(u.id)}
               getHtml={uid=>(sheet.concepts&&sheet.concepts[uid])?GS.conceptMode(sheet.concepts[uid],!!cfg.blankConcept):GS.conceptHTML(u,{blank:cfg.blankConcept})}
               onEdit={h=>ops.onConceptEdit(id,u.id,h)} onReset={()=>{if(confirm(`'${u.title}' 개념 설명을 처음 설명으로 되돌릴까요?\n(이 학습지와, 앞으로 만들 학습지 모두 처음 설명으로 돌아갑니다)`))ops.onConceptReset(id,u.id);}}/>}
+            {cfg.includeConcept&&u.pageAfterConcept&&<div className="pgbreak"><span>여기서 다음 쪽으로 넘어갑니다</span></div>}
             {ex.length>0&&<h3>풀이 예시</h3>}
             {ex.map(r=><GedProblemCard key={r.key} rec={r} unit={u} no={r.no} {...cardProps}/>)}
-            {qs.length>0&&<h3>실전 문제</h3>}
+            {qs.length>0&&<h3>{u.qTitle||'실전 문제'}</h3>}
             {qs.length>0&&<div className="qgrid">{qs.map(r=><GedProblemCard key={r.key} rec={r} unit={u} no={r.no} {...cardProps}/>)}</div>}
           </div>;})}
         {problems.length===0&&<p className="sub">문항이 모두 빠졌습니다. 이 학습지는 삭제하거나, 설정에서 새로 만들어 주세요.</p>}
       </div>
     </div>}
+  </div>;
+}
+
+/* 핵심 점 찍기(p1) 설정 상자 — 이 유형을 골랐을 때만 보인다.
+   여기서 고른 값으로 실전 문항이 만들어지고, 만든 뒤에도 문항마다 조건 상자에서 하나씩 바꿀 수 있다. */
+function GedKpSetup({kp,onChange,Btn}){
+  const all=GED_DEF_CFG.kp.kinds;
+  const kinds=kp.kinds||all;
+  const set=patch=>onChange({...kp,...patch});
+  const toggleKind=k=>set({kinds:kinds.includes(k)?kinds.filter(x=>x!==k):all.filter(x=>x===k||kinds.includes(x))});
+  return<div className="mt-3 bg-amber-50 rounded-2xl px-3 py-3 space-y-2">
+    <div className="text-xs font-black text-amber-800">⭕ 점 찍기 연습 — 섞을 함수와 보기 방식</div>
+    <div className="flex flex-wrap gap-2">{all.map(k=><Btn key={k} on={kinds.includes(k)} onClick={()=>toggleKind(k)}>{kinds.includes(k)?'✓ ':''}{k}</Btn>)}</div>
+    <div className="flex flex-wrap gap-2">
+      <Btn on={kp.eq==='식 보이기'} onClick={()=>set({eq:kp.eq==='식 보이기'?'식 숨기기':'식 보이기'})}>{kp.eq==='식 보이기'?'식 보이기':'식 숨기기 (그림만)'}</Btn>
+      <Btn on={kp.grid!=='모눈 없음'} onClick={()=>set({grid:kp.grid==='모눈 없음'?'모눈 있음':'모눈 없음'})}>{kp.grid==='모눈 없음'?'모눈 없음 (시험지 모양)':'모눈 있음'}</Btn>
+      <Btn on={kp.write==='좌표도 쓰기'} onClick={()=>set({write:kp.write==='좌표도 쓰기'?'동그라미만':'좌표도 쓰기'})}>{kp.write==='좌표도 쓰기'?'좌표도 쓰기':'동그라미만'}</Btn>
+    </div>
+    <div className="text-[11px] text-amber-800 font-medium">고른 함수가 문항마다 번갈아 섞여 나옵니다. 1쪽은 개념(세 함수의 동그라미 예시), 2쪽부터 연습입니다.</div>
   </div>;
 }
 
@@ -349,11 +374,13 @@ function GedWorksheetTab(){
   /* ---------- 문항 조작 ---------- */
   const mapProbs=(id,fn)=>patchSheet(id,s=>({...s,problems:fn(s.problems)}));
   const onParam=(id,key,k,v)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,params:{...p.params,[k]:v},override:null,rev:p.rev+1}:p));};
-  const onRandom=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,params:byId(p.uid).rand(),override:null,rev:p.rev+1}:p));};
+  /* reroll 이 있는 유형(p1)은 문제 종류·보기 설정을 지키고 숫자만 바꾼다 */
+  const onRandom=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
+    return{...p,params:u.reroll?u.reroll(p.params):u.rand(),override:null,rev:p.rev+1};}));};
   const onRevert=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,override:null,rev:p.rev+1}:p));};
   const onRemoveProb=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.filter(p=>p.key!==key));};
-  const addProblem=(id,uid)=>{const u=byId(uid);mapProbs(id,ps=>{const mine=ps.filter(p=>p.uid===uid);const idx=Math.max(0,...mine.map(p=>p.idx))+1;
-    const[rec]=gedGenUnit(u,1,false);rec.idx=idx;const last=ps.map(p=>p.uid).lastIndexOf(uid);const out=ps.slice();out.splice(last+1,0,rec);return out;});};
+  const addProblem=(id,uid)=>{const u=byId(uid);patchSheet(id,s=>{const ps=s.problems;const mine=ps.filter(p=>p.uid===uid);const idx=Math.max(0,...mine.map(p=>p.idx))+1;
+    const[rec]=gedGenUnit(u,1,false,s.cfg.kp);rec.idx=idx;const last=ps.map(p=>p.uid).lastIndexOf(uid);const out=ps.slice();out.splice(last+1,0,rec);return{...s,problems:out};});};
   const removeUnit=(id,uid)=>mapProbs(id,ps=>{ps.filter(p=>p.uid===uid).forEach(p=>delete ovRef.current[p.key]);return ps.filter(p=>p.uid!==uid);});
   const onOverride=(key,html)=>{ovRef.current[key]=html;
     setSheets(ss=>ss.map(s=>s.problems.some(p=>p.key===key&&!p.override)?{...s,problems:s.problems.map(p=>p.key===key?{...p,override:'1'}:p)}:s));
@@ -363,7 +390,8 @@ function GedWorksheetTab(){
   /* ---------- 생성 : 기존 학습지는 접어 두고 새 장을 맨 위에 추가 ---------- */
   const generate=()=>{
     if(!selected.length){showToast('유형을 하나 이상 골라 주세요.');return;}
-    const list=[];UNITS.forEach(u=>{if(selected.includes(u.id))list.push(...gedGenUnit(u,setupCfg.count,setupCfg.includeExample));});
+    if(selected.includes('p1')&&!(setupCfg.kp&&setupCfg.kp.kinds&&setupCfg.kp.kinds.length)){showToast('점 찍기 연습에 넣을 함수를 하나 이상 골라 주세요.');return;}
+    const list=[];UNITS.forEach(u=>{if(selected.includes(u.id))list.push(...gedGenUnit(u,setupCfg.count,setupCfg.includeExample,setupCfg.kp));});
     const sh=gedMakeSheet(setupCfg,list,null);
     sh.concepts=gedCLibFor(cLib,selected);   // 고쳐 둔 '내 설명'이 있는 유형은 그 글로 시작
     const before=sheets.length;
@@ -372,7 +400,14 @@ function GedWorksheetTab(){
     showToast(before?`✅ 새 학습지를 추가했습니다. (기존 ${before}장은 접어 두었습니다)`:'✅ 학습지를 만들었습니다.');
     setTimeout(()=>{const el=document.getElementById('ged-sheet-'+sh.id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},60);
   };
-  const applyPreset=pre=>{setSelected(pre.ids);
+  const applyPreset=pre=>{
+    /* 점 찍기 프리셋은 쪽 구성(개념 1쪽 + 2단 연습)이 달라 보기 설정도 함께 바꾼다. 다른 프리셋으로 돌아가면 기본 구성으로 되돌린다 */
+    const wasKp=selected.length===1&&selected[0]==='p1';
+    setSelected(pre.ids);
+    if(pre.k==='kpoint'){setSetupCfg({title:'그래프의 핵심 점 찾기 — 원점 O 와 그 점에 ○',
+      subtitle:'무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점',
+      intro:false,includeConcept:true,includeExample:false,cols2:true,count:12});return;}
+    if(wasKp)setSetupCfg({intro:true,includeExample:true,cols2:false,count:3});
     if(pre.k==='coord'||pre.k==='warm')setSetupCfg({title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:GED_DEF_CFG.subtitle});
     else if(pre.k==='all20'||pre.k==='full')setSetupCfg({title:'고졸 검정고시 수학 · 유형별 만능 학습지',subtitle:'1번~20번 전 유형 — 2026년 출제 형식 기준'});
     else if(pre.k==='geo')setSetupCfg({title:'고졸 검정고시 수학 · 도형의 방정식 학습지',subtitle:'두 점 사이의 거리 · 내분점 · 점과 직선 · 원 · 대칭이동과 평행이동'});};
@@ -548,6 +583,7 @@ function GedWorksheetTab(){
               className="w-20 border-2 border-gray-200 rounded-xl px-2 py-1.5 text-sm font-black text-center outline-none focus:border-indigo-400"/>
             <span className="text-[11px] font-bold text-gray-400">문항 (1~50)</span>
           </div>
+          {selected.includes('p1')&&<GedKpSetup kp={setupCfg.kp||GED_DEF_CFG.kp} onChange={kp=>setSetupCfg({kp})} Btn={Btn}/>}
           <div className="flex flex-wrap gap-2 mt-2">
             <Btn on={setupCfg.includeConcept} onClick={()=>setSetupCfg({includeConcept:!setupCfg.includeConcept})}>📖 개념 카드</Btn>
             <Btn on={setupCfg.includeExample} onClick={()=>setSetupCfg({includeExample:!setupCfg.includeExample})}>💡 예제(풀이 공개)</Btn>

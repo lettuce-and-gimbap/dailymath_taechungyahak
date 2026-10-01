@@ -9,6 +9,7 @@
    ===================================================================== */
 var GED_AREAS=[
   {k:'C0',title:'좌표 기초 워밍업',desc:'좌표 읽기 · 사분면 · 직선의 그래프'},
+  {k:'P', title:'그래프의 핵심 점 찍기',desc:'무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점'},
   {k:'A', title:'영역 A · 다항식과 복소수',desc:'1번~5번'},
   {k:'B', title:'영역 B · 방정식과 부등식',desc:'6번~9번'},
   {k:'C', title:'영역 C · 도형의 방정식 (좌표평면)',desc:'10번~14번'},
@@ -51,6 +52,33 @@ var GED_UNITS=(function(){
       sol:[`${tex('x')} 자리에 ${tex(nf(r))}을 넣습니다 : ${head}`,
         `거듭제곱을 먼저 계산합니다 : ${tex(`${nf(r)}^3=${nf(r**3)}`)}${withSq?`, ${tex(`${nf(r)}^2=${nf(r*r)}`)}`:''}`,
         `${tex(`${nf(left)}+${nf(r)}a${tail(c)}=0`)} → ${tex(`${nf(r)}a=${nf(-(left+c))}`)} → ${tex('a='+nf(a))}`]};
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     핵심 점 찍기(p1) — 세 함수의 '그 점'에 ○ 하는 연습
+     실전 문항이 세 종류를 고르게 섞도록, 종류를 한 바퀴씩 섞어 꺼내는 주머니(bag)를 쓴다.
+     (그냥 무작위로 뽑으면 12문항 중 한 종류가 1~2문항뿐인 장이 자주 나온다)
+     ────────────────────────────────────────────────────────────── */
+  const KP_KINDS=['무리함수 시작점','유리함수 점근선 교점','이차함수 최대·최소 점'];
+  const KP_CODE={'무리함수 시작점':'irr','유리함수 점근선 교점':'rat','이차함수 최대·최소 점':'quad'};
+  let kpBag=[],kpLast='';
+  const kpNextKind=list=>{
+    if(list.length===1)return list[0];
+    if(!kpBag.length||kpBag.some(k=>list.indexOf(k)<0)){kpBag=shuffle(list);if(kpBag[0]===kpLast)kpBag.push(kpBag.shift());}
+    return(kpLast=kpBag.shift());
+  };
+  /* 종류·모양별로 곡선이 창(−6~6) 안에 넉넉히 보이는 범위에서 핵심 점을 고른다. 원점과는 겹치지 않게 둘 다 0이 아닌 수 */
+  function kpRand(opts){
+    opts=opts||{};
+    const kinds=(opts.kinds||[]).filter(k=>KP_CODE[k]);
+    const kind=kpNextKind(kinds.length?kinds:KP_KINDS),code=KP_CODE[kind];
+    const flip=Math.random()<.5;
+    let m,n;
+    if(code==='irr'){m=nz(-4,2);n=flip?nz(-2,4):nz(-4,2);}
+    else if(code==='rat'){m=nz(-3,3);n=nz(-3,3);}
+    else{m=nz(-3,3);n=flip?nz(-1,4):nz(-4,1);}
+    return{kind,m,n,shape:flip?'뒤집힌 모양':'기본',
+      eq:opts.eq||'식 숨기기',grid:opts.grid||'모눈 있음',write:opts.write||'동그라미만'};
   }
 
   return[
@@ -133,6 +161,57 @@ var GED_UNITS=(function(){
       const q=`기울기가 ${tex(nf(a))}이고 ${tex('y')}절편이 ${tex(nf(b))}인 직선의 방정식은?`;
       const sol=[`직선의 식은 ${tex('y=(\\text{기울기})x+(y\\text{절편})')} 입니다.`,`기울기 자리에 ${tex(nf(a))}, y절편 자리에 ${tex(nf(b))}를 넣습니다.`,`따라서 ${tex(correct)}`];
       return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:correct,layout:'two'};
+    }
+  },
+
+  /* ================================================================
+     P. 그래프의 핵심 점 찍기 — 원점 O 와 '그 점' 두 곳에 ○
+     1쪽은 개념(세 함수의 예시 그림), 2쪽부터는 세 종류가 섞인 연습 (pageAfterConcept)
+     ================================================================ */
+  { id:'p1', tag:'점 찍기', area:'P', title:'그래프의 핵심 점에 동그라미', src:'18번 · 7번의 출발점', coord:true,
+    pageAfterConcept:true, qTitle:'동그라미 연습 — 원점 O 와 그 점, 두 곳에 ○',
+    fields:[{k:'kind',label:'문제 종류',sel:KP_KINDS},
+      {k:'m',label:'점의 x',min:-4,max:4},{k:'n',label:'점의 y',min:-4,max:4},
+      {k:'shape',label:'모양',sel:['기본','뒤집힌 모양']},
+      {k:'eq',label:'식',sel:['식 숨기기','식 보이기']},
+      {k:'grid',label:'모눈',sel:['모눈 있음','모눈 없음']},
+      {k:'write',label:'좌표 쓰기',sel:['동그라미만','좌표도 쓰기']}],
+    def:{kind:'무리함수 시작점',m:2,n:1,shape:'기본',eq:'식 보이기',grid:'모눈 있음',write:'동그라미만'},
+    rand:kpRand,
+    /* [새 숫자] : 문제 종류와 보기 설정(식·모눈·좌표 쓰기)은 그대로 두고 점만 바꾼다 */
+    reroll(p){return kpRand({kinds:[p.kind],eq:p.eq,grid:p.grid,write:p.write});},
+    /* 예제 : 새 학습지 설정의 보기 방식을 따른다 */
+    exDef(opts){opts=opts||{};return{...this.def,grid:opts.grid||this.def.grid};},
+    build(p){
+      const code=KP_CODE[p.kind]||'irr';
+      const m=Number(p.m),n=Number(p.n);
+      if(!Number.isInteger(m)||!Number.isInteger(n)||Math.abs(m)>5||Math.abs(n)>5)return{err:'점의 x, y는 −5부터 5까지의 정수로 넣어 주세요.'};
+      if(m===0&&n===0)return{err:'그 점이 원점과 겹칩니다. 점의 x나 y를 0이 아닌 수로 바꿔 주세요.'};
+      const flip=p.shape==='뒤집힌 모양',grid=p.grid!=='모눈 없음',showEq=p.eq==='식 보이기',write=p.write==='좌표도 쓰기';
+      const sg=flip?'-':'';
+      const eqS=code==='irr'?`y=${sg}\\sqrt{${xm(m)}}${tail(n)}`
+        :code==='rat'?`y=${sg}\\dfrac{2}{${xm(m)}}${tail(n)}`
+        :`y=${sg}${m===0?'x^2':`(${xm(m)})^2`}${tail(n)}`;
+      const fname=code==='irr'?'무리함수':code==='rat'?'유리함수':'이차함수';
+      /* 문제 글은 한 줄로 짧게 — 2단 인쇄에서 그림을 크게 두고도 한 쪽에 4문항(2줄 × 2단)이 들어가도록 */
+      const target=code==='irr'?'시작점':code==='rat'?'점근선 교점':'최대 또는 최소가 되는 점';
+      const name=code==='irr'?'시작점':code==='rat'?'점근선 교점':(flip?'최댓값이 되는 점(꼭짓점)':'최솟값이 되는 점(꼭짓점)');
+      const q=`${fname}${showEq?' '+tex(eqS):''} — <b>원점 O</b>와 <b>${target}</b>에 ○ 하세요.`
+        +(write?' 그 점의 좌표도 쓰세요.':'');
+      const kfig=svg=>`<div class="fig kpfig">${svg}</div>`;
+      const figure=kfig(GS.keyPointSVG(code,m,n,flip,{grid}));
+      const figAns=kfig(GS.keyPointSVG(code,m,n,flip,{grid,ring:true}));
+      const go=(v,pos,neg)=>v===0?'':`${v>0?pos:neg}으로 ${nf(Math.abs(v))}칸`;
+      const move=[go(m,'오른쪽','왼쪽'),go(n,'위쪽','아래쪽')].filter(Boolean).join(', ');
+      const sol=[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
+        code==='irr'?`곡선이 <b>끊겨 있는 끝</b>, 곧 그래프가 출발하는 자리가 시작점입니다 : ${tex(pr(m,n))}`
+        :code==='rat'?`세로 점선 ${tex('x='+nf(m))}과 가로 점선 ${tex('y='+nf(n))}이 만나는 자리가 점근선 교점입니다 : ${tex(pr(m,n))}`
+        :`그래프가 ${flip?'가장 높이 올라갔다가 내려오는':'가장 낮게 내려갔다가 올라오는'} 꺾이는 자리(꼭짓점)가 ${flip?'최댓값':'최솟값'}이 되는 점입니다 : ${tex(pr(m,n))} → ${flip?'최댓값':'최솟값'} ${tex(nf(n))}`,
+        `원점에서 ${move} 가면 그 점에 닿습니다. 이 칸 수가 그래프가 옮겨 간 만큼입니다.`];
+      if(showEq)sol.push(`식 ${tex(eqS)}에서도 읽을 수 있습니다 : ${tex('x')} 옆의 수는 부호를 뒤집어 ${tex(nf(m))}, 맨 뒤의 수는 그대로 ${tex(nf(n))}`);
+      return{q,figure,figAns,noChoices:true,noBlank:true,choices:[],
+        after:write?`<div class="kpw">${name.replace(/\(.*\)/,'')}의 좌표 : ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; , &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>`:'',
+        answerRaw:`원점 ${tex('\\mathrm{O}(0,\\ 0)')} 과 ${name} ${tex(pr(m,n))}`,sol};
     }
   },
 
@@ -1058,6 +1137,7 @@ var GED_UNITS=(function(){
 /* 자주 쓰는 묶음(프리셋) */
 var GED_PRESETS=[
   {k:'coord',icon:'★',lbl:'좌표 완전정복',desc:'좌표 기초 3 + 좌표평면 유형 (7·10·11·12·13·14·18번)',ids:['c1','c2','c3','u7','u10','u11','u12','u13','u14','u18a','u18b']},
+  {k:'kpoint',icon:'⭕',lbl:'핵심 점 찍기',desc:'원점 O 와 무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점에 ○ (1쪽 개념 + 섞어 연습)',ids:['p1']},
   {k:'warm',icon:'🌱',lbl:'좌표 워밍업',desc:'좌표 읽기·사분면·직선 + 대칭이동·거리',ids:['c1','c2','c3','u14','u10']},
   {k:'geo',icon:'📐',lbl:'도형의 방정식',desc:'10번~14번 (영역 C)',ids:['u10','u11','u12','u13','u14']},
   {k:'func',icon:'🔗',lbl:'집합과 함수',desc:'15번~18번 — 집합 · 명제 · 합성함수 · 역함수 · 유리 · 무리함수',ids:['u15','u16','u17a','u17b','u18a','u18b']},

@@ -5226,6 +5226,42 @@ var GS=(function(){
     return o;
   }
 
+  /* 핵심 점 찍기(p1) 그림 — 무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 꼭짓점
+     kind : 'irr' | 'rat' | 'quad',  (m, n) : 핵심 점,  flip : 뒤집힌 모양
+       irr  y=±√(x−m)+n      (flip → 오른쪽 아래로)
+       rat  y=±2/(x−m)+n     (flip → 제2·4사분면 쪽)
+       quad y=±(x−m)²+n      (flip → 위로 볼록, 최댓값)
+     opt  : {grid, ring, labels, win:{xmin..}, s, maxW}
+     핵심 점에는 점을 찍지 않는다 — 학생이 그림에서 스스로 찾아 ○ 해야 하기 때문이다.
+     ring:true 일 때만 원점과 핵심 점에 검정 동그라미(네임펜 자국)를 그린다 (정답·개념 예시용). */
+  function keyPointSVG(kind,m,n,flip,opt){
+    opt=opt||{};
+    const w=opt.win||{xmin:-6,xmax:6,ymin:-6,ymax:6};
+    const g={...w,s:opt.s||30,maxW:opt.maxW||420,grid:opt.grid!==false};
+    const sg=flip?-1:1,items=[];
+    if(kind==='irr'){
+      items.push({t:'fn',f:x=>sg*Math.sqrt(x-m)+n,from:m,to:w.xmax+1,width:4.6});
+    }else if(kind==='rat'){
+      const f=x=>2*sg/(x-m)+n;
+      items.push({t:'vline',x:m},{t:'hline',y:n},
+        {t:'fn',f,from:w.xmin-3,to:m-0.03,width:4.6},{t:'fn',f,from:m+0.03,to:w.xmax+3,width:4.6});
+    }else{
+      items.push({t:'fn',f:x=>sg*(x-m)**2+n,width:4.6});
+    }
+    if(opt.ring){
+      items.push({t:'circle',cx:0,cy:0,r:.5,color:'#111',width:3.6},{t:'circle',cx:m,cy:n,r:.5,color:'#111',width:3.6});
+      if(opt.labels){
+        /* 이름표는 곡선이 지나가지 않는 쪽에 둔다
+           무리함수 : 곡선이 오른쪽으로 뻗으니 왼쪽 위(뒤집힌 모양은 왼쪽 아래) / 유리함수 : 곡선이 없는 사분면 쪽 / 이차함수 : 볼록한 바깥쪽 */
+        const L=kind==='irr'?{x:m+.2,y:n+(flip?-1.3:.75),a:'end',s:'시작점'}
+          :kind==='rat'?{x:m+(flip?.5:-.5),y:n+.6,a:flip?'start':'end',s:'교점'}
+          :{x:m,y:n+(flip?.8:-1.3),a:'middle',s:'꼭짓점'};
+        items.push({t:'text',x:L.x,y:L.y,s:L.s,anchor:L.a,size:19,halo:true});
+      }
+    }
+    return planeSVG(g,items);
+  }
+
   /* 조립제법 표 */
   function synthSVG(k,coefs,products,bottom,hideR){
     const cols=coefs.length,cw=64,x0=70,W=x0+cw*cols+40,H=150;
@@ -5395,18 +5431,27 @@ var GS=(function(){
     try{r=unit.build(params);}catch(e){r={err:'문제를 만들 수 없는 조건입니다. 숫자를 바꿔 주세요.'};}
     if(!r||r.err)return`<div class="gen err">⚠️ ${r&&r.err||'조건 오류'}</div>`;
     const isEx=idx===0;
-    const one=r.layout?r.layout==='one':(!r.raw&&r.choices.every(c=>String(c).length<=4));
+    /* noChoices : 보기 없이 그림에 표시만 하는 문제(점 찍기 등)
+       figAns    : 정답 그림. 실전 문항은 [정답 보이기]를 켤 때만 문제 그림 대신 보이고, 예제는 처음부터 보인다
+       noBlank   : '풀이 & 답' 점선 상자를 두지 않는다    after : 그림 아래에 붙일 HTML(좌표 쓰는 칸 등) */
+    const noCh=!!r.noChoices;
+    const one=noCh||(r.layout?r.layout==='one':(!r.raw&&r.choices.every(c=>String(c).length<=4)));
     const sol=Array.isArray(r.sol)?r.sol.map(s=>`<p>${s}</p>`).join(''):r.sol;
     const ansBody=r.answerRaw!==undefined?r.answerRaw:tex(r.answerTex!==undefined?r.answerTex:String(r.choices[r.ans]));
+    const figure=r.figAns?(isEx?r.figAns:`<div class="qOnly">${r.figure||''}</div><div class="ansOnly">${r.figAns}</div>`):(r.figure||'');
     return`<div class="gen">
       <div class="qtext"><span class="qno">${isEx?'예제':no}</span>${numSpan(r.q)}</div>
-      ${r.figure||''}
-      ${numSpan(choicesHTML(r.choices,one,r.raw))}
-      ${isEx?'':'<div class="blank">풀이 &amp; 답 :</div>'}
+      ${figure}
+      ${r.after||''}
+      ${noCh?'':numSpan(choicesHTML(r.choices,one,r.raw))}
+      ${isEx||r.noBlank?'':'<div class="blank">풀이 &amp; 답 :</div>'}
       <div class="sol${isEx?'':' ansOnly'}"><b>${isEx?'함께 풀어봅시다':'풀이'}</b>${numSpan(sol)}</div>
-      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; <span class="ansIdx">${CIRC[r.ans]}</span> ${numSpan(ansBody)}</div>
+      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; ${noCh?'':`<span class="ansIdx">${CIRC[r.ans]}</span> `}${numSpan(ansBody)}</div>
     </div>`;
   }
+
+  /* 쪽 나눔 표시 — 미리보기에서는 점선 안내, 인쇄에서는 다음 쪽으로 넘긴다 */
+  const PGBREAK=`<div class="pgbreak"><span>여기서 다음 쪽으로 넘어갑니다</span></div>`;
 
   /* 학습지 본문(.gsheet 내부) 전체 — groups:[{unit, recs:[{idx,params,override,no}]}] */
   function bodyHTML(cfg,groups){
@@ -5421,10 +5466,13 @@ var GS=(function(){
     groups.forEach(gr=>{
       const u=gr.unit;
       h+=`<h2 id="${u.id}">${u.tag}. ${esc(u.title)}<small>${u.src||''}</small></h2>`;
-      if(cfg.includeConcept!==false)h+=`<div class="card concept">${gr.conceptHtml?conceptMode(gr.conceptHtml,cfg.blankConcept):conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
+      if(cfg.includeConcept!==false){
+        h+=`<div class="card concept">${gr.conceptHtml?conceptMode(gr.conceptHtml,cfg.blankConcept):conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
+        if(u.pageAfterConcept)h+=PGBREAK;   // 개념은 한 쪽에 따로, 연습은 다음 쪽부터
+      }
       const ex=gr.recs.filter(r=>r.idx===0),qs=gr.recs.filter(r=>r.idx!==0);
       ex.forEach(r=>{h+=`<h3>풀이 예시</h3><div class="card ex">${r.override||probHTML(u,r.params,0,'예제')}</div>`;});
-      if(qs.length){h+=`<h3>실전 문제</h3><div class="qgrid">`;qs.forEach(r=>{h+=`<div class="card">${r.override||probHTML(u,r.params,r.idx,r.no)}</div>`;});h+=`</div>`;}
+      if(qs.length){h+=`<h3>${u.qTitle||'실전 문제'}</h3><div class="qgrid">`;qs.forEach(r=>{h+=`<div class="card">${r.override||probHTML(u,r.params,r.idx,r.no)}</div>`;});h+=`</div>`;}
     });
     return h;
   }
@@ -5498,7 +5546,21 @@ var GS=(function(){
 .gsheet .ctrl .tag{background:var(--navy);color:#fff;border-radius:6px;padding:1px 9px;font-size:12px}
 .gsheet .ctrl button{font-family:inherit;font-size:12px;padding:3px 9px;border:2px solid var(--navy);border-radius:7px;background:#fff;color:var(--navy);cursor:pointer;min-height:30px!important;font-weight:700}
 .gsheet .ctrl button.danger{border-color:#c0272d;color:#c0272d}
+/* 정답 그림(figAns)이 있는 문항 : 정답을 켜면 문제 그림 대신 정답 그림만 보인다 */
+.gsheet:not(.noans) .qOnly{display:none!important}
+.gsheet .pgbreak{border-top:3px dashed #b9c3d3;margin:26px 0 8px;text-align:center;height:0}
+.gsheet .pgbreak span{position:relative;top:-.85em;background:#fff;padding:0 12px;font-size:12px;color:#8a94a6;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+/* 핵심 점 찍기 : 개념 카드의 세 그림 나란히 · 좌표 쓰는 칸 */
+.gsheet .kptrio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}
+.gsheet .kptrio svg{width:100%;height:auto;display:block}
+.gsheet .kpcap{font-size:.7em;text-align:center;margin-top:2px;line-height:1.4}
+.gsheet .kpw{margin:8px 0 2px;font-size:calc(var(--qs,1)*.92em)}
+.gsheet.cols2 .qgrid .fig.kpfig svg{max-width:330px!important}   /* 네임펜으로 동그라미 칠 그림이라 다른 유형보다 크게 */
 @media print{
+  /* 쪽 나눔은 표시 다음 제목에 건다. 표시 자체에 break-after 를 걸면, 1쪽이 꽉 찼을 때 표시가 2쪽으로 밀려 빈 쪽이 생긴다 */
+  .gsheet .pgbreak{display:none}
+  .gsheet.cols2 .qgrid .fig.kpfig svg{max-width:300px!important}   /* 2단 · 한 쪽에 4문항이 꽉 차는 크기 */
+  .gsheet .pgbreak+h3{break-before:page;page-break-before:always;margin-top:0}
   .gsheet{box-shadow:none!important;margin:0!important;max-width:none!important;width:100%!important;padding:0!important;font-size:clamp(15px,var(--fs),21px)!important}
   .gsheet .ctrl,.gsheet .noprint{display:none!important}
   .gsheet h1{font-size:1.5em!important}
@@ -5563,7 +5625,7 @@ ${SHEET_CSS}
 
   return{nf,par,xm,ym,tail,esc,tex,pr,rnd,pick,nz,CIRC,isInt,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,choicesHTML,
-    planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
+    planeSVG,keyPointSVG,PGBREAK,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
     NAVY,RED,GREEN,GREY};
 })();
 
@@ -5925,6 +5987,28 @@ u18b:{
   tip:`곡선이 휜 모양은 전혀 볼 필요가 없습니다. <b>곡선이 시작하는 점 하나</b>만 찾으세요.`
 },
 
+/* ══════════ 그래프의 핵심 점 찍기 (1쪽 개념) ══════════
+   세 그림 모두 정답 동그라미가 쳐진 모습 — 학생이 2쪽부터 똑같이 따라 하도록.
+   A4 1쪽(제목·이름 칸 포함)에 들어가야 하므로 예시 상자(ex)는 두지 않는다. 그림 설명에 좌표를 함께 적었다. */
+p1:{
+  head:`그래프 문제는 곡선 전체가 아니라 [[점 하나]]만 보면 됩니다. 먼저 [[원점 O]]에, 그다음 [[그 점]]에 검정 네임펜으로 동그라미를 칩니다.`,
+  lines:[
+    `무리함수 → 곡선이 출발하는 [[시작점]]`,
+    `유리함수 → 빨간 점선 두 개(점근선)가 만나는 [[점근선 교점]]`,
+    `이차함수 → 가장 낮거나 가장 높은 [[꼭짓점]]. 가장 낮으면 [[최솟값]], 가장 높으면 [[최댓값]]이 되는 점입니다.`,
+    `동그라미 친 두 점 사이를 가로·세로로 세어 보면, 그래프가 원점에서 [[얼마나 옮겨 갔는지]]가 보입니다.`],
+  fig:()=>{
+    const W={xmin:-4,xmax:5,ymin:-4,ymax:5};
+    const cell=(svg,cap)=>`<div><div>${svg}</div><div class="kpcap">${cap}</div></div>`;
+    return`<div class="kptrio">${[
+      cell(GS.keyPointSVG('irr',-1,2,false,{ring:true,labels:true,win:W,maxW:300}),'무리함수 : <b>시작점</b> (−1, 2)'),
+      cell(GS.keyPointSVG('rat',2,2,false,{ring:true,labels:true,win:W,maxW:300}),'유리함수 : <b>점근선 교점</b> (2, 2)'),
+      cell(GS.keyPointSVG('quad',1,-2,false,{ring:true,labels:true,win:W,maxW:300}),'이차함수 : <b>꼭짓점</b> (1, −2)<br>가장 낮은 점 → 최솟값 −2')
+    ].join('')}</div>`;},
+  figCap:`○ 두 개 — 하나는 언제나 원점 O, 다른 하나는 그래프마다 정해진 그 점`,
+  tip:`동그라미는 <b>크게, 진하게</b>. 원점 O 를 먼저 치고 그다음 그 점을 칩니다. 두 곳을 다 쳐야 한 문제가 끝납니다.`
+},
+
 /* ══════════ 영역 E · 경우의 수 ══════════ */
 u19:{
   head:`[[순서가 있으면 순열]]입니다. '순서대로', '나란히', '1등·2등' 같은 말이 있으면 순열입니다.`,
@@ -5962,6 +6046,7 @@ u20:{
    ===================================================================== */
 var GED_AREAS=[
   {k:'C0',title:'좌표 기초 워밍업',desc:'좌표 읽기 · 사분면 · 직선의 그래프'},
+  {k:'P', title:'그래프의 핵심 점 찍기',desc:'무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점'},
   {k:'A', title:'영역 A · 다항식과 복소수',desc:'1번~5번'},
   {k:'B', title:'영역 B · 방정식과 부등식',desc:'6번~9번'},
   {k:'C', title:'영역 C · 도형의 방정식 (좌표평면)',desc:'10번~14번'},
@@ -6004,6 +6089,33 @@ var GED_UNITS=(function(){
       sol:[`${tex('x')} 자리에 ${tex(nf(r))}을 넣습니다 : ${head}`,
         `거듭제곱을 먼저 계산합니다 : ${tex(`${nf(r)}^3=${nf(r**3)}`)}${withSq?`, ${tex(`${nf(r)}^2=${nf(r*r)}`)}`:''}`,
         `${tex(`${nf(left)}+${nf(r)}a${tail(c)}=0`)} → ${tex(`${nf(r)}a=${nf(-(left+c))}`)} → ${tex('a='+nf(a))}`]};
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     핵심 점 찍기(p1) — 세 함수의 '그 점'에 ○ 하는 연습
+     실전 문항이 세 종류를 고르게 섞도록, 종류를 한 바퀴씩 섞어 꺼내는 주머니(bag)를 쓴다.
+     (그냥 무작위로 뽑으면 12문항 중 한 종류가 1~2문항뿐인 장이 자주 나온다)
+     ────────────────────────────────────────────────────────────── */
+  const KP_KINDS=['무리함수 시작점','유리함수 점근선 교점','이차함수 최대·최소 점'];
+  const KP_CODE={'무리함수 시작점':'irr','유리함수 점근선 교점':'rat','이차함수 최대·최소 점':'quad'};
+  let kpBag=[],kpLast='';
+  const kpNextKind=list=>{
+    if(list.length===1)return list[0];
+    if(!kpBag.length||kpBag.some(k=>list.indexOf(k)<0)){kpBag=shuffle(list);if(kpBag[0]===kpLast)kpBag.push(kpBag.shift());}
+    return(kpLast=kpBag.shift());
+  };
+  /* 종류·모양별로 곡선이 창(−6~6) 안에 넉넉히 보이는 범위에서 핵심 점을 고른다. 원점과는 겹치지 않게 둘 다 0이 아닌 수 */
+  function kpRand(opts){
+    opts=opts||{};
+    const kinds=(opts.kinds||[]).filter(k=>KP_CODE[k]);
+    const kind=kpNextKind(kinds.length?kinds:KP_KINDS),code=KP_CODE[kind];
+    const flip=Math.random()<.5;
+    let m,n;
+    if(code==='irr'){m=nz(-4,2);n=flip?nz(-2,4):nz(-4,2);}
+    else if(code==='rat'){m=nz(-3,3);n=nz(-3,3);}
+    else{m=nz(-3,3);n=flip?nz(-1,4):nz(-4,1);}
+    return{kind,m,n,shape:flip?'뒤집힌 모양':'기본',
+      eq:opts.eq||'식 숨기기',grid:opts.grid||'모눈 있음',write:opts.write||'동그라미만'};
   }
 
   return[
@@ -6086,6 +6198,57 @@ var GED_UNITS=(function(){
       const q=`기울기가 ${tex(nf(a))}이고 ${tex('y')}절편이 ${tex(nf(b))}인 직선의 방정식은?`;
       const sol=[`직선의 식은 ${tex('y=(\\text{기울기})x+(y\\text{절편})')} 입니다.`,`기울기 자리에 ${tex(nf(a))}, y절편 자리에 ${tex(nf(b))}를 넣습니다.`,`따라서 ${tex(correct)}`];
       return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:correct,layout:'two'};
+    }
+  },
+
+  /* ================================================================
+     P. 그래프의 핵심 점 찍기 — 원점 O 와 '그 점' 두 곳에 ○
+     1쪽은 개념(세 함수의 예시 그림), 2쪽부터는 세 종류가 섞인 연습 (pageAfterConcept)
+     ================================================================ */
+  { id:'p1', tag:'점 찍기', area:'P', title:'그래프의 핵심 점에 동그라미', src:'18번 · 7번의 출발점', coord:true,
+    pageAfterConcept:true, qTitle:'동그라미 연습 — 원점 O 와 그 점, 두 곳에 ○',
+    fields:[{k:'kind',label:'문제 종류',sel:KP_KINDS},
+      {k:'m',label:'점의 x',min:-4,max:4},{k:'n',label:'점의 y',min:-4,max:4},
+      {k:'shape',label:'모양',sel:['기본','뒤집힌 모양']},
+      {k:'eq',label:'식',sel:['식 숨기기','식 보이기']},
+      {k:'grid',label:'모눈',sel:['모눈 있음','모눈 없음']},
+      {k:'write',label:'좌표 쓰기',sel:['동그라미만','좌표도 쓰기']}],
+    def:{kind:'무리함수 시작점',m:2,n:1,shape:'기본',eq:'식 보이기',grid:'모눈 있음',write:'동그라미만'},
+    rand:kpRand,
+    /* [새 숫자] : 문제 종류와 보기 설정(식·모눈·좌표 쓰기)은 그대로 두고 점만 바꾼다 */
+    reroll(p){return kpRand({kinds:[p.kind],eq:p.eq,grid:p.grid,write:p.write});},
+    /* 예제 : 새 학습지 설정의 보기 방식을 따른다 */
+    exDef(opts){opts=opts||{};return{...this.def,grid:opts.grid||this.def.grid};},
+    build(p){
+      const code=KP_CODE[p.kind]||'irr';
+      const m=Number(p.m),n=Number(p.n);
+      if(!Number.isInteger(m)||!Number.isInteger(n)||Math.abs(m)>5||Math.abs(n)>5)return{err:'점의 x, y는 −5부터 5까지의 정수로 넣어 주세요.'};
+      if(m===0&&n===0)return{err:'그 점이 원점과 겹칩니다. 점의 x나 y를 0이 아닌 수로 바꿔 주세요.'};
+      const flip=p.shape==='뒤집힌 모양',grid=p.grid!=='모눈 없음',showEq=p.eq==='식 보이기',write=p.write==='좌표도 쓰기';
+      const sg=flip?'-':'';
+      const eqS=code==='irr'?`y=${sg}\\sqrt{${xm(m)}}${tail(n)}`
+        :code==='rat'?`y=${sg}\\dfrac{2}{${xm(m)}}${tail(n)}`
+        :`y=${sg}${m===0?'x^2':`(${xm(m)})^2`}${tail(n)}`;
+      const fname=code==='irr'?'무리함수':code==='rat'?'유리함수':'이차함수';
+      /* 문제 글은 한 줄로 짧게 — 2단 인쇄에서 그림을 크게 두고도 한 쪽에 4문항(2줄 × 2단)이 들어가도록 */
+      const target=code==='irr'?'시작점':code==='rat'?'점근선 교점':'최대 또는 최소가 되는 점';
+      const name=code==='irr'?'시작점':code==='rat'?'점근선 교점':(flip?'최댓값이 되는 점(꼭짓점)':'최솟값이 되는 점(꼭짓점)');
+      const q=`${fname}${showEq?' '+tex(eqS):''} — <b>원점 O</b>와 <b>${target}</b>에 ○ 하세요.`
+        +(write?' 그 점의 좌표도 쓰세요.':'');
+      const kfig=svg=>`<div class="fig kpfig">${svg}</div>`;
+      const figure=kfig(GS.keyPointSVG(code,m,n,flip,{grid}));
+      const figAns=kfig(GS.keyPointSVG(code,m,n,flip,{grid,ring:true}));
+      const go=(v,pos,neg)=>v===0?'':`${v>0?pos:neg}으로 ${nf(Math.abs(v))}칸`;
+      const move=[go(m,'오른쪽','왼쪽'),go(n,'위쪽','아래쪽')].filter(Boolean).join(', ');
+      const sol=[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
+        code==='irr'?`곡선이 <b>끊겨 있는 끝</b>, 곧 그래프가 출발하는 자리가 시작점입니다 : ${tex(pr(m,n))}`
+        :code==='rat'?`세로 점선 ${tex('x='+nf(m))}과 가로 점선 ${tex('y='+nf(n))}이 만나는 자리가 점근선 교점입니다 : ${tex(pr(m,n))}`
+        :`그래프가 ${flip?'가장 높이 올라갔다가 내려오는':'가장 낮게 내려갔다가 올라오는'} 꺾이는 자리(꼭짓점)가 ${flip?'최댓값':'최솟값'}이 되는 점입니다 : ${tex(pr(m,n))} → ${flip?'최댓값':'최솟값'} ${tex(nf(n))}`,
+        `원점에서 ${move} 가면 그 점에 닿습니다. 이 칸 수가 그래프가 옮겨 간 만큼입니다.`];
+      if(showEq)sol.push(`식 ${tex(eqS)}에서도 읽을 수 있습니다 : ${tex('x')} 옆의 수는 부호를 뒤집어 ${tex(nf(m))}, 맨 뒤의 수는 그대로 ${tex(nf(n))}`);
+      return{q,figure,figAns,noChoices:true,noBlank:true,choices:[],
+        after:write?`<div class="kpw">${name.replace(/\(.*\)/,'')}의 좌표 : ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; , &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>`:'',
+        answerRaw:`원점 ${tex('\\mathrm{O}(0,\\ 0)')} 과 ${name} ${tex(pr(m,n))}`,sol};
     }
   },
 
@@ -7011,6 +7174,7 @@ var GED_UNITS=(function(){
 /* 자주 쓰는 묶음(프리셋) */
 var GED_PRESETS=[
   {k:'coord',icon:'★',lbl:'좌표 완전정복',desc:'좌표 기초 3 + 좌표평면 유형 (7·10·11·12·13·14·18번)',ids:['c1','c2','c3','u7','u10','u11','u12','u13','u14','u18a','u18b']},
+  {k:'kpoint',icon:'⭕',lbl:'핵심 점 찍기',desc:'원점 O 와 무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점에 ○ (1쪽 개념 + 섞어 연습)',ids:['p1']},
   {k:'warm',icon:'🌱',lbl:'좌표 워밍업',desc:'좌표 읽기·사분면·직선 + 대칭이동·거리',ids:['c1','c2','c3','u14','u10']},
   {k:'geo',icon:'📐',lbl:'도형의 방정식',desc:'10번~14번 (영역 C)',ids:['u10','u11','u12','u13','u14']},
   {k:'func',icon:'🔗',lbl:'집합과 함수',desc:'15번~18번 — 집합 · 명제 · 합성함수 · 역함수 · 유리 · 무리함수',ids:['u15','u16','u17a','u17b','u18a','u18b']},
@@ -15006,7 +15170,9 @@ var GED_DEF_CFG={title:'고졸 검정고시 수학 · 좌표 완전정복 학습
   fs:24,cols2:false,showAns:false,format:'choice',includeConcept:true,includeExample:true,intro:true,count:3,blankConcept:false,
   qs:1,      // 문제 글자 배율 (문제 본문·보기)
   ms:1.2,     // 숫자·수식 배율 (학생이 숫자를 잘 읽도록 기본을 조금 크게)
-  cs:1};      // 개념 카드 글자 배율
+  cs:1,      // 개념 카드 글자 배율
+  /* 핵심 점 찍기(p1) 실전 문항을 만들 때 쓰는 설정 — 섞을 종류 · 식 보이기 · 모눈 · 좌표 쓰기 */
+  kp:{kinds:['무리함수 시작점','유리함수 점근선 교점','이차함수 최대·최소 점'],eq:'식 숨기기',grid:'모눈 있음',write:'동그라미만'}};
 
 /* 글자 크기 조절 — [−] 막대 [+] 와 빠른 단계 버튼. 값은 배율(1 = 100%) */
 var GED_SIZE_STEPS=[['작게',.9],['보통',1],['크게',1.25],['아주 크게',1.5]];
@@ -15077,16 +15243,19 @@ function gedSafeBuild(u,p){try{const r=u.build(p);return r&&!r.err?r:null;}catch
 
 function gedSheetId(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
-/* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지) */
-function gedGenUnit(u,count,withEx){
+/* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
+   opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다) */
+function gedGenUnit(u,count,withEx,opts){
   const out=[];
-  if(withEx)out.push(gedNewRec(u,0,{...u.def}));
+  if(withEx)out.push(gedNewRec(u,0,u.exDef?u.exDef(opts):{...u.def}));
   const seen=new Set();
   for(let i=1;i<=count;i++){
-    let params=null;
-    for(let t=0;t<20;t++){const c=u.rand();const r=gedSafeBuild(u,c);if(!r)continue;
+    let params=null,first=null;
+    /* 겹쳐서 다시 뽑을 때 reroll 이 있는 유형은 처음 뽑은 문제 종류를 지킨다 (p1 의 종류 섞기 순서가 밀리지 않게) */
+    const again=()=>first&&u.reroll?u.reroll(first):u.rand(opts);
+    for(let t=0;t<20;t++){const c=again();if(!first)first=c;const r=gedSafeBuild(u,c);if(!r)continue;
       const k=r.q+'|'+(r.answerTex||r.answerRaw||'');if(!seen.has(k)){seen.add(k);params=c;break;}}
-    if(!params){for(let t=0;t<10&&!params;t++){const c=u.rand();if(gedSafeBuild(u,c))params=c;}}
+    if(!params){for(let t=0;t<10&&!params;t++){const c=again();if(gedSafeBuild(u,c))params=c;}}
     out.push(gedNewRec(u,i,params||{...u.def}));
   }
   return out;
@@ -15267,14 +15436,34 @@ function GedSheetView({sheet,seq,busy,ops}){
               edit={edit} showCtrl={showCtrl} edited={!!(sheet.concepts&&sheet.concepts[u.id])} saved={ops.cLibHas(u.id)}
               getHtml={uid=>(sheet.concepts&&sheet.concepts[uid])?GS.conceptMode(sheet.concepts[uid],!!cfg.blankConcept):GS.conceptHTML(u,{blank:cfg.blankConcept})}
               onEdit={h=>ops.onConceptEdit(id,u.id,h)} onReset={()=>{if(confirm(`'${u.title}' 개념 설명을 처음 설명으로 되돌릴까요?\n(이 학습지와, 앞으로 만들 학습지 모두 처음 설명으로 돌아갑니다)`))ops.onConceptReset(id,u.id);}}/>}
+            {cfg.includeConcept&&u.pageAfterConcept&&<div className="pgbreak"><span>여기서 다음 쪽으로 넘어갑니다</span></div>}
             {ex.length>0&&<h3>풀이 예시</h3>}
             {ex.map(r=><GedProblemCard key={r.key} rec={r} unit={u} no={r.no} {...cardProps}/>)}
-            {qs.length>0&&<h3>실전 문제</h3>}
+            {qs.length>0&&<h3>{u.qTitle||'실전 문제'}</h3>}
             {qs.length>0&&<div className="qgrid">{qs.map(r=><GedProblemCard key={r.key} rec={r} unit={u} no={r.no} {...cardProps}/>)}</div>}
           </div>;})}
         {problems.length===0&&<p className="sub">문항이 모두 빠졌습니다. 이 학습지는 삭제하거나, 설정에서 새로 만들어 주세요.</p>}
       </div>
     </div>}
+  </div>;
+}
+
+/* 핵심 점 찍기(p1) 설정 상자 — 이 유형을 골랐을 때만 보인다.
+   여기서 고른 값으로 실전 문항이 만들어지고, 만든 뒤에도 문항마다 조건 상자에서 하나씩 바꿀 수 있다. */
+function GedKpSetup({kp,onChange,Btn}){
+  const all=GED_DEF_CFG.kp.kinds;
+  const kinds=kp.kinds||all;
+  const set=patch=>onChange({...kp,...patch});
+  const toggleKind=k=>set({kinds:kinds.includes(k)?kinds.filter(x=>x!==k):all.filter(x=>x===k||kinds.includes(x))});
+  return<div className="mt-3 bg-amber-50 rounded-2xl px-3 py-3 space-y-2">
+    <div className="text-xs font-black text-amber-800">⭕ 점 찍기 연습 — 섞을 함수와 보기 방식</div>
+    <div className="flex flex-wrap gap-2">{all.map(k=><Btn key={k} on={kinds.includes(k)} onClick={()=>toggleKind(k)}>{kinds.includes(k)?'✓ ':''}{k}</Btn>)}</div>
+    <div className="flex flex-wrap gap-2">
+      <Btn on={kp.eq==='식 보이기'} onClick={()=>set({eq:kp.eq==='식 보이기'?'식 숨기기':'식 보이기'})}>{kp.eq==='식 보이기'?'식 보이기':'식 숨기기 (그림만)'}</Btn>
+      <Btn on={kp.grid!=='모눈 없음'} onClick={()=>set({grid:kp.grid==='모눈 없음'?'모눈 있음':'모눈 없음'})}>{kp.grid==='모눈 없음'?'모눈 없음 (시험지 모양)':'모눈 있음'}</Btn>
+      <Btn on={kp.write==='좌표도 쓰기'} onClick={()=>set({write:kp.write==='좌표도 쓰기'?'동그라미만':'좌표도 쓰기'})}>{kp.write==='좌표도 쓰기'?'좌표도 쓰기':'동그라미만'}</Btn>
+    </div>
+    <div className="text-[11px] text-amber-800 font-medium">고른 함수가 문항마다 번갈아 섞여 나옵니다. 1쪽은 개념(세 함수의 동그라미 예시), 2쪽부터 연습입니다.</div>
   </div>;
 }
 
@@ -15334,11 +15523,13 @@ function GedWorksheetTab(){
   /* ---------- 문항 조작 ---------- */
   const mapProbs=(id,fn)=>patchSheet(id,s=>({...s,problems:fn(s.problems)}));
   const onParam=(id,key,k,v)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,params:{...p.params,[k]:v},override:null,rev:p.rev+1}:p));};
-  const onRandom=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,params:byId(p.uid).rand(),override:null,rev:p.rev+1}:p));};
+  /* reroll 이 있는 유형(p1)은 문제 종류·보기 설정을 지키고 숫자만 바꾼다 */
+  const onRandom=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
+    return{...p,params:u.reroll?u.reroll(p.params):u.rand(),override:null,rev:p.rev+1};}));};
   const onRevert=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,override:null,rev:p.rev+1}:p));};
   const onRemoveProb=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.filter(p=>p.key!==key));};
-  const addProblem=(id,uid)=>{const u=byId(uid);mapProbs(id,ps=>{const mine=ps.filter(p=>p.uid===uid);const idx=Math.max(0,...mine.map(p=>p.idx))+1;
-    const[rec]=gedGenUnit(u,1,false);rec.idx=idx;const last=ps.map(p=>p.uid).lastIndexOf(uid);const out=ps.slice();out.splice(last+1,0,rec);return out;});};
+  const addProblem=(id,uid)=>{const u=byId(uid);patchSheet(id,s=>{const ps=s.problems;const mine=ps.filter(p=>p.uid===uid);const idx=Math.max(0,...mine.map(p=>p.idx))+1;
+    const[rec]=gedGenUnit(u,1,false,s.cfg.kp);rec.idx=idx;const last=ps.map(p=>p.uid).lastIndexOf(uid);const out=ps.slice();out.splice(last+1,0,rec);return{...s,problems:out};});};
   const removeUnit=(id,uid)=>mapProbs(id,ps=>{ps.filter(p=>p.uid===uid).forEach(p=>delete ovRef.current[p.key]);return ps.filter(p=>p.uid!==uid);});
   const onOverride=(key,html)=>{ovRef.current[key]=html;
     setSheets(ss=>ss.map(s=>s.problems.some(p=>p.key===key&&!p.override)?{...s,problems:s.problems.map(p=>p.key===key?{...p,override:'1'}:p)}:s));
@@ -15348,7 +15539,8 @@ function GedWorksheetTab(){
   /* ---------- 생성 : 기존 학습지는 접어 두고 새 장을 맨 위에 추가 ---------- */
   const generate=()=>{
     if(!selected.length){showToast('유형을 하나 이상 골라 주세요.');return;}
-    const list=[];UNITS.forEach(u=>{if(selected.includes(u.id))list.push(...gedGenUnit(u,setupCfg.count,setupCfg.includeExample));});
+    if(selected.includes('p1')&&!(setupCfg.kp&&setupCfg.kp.kinds&&setupCfg.kp.kinds.length)){showToast('점 찍기 연습에 넣을 함수를 하나 이상 골라 주세요.');return;}
+    const list=[];UNITS.forEach(u=>{if(selected.includes(u.id))list.push(...gedGenUnit(u,setupCfg.count,setupCfg.includeExample,setupCfg.kp));});
     const sh=gedMakeSheet(setupCfg,list,null);
     sh.concepts=gedCLibFor(cLib,selected);   // 고쳐 둔 '내 설명'이 있는 유형은 그 글로 시작
     const before=sheets.length;
@@ -15357,7 +15549,14 @@ function GedWorksheetTab(){
     showToast(before?`✅ 새 학습지를 추가했습니다. (기존 ${before}장은 접어 두었습니다)`:'✅ 학습지를 만들었습니다.');
     setTimeout(()=>{const el=document.getElementById('ged-sheet-'+sh.id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},60);
   };
-  const applyPreset=pre=>{setSelected(pre.ids);
+  const applyPreset=pre=>{
+    /* 점 찍기 프리셋은 쪽 구성(개념 1쪽 + 2단 연습)이 달라 보기 설정도 함께 바꾼다. 다른 프리셋으로 돌아가면 기본 구성으로 되돌린다 */
+    const wasKp=selected.length===1&&selected[0]==='p1';
+    setSelected(pre.ids);
+    if(pre.k==='kpoint'){setSetupCfg({title:'그래프의 핵심 점 찾기 — 원점 O 와 그 점에 ○',
+      subtitle:'무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점',
+      intro:false,includeConcept:true,includeExample:false,cols2:true,count:12});return;}
+    if(wasKp)setSetupCfg({intro:true,includeExample:true,cols2:false,count:3});
     if(pre.k==='coord'||pre.k==='warm')setSetupCfg({title:'고졸 검정고시 수학 · 좌표 완전정복 학습지',subtitle:GED_DEF_CFG.subtitle});
     else if(pre.k==='all20'||pre.k==='full')setSetupCfg({title:'고졸 검정고시 수학 · 유형별 만능 학습지',subtitle:'1번~20번 전 유형 — 2026년 출제 형식 기준'});
     else if(pre.k==='geo')setSetupCfg({title:'고졸 검정고시 수학 · 도형의 방정식 학습지',subtitle:'두 점 사이의 거리 · 내분점 · 점과 직선 · 원 · 대칭이동과 평행이동'});};
@@ -15533,6 +15732,7 @@ function GedWorksheetTab(){
               className="w-20 border-2 border-gray-200 rounded-xl px-2 py-1.5 text-sm font-black text-center outline-none focus:border-indigo-400"/>
             <span className="text-[11px] font-bold text-gray-400">문항 (1~50)</span>
           </div>
+          {selected.includes('p1')&&<GedKpSetup kp={setupCfg.kp||GED_DEF_CFG.kp} onChange={kp=>setSetupCfg({kp})} Btn={Btn}/>}
           <div className="flex flex-wrap gap-2 mt-2">
             <Btn on={setupCfg.includeConcept} onClick={()=>setSetupCfg({includeConcept:!setupCfg.includeConcept})}>📖 개념 카드</Btn>
             <Btn on={setupCfg.includeExample} onClick={()=>setSetupCfg({includeExample:!setupCfg.includeExample})}>💡 예제(풀이 공개)</Btn>
