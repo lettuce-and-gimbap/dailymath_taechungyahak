@@ -85,19 +85,22 @@ function App(){
   // 스플래시 닫힐 때 이번 세션에 본 것으로 기록 (새로고침·탭 이동 때 재노출 방지)
   const handleSplashDone=()=>{sessionStorage.setItem('yakHakSplashDone','1');setShowSplash(false);};
 
-  if(checking)return<div className="min-h-screen flex items-center justify-center text-2xl font-black text-indigo-600">🎓 불러오는 중...</div>;
+  /* 어느 화면에서든 뒤로가기가 '홈'까지 오면 나가시겠습니까? 확인창이 뜬다 (core/backNav.js) */
+  const exitModal=<BackExitModal/>;
+  if(checking)return<div className="min-h-screen flex items-center justify-center text-2xl font-black text-indigo-600">🎓 불러오는 중...{exitModal}</div>;
   /* 통신 실패 : 로그인 상태(localStorage)는 그대로 두고 다시 시도만 하게 한다 */
   if(netError&&!user)return(<div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
     <div className="text-5xl">📡</div>
     <div className="text-xl font-black text-gray-700">인터넷 연결을 확인해주세요</div>
     <div className="text-sm text-gray-500 font-semibold">로그인은 그대로 있어요. 연결되면 바로 이어집니다.</div>
     <button onClick={restore} className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black">다시 시도</button>
+    {exitModal}
   </div>);
-  if(!user)return<AuthScreen onLogin={login}/>;
+  if(!user)return<>{<AuthScreen onLogin={login}/>}{exitModal}</>;
   const main = user.role==='admin'
     ? <TeacherDashboard userData={user} onLogout={logout} onUpdate={update} onSwitchUser={switchUser}/>
     : <StudentDashboard userData={user} onLogout={logout} onUpdate={update} onSwitchUser={switchUser}/>;
-  return(<>{main}{showSplash&&<QuoteSplash onDone={handleSplashDone}/>}</>);
+  return(<>{main}{showSplash&&<QuoteSplash onDone={handleSplashDone}/>}{exitModal}</>);
 }
 
 var root=ReactDOM.createRoot(document.getElementById('root'));

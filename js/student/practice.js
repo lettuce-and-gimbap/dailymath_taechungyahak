@@ -409,17 +409,12 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     };
   },[]);
 
-  // 모바일 뒤로가기 버튼 가로채기
-  useEffect(()=>{
-    history.pushState({practiceSession:true},'');
-    const onPop=()=>{
-      if(phaseRef.current==='done'||phaseRef.current==='reflection'){onBack();return;}
-      history.pushState({practiceSession:true},'');
-      setShowExitModal(true);
-    };
-    window.addEventListener('popstate',onPop);
-    return()=>window.removeEventListener('popstate',onPop);
-  },[]);
+  // 모바일 뒤로가기 버튼 가로채기 (core/backNav.js) — 끝난 화면이면 메뉴로, 푸는 중이면 저장/그만하기 확인창, 확인창이 떠 있으면 '계속 풀기'
+  useBackHandler(()=>{
+    if(showExitModal){setShowExitModal(false);return;}
+    if(phaseRef.current==='done'||phaseRef.current==='reflection'){onBack();return;}
+    setShowExitModal(true);
+  },30);
 
   const saveSession=()=>{
     const data={ver,rangeMin,rangeMax,divMin,divMax,

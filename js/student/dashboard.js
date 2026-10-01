@@ -97,6 +97,12 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     }
   };
 
+  /* 뒤로가기 (core/backNav.js) : 이탈 확인창 → 숙제 풀이 → 다른 탭 → 홈 순으로 한 칸씩 물러나고,
+     홈에서 누르면 '나가시겠습니까?' 가 뜬다. 문제풀기 세션 안의 뒤로가기는 practice.js 가 먼저 받는다. */
+  useBackHandler(()=>{setShowNavModal(false);setPendingSwitch(false);},40,showNavModal);
+  useBackHandler(()=>{setActiveHomework(null);},20,!!activeHomework);
+  useBackHandler(()=>{handleTabClick('home');},10,tab!=='home'&&!activeHomework);
+
   // ── 접속 heartbeat: 30초마다 Firestore onlineStatus 갱신 ──
   useEffect(()=>{
     if(userData.role==='admin')return;

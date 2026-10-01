@@ -58,14 +58,38 @@ function StudentRenamePanel({student,onRenamed}){
   </div>);
 }
 
-function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed}){
-  const[open,setOpen]=useState(null);
-  const[tab,setTab]=useState('overview');
+function StudentDetail({student,initialLog,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed}){
+  /* '최근 학습 세션'에서 들어왔으면(initialLog) 세션기록 탭에서 그 세션의 문항 상세를 바로 펼친다.
+     math_logs 문서와 학생 문서의 logs 는 같은 내용이지만 서로 id 를 나누지 않으므로 날짜·시각·유형으로 찾는다. */
+  const jump=useMemo(()=>{
+    if(!initialLog)return null;
+    const ls=student.logs||[];
+    let idx=ls.findIndex(l=>l.date===initialLog.date&&l.time===initialLog.time&&l.type===initialLog.type);
+    if(idx<0)idx=ls.findIndex(l=>l.date===initialLog.date&&l.time===initialLog.time);
+    if(idx<0)return{idx:-1,all:false,pos:null};
+    const recentIdx=ls.map((l,i)=>isRecentLog(l)?i:-1).filter(i=>i>=0);
+    const isRecent=recentIdx.includes(idx);
+    return{idx,all:!isRecent,pos:isRecent?recentIdx.indexOf(idx):idx};   // pos : 화면에 보이는 목록(최근 5일/전체) 안에서의 순서
+  },[]);
+  const jumpedRef=useRef(!!jump);   // 목록에서 곧장 넘어온 상태 — 이때 뒤로가기는 종합 탭을 거치지 않고 학생 목록으로 간다
+  const[open,setOpen]=useState(jump&&jump.pos!=null?jump.pos:null);
+  const[tab,setTab]=useState(jump?'sessions':'overview');
   const[qStats,setQStats]=useState({});
   const[qStatsLoading,setQStatsLoading]=useState(false);
   const[isExporting,setIsExporting]=useState(false);
-  const[showAllSessions,setShowAllSessions]=useState(false);
+  const[showAllSessions,setShowAllSessions]=useState(!!(jump&&jump.all));
   const[printLog,setPrintLog]=useState(null);
+  // 뒤로가기 : 인쇄창 닫기 → (세부 탭이면) 종합 탭 → 학생 목록(analysisTab 이 받는다)
+  useBackHandler(()=>{setPrintLog(null);},40,!!printLog);
+  useBackHandler(()=>{
+    if(tab==='overview'||(jumpedRef.current&&tab==='sessions'))return false;
+    setTab('overview');
+  },25);
+  useEffect(()=>{
+    if(!jump||jump.pos==null)return;
+    const t=setTimeout(()=>{const el=document.getElementById('sess-card-'+jump.pos);if(el)el.scrollIntoView({block:'center'});},150);
+    return()=>clearTimeout(t);
+  },[]);
   const[correctionData,setCorrectionData]=useState({totalWrong:0,corrected:0,rate:0,loaded:false});
   const[wrongQOpen,setWrongQOpen]=useState(false);
   const[wrongQSel,setWrongQSel]=useState(new Set());
@@ -1130,7 +1154,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
       {/* 탭 전환 */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-4">
         {TABS.map(t=>(
-          <button key={t.k} onClick={()=>setTab(t.k)}
+          <button key={t.k} onClick={()=>{jumpedRef.current=false;setTab(t.k);}}
             className={`flex-1 text-[11px] font-bold py-2 rounded-xl transition-all ${tab===t.k?'bg-white text-indigo-700 shadow-sm':'text-gray-500'}`}>
             {t.lbl}
           </button>
@@ -1379,7 +1403,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
         const rawAcc=calcRawAccuracy(log.questions);
         const{activeSec,flagged}=estimateActiveTime(log.totalSec,log.questions?.length||10);
         return(
-          <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+          <div key={i} id={'sess-card-'+i} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
             <div className="flex items-center p-4 border-b border-gray-100">
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-gray-800 text-sm mb-1">{fmtDate(log.date)} {log.time} {feelIco}</div>

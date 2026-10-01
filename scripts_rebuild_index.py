@@ -6,6 +6,7 @@ FILES = [
     "js/core/examSource.js",
     "js/core/logMetrics.js",
     "js/core/db.js",
+    "js/core/backNav.js",
     "js/math/primitives.js",
     "js/math/expr.js",
     "js/math/explain.js",

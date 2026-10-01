@@ -86,6 +86,8 @@ function StudentAnalysisTab(){
   const[recentN,setRecentN]=useRecentCount();
   const[showRecent,setShowRecent]=useState(true);
   const recentSessions=useRecentSessions(recentN);
+  const[jumpLog,setJumpLog]=useState(null);   // '최근 학습 세션'에서 눌러 들어온 기록 — 상세 화면이 그 세션의 문항 상세를 바로 펼친다
+  useBackHandler(()=>{setSelected(null);setJumpLog(null);},20,!!selected);   // 뒤로가기 : 학생 상세 → 학생 목록
 
   const load=async()=>{
     setLoading(true);
@@ -101,7 +103,8 @@ function StudentAnalysisTab(){
 
   if(selected)return<StudentDetail
     student={selected}
-    onBack={()=>setSelected(null)}
+    initialLog={jumpLog}
+    onBack={()=>{setSelected(null);setJumpLog(null);}}
     folders={folders}
     customFolders={customFolders}
     onAssignFolder={(fid,sid)=>{assignFolder(fid,sid);}}
@@ -150,7 +153,7 @@ function StudentAnalysisTab(){
       {showRecent&&<div className="grid grid-cols-2 gap-1.5">
         {recentSessions.map((s,i)=>(
           <button key={s.id||i}
-            onClick={()=>{const found=students.find(st=>st.name===s.studentName||st.id===s.studentName);if(found)setSelected(found);}}
+            onClick={()=>{const found=students.find(st=>st.name===s.studentName||st.id===s.studentName);if(found){setJumpLog(s);setSelected(found);}}}
             className="text-left flex flex-col gap-1 px-2.5 py-2 rounded-xl border border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.98] transition-all">
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-black text-[10px] flex items-center justify-center flex-shrink-0">{(s.studentName||'?')[0]}</div>
@@ -223,7 +226,7 @@ function StudentAnalysisTab(){
         const a=analyzeStudent(s);
         const isOnline=!!onlineMap[s.name||s.id];
         return(
-        <button key={s.id} onClick={()=>setSelected(s)}
+        <button key={s.id} onClick={()=>{setJumpLog(null);setSelected(s);}}
           className="bg-white rounded-2xl p-2.5 shadow-sm border border-gray-100 text-center hover:border-indigo-300 hover:bg-indigo-50 active:scale-95 transition-all flex flex-col items-center gap-1">
           {/* 아바타 */}
           <div className="relative">

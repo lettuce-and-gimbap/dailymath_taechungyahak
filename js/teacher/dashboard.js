@@ -12,6 +12,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   React.useEffect(()=>db.collection('studentFeedback').where('read','==',false).onSnapshot(s=>setUnreadFb(s.size),()=>{}),[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
   const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'hwlab',icon:'✍️',lbl:'필기인식'}];
   const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
+  useBackHandler(()=>{setTab('analysis');},10,tab!=='analysis');   // 뒤로가기 : 다른 탭 → 홈(학생관리), 홈에서는 나가기 확인창
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-2 sticky top-0 z-20 shadow-md">
       <div className="text-2xl flex-shrink-0">👨‍🏫</div>
