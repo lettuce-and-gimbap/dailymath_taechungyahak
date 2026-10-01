@@ -67,18 +67,53 @@ var GED_UNITS=(function(){
     if(!kpBag.length||kpBag.some(k=>list.indexOf(k)<0)){kpBag=shuffle(list);if(kpBag[0]===kpLast)kpBag.push(kpBag.shift());}
     return(kpLast=kpBag.shift());
   };
-  /* 종류·모양별로 곡선이 창(−6~6) 안에 넉넉히 보이는 범위에서 핵심 점을 고른다. 원점과는 겹치지 않게 둘 다 0이 아닌 수 */
+  /* 이차함수는 '범위가 있는' 최대·최소만 낸다 (2026-10-01 선생님 요청).
+     y=±(x−m)²+n 을 lo ≤ x ≤ hi 에서만 굵게 그리고, 묻는 값(최댓값/최솟값)이 되는 점을 찾게 한다.
+     후보는 양 끝 두 점 + 꼭짓점(범위 안에 있을 때). 같은 값이 두 곳이면 답이 둘이 되므로 오류로 돌린다. */
+  function kpQuad(p){
+    const m=Number(p.m),n=Number(p.n),sg=p.shape==='뒤집힌 모양'?-1:1;
+    /* 예전 저장본(범위가 없던 판)은 꼭짓점 주변 범위로 읽는다 */
+    const lo=p.lo===undefined?m-1:Number(p.lo),hi=p.hi===undefined?m+2:Number(p.hi);
+    const ask=p.ask||(sg<0?'최댓값':'최솟값'),isMax=ask==='최댓값';
+    if(!Number.isInteger(lo)||!Number.isInteger(hi)||Math.abs(lo)>5||Math.abs(hi)>5)return{err:'범위의 시작과 끝은 −5부터 5까지의 정수로 넣어 주세요.'};
+    if(lo>=hi)return{err:'범위 시작이 범위 끝보다 작아야 합니다.'};
+    const f=x=>sg*(x-m)**2+n;
+    const inside=m>lo&&m<hi;
+    const cands=[[lo,f(lo)],[hi,f(hi)]];if(inside)cands.push([m,n]);
+    if(cands.some(c=>Math.abs(c[1])>6))return{err:'그래프가 그림(−6~6) 밖으로 나갑니다. 범위를 좁히거나 꼭짓점 y를 바꿔 주세요.'};
+    let best=cands[0];for(const c of cands)if(isMax?c[1]>best[1]:c[1]<best[1])best=c;
+    if(cands.some(c=>c!==best&&c[1]===best[1]))return{err:`${ask}이 되는 점이 두 곳입니다. 범위를 바꿔 주세요.`};
+    if(best[0]===0&&best[1]===0)return{err:'답이 되는 점이 원점과 겹칩니다. 범위나 꼭짓점을 바꿔 주세요.'};
+    return{m,n,sg,lo,hi,ask,isMax,f,inside,cands,best};
+  }
+  /* 범위는 다양하게 : 꼭짓점이 범위 안(반) / 밖(반), 폭 1~6, 최댓값·최솟값 반반 */
+  function kpQuadRand(){
+    for(let t=0;t<300;t++){
+      const flip=Math.random()<.5,ask=Math.random()<.5?'최솟값':'최댓값',m=rnd(-3,3);
+      let lo,hi;
+      if(Math.random()<.5){lo=m-rnd(1,3);hi=m+rnd(1,3);}
+      else{const w=rnd(1,3);if(Math.random()<.5){lo=m+rnd(0,2);hi=lo+w;}else{hi=m-rnd(0,2);lo=hi-w;}}
+      if(lo<-5||hi>5)continue;
+      const sq=Math.max((lo-m)**2,(hi-m)**2);
+      const nlo=flip?-5+sq:-5,nhi=flip?5:5-sq;if(nlo>nhi)continue;
+      const p={m,n:rnd(nlo,nhi),shape:flip?'뒤집힌 모양':'기본',lo,hi,ask};
+      if(!kpQuad(p).err)return p;
+    }
+    return{m:1,n:-3,shape:'기본',lo:-1,hi:2,ask:'최댓값'};
+  }
+  /* 종류·모양별로 곡선이 창(−6~6) 안에 넉넉히 보이는 범위에서 핵심 점을 고른다. 원점과는 겹치지 않게 둘 다 0이 아닌 수.
+     범위·묻는 값(lo·hi·ask)은 이차함수만 쓰지만, 조건 상자 칸이 비지 않도록 다른 종류에도 기본값을 넣어 둔다 */
   function kpRand(opts){
     opts=opts||{};
     const kinds=(opts.kinds||[]).filter(k=>KP_CODE[k]);
     const kind=kpNextKind(kinds.length?kinds:KP_KINDS),code=KP_CODE[kind];
+    const view={eq:opts.eq||'식 숨기기',grid:opts.grid||'모눈 있음',write:opts.write||'동그라미만'};
+    if(code==='quad')return{kind,...kpQuadRand(),...view};
     const flip=Math.random()<.5;
     let m,n;
     if(code==='irr'){m=nz(-4,2);n=flip?nz(-2,4):nz(-4,2);}
-    else if(code==='rat'){m=nz(-3,3);n=nz(-3,3);}
-    else{m=nz(-3,3);n=flip?nz(-1,4):nz(-4,1);}
-    return{kind,m,n,shape:flip?'뒤집힌 모양':'기본',
-      eq:opts.eq||'식 숨기기',grid:opts.grid||'모눈 있음',write:opts.write||'동그라미만'};
+    else{m=nz(-3,3);n=nz(-3,3);}
+    return{kind,m,n,shape:flip?'뒤집힌 모양':'기본',lo:-1,hi:2,ask:'최솟값',...view};
   }
 
   return[
@@ -171,12 +206,14 @@ var GED_UNITS=(function(){
   { id:'p1', tag:'점 찍기', area:'P', title:'그래프의 핵심 점에 동그라미', src:'18번 · 7번의 출발점', coord:true,
     pageAfterConcept:true, qTitle:'동그라미 연습 — 원점 O 와 그 점, 두 곳에 ○',
     fields:[{k:'kind',label:'문제 종류',sel:KP_KINDS},
-      {k:'m',label:'점의 x',min:-4,max:4},{k:'n',label:'점의 y',min:-4,max:4},
+      {k:'m',label:'점의 x (이차: 꼭짓점 x)',min:-4,max:4},{k:'n',label:'점의 y (이차: 꼭짓점 y)',min:-5,max:5},
       {k:'shape',label:'모양',sel:['기본','뒤집힌 모양']},
+      {k:'lo',label:'범위 시작 (이차)',min:-5,max:5},{k:'hi',label:'범위 끝 (이차)',min:-5,max:5},
+      {k:'ask',label:'묻는 값 (이차)',sel:['최솟값','최댓값']},
       {k:'eq',label:'식',sel:['식 숨기기','식 보이기']},
       {k:'grid',label:'모눈',sel:['모눈 있음','모눈 없음']},
       {k:'write',label:'좌표 쓰기',sel:['동그라미만','좌표도 쓰기']}],
-    def:{kind:'무리함수 시작점',m:2,n:1,shape:'기본',eq:'식 보이기',grid:'모눈 있음',write:'동그라미만'},
+    def:{kind:'무리함수 시작점',m:2,n:1,shape:'기본',lo:-1,hi:2,ask:'최솟값',eq:'식 보이기',grid:'모눈 있음',write:'동그라미만'},
     rand:kpRand,
     /* [새 숫자] : 문제 종류와 보기 설정(식·모눈·좌표 쓰기)은 그대로 두고 점만 바꾼다 */
     reroll(p){return kpRand({kinds:[p.kind],eq:p.eq,grid:p.grid,write:p.write});},
@@ -186,7 +223,11 @@ var GED_UNITS=(function(){
       const code=KP_CODE[p.kind]||'irr';
       const m=Number(p.m),n=Number(p.n);
       if(!Number.isInteger(m)||!Number.isInteger(n)||Math.abs(m)>5||Math.abs(n)>5)return{err:'점의 x, y는 −5부터 5까지의 정수로 넣어 주세요.'};
-      if(m===0&&n===0)return{err:'그 점이 원점과 겹칩니다. 점의 x나 y를 0이 아닌 수로 바꿔 주세요.'};
+      const Q=code==='quad'?kpQuad(p):null;
+      if(Q&&Q.err)return{err:Q.err};
+      if(!Q&&m===0&&n===0)return{err:'그 점이 원점과 겹칩니다. 점의 x나 y를 0이 아닌 수로 바꿔 주세요.'};
+      const tx=Q?Q.best[0]:m,ty=Q?Q.best[1]:n;     // 동그라미 칠 '그 점'
+      const rangeTex=Q?tex(`${nf(Q.lo)} \\le x \\le ${nf(Q.hi)}`):'';
       const flip=p.shape==='뒤집힌 모양',grid=p.grid!=='모눈 없음',showEq=p.eq==='식 보이기',write=p.write==='좌표도 쓰기';
       const sg=flip?'-':'';
       const eqS=code==='irr'?`y=${sg}\\sqrt{${xm(m)}}${tail(n)}`
@@ -194,24 +235,29 @@ var GED_UNITS=(function(){
         :`y=${sg}${m===0?'x^2':`(${xm(m)})^2`}${tail(n)}`;
       const fname=code==='irr'?'무리함수':code==='rat'?'유리함수':'이차함수';
       /* 문제 글은 한 줄로 짧게 — 2단 인쇄에서 그림을 크게 두고도 한 쪽에 4문항(2줄 × 2단)이 들어가도록 */
-      const target=code==='irr'?'시작점':code==='rat'?'점근선 교점':'최대 또는 최소가 되는 점';
-      const name=code==='irr'?'시작점':code==='rat'?'점근선 교점':(flip?'최댓값이 되는 점(꼭짓점)':'최솟값이 되는 점(꼭짓점)');
-      const q=`${fname}${showEq?' '+tex(eqS):''} — <b>원점 O</b>와 <b>${target}</b>에 ○ 하세요.`
+      const target=code==='irr'?'시작점':code==='rat'?'점근선 교점':`${Q.ask}이 되는 점`;
+      const name=target;
+      /* 이차함수는 범위를 늘 문제 글에 적는다 — 그림의 굵은 곡선만으로는 끝이 열린 곳인지 헷갈릴 수 있어서 */
+      const q=`${fname}${showEq?' '+tex(eqS):''}${Q?` (${rangeTex})`:''} — <b>원점 O</b>와 <b>${target}</b>에 ○ 하세요.`
         +(write?' 그 점의 좌표도 쓰세요.':'');
       const kfig=svg=>`<div class="fig kpfig">${svg}</div>`;
-      const figure=kfig(GS.keyPointSVG(code,m,n,flip,{grid}));
-      const figAns=kfig(GS.keyPointSVG(code,m,n,flip,{grid,ring:true}));
+      const qopt=Q?{lo:Q.lo,hi:Q.hi,target:Q.best}:{};
+      const figure=kfig(GS.keyPointSVG(code,m,n,flip,{grid,...qopt}));
+      const figAns=kfig(GS.keyPointSVG(code,m,n,flip,{grid,ring:true,...qopt}));
       const go=(v,pos,neg)=>v===0?'':`${v>0?pos:neg}으로 ${nf(Math.abs(v))}칸`;
       const move=[go(m,'오른쪽','왼쪽'),go(n,'위쪽','아래쪽')].filter(Boolean).join(', ');
-      const sol=[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
+      const sol=Q?[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
+        `굵은 곡선은 ${rangeTex} 에서만 그려져 있습니다. ${Q.inside?`꼭짓점 ${tex(pr(m,n))}이 범위 <b>안</b>에 있으므로 후보는 양 끝과 꼭짓점, 세 곳입니다.`:`꼭짓점 ${tex(pr(m,n))}이 범위 <b>밖</b>에 있으므로 후보는 굵은 곡선의 양 끝, 두 곳뿐입니다.`}`,
+        `후보의 높이 : ${Q.cands.map(([x,y])=>tex(`x=${nf(x)} \\rightarrow y=${nf(y)}`)).join(' , ')}`,
+        `가장 ${Q.isMax?'높은':'낮은'} 점 ${tex(pr(tx,ty))}이 ${Q.ask}이 되는 점입니다 → ${Q.ask} ${tex(nf(ty))}`]
+       :[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
         code==='irr'?`곡선이 <b>끊겨 있는 끝</b>, 곧 그래프가 출발하는 자리가 시작점입니다 : ${tex(pr(m,n))}`
-        :code==='rat'?`세로 점선 ${tex('x='+nf(m))}과 가로 점선 ${tex('y='+nf(n))}이 만나는 자리가 점근선 교점입니다 : ${tex(pr(m,n))}`
-        :`그래프가 ${flip?'가장 높이 올라갔다가 내려오는':'가장 낮게 내려갔다가 올라오는'} 꺾이는 자리(꼭짓점)가 ${flip?'최댓값':'최솟값'}이 되는 점입니다 : ${tex(pr(m,n))} → ${flip?'최댓값':'최솟값'} ${tex(nf(n))}`,
+        :`세로 점선 ${tex('x='+nf(m))}과 가로 점선 ${tex('y='+nf(n))}이 만나는 자리가 점근선 교점입니다 : ${tex(pr(m,n))}`,
         `원점에서 ${move} 가면 그 점에 닿습니다. 이 칸 수가 그래프가 옮겨 간 만큼입니다.`];
-      if(showEq)sol.push(`식 ${tex(eqS)}에서도 읽을 수 있습니다 : ${tex('x')} 옆의 수는 부호를 뒤집어 ${tex(nf(m))}, 맨 뒤의 수는 그대로 ${tex(nf(n))}`);
+      if(showEq&&!Q)sol.push(`식 ${tex(eqS)}에서도 읽을 수 있습니다 : ${tex('x')} 옆의 수는 부호를 뒤집어 ${tex(nf(m))}, 맨 뒤의 수는 그대로 ${tex(nf(n))}`);
       return{q,figure,figAns,noChoices:true,noBlank:true,choices:[],
-        after:write?`<div class="kpw">${name.replace(/\(.*\)/,'')}의 좌표 : ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; , &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>`:'',
-        answerRaw:`원점 ${tex('\\mathrm{O}(0,\\ 0)')} 과 ${name} ${tex(pr(m,n))}`,sol};
+        after:write?`<div class="kpw">${name}의 좌표 : ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; , &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>`:'',
+        answerRaw:`원점 ${tex('\\mathrm{O}(0,\\ 0)')} 과 ${name} ${tex(pr(tx,ty))}`,sol};
     }
   },
 

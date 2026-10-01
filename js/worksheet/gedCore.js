@@ -151,8 +151,8 @@ var GS=(function(){
      kind : 'irr' | 'rat' | 'quad',  (m, n) : 핵심 점,  flip : 뒤집힌 모양
        irr  y=±√(x−m)+n      (flip → 오른쪽 아래로)
        rat  y=±2/(x−m)+n     (flip → 제2·4사분면 쪽)
-       quad y=±(x−m)²+n      (flip → 위로 볼록, 최댓값)
-     opt  : {grid, ring, labels, win:{xmin..}, s, maxW}
+       quad y=±(x−m)²+n      (flip → 위로 볼록) — lo ≤ x ≤ hi 에서만 굵게, 나머지는 옅은 점선
+     opt  : {grid, ring, labels, win:{xmin..}, s, maxW, lo, hi, target:[x,y] (동그라미 칠 점, 기본은 (m,n)), tlabel}
      핵심 점에는 점을 찍지 않는다 — 학생이 그림에서 스스로 찾아 ○ 해야 하기 때문이다.
      ring:true 일 때만 원점과 핵심 점에 검정 동그라미(네임펜 자국)를 그린다 (정답·개념 예시용). */
   function keyPointSVG(kind,m,n,flip,opt){
@@ -167,15 +167,19 @@ var GS=(function(){
       items.push({t:'vline',x:m},{t:'hline',y:n},
         {t:'fn',f,from:w.xmin-3,to:m-0.03,width:4.6},{t:'fn',f,from:m+0.03,to:w.xmax+3,width:4.6});
     }else{
-      items.push({t:'fn',f:x=>sg*(x-m)**2+n,width:4.6});
+      const f=x=>sg*(x-m)**2+n;
+      if(opt.lo!==undefined)items.push({t:'fn',f,color:'#c3ccd8',dash:'7 7',width:2.2},{t:'fn',f,from:opt.lo,to:opt.hi,width:5});
+      else items.push({t:'fn',f,width:4.6});
     }
+    const T=opt.target||[m,n];
     if(opt.ring){
-      items.push({t:'circle',cx:0,cy:0,r:.5,color:'#111',width:3.6},{t:'circle',cx:m,cy:n,r:.5,color:'#111',width:3.6});
+      items.push({t:'circle',cx:0,cy:0,r:.5,color:'#111',width:3.6},{t:'circle',cx:T[0],cy:T[1],r:.5,color:'#111',width:3.6});
       if(opt.labels){
         /* 이름표는 곡선이 지나가지 않는 쪽에 둔다
            무리함수 : 곡선이 오른쪽으로 뻗으니 왼쪽 위(뒤집힌 모양은 왼쪽 아래) / 유리함수 : 곡선이 없는 사분면 쪽 / 이차함수 : 볼록한 바깥쪽 */
         const L=kind==='irr'?{x:m+.2,y:n+(flip?-1.3:.75),a:'end',s:'시작점'}
           :kind==='rat'?{x:m+(flip?.5:-.5),y:n+.6,a:flip?'start':'end',s:'교점'}
+          :opt.lo!==undefined?{x:T[0]+(T[0]<=m?-.6:.6),y:T[1]+.35,a:T[0]<=m?'end':'start',s:opt.tlabel||'그 점'}
           :{x:m,y:n+(flip?.8:-1.3),a:'middle',s:'꼭짓점'};
         items.push({t:'text',x:L.x,y:L.y,s:L.s,anchor:L.a,size:19,halo:true});
       }

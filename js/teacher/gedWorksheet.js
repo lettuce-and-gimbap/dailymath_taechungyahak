@@ -373,7 +373,11 @@ function GedWorksheetTab(){
 
   /* ---------- 문항 조작 ---------- */
   const mapProbs=(id,fn)=>patchSheet(id,s=>({...s,problems:fn(s.problems)}));
-  const onParam=(id,key,k,v)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,params:{...p.params,[k]:v},override:null,rev:p.rev+1}:p));};
+  /* reroll 이 있는 유형(p1)에서 '문제 종류'를 바꾸면 그 종류에 맞는 숫자를 새로 뽑는다
+     (예전 숫자를 그대로 두면 무리함수의 점이 이차함수 범위와 안 맞아 바로 오류 카드가 된다) */
+  const onParam=(id,key,k,v)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
+    const params=(k==='kind'&&u.reroll)?u.reroll({...p.params,kind:v}):{...p.params,[k]:v};
+    return{...p,params,override:null,rev:p.rev+1};}));};
   /* reroll 이 있는 유형(p1)은 문제 종류·보기 설정을 지키고 숫자만 바꾼다 */
   const onRandom=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
     return{...p,params:u.reroll?u.reroll(p.params):u.rand(),override:null,rev:p.rev+1};}));};
