@@ -147,6 +147,42 @@ var GS=(function(){
     return o;
   }
 
+  /* 핵심 점 찍기(p1) 그림 — 무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 꼭짓점
+     kind : 'irr' | 'rat' | 'quad',  (m, n) : 핵심 점,  flip : 뒤집힌 모양
+       irr  y=±√(x−m)+n      (flip → 오른쪽 아래로)
+       rat  y=±2/(x−m)+n     (flip → 제2·4사분면 쪽)
+       quad y=±(x−m)²+n      (flip → 위로 볼록, 최댓값)
+     opt  : {grid, ring, labels, win:{xmin..}, s, maxW}
+     핵심 점에는 점을 찍지 않는다 — 학생이 그림에서 스스로 찾아 ○ 해야 하기 때문이다.
+     ring:true 일 때만 원점과 핵심 점에 검정 동그라미(네임펜 자국)를 그린다 (정답·개념 예시용). */
+  function keyPointSVG(kind,m,n,flip,opt){
+    opt=opt||{};
+    const w=opt.win||{xmin:-6,xmax:6,ymin:-6,ymax:6};
+    const g={...w,s:opt.s||30,maxW:opt.maxW||420,grid:opt.grid!==false};
+    const sg=flip?-1:1,items=[];
+    if(kind==='irr'){
+      items.push({t:'fn',f:x=>sg*Math.sqrt(x-m)+n,from:m,to:w.xmax+1,width:4.6});
+    }else if(kind==='rat'){
+      const f=x=>2*sg/(x-m)+n;
+      items.push({t:'vline',x:m},{t:'hline',y:n},
+        {t:'fn',f,from:w.xmin-3,to:m-0.03,width:4.6},{t:'fn',f,from:m+0.03,to:w.xmax+3,width:4.6});
+    }else{
+      items.push({t:'fn',f:x=>sg*(x-m)**2+n,width:4.6});
+    }
+    if(opt.ring){
+      items.push({t:'circle',cx:0,cy:0,r:.5,color:'#111',width:3.6},{t:'circle',cx:m,cy:n,r:.5,color:'#111',width:3.6});
+      if(opt.labels){
+        /* 이름표는 곡선이 지나가지 않는 쪽에 둔다
+           무리함수 : 곡선이 오른쪽으로 뻗으니 왼쪽 위(뒤집힌 모양은 왼쪽 아래) / 유리함수 : 곡선이 없는 사분면 쪽 / 이차함수 : 볼록한 바깥쪽 */
+        const L=kind==='irr'?{x:m+.2,y:n+(flip?-1.3:.75),a:'end',s:'시작점'}
+          :kind==='rat'?{x:m+(flip?.5:-.5),y:n+.6,a:flip?'start':'end',s:'교점'}
+          :{x:m,y:n+(flip?.8:-1.3),a:'middle',s:'꼭짓점'};
+        items.push({t:'text',x:L.x,y:L.y,s:L.s,anchor:L.a,size:19,halo:true});
+      }
+    }
+    return planeSVG(g,items);
+  }
+
   /* 조립제법 표 */
   function synthSVG(k,coefs,products,bottom,hideR){
     const cols=coefs.length,cw=64,x0=70,W=x0+cw*cols+40,H=150;
@@ -316,18 +352,27 @@ var GS=(function(){
     try{r=unit.build(params);}catch(e){r={err:'문제를 만들 수 없는 조건입니다. 숫자를 바꿔 주세요.'};}
     if(!r||r.err)return`<div class="gen err">⚠️ ${r&&r.err||'조건 오류'}</div>`;
     const isEx=idx===0;
-    const one=r.layout?r.layout==='one':(!r.raw&&r.choices.every(c=>String(c).length<=4));
+    /* noChoices : 보기 없이 그림에 표시만 하는 문제(점 찍기 등)
+       figAns    : 정답 그림. 실전 문항은 [정답 보이기]를 켤 때만 문제 그림 대신 보이고, 예제는 처음부터 보인다
+       noBlank   : '풀이 & 답' 점선 상자를 두지 않는다    after : 그림 아래에 붙일 HTML(좌표 쓰는 칸 등) */
+    const noCh=!!r.noChoices;
+    const one=noCh||(r.layout?r.layout==='one':(!r.raw&&r.choices.every(c=>String(c).length<=4)));
     const sol=Array.isArray(r.sol)?r.sol.map(s=>`<p>${s}</p>`).join(''):r.sol;
     const ansBody=r.answerRaw!==undefined?r.answerRaw:tex(r.answerTex!==undefined?r.answerTex:String(r.choices[r.ans]));
+    const figure=r.figAns?(isEx?r.figAns:`<div class="qOnly">${r.figure||''}</div><div class="ansOnly">${r.figAns}</div>`):(r.figure||'');
     return`<div class="gen">
       <div class="qtext"><span class="qno">${isEx?'예제':no}</span>${numSpan(r.q)}</div>
-      ${r.figure||''}
-      ${numSpan(choicesHTML(r.choices,one,r.raw))}
-      ${isEx?'':'<div class="blank">풀이 &amp; 답 :</div>'}
+      ${figure}
+      ${r.after||''}
+      ${noCh?'':numSpan(choicesHTML(r.choices,one,r.raw))}
+      ${isEx||r.noBlank?'':'<div class="blank">풀이 &amp; 답 :</div>'}
       <div class="sol${isEx?'':' ansOnly'}"><b>${isEx?'함께 풀어봅시다':'풀이'}</b>${numSpan(sol)}</div>
-      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; <span class="ansIdx">${CIRC[r.ans]}</span> ${numSpan(ansBody)}</div>
+      <div class="ans${isEx?'':' ansOnly'}">정답 &nbsp; ${noCh?'':`<span class="ansIdx">${CIRC[r.ans]}</span> `}${numSpan(ansBody)}</div>
     </div>`;
   }
+
+  /* 쪽 나눔 표시 — 미리보기에서는 점선 안내, 인쇄에서는 다음 쪽으로 넘긴다 */
+  const PGBREAK=`<div class="pgbreak"><span>여기서 다음 쪽으로 넘어갑니다</span></div>`;
 
   /* 학습지 본문(.gsheet 내부) 전체 — groups:[{unit, recs:[{idx,params,override,no}]}] */
   function bodyHTML(cfg,groups){
@@ -342,10 +387,13 @@ var GS=(function(){
     groups.forEach(gr=>{
       const u=gr.unit;
       h+=`<h2 id="${u.id}">${u.tag}. ${esc(u.title)}<small>${u.src||''}</small></h2>`;
-      if(cfg.includeConcept!==false)h+=`<div class="card concept">${gr.conceptHtml?conceptMode(gr.conceptHtml,cfg.blankConcept):conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
+      if(cfg.includeConcept!==false){
+        h+=`<div class="card concept">${gr.conceptHtml?conceptMode(gr.conceptHtml,cfg.blankConcept):conceptHTML(u,{blank:cfg.blankConcept})}</div>`;
+        if(u.pageAfterConcept)h+=PGBREAK;   // 개념은 한 쪽에 따로, 연습은 다음 쪽부터
+      }
       const ex=gr.recs.filter(r=>r.idx===0),qs=gr.recs.filter(r=>r.idx!==0);
       ex.forEach(r=>{h+=`<h3>풀이 예시</h3><div class="card ex">${r.override||probHTML(u,r.params,0,'예제')}</div>`;});
-      if(qs.length){h+=`<h3>실전 문제</h3><div class="qgrid">`;qs.forEach(r=>{h+=`<div class="card">${r.override||probHTML(u,r.params,r.idx,r.no)}</div>`;});h+=`</div>`;}
+      if(qs.length){h+=`<h3>${u.qTitle||'실전 문제'}</h3><div class="qgrid">`;qs.forEach(r=>{h+=`<div class="card">${r.override||probHTML(u,r.params,r.idx,r.no)}</div>`;});h+=`</div>`;}
     });
     return h;
   }
@@ -419,7 +467,21 @@ var GS=(function(){
 .gsheet .ctrl .tag{background:var(--navy);color:#fff;border-radius:6px;padding:1px 9px;font-size:12px}
 .gsheet .ctrl button{font-family:inherit;font-size:12px;padding:3px 9px;border:2px solid var(--navy);border-radius:7px;background:#fff;color:var(--navy);cursor:pointer;min-height:30px!important;font-weight:700}
 .gsheet .ctrl button.danger{border-color:#c0272d;color:#c0272d}
+/* 정답 그림(figAns)이 있는 문항 : 정답을 켜면 문제 그림 대신 정답 그림만 보인다 */
+.gsheet:not(.noans) .qOnly{display:none!important}
+.gsheet .pgbreak{border-top:3px dashed #b9c3d3;margin:26px 0 8px;text-align:center;height:0}
+.gsheet .pgbreak span{position:relative;top:-.85em;background:#fff;padding:0 12px;font-size:12px;color:#8a94a6;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+/* 핵심 점 찍기 : 개념 카드의 세 그림 나란히 · 좌표 쓰는 칸 */
+.gsheet .kptrio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}
+.gsheet .kptrio svg{width:100%;height:auto;display:block}
+.gsheet .kpcap{font-size:.7em;text-align:center;margin-top:2px;line-height:1.4}
+.gsheet .kpw{margin:8px 0 2px;font-size:calc(var(--qs,1)*.92em)}
+.gsheet.cols2 .qgrid .fig.kpfig svg{max-width:330px!important}   /* 네임펜으로 동그라미 칠 그림이라 다른 유형보다 크게 */
 @media print{
+  /* 쪽 나눔은 표시 다음 제목에 건다. 표시 자체에 break-after 를 걸면, 1쪽이 꽉 찼을 때 표시가 2쪽으로 밀려 빈 쪽이 생긴다 */
+  .gsheet .pgbreak{display:none}
+  .gsheet.cols2 .qgrid .fig.kpfig svg{max-width:300px!important}   /* 2단 · 한 쪽에 4문항이 꽉 차는 크기 */
+  .gsheet .pgbreak+h3{break-before:page;page-break-before:always;margin-top:0}
   .gsheet{box-shadow:none!important;margin:0!important;max-width:none!important;width:100%!important;padding:0!important;font-size:clamp(15px,var(--fs),21px)!important}
   .gsheet .ctrl,.gsheet .noprint{display:none!important}
   .gsheet h1{font-size:1.5em!important}
@@ -484,6 +546,6 @@ ${SHEET_CSS}
 
   return{nf,par,xm,ym,tail,esc,tex,pr,rnd,pick,nz,CIRC,isInt,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,choicesHTML,
-    planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
+    planeSVG,keyPointSVG,PGBREAK,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
     NAVY,RED,GREEN,GREY};
 })();
