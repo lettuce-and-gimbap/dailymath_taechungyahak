@@ -83,7 +83,6 @@ var GED_UNITS=(function(){
     if(cands.some(c=>Math.abs(c[1])>6))return{err:'그래프가 그림(−6~6) 밖으로 나갑니다. 범위를 좁히거나 꼭짓점 y를 바꿔 주세요.'};
     let best=cands[0];for(const c of cands)if(isMax?c[1]>best[1]:c[1]<best[1])best=c;
     if(cands.some(c=>c!==best&&c[1]===best[1]))return{err:`${ask}이 되는 점이 두 곳입니다. 범위를 바꿔 주세요.`};
-    if(best[0]===0&&best[1]===0)return{err:'답이 되는 점이 원점과 겹칩니다. 범위나 꼭짓점을 바꿔 주세요.'};
     return{m,n,sg,lo,hi,ask,isMax,f,inside,cands,best};
   }
   /* 범위는 다양하게 : 꼭짓점이 범위 안(반) / 밖(반), 폭 1~6, 최댓값·최솟값 반반 */
@@ -204,7 +203,7 @@ var GED_UNITS=(function(){
      1쪽은 개념(세 함수의 예시 그림), 2쪽부터는 세 종류가 섞인 연습 (pageAfterConcept)
      ================================================================ */
   { id:'p1', tag:'점 찍기', area:'P', title:'그래프의 핵심 점에 동그라미', src:'18번 · 7번의 출발점', coord:true,
-    pageAfterConcept:true, qTitle:'동그라미 연습 — 원점 O 와 그 점, 두 곳에 ○',
+    pageAfterConcept:true, qTitle:'동그라미 연습 — 그 점에 ○ (무리·유리함수는 원점 O 도)',
     fields:[{k:'kind',label:'문제 종류',sel:KP_KINDS},
       {k:'m',label:'점의 x (이차: 꼭짓점 x)',min:-4,max:4},{k:'n',label:'점의 y (이차: 꼭짓점 y)',min:-5,max:5},
       {k:'shape',label:'모양',sel:['기본','뒤집힌 모양']},
@@ -238,7 +237,8 @@ var GED_UNITS=(function(){
       const target=code==='irr'?'시작점':code==='rat'?'점근선 교점':`${Q.ask}이 되는 점`;
       const name=target;
       /* 이차함수는 범위를 늘 문제 글에 적는다 — 그림의 굵은 곡선만으로는 끝이 열린 곳인지 헷갈릴 수 있어서 */
-      const q=`${fname}${showEq?' '+tex(eqS):''}${Q?` (${rangeTex})`:''} — <b>원점 O</b>와 <b>${target}</b>에 ○ 하세요.`
+      /* 이차함수는 원점 없이 최대·최소 점 하나만 ○ (2026-10-01 선생님 요청) */
+      const q=`${fname}${showEq?' '+tex(eqS):''}${Q?` (${rangeTex})`:''} — ${Q?'':'<b>원점 O</b>와 '}<b>${target}</b>에 ○ 하세요.`
         +(write?' 그 점의 좌표도 쓰세요.':'');
       const kfig=svg=>`<div class="fig kpfig">${svg}</div>`;
       const qopt=Q?{lo:Q.lo,hi:Q.hi,target:Q.best}:{};
@@ -246,8 +246,7 @@ var GED_UNITS=(function(){
       const figAns=kfig(GS.keyPointSVG(code,m,n,flip,{grid,ring:true,...qopt}));
       const go=(v,pos,neg)=>v===0?'':`${v>0?pos:neg}으로 ${nf(Math.abs(v))}칸`;
       const move=[go(m,'오른쪽','왼쪽'),go(n,'위쪽','아래쪽')].filter(Boolean).join(', ');
-      const sol=Q?[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
-        `굵은 곡선은 ${rangeTex} 에서만 그려져 있습니다. ${Q.inside?`꼭짓점 ${tex(pr(m,n))}이 범위 <b>안</b>에 있으므로 후보는 양 끝과 꼭짓점, 세 곳입니다.`:`꼭짓점 ${tex(pr(m,n))}이 범위 <b>밖</b>에 있으므로 후보는 굵은 곡선의 양 끝, 두 곳뿐입니다.`}`,
+      const sol=Q?[`굵은 곡선은 ${rangeTex} 에서만 그려져 있습니다. ${Q.inside?`꼭짓점 ${tex(pr(m,n))}이 범위 <b>안</b>에 있으므로 후보는 양 끝과 꼭짓점, 세 곳입니다.`:`꼭짓점 ${tex(pr(m,n))}이 범위 <b>밖</b>에 있으므로 후보는 굵은 곡선의 양 끝, 두 곳뿐입니다.`}`,
         `후보의 높이 : ${Q.cands.map(([x,y])=>tex(`x=${nf(x)} \\rightarrow y=${nf(y)}`)).join(' , ')}`,
         `가장 ${Q.isMax?'높은':'낮은'} 점 ${tex(pr(tx,ty))}이 ${Q.ask}이 되는 점입니다 → ${Q.ask} ${tex(nf(ty))}`]
        :[`먼저 x축과 y축이 만나는 <b>원점 O</b>에 동그라미를 칩니다.`,
@@ -257,7 +256,7 @@ var GED_UNITS=(function(){
       if(showEq&&!Q)sol.push(`식 ${tex(eqS)}에서도 읽을 수 있습니다 : ${tex('x')} 옆의 수는 부호를 뒤집어 ${tex(nf(m))}, 맨 뒤의 수는 그대로 ${tex(nf(n))}`);
       return{q,figure,figAns,noChoices:true,noBlank:true,choices:[],
         after:write?`<div class="kpw">${name}의 좌표 : ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; , &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</div>`:'',
-        answerRaw:`원점 ${tex('\\mathrm{O}(0,\\ 0)')} 과 ${name} ${tex(pr(tx,ty))}`,sol};
+        answerRaw:`${Q?'':`원점 ${tex('\\mathrm{O}(0,\\ 0)')} 과 `}${name} ${tex(pr(tx,ty))}`,sol};
     }
   },
 

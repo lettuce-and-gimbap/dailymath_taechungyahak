@@ -173,7 +173,8 @@ var GS=(function(){
     }
     const T=opt.target||[m,n];
     if(opt.ring){
-      items.push({t:'circle',cx:0,cy:0,r:.5,color:'#111',width:3.6},{t:'circle',cx:T[0],cy:T[1],r:.5,color:'#111',width:3.6});
+      if(kind!=='quad')items.push({t:'circle',cx:0,cy:0,r:.5,color:'#111',width:3.6});   // 이차함수는 원점에 ○ 하지 않는다
+      items.push({t:'circle',cx:T[0],cy:T[1],r:.5,color:'#111',width:3.6});
       if(opt.labels){
         /* 이름표는 곡선이 지나가지 않는 쪽에 둔다
            무리함수 : 곡선이 오른쪽으로 뻗으니 왼쪽 위(뒤집힌 모양은 왼쪽 아래) / 유리함수 : 곡선이 없는 사분면 쪽 / 이차함수 : 볼록한 바깥쪽 */
