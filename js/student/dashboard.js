@@ -97,6 +97,42 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     }
   };
 
+  /* ── 휴대폰 [뒤로 가기] (2026-10-02) ──
+     갤럭시 크롬 앱에서 뒤로 가기를 누르면 앱이 바로 꺼졌다. 방문 기록에 '가드' 칸을 하나 두고 popstate 를 받는다.
+       · 홈이 아닌 탭 → 홈으로 간다
+       · 홈 → '나가시겠습니까?' 를 묻고 [네] 일 때만 나간다
+       · 문제풀기 세션 중 → practice.js 가 자기 '그만할까요' 모달을 띄우므로 여기서는 손대지 않는다
+     ※ 크롬은 사용자가 화면을 누르지 않은 채 쌓은 기록 칸을 뒤로 가기에서 건너뛴다(history intervention).
+       그래서 popstate 안에서 다시 쌓은 칸은 '임시'로 보고, 다음 터치 때 진짜 칸을 한 번 더 쌓는다. */
+  const[showExit,setShowExit]=useState(false);
+  const backRef=React.useRef({});
+  backRef.current={tab,sessionActive};
+  const guardRef=React.useRef({on:false,fresh:false,exiting:false});
+  const pushGuard=()=>{try{history.pushState({yhGuard:Date.now()},'');guardRef.current.on=true;}catch(e){}};
+  useEffect(()=>{
+    const g=guardRef.current;
+    const onTouch=()=>{if(g.exiting)return;if(!g.on||g.fresh){g.fresh=false;pushGuard();}};
+    const onPop=()=>{
+      g.on=false;
+      if(g.exiting){history.back();return;}                 // [네] 를 누른 뒤에는 남은 가드 칸을 모두 지나 나간다
+      const{tab:t,sessionActive:sa}=backRef.current;
+      if(sa&&t==='practice')return;                          // practice.js 가 처리
+      if(t!=='home'){setTab('home');pushGuard();g.fresh=true;return;}
+      setShowExit(true);                                     // 홈 : 묻기만 한다 (가드는 [아니요] 때 다시 쌓는다)
+    };
+    pushGuard();
+    window.addEventListener('popstate',onPop);
+    window.addEventListener('pointerdown',onTouch,{passive:true});
+    return()=>{window.removeEventListener('popstate',onPop);window.removeEventListener('pointerdown',onTouch);};
+  },[]);
+  const stayInApp=()=>{setShowExit(false);pushGuard();};      // 버튼 누름 = 사용자 동작이라 건너뛰지 않는 칸이 된다
+  const leaveApp=()=>{
+    setShowExit(false);guardRef.current.exiting=true;
+    try{window.close();}catch(e){}
+    // 설치 앱이 스스로 닫히지 않는 기기 : 이제 가드가 없으므로 다음 뒤로 가기는 그대로 앱을 나간다
+    setTimeout(()=>{setToast('뒤로 가기를 한 번 더 누르시면 나가집니다');setTimeout(()=>setToast(''),3000);},300);
+  };
+
   // ── 접속 heartbeat: 30초마다 Firestore onlineStatus 갱신 ──
   useEffect(()=>{
     if(userData.role==='admin')return;
@@ -201,6 +237,20 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     </nav>
 
     {/* 탭 이동 시 이탈 확인 모달 */}
+    {showExit&&(
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={stayInApp}>
+        <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in" onClick={e=>e.stopPropagation()}>
+          <div className="text-center mb-5">
+            <div className="text-4xl mb-3">👋</div>
+            <div className="text-xl font-black text-gray-800">앱을 나가시겠습니까?</div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={stayInApp} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">아니요</button>
+            <button onClick={leaveApp} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">네</button>
+          </div>
+        </div>
+      </div>
+    )}
     {showNavModal&&(
       <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm fade-in">
