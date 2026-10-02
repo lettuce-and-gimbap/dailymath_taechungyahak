@@ -253,7 +253,10 @@ js/
 - `sw.js` : 네트워크 우선이되 `NET_WAIT`(6초) 안에 응답이 없고 받아 둔 사본이 있으면 사본을 먼저 보여 준다. 캐시 이름(`taechung-v3`)을 바꾸면 옛 캐시는 activate 때 지워진다.
 - `index.html` head : Firestore `experimentalAutoDetectLongPolling` — 기본 연결이 막히는 망에서 저장·불러오기가 끝나지 않던 문제 대비. (head 는 번들 밖이라 직접 고친다)
 - **휴대폰 [뒤로 가기]** (`js/student/dashboard.js`) : 방문 기록에 가드 칸을 두고 popstate 를 받는다. 홈이 아닌 탭 → 홈, 홈 → '앱을 나가시겠습니까?' [네] 때만 나감.
-  문제풀기 세션 중에는 `practice.js` 의 자체 처리에 맡긴다. 크롬은 사용자 동작 없이 쌓은 기록 칸을 건너뛰므로(history intervention) 다음 터치 때 칸을 다시 쌓는다.
+  문제풀기 세션 중에는 `practice.js` 의 자체 처리에 맡긴다.
+  크롬은 사용자 동작 없이 pushState 하면 **그 직전 칸**을 뒤로 가기에서 건너뛴다(history intervention). 그래서 **popstate 안에서는 절대 칸을 쌓지 않고**,
+  화면을 눌렀다 뗄 때(`pointerup`·`click`)만 바닥 위로 `KEEP`(2)칸을 채운다. 칸 번호는 `history.state.yhIdx`.
+  (2026-10-02 : 다른 화면 → 뒤로 → 홈 → 뒤로 하면 앱이 꺼지던 버그가 popstate 안 pushState 때문이었다)
   설치 앱이 `window.close()` 로 안 닫히는 기기는 [네] 뒤에 '한 번 더 누르면 나간다'는 안내를 띄운다.
 - 학생 접속 표시(`onlineStatus`) 30초 쓰기는 앱이 뒤로 가 있을 때(`document.hidden`) 멈추고, 다시 보일 때 한 번 쓴다.
 - 아직 남은 큰 부담 : 브라우저가 실행 때마다 Babel 로 약 1MB 번들을 변환한다(오래된 휴대폰에서 첫 화면이 늦음). 줄이려면 미리 변환(빌드)하는 단계가 필요하다.

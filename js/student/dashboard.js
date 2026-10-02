@@ -102,34 +102,40 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
        · 홈이 아닌 탭 → 홈으로 간다
        · 홈 → '나가시겠습니까?' 를 묻고 [네] 일 때만 나간다
        · 문제풀기 세션 중 → practice.js 가 자기 '그만할까요' 모달을 띄우므로 여기서는 손대지 않는다
-     ※ 크롬은 사용자가 화면을 누르지 않은 채 쌓은 기록 칸을 뒤로 가기에서 건너뛴다(history intervention).
-       그래서 popstate 안에서 다시 쌓은 칸은 '임시'로 보고, 다음 터치 때 진짜 칸을 한 번 더 쌓는다. */
+     ※ 크롬은 화면을 누르지 않은 채 pushState 를 하면 '그 직전 칸'을 뒤로 가기에서 건너뛴다(history intervention).
+       2026-10-02 : 다른 화면 → (뒤로) 홈 → (뒤로) 하면 popstate 안에서 다시 쌓은 칸 때문에 바닥 칸이 건너뛰어져 앱이 그냥 꺼졌다.
+       그래서 칸은 화면을 눌렀다 뗄 때(pointerup·click — 크롬이 터치를 '사용자 동작'으로 치는 순간)만 쌓고, 바닥(0) 위로 KEEP 칸을 미리 채워 둔다.
+       popstate 안에서는 절대 쌓지 않는다. 칸 번호는 history.state.yhIdx 로 안다. */
   const[showExit,setShowExit]=useState(false);
   const backRef=React.useRef({});
   backRef.current={tab,sessionActive};
-  const guardRef=React.useRef({on:false,fresh:false,exiting:false});
-  const pushGuard=()=>{try{history.pushState({yhGuard:Date.now()},'');guardRef.current.on=true;}catch(e){}};
+  const guardRef=React.useRef({depth:0,exiting:false});
+  const KEEP=2;
+  const topUp=()=>{const g=guardRef.current;if(g.exiting)return;
+    try{while(g.depth<KEEP){g.depth++;history.pushState({yhIdx:g.depth},'');}}catch(e){}};
   useEffect(()=>{
     const g=guardRef.current;
-    const onTouch=()=>{if(g.exiting)return;if(!g.on||g.fresh){g.fresh=false;pushGuard();}};
-    const onPop=()=>{
-      g.on=false;
-      if(g.exiting){history.back();return;}                 // [네] 를 누른 뒤에는 남은 가드 칸을 모두 지나 나간다
+    const onPop=e=>{
+      const st=e.state||{};
+      g.depth=st.yhIdx!==undefined?st.yhIdx:(st.practiceSession?g.depth:0);   // 문제풀기가 쌓은 칸은 번호가 없다
+      if(g.exiting){if(g.depth>0)history.back();return;}   // [네] 뒤에는 남은 칸을 지나 바닥까지 내려간다
       const{tab:t,sessionActive:sa}=backRef.current;
-      if(sa&&t==='practice')return;                          // practice.js 가 처리
-      if(t!=='home'){setTab('home');pushGuard();g.fresh=true;return;}
-      setShowExit(true);                                     // 홈 : 묻기만 한다 (가드는 [아니요] 때 다시 쌓는다)
+      if(sa&&t==='practice')return;                         // 문제풀기 세션은 practice.js 가 처리
+      if(t!=='home'){setTab('home');return;}                // 다른 화면 → 홈 (칸은 다음 터치 때 채운다)
+      setShowExit(true);                                    // 홈에서는 몇 번째 칸이든 늘 묻는다
     };
-    pushGuard();
+    const onTouch=()=>topUp();
     window.addEventListener('popstate',onPop);
-    window.addEventListener('pointerdown',onTouch,{passive:true});
-    return()=>{window.removeEventListener('popstate',onPop);window.removeEventListener('pointerdown',onTouch);};
+    window.addEventListener('pointerup',onTouch,{passive:true});
+    window.addEventListener('click',onTouch,{passive:true});
+    return()=>{window.removeEventListener('popstate',onPop);window.removeEventListener('pointerup',onTouch);window.removeEventListener('click',onTouch);};
   },[]);
-  const stayInApp=()=>{setShowExit(false);pushGuard();};      // 버튼 누름 = 사용자 동작이라 건너뛰지 않는 칸이 된다
+  const stayInApp=()=>{setShowExit(false);topUp();};        // 버튼 누름 = 사용자 동작이라 건너뛰지 않는 칸이 된다
   const leaveApp=()=>{
-    setShowExit(false);guardRef.current.exiting=true;
+    setShowExit(false);const g=guardRef.current;g.exiting=true;
+    if(g.depth>0)history.go(-g.depth);                     // 바닥 칸으로 — 그 아래는 앱 밖이다
     try{window.close();}catch(e){}
-    // 설치 앱이 스스로 닫히지 않는 기기 : 이제 가드가 없으므로 다음 뒤로 가기는 그대로 앱을 나간다
+    // 설치 앱이 스스로 닫히지 않는 기기 : 바닥 칸이므로 다음 뒤로 가기는 그대로 앱을 나간다
     setTimeout(()=>{setToast('뒤로 가기를 한 번 더 누르시면 나가집니다');setTimeout(()=>setToast(''),3000);},300);
   };
 
