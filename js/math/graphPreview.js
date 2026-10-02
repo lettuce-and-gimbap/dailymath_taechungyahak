@@ -369,7 +369,7 @@ function GraphPreview({q}){
           return<polyline points={`${toSx(fX+len*ax)},${toSy(fY+len*ay)} ${toSx(qx)},${toSy(qy)} ${toSx(fX+len*nx)},${toSy(fY+len*ny)}`} fill="none" stroke={color} strokeWidth={1.5}/>;
         })()}
         {/* 직선 방정식 레이블 */}
-        <text x={8} y={14} fontSize={9} fill="#374151" fontWeight="bold">{la}x{lb>=0?`+${lb}`:lb}y{lc>=0?`+${lc}`:lc}=0</text>
+        <text x={8} y={14} fontSize={9} fill="#374151" fontWeight="bold">{_pl([[la,'x'],[lb,'y'],[lc,'']])}=0</text>
       </svg>
     );
   }

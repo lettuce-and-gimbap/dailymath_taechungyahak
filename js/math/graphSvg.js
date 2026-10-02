@@ -211,7 +211,7 @@ function graphToSvgString(q){
     s+=`<circle cx="${toSx(ptX)}" cy="${toSy(ptY)}" r="5" fill="${color}" stroke="white" stroke-width="2"/>`;
     s+=`<text x="${toSx(ptX)+7}" y="${toSy(ptY)-5}" font-size="9" fill="${color}" font-weight="bold">(${ptX},${ptY})</text>`;
     s+=`<circle cx="${toSx(fX)}" cy="${toSy(fY)}" r="3" fill="white" stroke="${color}" stroke-width="2"/>`;
-    s+=`<text x="8" y="14" font-size="9" fill="#374151" font-weight="bold">${la}x${lb>=0?'+'+lb:lb}y${lc>=0?'+'+lc:lc}=0</text>`;
+    s+=`<text x="8" y="14" font-size="9" fill="#374151" font-weight="bold">${_pl([[la,'x'],[lb,'y'],[lc,'']])}=0</text>`;   // 1x·+0 표기 방지 (generators/shared.js)
     return wrap(s,W,H);
   }
 

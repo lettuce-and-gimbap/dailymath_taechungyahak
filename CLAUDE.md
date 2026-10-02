@@ -246,6 +246,12 @@ js/
 - **답은 [제출하기] → 확인 시트 → [제출] 로 낸다** (2026-10-02). 보기를 잘못 눌러 바로 채점되는 일을 막기 위해서다(문제풀기 탭의 제출 확인 시트와 같은 모양). `check()` 는 `phase==='quiz'` 일 때만 채점한다(연타 방지).
 - `scripts_rebuild_index.py`는 이제 `<script type="text/babel">` 줄을 직접 찾으므로 head에 줄을 추가해도 안전하다.
 
+## 📐 학생 기하학 탭 수식 (js/student/explore.js · js/math/expr.js)
+
+- 생성기(`generators/high/explore.js`)의 `q`·`choices`·`sol` 은 기록·선생님 화면·인쇄에 **글자 그대로** 쓰이므로 `$` 를 넣지 않는다.
+  학생 화면에서 그릴 때만 바꾼다 : 문제는 생성기의 `qTex`(`$…$` 섞인 글), 보기·정답은 `geoTex()`, 풀이 줄은 `inlineGeoTex()` → `TexHtml`(autoMathHtml·KaTeX).
+- 새 기하 생성기를 만들면 `qTex` 도 함께 넣는다(없으면 예전 `QText` 로 그린다). 그래프 안 직선 이름표는 `_pl` 로 적는다(`-1x` 방지).
+
 ## 🛡 앱 멈춤 대비 (2026-10-02 · 크롬 앱 설치 학생 "가끔 멈춤")
 
 - `js/app.js` `AppErrorBoundary` : 화면 오류로 React 가 전체를 지우면 하얀 화면이 남는다 → [다시 열기] 화면으로 바꾼다. **최상위 렌더를 이 경계로 감싼 채 둘 것.**

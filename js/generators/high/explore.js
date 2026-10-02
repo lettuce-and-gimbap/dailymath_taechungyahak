@@ -4,13 +4,18 @@
    무리·유리·이차함수 · 두 점 거리 · 원 · 대칭이동 6종
    -------------------------------------------------------------------- */
 
+const _mv=v=>v>0?`${v}`:`−${-v}`;   // 이동량 : 2 · −3 (TeX 에서도 자연스러운 꼴)
+
 function genRadicalQ(){
   const a=pick([-2,-1,1,2]);const dx=pick([-3,-2,-1,1,2,3]);const dy=pick([-3,-2,-1,1,2,3]);
   const aD=a===1?'':a===-1?'−':String(a);
   const xS=v=>v>0?`x−${v}`:`x+${-v}`;const yS=v=>v>0?`+${v}`:`−${-v}`;
   const correct=`y=${aD}√(${xS(dx)})${yS(dy)}`;
   const{choices,answer}=makeChoices(correct,[`y=${aD}√(${xS(-dx)})${yS(dy)}`,`y=${aD}√(${xS(dx)})${yS(-dy)}`,`y=${aD}√(${xS(-dx)})${yS(-dy)}`]);
-  return{topic:'무리함수 평행이동',q:`y = ${aD}√x 를 x축 방향으로 ${dx>0?'+':''}${dx}만큼, y축 방향으로 ${dy>0?'+':''}${dy}만큼 이동하면?`,choices,answer,graph:{type:'radical',p:dx,q:dy,a}};
+  const aT=a===1?'':a===-1?'-':String(a);
+  return{topic:'무리함수 평행이동',q:`y = ${aD}√x 를 x축 방향으로 ${dx>0?'+':''}${dx}만큼, y축 방향으로 ${dy>0?'+':''}${dy}만큼 이동하면?`,
+    qTex:`$y=${aT}\\sqrt{x}$ 의 그래프를 $x$축의 방향으로 $${_mv(dx).replace('−','-')}$만큼, $y$축의 방향으로 $${_mv(dy).replace('−','-')}$만큼 평행이동한 그래프의 식은?`,
+    choices,answer,graph:{type:'radical',p:dx,q:dy,a}};
 }
 
 function genRationalQ(){
@@ -18,7 +23,9 @@ function genRationalQ(){
   const xS=v=>v>0?`x−${v}`:`x+${-v}`;const yS=v=>v>0?`+${v}`:`−${-v}`;
   const correct=`y=${k}/(${xS(dx)})${yS(dy)}`;
   const{choices,answer}=makeChoices(correct,[`y=${k}/(${xS(-dx)})${yS(dy)}`,`y=${k}/(${xS(dx)})${yS(-dy)}`,`y=${k}/(${xS(-dx)})${yS(-dy)}`]);
-  return{topic:'유리함수 평행이동',q:`y = ${k}/x 를 x축 방향으로 ${dx>0?'+':''}${dx}만큼, y축 방향으로 ${dy>0?'+':''}${dy}만큼 이동하면?`,choices,answer,graph:{type:'rational',p:dx,q:dy,k}};
+  return{topic:'유리함수 평행이동',q:`y = ${k}/x 를 x축 방향으로 ${dx>0?'+':''}${dx}만큼, y축 방향으로 ${dy>0?'+':''}${dy}만큼 이동하면?`,
+    qTex:`$y=${k<0?'-':''}\\dfrac{${Math.abs(k)}}{x}$ 의 그래프를 $x$축의 방향으로 $${_mv(dx).replace('−','-')}$만큼, $y$축의 방향으로 $${_mv(dy).replace('−','-')}$만큼 평행이동한 그래프의 식은?`,
+    choices,answer,graph:{type:'rational',p:dx,q:dy,k}};
 }
 
 function genQuadraticQ(){
@@ -48,6 +55,7 @@ function genQuadraticQ(){
     return{
       topic:'이차함수 '+questionType,
       q:`y = ${aStr}(x${pStr})²${qStr} 에서  ${ds} ≤ x ≤ ${de} 일 때, ${questionType}은?`,
+      qTex:`$${ds}\\le x\\le ${de}$ 일 때, 이차함수 $y=${a===1?'':a===-1?'-':a}${p===0?'x^2':`(x${p>0?'-'+p:'+'+(-p)})^2`}${q===0?'':q>0?'+'+q:q}$ 의 ${questionType}은?`,
       choices,answer,
       graph:{type:'quadratic',p,q,a,ds,de}
     };
@@ -77,7 +85,8 @@ function genDistanceQ(){
       `분모: √(${p(la)}²+${p(lb)}²) = √(${la**2}+${lb**2}) = √${denSq}`,
       `거리 = ${num}/√${denSq} = ${correct}`
     ];
-    return{topic:'점과 직선 거리',q:`점 (${x0}, ${y0})에서 직선 ${lineStr} = 0까지의 거리는?`,choices,answer,graph:{type:'distance',ptX:x0,ptY:y0,la,lb,lc},sol};
+    return{topic:'점과 직선 거리',q:`점 (${x0}, ${y0})에서 직선 ${lineStr} = 0까지의 거리는?`,
+      qTex:`점 $(${x0},\\ ${y0})$ 에서 직선 $${lineStr.replace(/−/g,'-')}=0$ 까지의 거리는?`,choices,answer,graph:{type:'distance',ptX:x0,ptY:y0,la,lb,lc},sol};
   }
   return{topic:'점과 직선 거리',q:'점 (3, 1)에서 직선 3x − 4y + 5 = 0까지의 거리는?',choices:['2','8/5','3','12/5'],answer:0,
     graph:{type:'distance',ptX:3,ptY:1,la:3,lb:-4,lc:5},
@@ -101,7 +110,8 @@ function genCircleQ(){
     const correct=eq;
     const ws=circleWrongs(h,k,r2,correct);
     const{choices,answer}=makeChoices(correct,ws);
-    return{topic:'원의 방정식',q:`중심이 (${h}, ${k})이고 반지름이 ${r}인 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},
+    return{topic:'원의 방정식',q:`중심이 (${h}, ${k})이고 반지름이 ${r}인 원의 방정식은?`,
+      qTex:`중심이 $(${h},\\ ${k})$ 이고 반지름의 길이가 $${r}$ 인 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},
       sol:[
         `원의 방정식 기본형: 중심 (a, b), 반지름 r → (x−a)²+(y−b)²=r²`,
         `중심 (${h}, ${k}), 반지름 ${r}을 대입합니다.`,
@@ -114,7 +124,7 @@ function genCircleQ(){
     const ws=[`(${-h}, ${k})`,`(${h}, ${-k})`,`(${-h}, ${-k})`].filter(w=>w!==correct);
     if(ws.length<3)ws.push(`(${h+1}, ${k})`);
     const{choices,answer}=makeChoices(correct,ws.slice(0,3));
-    return{topic:'원의 방정식',q:`원 ${eq}의 중심의 좌표는?`,choices,answer,graph:{type:'circle',h,k,r},
+    return{topic:'원의 방정식',q:`원 ${eq}의 중심의 좌표는?`,qTex:`원 ${geoTex(eq)} 의 중심의 좌표는?`,choices,answer,graph:{type:'circle',h,k,r},
       sol:[
         `원의 방정식 (x−a)²+(y−b)²=r²에서 중심은 (a, b)입니다.`,
         `${eq}를 보면 x항이 (x${hSign})² → a=${h}, y항이 (y${kSign})² → b=${k}`,
@@ -126,7 +136,7 @@ function genCircleQ(){
   const ws2=[String(r2),String(r+1),String(r>1?r-1:r+2)].filter(w=>w!==correct);
   if(ws2.length<3)ws2.push(String(r+3));
   const{choices,answer}=makeChoices(correct,ws2.slice(0,3));
-  return{topic:'원의 방정식',q:`원 ${eq}에서 반지름의 길이는?`,choices,answer,graph:{type:'circle',h,k,r},
+  return{topic:'원의 방정식',q:`원 ${eq}에서 반지름의 길이는?`,qTex:`원 ${geoTex(eq)} 의 반지름의 길이는?`,choices,answer,graph:{type:'circle',h,k,r},
     sol:[
       `원의 방정식 (x−a)²+(y−b)²=r²에서 우변이 r²입니다.`,
       `${eq}에서 우변이 ${r2}이므로 r² = ${r2}`,
@@ -142,7 +152,9 @@ function genSymmetryQ(){
   const[rx,ry]=sym.fn(px,py);const correct=`(${rx}, ${ry})`;
   const wrongs=[...SYM_LIST.filter(s=>s.k!==sym.k).map(s=>{const[wx,wy]=s.fn(px,py);return`(${wx}, ${wy})`}),`(${rx+1}, ${ry})`,`(${rx}, ${ry+1})`].filter(w=>w!==correct);
   const{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'대칭이동',q:`점 (${px}, ${py})를 ${sym.k}에 대하여 대칭이동한 점은?`,choices,answer,graph:{type:'symmetry',px,py,sym:sym.k}};
+  const symT=sym.k==='x축'?'$x$축':sym.k==='y축'?'$y$축':sym.k==='원점'?'원점':sym.k==='y=x'?'직선 $y=x$':'직선 $y=-x$';
+  return{topic:'대칭이동',q:`점 (${px}, ${py})를 ${sym.k}에 대하여 대칭이동한 점은?`,
+    qTex:`점 $(${px},\\ ${py})$ 를 ${symT}에 대하여 대칭이동한 점의 좌표는?`,choices,answer,graph:{type:'symmetry',px,py,sym:sym.k}};
 }
 
 var GEO_GENS=[genRadicalQ,genRationalQ,genQuadraticQ,genDistanceQ,genCircleQ,genSymmetryQ];

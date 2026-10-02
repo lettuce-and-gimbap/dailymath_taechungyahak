@@ -282,7 +282,7 @@ function GeometryQuiz({userData, onUpdate}){
               {/* 채점된 이후에만 정답(O/X) 이모지 표시 */}
               {isGraded && isSel && <span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
             </div>
-            <p className="text-base text-gray-800 leading-relaxed mb-3 font-medium"><QText v={prob.q}/></p>
+            <p className="text-base text-gray-800 leading-loose mb-3 font-medium break-keep">{prob.qTex?<TexHtml tex={prob.qTex}/>:<QText v={prob.q}/>}</p>
             {prob.graph && <div className="flex justify-center mb-3"><GraphPreview q={prob}/></div>}
             <div className="grid grid-cols-1 gap-2.5">
                 {prob.choices.map((ch,j)=>{
@@ -301,12 +301,12 @@ function GeometryQuiz({userData, onUpdate}){
                     if(firstClickTimes[i]===undefined)setFirstClickTimes(p=>({...p,[i]:now}));
                     else if(sel[i]!==undefined&&sel[i]!==j)setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
                     setSel(s=>({...s,[i]:j}));
-                  }} className={`text-left text-lg px-4 py-3 rounded-xl border transition-all ${cls}`}>{ORD[j]} <MathText v={ch}/></button>
+                  }} className={`text-left text-lg px-4 py-3 rounded-xl border transition-all ${cls}`}>{ORD[j]} <TexHtml tex={geoTex(ch)}/></button>
                 })}
             </div>
             {/* 채점 후에 틀렸을 경우 정답 텍스트 표시 */}
-            {isGraded && !isCorrect && <div className="mt-3 text-base font-bold rounded-xl px-3 py-2 text-center border bg-red-50 text-red-700 border-red-200">정답: {ORD[prob.answer]} <MathText v={prob.choices[prob.answer]}/></div>}
-            {isGraded&&<ExplanationBox q={prob}/>}
+            {isGraded && !isCorrect && <div className="mt-3 text-base font-bold rounded-xl px-3 py-2 text-center border bg-red-50 text-red-700 border-red-200">정답: {ORD[prob.answer]} <TexHtml tex={geoTex(prob.choices[prob.answer])}/></div>}
+            {isGraded&&<ExplanationBox q={Array.isArray(prob.sol)?{...prob,sol:prob.sol.map(inlineGeoTex)}:prob}/>}
           </div>);})}
       </div>
       
