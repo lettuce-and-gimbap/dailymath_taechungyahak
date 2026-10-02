@@ -108,12 +108,15 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
       }).catch(()=>{});
     };
     updateOnline();
-    const hb=setInterval(updateOnline,30000);
+    // 앱이 뒤로 가 있을 때(화면 꺼짐·다른 앱)는 쓰지 않는다 — 몇 시간씩 켜 둔 앱이 계속 쓰기를 쌓아 무거워지지 않게
+    const hb=setInterval(()=>{if(!document.hidden)updateOnline();},30000);
+    const onVis=()=>{if(!document.hidden)updateOnline();};
     const clearOnline=()=>{
       db.collection('onlineStatus').doc(userData.name).delete().catch(()=>{});
     };
+    document.addEventListener('visibilitychange',onVis);
     window.addEventListener('beforeunload',clearOnline);
-    return()=>{clearInterval(hb);clearOnline();window.removeEventListener('beforeunload',clearOnline);};
+    return()=>{clearInterval(hb);clearOnline();document.removeEventListener('visibilitychange',onVis);window.removeEventListener('beforeunload',clearOnline);};
   },[userData.name,userData.role]);
 
   // 학생 본인의 피드백 불러오기 및 안읽음 알림 체크

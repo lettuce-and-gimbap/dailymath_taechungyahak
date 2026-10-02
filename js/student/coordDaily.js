@@ -310,6 +310,7 @@ function CoordDailyTab({userData,onUpdate}){
   const[startAt,setStartAt]=useState(0);
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
+  const[confirmOpen,setConfirmOpen]=useState(false);   // 제출 확인 시트 — 잘못 눌러 바로 채점되는 일을 막는다
   const savingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다
   const savedRef=React.useRef(null);
   const texRef=React.useRef(null);   // 최상 문제의 식(KaTeX)을 그릴 자리
@@ -335,7 +336,8 @@ function CoordDailyTab({userData,onUpdate}){
   };
 
   const check=()=>{
-    if(sel===null||!q)return;
+    setConfirmOpen(false);
+    if(phase!=='quiz'||sel===null||!q)return;   // 연타로 두 번 채점되지 않게
     const isOk=sel===q.ans;
     const rec={qTxt:q.q.slice(0,60),qFull:q.q,uAns:String(q.choices[sel]),cAns:String(q.choices[q.ans]),isOk,
       timeSec:Math.round((Date.now()-qStartAt)/1000),
@@ -371,7 +373,7 @@ function CoordDailyTab({userData,onUpdate}){
 
   const next=()=>{
     if(idx+1<TOTAL){
-      setIdx(idx+1);setSel(null);setFirstClick(null);setQStartAt(Date.now());setPhase('quiz');
+      setIdx(idx+1);setSel(null);setFirstClick(null);setConfirmOpen(false);setQStartAt(Date.now());setPhase('quiz');
       return;
     }
     setPhase('reflect');
@@ -522,13 +524,30 @@ function CoordDailyTab({userData,onUpdate}){
     )}
 
     {phase==='quiz'
-      ?<button onClick={check} disabled={sel===null}
+      ?<button onClick={()=>{if(sel!==null)setConfirmOpen(true);}} disabled={sel===null}
         className={`w-full py-4 rounded-2xl font-black text-lg transition-all active:scale-95 ${sel===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white'}`}>
-        확인하기
+        {sel===null?'답을 먼저 골라 주세요':'제출하기'}
       </button>
       :<button onClick={next}
         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
         {idx+1<TOTAL?'다음 문제 →':'결과 보기 →'}
       </button>}
+
+    {/* ── 제출 확인 시트 (문제풀기 탭과 같은 모양) — 바깥을 누르면 다시 고르기 ── */}
+    {confirmOpen&&phase==='quiz'&&sel!==null&&(
+      <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50 fade-in" onClick={()=>setConfirmOpen(false)}>
+        <div className="bg-white rounded-t-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl" onClick={e=>e.stopPropagation()}>
+          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-2"/>
+          <p className="text-center text-base font-black text-gray-800 leading-relaxed">
+            「<span className="text-indigo-600">{ORD[sel]} {q.choices[sel]}</span>」를 골랐습니다.
+          </p>
+          <p className="text-center text-gray-500 font-bold text-sm">제출하시겠습니까?</p>
+          <div className="flex gap-3">
+            <button onClick={()=>setConfirmOpen(false)} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 transition-all">다시 고르기</button>
+            <button onClick={check} className="flex-1 py-4 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">제출</button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>);
 }

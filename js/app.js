@@ -4,6 +4,29 @@
    로그인 상태에 따라 학생/선생님 대시보드를 띄운다
    -------------------------------------------------------------------- */
 
+/* ===== 오류 경계 =====
+   화면을 그리다 한 곳에서 오류가 나면 React 는 화면 전체를 지운다 → 앱이 '멈춘' 것처럼 하얀 화면만 남는다.
+   (2026-10-02 : 크롬 앱으로 설치한 학생들이 "가끔 앱이 멈춘다"고 함)
+   오류를 여기서 받아 [다시 열기] 단추를 보여 준다. 로그인·하던 공부 저장본은 localStorage 에 그대로 있다. */
+class AppErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  componentDidCatch(err,info){try{console.error('[앱 오류]',err,info&&info.componentStack);}catch(e){}}
+  render(){
+    if(!this.state.err)return this.props.children;
+    return(<div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+      <div className="text-5xl">🙏</div>
+      <div className="text-xl font-black text-gray-700">화면에 잠깐 문제가 생겼어요</div>
+      <div className="text-sm text-gray-500 font-semibold">로그인과 풀던 기록은 그대로 있어요. 아래 단추를 눌러 주세요.</div>
+      <button onClick={()=>location.reload()} className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black">다시 열기</button>
+    </div>);
+  }
+}
+
+/* 첫 불러오기에 시간 제한을 둔다 — 인터넷이 약하면 Firestore 응답이 끝없이 늦어져 '불러오는 중'에서 멈춘 것처럼 보인다.
+   시간이 지나면 통신 실패로 보고 [다시 시도] 화면을 띄운다. */
+var withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+
 /* ===== APP ===== */
 function App(){
   const[user,setUser]=useState(null);const[checking,setChecking]=useState(true);
@@ -45,7 +68,7 @@ function App(){
     var savedName='';
     try{savedName=JSON.parse(saved).name;}catch(e){setChecking(false);return;}
     try{
-      const data=await loadUser(savedName,{throwOnError:true});
+      const data=await withTimeout(loadUser(savedName,{throwOnError:true}),15000);
       if(!data){setChecking(false);return;}   // 계정이 정말 없어졌을 때만 로그인 화면으로
       adoptName(savedName,data);
       const d=freshen(data);
@@ -101,4 +124,4 @@ function App(){
 }
 
 var root=ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
+root.render(<AppErrorBoundary><App/></AppErrorBoundary>);
