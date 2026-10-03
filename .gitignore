@@ -9,3 +9,6 @@ automation/out/
 
 worker/.wrangler/
 worker/node_modules/
+
+# 파이썬 캐시
+__pycache__/
