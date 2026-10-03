@@ -4,7 +4,7 @@
    쓰는 곳 : 좌표 10문제(student/coordDaily.js) · 문제풀기 10문제(student/practice.js)
 
    - 그림 : 저장소 맨 위 stamp.webp (파란 원 테두리 안쪽만 남기고 바깥 배경을 지운 원형 그림, 480px)
-   - 소리 : 파일 없이 Web Audio 로 만든다 — 낮은 '쿵'(도장이 종이에 닿는 소리) + 짧은 '탁' + 귀여운 '띠링' 두 음
+   - 소리 : 파일 없이 Web Audio 로 만든다 — 낮은 '쿵'(도장이 종이에 닿는 소리) + 짧은 '탁' + '빵빠레' 나팔 소리(솔-솔-솔-도)
             (파일을 따로 받지 않아도 되고, 오프라인에서도 난다)
    - 움직임 : 크게·기울어진 채 위에서 내려와(0.32초) 종이에 닿는 순간 화면이 살짝 흔들리고 잉크 물결이 퍼진다.
    - 화면 아무 곳이나 누르면 닫힌다. 누르지 않아도 2.6초 뒤 저절로 닫힌다.
@@ -29,12 +29,16 @@ function playStampSound(){
     const n=ctx.createBufferSource(),f=ctx.createBiquadFilter(),ng=ctx.createGain();
     n.buffer=buf;f.type='lowpass';f.frequency.value=1600;ng.gain.value=0.55;
     n.connect(f).connect(ng).connect(ctx.destination);n.start(t);
-    /* ③ 띠링 : 도(C6) → 솔(G6) 두 음, 부드러운 삼각파 */
-    [[1046.5,0.16],[1568,0.29]].forEach(([hz,dt])=>{
-      const s=ctx.createOscillator(),sg=ctx.createGain();
-      s.type='triangle';s.frequency.value=hz;
-      sg.gain.setValueAtTime(0.0001,t+dt);sg.gain.exponentialRampToValueAtTime(0.22,t+dt+0.012);sg.gain.exponentialRampToValueAtTime(0.0001,t+dt+0.22);
-      s.connect(sg).connect(ctx.destination);s.start(t+dt);s.stop(t+dt+0.25);
+    /* ③ 빵빠레 : 솔-솔-솔-도(높은) 나팔 소리 (톱니파 + 저역 필터) */
+    [[784,0.12,0.09],[784,0.23,0.09],[784,0.34,0.09],[1046.5,0.46,0.5]].forEach(([hz,dt,du])=>{
+      [hz,hz*1.5].forEach((h,k)=>{
+        const s=ctx.createOscillator(),lp=ctx.createBiquadFilter(),sg=ctx.createGain();
+        s.type='sawtooth';s.frequency.value=h;lp.type='lowpass';lp.frequency.value=2600;
+        const v=k?0.05:0.12;
+        sg.gain.setValueAtTime(0.0001,t+dt);sg.gain.exponentialRampToValueAtTime(v,t+dt+0.02);
+        sg.gain.setValueAtTime(v,t+dt+du*0.7);sg.gain.exponentialRampToValueAtTime(0.0001,t+dt+du);
+        s.connect(lp).connect(sg).connect(ctx.destination);s.start(t+dt);s.stop(t+dt+du+0.02);
+      });
     });
   }catch(e){}
 }
