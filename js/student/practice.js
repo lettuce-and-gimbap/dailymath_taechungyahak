@@ -552,6 +552,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     }
   };
 
+  const[stampDone,setStampDone]=useState(false);   // 도장은 한 묶음에 한 번만
   const finishingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다 (연타·중복 방지)
   const savedRef=React.useRef(null);        // {id, upd} — 소감을 고르면 이 기록에 덧붙인다
   const finishLesson=async(questions,correctCount,wrongCount)=>{
@@ -600,10 +601,14 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setPhase('question');setQStartTime(Date.now());setFirstActionTime(null);setShowConfirm(false);setActiveField('Q');
   };
 
-  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{finishingRef.current=false;savedRef.current=null;setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
+  if(phase==='done')return<PracticeDone ver={ver} userData={userData} correct={correctCount} wrong={wrongCount} onAgain={()=>{finishingRef.current=false;setStampDone(false);savedRef.current=null;setPhase('question');setCorrectCount(0);setWrongCount(0);setQuestions([]);const nQ=makeQ(ver,1,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax);setQ(nQ);setAns({ansQ:'',ansR:'',ansDiv:'',ansCount:''});setSelMC(null);setFb(null);setQStartTime(Date.now());}} onHome={onBack}/>;
 
   // 🔥 감정 성찰 (메타인지) 화면 렌더링 🔥
-  if(phase==='reflection')return<FeelingPicker title="10문제 달성 완료!" onPick={chooseFeeling}/>;
+  // 10문제를 끝내면 '참 잘했어요' 도장을 쾅 (js/ui/stamp.js) — 소감 고르기 화면 위에 한 번 찍힌다
+  if(phase==='reflection')return<>
+    <FeelingPicker title="10문제 달성 완료!" onPick={chooseFeeling}/>
+    {!stampDone&&<StampOverlay sub="10문제 달성!" onClose={()=>setStampDone(true)}/>}
+  </>;
 
   const pct=(correctCount/10)*100;
   return(<div className="p-4 space-y-4 pb-36">

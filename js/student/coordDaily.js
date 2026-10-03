@@ -29,7 +29,14 @@ var COORD_LEVELS=[
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
   {k:'quad',badge:'응용 3', logName:'최상 이차함수', lbl:'이차함수 최댓값 · 최솟값', desc:'정해진 범위에서 가장 큰 값·작은 값을 찾습니다',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700'},
+  /* openAt : 이 시각(한국 시간)부터 학생에게 열린다. 그 전에는 PREVIEW_USERS(core/constants.js)만 풀 수 있다 */
+  {k:'div', badge:'응용 4', logName:'최상 내분점', lbl:'선분의 내분점', desc:'선분을 정해진 비율로 나누는 점을 찾습니다 (수직선 · 좌표평면)',
+    border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-06T00:00:00+09:00', openLbl:'10/6(화)'},
+  {k:'ineq',badge:'응용 5', logName:'최상 이차부등식', lbl:'이차부등식의 해', desc:'해의 범위를 수직선에 나타냅니다 (● 이상·이하 / ○ 초과·미만)',
+    border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-08T00:00:00+09:00', openLbl:'10/8(목)'},
 ];
+/* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
+var coordLevelLocked=(L,name)=>!!(L&&L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name));
 
 /* 좌표 보기 만들기 — GS.coordChoices는 학습지(KaTeX)용이라 "(1,\ -2)" 처럼
    수식 표기가 섞여 있다. 학생 화면에서는 그대로 읽히는 글자여야 하므로 따로 만든다.
@@ -50,7 +57,7 @@ function coordChoicesPlain(X,Y){
    고졸 검정고시 그림처럼 모눈 없이 축만 두고, 답을 구하는 데 필요한 값만 표시한다.
    (점근선 x=p · y=q 와 그 값 / 무리함수의 시작점 / 제한된 범위의 양 끝)
    식은 KaTeX 로 그린다 — 분자가 음수면 '−' 를 분수 앞에 두고, 루트는 한 덩어리 기호로. */
-var TOP_LEVELS=['rat','irr','quad'];
+var TOP_LEVELS=['rat','irr','quad','div','ineq'];
 var _tx=t=>`<span class="tx" data-tex="${t.replace(/"/g,'&quot;')}"></span>`;
 var _sgn=(v,first)=>v<0?`-${-v}`:(first?`${v}`:`+${v}`);                 // 3 → "+3", -2 → "-2"
 /* 식은 글 줄 사이에 끼우지 않고 가운데 한 줄로 크게 — 분수가 윗줄과 겹치거나 식이 줄바꿈으로 잘리지 않게 */
@@ -67,6 +74,8 @@ function topShiftChoices(p,q){
   return{list,ans:list.indexOf(right)};
 }
 function genTopQ(lv){
+  if(lv==='div')return genDivQ();
+  if(lv==='ineq')return genIneqQ();
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const nz=(a,b)=>{let v=0;while(!v)v=ri(a,b);return v;};
@@ -205,6 +214,194 @@ function genTopQ(lv){
       `후보 중 가장 큰 값 ${mx}, 가장 작은 값 ${mn} → ${askMax?'최댓값':'최솟값'} <b>${right}</b>`]};
 }
 
+/* ── 응용 4 : 선분의 내분점 (2026-10-03) ─────────────────────────────
+   기출 그림을 따른다 (2023~2026 고졸 검정고시 10·11번)
+   · 수직선형 : 점 A·P·B 와 그 위의 점선 호, 호 위에 비율 숫자. P 는 찍혀 있되 좌표는 숨긴다.
+                최근 회차(2025-2·2026-2)처럼 도로 표지판·허수아비 같은 이야기와 그림을 붙이기도 한다.
+   · 좌표평면형 : 모눈 위에 선분 AB 만 그린다. 내분점 P 는 그리지 않는다(답이 보이면 안 되므로).
+   정답이 늘 정수가 되도록 '두 점 사이 거리 = (m+n) × 한 칸' 으로 거꾸로 만든다. 비율도 늘 정수비. */
+var DIV_STORIES=[
+  {icon:'🪧',txt:'그림은 어느 도로의 직선 구간 일부를 수직선 위에 나타낸 것이다.',act:'최고 속도제한 표지판을 설치하려고 할 때'},
+  {icon:'🌾',txt:'그림은 곧게 뻗은 어느 밭의 일부를 수직선 위에 나타낸 것이다.',act:'허수아비를 세우려고 할 때'},
+  {icon:'🪑',txt:'그림은 곧게 뻗은 공원 산책로의 일부를 수직선 위에 나타낸 것이다.',act:'쉼터 의자를 놓으려고 할 때'},
+  {icon:'🚏',txt:'그림은 어느 마을 길의 일부를 수직선 위에 나타낸 것이다.',act:'버스 정류장을 세우려고 할 때'},
+];
+var _neg=v=>v<0?`−${-v}`:String(v);          // 글자용 음수 표기 (보기·로그)
+/* 숫자 뒤 조사 '로/으로' : 3·6·0 (삼·육·영)만 받침이 있어 '으로' — 기출 표기 '3 : 5로', '2 : 3으로' */
+var _ro=n=>/[036]$/.test(String(n))?'으로':'로';
+function _shuffleList(list){for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}return list;}
+
+/* 수직선 그림 : A·P·B, 점선 호와 비율. after=true 면 P 의 좌표(초록)와 한 칸씩 나눈 눈금을 보여 준다 */
+function divLineSVG({a,b,m,n,p,after,icon}){
+  const W=380,top=icon?44:0,H=118+top,ly=78+top,L=34,R=W-34;
+  const X=v=>Math.round((L+(v-a)/(b-a)*(R-L))*10)/10;
+  const xa=X(a),xp=X(p),xb=X(b),INK='#111',GR='#15803d';
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans KR',sans-serif" style="max-width:100%;height:auto">`;
+  s+=`<rect width="${W}" height="${H}" fill="#fff"/>`;
+  s+=`<line x1="8" y1="${ly}" x2="${W-8}" y2="${ly}" stroke="${INK}" stroke-width="2"/>`;
+  s+=`<polygon points="${W-4},${ly} ${W-14},${ly-5} ${W-14},${ly+5}" fill="${INK}"/><polygon points="4,${ly} 14,${ly-5} 14,${ly+5}" fill="${INK}"/>`;
+  const arc=(x1,x2,num,col)=>{const mx=(x1+x2)/2,h=Math.min(34,Math.max(18,(x2-x1)*0.32));
+    return`<path d="M ${x1+7} ${ly-9} Q ${mx} ${ly-9-h*1.6} ${x2-7} ${ly-9}" fill="none" stroke="${col}" stroke-width="1.8" stroke-dasharray="4 4"/>`
+      +`<rect x="${mx-11}" y="${ly-9-h*0.8-13}" width="22" height="20" fill="#fff"/><text x="${mx}" y="${ly-9-h*0.8+3}" font-size="17" text-anchor="middle" fill="${col}" font-weight="700">${num}</text>`;};
+  s+=arc(xa,xp,m,after?GR:INK)+arc(xp,xb,n,INK);
+  if(after){const k=(b-a)/(m+n);for(let i=1;i<m+n;i++){const x=X(a+i*k);if(Math.abs(x-xp)<1)continue;s+=`<line x1="${x}" y1="${ly-6}" x2="${x}" y2="${ly+6}" stroke="#94a3b8" stroke-width="2"/>`;}}
+  [[xa,'A',INK],[xp,'P',after?GR:INK],[xb,'B',INK]].forEach(([x,t,c])=>{
+    s+=`<circle cx="${x}" cy="${ly}" r="5" fill="${c}"/><text x="${x}" y="${ly-14}" font-size="18" text-anchor="middle" fill="${c}" font-weight="700">${t}</text>`;});
+  s+=`<text x="${xa}" y="${ly+26}" font-size="18" text-anchor="middle" fill="${INK}">${_neg(a)}</text><text x="${xb}" y="${ly+26}" font-size="18" text-anchor="middle" fill="${INK}">${_neg(b)}</text>`;
+  if(after)s+=`<text x="${xp}" y="${ly+26}" font-size="19" text-anchor="middle" fill="${GR}" font-weight="700">${_neg(p)}</text>`;
+  if(icon)s+=`<text x="${xp}" y="${ly-40}" font-size="30" text-anchor="middle">${icon}</text>`;   // P 글자(ly-14) 위로 띄운다
+  return s+'</svg>';
+}
+
+function genDivQ(){
+  const G=window.GS;
+  const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
+  const onPlane=Math.random()<0.5;     // 수직선형·좌표평면형 반반
+
+  if(!onPlane){
+    const story=Math.random()<0.4?pk(DIV_STORIES):null;
+    let a,b,m,n,k,p,q;
+    for(let g=0;g<200;g++){
+      [m,n]=pk([[1,2],[2,1],[1,3],[3,1],[2,3],[3,2],[3,4],[4,3],[3,5],[5,3],[1,4],[4,1],[2,5],[5,2]]);
+      k=pk([1,1,2]);a=story?ri(0,2):ri(-4,4);b=a+(m+n)*k;
+      if(b>12||(m+n)*k<3)continue;
+      p=a+m*k;q=a+n*k;break;           // q : 비율을 거꾸로(n:m) 쓴 실수
+    }
+    const wrong=[q,p+1,p-1,p+2,p-2].filter((v,i,arr)=>v!==p&&arr.indexOf(v)===i).slice(0,3);
+    const list=_shuffleList([p,...wrong]);
+    const head=story?`${story.txt} 수직선 위의 두 점 A(${_neg(a)}), B(${_neg(b)})에 대하여 선분 AB를 ${m} : ${n}${_ro(n)} 내분하는 점 P에 ${story.act}, 점 P의 좌표는?`
+      :`수직선 위의 두 점 A(${_neg(a)}), B(${_neg(b)})에 대하여 선분 AB를 ${m} : ${n}${_ro(n)} 내분하는 점 P의 좌표는?`;
+    return{lv:'div',topic:'내분점(수직선)',
+      qHtml:head.replace(`${m} : ${n}${_ro(n)}`,`<b>${m} : ${n}</b>${_ro(n)}`),
+      q:`수직선 A(${a}), B(${b}) 를 ${m}:${n} 으로 내분하는 점`,
+      svg:divLineSVG({a,b,m,n,p,icon:story&&story.icon}),svgAfter:divLineSVG({a,b,m,n,p,after:true,icon:story&&story.icon}),
+      choices:list.map(_neg),ans:list.indexOf(p),answer:_neg(p),cols:2,
+      sol:[`A에서 B까지의 거리는 ${_neg(b)} − ${a<0?`(${_neg(a)})`:a} = <b>${b-a}</b> 입니다.`,
+        `이 길이를 ${m}+${n} = <b>${m+n}칸</b>으로 똑같이 나누면 한 칸은 ${b-a} ÷ ${m+n} = <b>${k}</b> 입니다.`,
+        `A에서 B 쪽으로 ${m}칸 → ${_neg(a)} + ${m}×${k} = <b>${_neg(p)}</b>`,
+        `공식으로는 ${_tx(`\\dfrac{${m}\\times(${b})+${n}\\times(${a})}{${m}+${n}}=\\dfrac{${m*b+n*a}}{${m+n}}=${p}`)}`]};
+  }
+
+  /* 좌표평면형 : 두 점 모두 −4~5 안, 내분점도 정수 */
+  let A,B,m,n,P,Q;
+  for(let g=0;g<400;g++){
+    [m,n]=pk([[1,2],[2,1],[1,3],[3,1],[2,3],[3,2],[1,4],[4,1]]);
+    const s=m+n,kx=pk(s<=3?[1,-1,2,-2]:[1,-1]),ky=pk(s<=3?[1,-1,2,-2]:[1,-1]);
+    const ax=ri(-4,5),ay=ri(-4,5),bx=ax+s*kx,by=ay+s*ky;
+    if(bx<-4||bx>5||by<-4||by>5)continue;
+    A=[ax,ay];B=[bx,by];P=[ax+m*kx,ay+m*ky];Q=[ax+n*kx,ay+n*ky];break;
+  }
+  const f=(x,y)=>`(${_neg(x)}, ${_neg(y)})`;
+  const right=f(...P);
+  const mid=[(A[0]+B[0])/2,(A[1]+B[1])/2];
+  const cands=[f(...Q),f(P[1],P[0]),Number.isInteger(mid[0])&&Number.isInteger(mid[1])?f(...mid):null,f(P[0]+1,P[1]),f(P[0],P[1]-1),f(-P[0],P[1])]
+    .filter((c,i,arr)=>c&&c!==right&&arr.indexOf(c)===i).slice(0,3);
+  const list=_shuffleList([right,...cands]);
+  const xs=[A[0],B[0],0],ys=[A[1],B[1],0];
+  const g={xmin:Math.min(...xs)-1,xmax:Math.max(...xs)+1,ymin:Math.min(...ys)-1,ymax:Math.max(...ys)+1,s:40,maxW:380};
+  const lab=(p0,p1)=>({lx:p0[0]<=p1[0]?-26:12,ly:p0[1]<=p1[1]?26:-12});
+  const base=[{t:'seg',x1:A[0],y1:A[1],x2:B[0],y2:B[1],width:3.4,color:'#111'},
+    {t:'pt',x:A[0],y:A[1],r:6,color:'#111',label:'A',...lab(A,B)},{t:'pt',x:B[0],y:B[1],r:6,color:'#111',label:'B',...lab(B,A)}];
+  const s=m+n,steps=[];for(let i=1;i<s;i++)steps.push({t:'pt',x:A[0]+(B[0]-A[0])*i/s,y:A[1]+(B[1]-A[1])*i/s,r:4,color:'#94a3b8'});
+  const after=[...base,...steps,{t:'pt',x:P[0],y:P[1],r:8,color:'#15803d',label:'P',guide:true,nolabel:false,...lab(P,B)}];
+  return{lv:'div',topic:'내분점(좌표평면)',
+    qHtml:`좌표평면 위의 두 점 A${f(...A)}, B${f(...B)}에 대하여 선분 AB를 <b>${m} : ${n}</b>${_ro(n)} 내분하는 점의 좌표는?`,
+    q:`좌표평면 A(${A}), B(${B}) 를 ${m}:${n} 으로 내분하는 점`,
+    svg:G.planeSVG(g,base),svgAfter:G.planeSVG(g,after),
+    choices:list,ans:list.indexOf(right),answer:right,cols:2,
+    sol:[`x좌표와 y좌표를 <b>따로따로</b> 수직선처럼 나눕니다. 선분을 ${m}+${n} = <b>${s}칸</b>으로 나누고 A에서 ${m}칸 갑니다 (회색 점이 한 칸씩).`,
+      `x좌표 : ${_tx(`\\dfrac{${m}\\times(${B[0]})+${n}\\times(${A[0]})}{${s}}=\\dfrac{${m*B[0]+n*A[0]}}{${s}}=${P[0]}`)}`,
+      `y좌표 : ${_tx(`\\dfrac{${m}\\times(${B[1]})+${n}\\times(${A[1]})}{${s}}=\\dfrac{${m*B[1]+n*A[1]}}{${s}}=${P[1]}`)}`,
+      `따라서 내분점은 <b>${right}</b> — 비율을 거꾸로(${n} : ${m}) 쓰면 ${f(...Q)} 가 나오니 조심하세요.`]};
+}
+
+/* ── 응용 5 : 이차부등식의 해 (2026-10-03) ─────────────────────────
+   기출 그림(2026-2회 9번)처럼 해를 수직선 위 회색 상자로 나타낸다.
+   ● 채운 점 = 이상·이하(≤, ≥, 근도 해에 들어감)  ○ 빈 점 = 초과·미만(<, >, 근은 빠짐)
+   보기 4개는 늘 [두 근 사이 / 바깥] × [● / ○] 네 가지 — 범위와 점 모양을 둘 다 정확히 알아야 고를 수 있다.
+   정답 확인 뒤에는 포물선과 수직선을 위아래로 맞춰 그려 '왜 그 범위인지' 보여 준다. */
+function ineqLineSVG({al,be,inside,closed,W=180}){
+  const H=62,ly=40,xa=Math.round(W*0.32),xb=Math.round(W*0.68),INK='#111';
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans KR',sans-serif" style="max-width:100%;height:auto;display:block;margin:0 auto">`;
+  s+=`<rect width="${W}" height="${H}" rx="8" fill="#fff"/>`;
+  const box=(x1,x2)=>`<rect x="${x1}" y="${ly-15}" width="${x2-x1}" height="15" fill="#d1d5db" stroke="${INK}" stroke-width="1.4"/>`;
+  s+=inside?box(xa,xb):box(10,xa)+box(xb,W-22);
+  s+=`<line x1="4" y1="${ly}" x2="${W-14}" y2="${ly}" stroke="${INK}" stroke-width="1.8"/><polygon points="${W-8},${ly} ${W-16},${ly-4} ${W-16},${ly+4}" fill="${INK}"/>`;
+  s+=`<text x="${W-9}" y="${ly+17}" font-size="14" font-style="italic" fill="${INK}">x</text>`;
+  [[xa,al],[xb,be]].forEach(([x,v])=>{
+    s+=`<circle cx="${x}" cy="${ly}" r="5" fill="${closed?INK:'#fff'}" stroke="${INK}" stroke-width="2"/>`;
+    s+=`<text x="${x}" y="${ly+19}" font-size="15" text-anchor="middle" fill="${INK}">${_neg(v)}</text>`;});
+  return s+'</svg>';
+}
+/* 정답 확인 뒤 : 포물선(위)과 수직선(아래)을 같은 x 위치에 맞춰 그린다 */
+function ineqTeachSVG(al,be,op){
+  const W=360,H=300,L=24,R=W-24,lo=al-2.5,hi=be+2.5,axisY=126,nlY=258;
+  const inside=op==='<'||op==='≤',closed=op==='≤'||op==='≥';
+  const X=v=>L+(v-lo)/(hi-lo)*(R-L);
+  const f=x=>(x-al)*(x-be);
+  const D=((be-al)/2)**2,E=Math.max(f(lo),f(hi));
+  const sy=Math.min(96/D,104/E),Y=v=>axisY-v*sy;
+  const ok=x=>inside?f(x)<=0:f(x)>=0;
+  const RED='#e11d48',GREY='#a3acb9',INK='#111';
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans KR',sans-serif" style="max-width:100%;height:auto">`;
+  s+=`<rect width="${W}" height="${H}" fill="#fff"/>`;
+  // 곡선 : 해가 되는 부분은 빨갛고 굵게
+  let seg='',cur=null;const N=160;
+  for(let i=0;i<=N;i++){const x=lo+(hi-lo)*i/N,o=ok(x);
+    if(o!==cur){if(seg)s+=`<path d="${seg}" fill="none" stroke="${cur?RED:GREY}" stroke-width="${cur?4.5:2.6}" stroke-linecap="round"/>`;seg=`M ${X(x).toFixed(1)} ${Y(f(x)).toFixed(1)}`;cur=o;}
+    else seg+=` L ${X(x).toFixed(1)} ${Y(f(x)).toFixed(1)}`;}
+  s+=`<path d="${seg}" fill="none" stroke="${cur?RED:GREY}" stroke-width="${cur?4.5:2.6}" stroke-linecap="round"/>`;
+  s+=`<line x1="${L-14}" y1="${axisY}" x2="${R+8}" y2="${axisY}" stroke="${INK}" stroke-width="2"/><polygon points="${R+14},${axisY} ${R+5},${axisY-5} ${R+5},${axisY+5}" fill="${INK}"/>`;
+  s+=`<text x="${R+4}" y="${axisY+20}" font-size="15" font-style="italic">x</text>`;
+  const cap=inside?(closed?'x축 아래 + x축에 닿는 곳 (≤ 0)':'x축보다 아래인 곳 (< 0)'):(closed?'x축 위 + x축에 닿는 곳 (≥ 0)':'x축보다 위인 곳 (> 0)');
+  s+=`<text x="${W/2}" y="20" font-size="16" text-anchor="middle" fill="${RED}" font-weight="700">빨간 곡선 = ${cap}</text>`;
+  // 수직선 (아래)
+  const xa=X(al),xb=X(be);
+  const box=(x1,x2)=>`<rect x="${x1}" y="${nlY-16}" width="${x2-x1}" height="16" fill="#fecdd3" stroke="${RED}" stroke-width="1.6"/>`;
+  s+=inside?box(xa,xb):box(L-10,xa)+box(xb,R+2);
+  s+=`<line x1="${L-14}" y1="${nlY}" x2="${R+8}" y2="${nlY}" stroke="${INK}" stroke-width="2"/><polygon points="${R+14},${nlY} ${R+5},${nlY-5} ${R+5},${nlY+5}" fill="${INK}"/>`;
+  [[xa,al],[xb,be]].forEach(([x,v])=>{
+    s+=`<line x1="${x}" y1="${axisY}" x2="${x}" y2="${nlY}" stroke="#64748b" stroke-width="1.4" stroke-dasharray="5 5"/>`;
+    s+=`<circle cx="${x}" cy="${axisY}" r="5.5" fill="${closed?INK:'#fff'}" stroke="${INK}" stroke-width="2.2"/>`;
+    s+=`<circle cx="${x}" cy="${nlY}" r="6" fill="${closed?INK:'#fff'}" stroke="${INK}" stroke-width="2.2"/>`;
+    s+=`<text x="${x}" y="${nlY+24}" font-size="17" text-anchor="middle" font-weight="700">${_neg(v)}</text>`;});
+  s+=`<text x="${W/2}" y="${H-6}" font-size="13" text-anchor="middle" fill="#475569">${closed?'● 채운 점 : 그 수도 해에 들어감 (이상·이하)':'○ 빈 점 : 그 수는 해에서 빠짐 (초과·미만)'}</text>`;
+  return s+'</svg>';
+}
+function genIneqQ(){
+  const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
+  let al,be;do{al=ri(-5,3);be=ri(al+2,Math.min(al+6,6));}while(al===0&&be===0);
+  const op=pk(['≤','<','≥','>']);
+  const inside=op==='<'||op==='≤',closed=op==='≤'||op==='≥';
+  const opTex={'≤':'\\le','<':'<','≥':'\\ge','>':'>'}[op];
+  const fac=r=>r===0?'x':`(x${r>0?'-'+r:'+'+(-r)})`;
+  const expanded=Math.random()<0.25;            // 넷 중 하나는 전개된 꼴 — 인수분해부터 해야 한다
+  const b1=-(al+be),c1=al*be;
+  const expTex=expanded?`x^2${b1?(b1===1?'+x':b1===-1?'-x':_sgn(b1)+'x'):''}${c1?_sgn(c1):''}`:`${fac(al)}${fac(be)}`;
+  const expTxt=expTex.replace(/\^2/g,'²').replace(/-/g,'−');
+  const asPic=Math.random()<0.5;                // 보기 : 수직선 그림 / 글
+  const T=(ins,cl)=>ins?(cl?`${_neg(al)} ≤ x ≤ ${_neg(be)}`:`${_neg(al)} < x < ${_neg(be)}`)
+    :(cl?`x ≤ ${_neg(al)} 또는 x ≥ ${_neg(be)}`:`x < ${_neg(al)} 또는 x > ${_neg(be)}`);
+  const combos=_shuffleList([[true,true],[true,false],[false,true],[false,false]]);
+  const ans=combos.findIndex(([i,c])=>i===inside&&c===closed);
+  const choices=combos.map(([i,c])=>T(i,c));
+  return{lv:'ineq',topic:'이차부등식',
+    qHtml:`이차부등식의 해를 ${asPic?'<b>수직선 위에 나타낸 것</b>은':'구하면'}?${_eq(_tx(`${expTex}${opTex}0`))}`,
+    q:`이차부등식 ${expTxt} ${op} 0 의 해`,
+    svg:'',svgAfter:ineqTeachSVG(al,be,op),
+    choices,ans,answer:choices[ans],cols:asPic?2:1,
+    choiceHtml:asPic?combos.map(([i,c])=>ineqLineSVG({al,be,inside:i,closed:c})):null,
+    sol:[expanded?`먼저 인수분해합니다 : ${_tx(`${expTex}=${fac(al)}${fac(be)}`)} → 두 근은 x = ${_neg(al)}, x = ${_neg(be)}`
+        :`${_tx(`${fac(al)}${fac(be)}=0`)} 의 두 근은 x = ${_neg(al)}, x = ${_neg(be)} 입니다.`,
+      inside?`부등호가 <b>0보다 작다(${op})</b> → 아래로 볼록한 곡선이 x축 <b>아래</b>로 내려간 곳 = 두 근의 <b>사이</b>`
+        :`부등호가 <b>0보다 크다(${op})</b> → 곡선이 x축 <b>위</b>로 올라간 곳 = 두 근의 <b>바깥쪽</b> (양쪽)`,
+      closed?`'같다(=)'가 있으므로 두 근도 해에 들어갑니다 → <b>● 채운 점</b> (이상·이하)`
+        :`'같다(=)'가 없으므로 두 근은 해에서 빠집니다 → <b>○ 빈 점</b> (초과·미만)`,
+      `따라서 해는 <b>${choices[ans]}</b>`]};
+}
+
 /* ── 문항 생성 ───────────────────────────────────────────────── */
 function genCoordQ(level){
   const G=window.GS;
@@ -310,7 +507,9 @@ function CoordDailyTab({userData,onUpdate}){
   const[startAt,setStartAt]=useState(0);
   const[qStartAt,setQStartAt]=useState(0);
   const[firstClick,setFirstClick]=useState(null);
-  const[confirmOpen,setConfirmOpen]=useState(false);   // 제출 확인 시트 — 잘못 눌러 바로 채점되는 일을 막는다
+  const[confirmOpen,setConfirmOpen]=useState(false);
+  const[lockMsg,setLockMsg]=useState(false);          // 아직 열리지 않은 유형을 눌렀을 때
+  const[stampOpen,setStampOpen]=useState(false);      // 10문제를 끝내면 '참 잘했어요' 도장   // 제출 확인 시트 — 잘못 눌러 바로 채점되는 일을 막는다
   const savingRef=React.useRef(false);   // 한 묶음은 한 번만 저장한다
   const savedRef=React.useRef(null);
   const texRef=React.useRef(null);   // 최상 문제의 식(KaTeX)을 그릴 자리
@@ -321,6 +520,7 @@ function CoordDailyTab({userData,onUpdate}){
   const doneToday=(userData.logs||[]).some(l=>l.date===today&&(l.type||'').indexOf('좌표 10문제')===0);
 
   const start=(k)=>{
+    if(coordLevelLocked(COORD_LEVELS.find(l=>l.k===k),userData.name)){setLockMsg(true);return;}
     const list=[];for(let i=0;i<TOTAL;i++)list.push(genCoordQ(k));
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
@@ -376,6 +576,7 @@ function CoordDailyTab({userData,onUpdate}){
       setIdx(idx+1);setSel(null);setFirstClick(null);setConfirmOpen(false);setQStartAt(Date.now());setPhase('quiz');
       return;
     }
+    setStampOpen(true);   // 쾅 — 도장을 찍고 소감 고르기로
     setPhase('reflect');
   };
   const chooseFeeling=async(feeling)=>{
@@ -404,20 +605,29 @@ function CoordDailyTab({userData,onUpdate}){
       )}
 
       <div className="space-y-3">
-        {COORD_LEVELS.map(l=>(
+        {COORD_LEVELS.map(l=>{const locked=coordLevelLocked(l,userData.name);return(
           <button key={l.k} onClick={()=>start(l.k)}
             className={`w-full text-left bg-white rounded-3xl p-5 shadow-md active:scale-[0.98] transition-transform border-2 ${l.border}`}>
             <div className="flex items-center gap-3">
               <div className={`w-14 h-14 rounded-2xl ${l.chip} flex items-center justify-center text-sm leading-tight text-center font-black shrink-0 px-1`}>{l.badge}</div>
               <div className="flex-1">
-                <div className="text-lg font-black text-gray-800">{l.lbl}</div>
+                <div className="text-lg font-black text-gray-800">{l.lbl}{locked&&<span className="ml-2 text-xs font-black text-gray-400">🔒 {l.openLbl} 열림</span>}</div>
                 <div className="text-sm font-bold text-gray-500 mt-0.5">{l.desc}</div>
               </div>
               <div className="text-2xl text-gray-300">›</div>
             </div>
-          </button>
-        ))}
+          </button>);})}
       </div>
+
+      {lockMsg&&(
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-5" onClick={()=>setLockMsg(false)}>
+          <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center fade-in" onClick={e=>e.stopPropagation()}>
+            <div className="text-5xl mb-3">🛠️</div>
+            <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 학생분들을 위해 작업중이에요!<br/>얼른 보여드릴게요!</div>
+            <button onClick={()=>setLockMsg(false)} className="mt-5 w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">확인</button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-4">
         <div className="text-sm font-black text-indigo-700 mb-1">💡 이렇게 나옵니다</div>
@@ -428,14 +638,17 @@ function CoordDailyTab({userData,onUpdate}){
     </div>);
   }
 
-  if(phase==='reflect')return<FeelingPicker title="좌표 10문제 끝!" onPick={chooseFeeling}/>;
+  if(phase==='reflect')return<>
+    <FeelingPicker title="좌표 10문제 끝!" onPick={chooseFeeling}/>
+    {stampOpen&&<StampOverlay sub={`${correct} / ${TOTAL} 맞혔어요`} onClose={()=>setStampOpen(false)}/>}
+  </>;
 
   /* ── 다 풀었을 때 ── */
   if(phase==='done'){
     const rate=Math.round(correct/TOTAL*100);
     return(<div className="p-4 space-y-4 pb-36">
       <div className="bg-white rounded-3xl p-6 shadow-md text-center">
-        <div className="text-6xl mb-3">{rate>=90?'🍎':rate>=70?'🌳':rate>=40?'🌿':'🌱'}</div>
+        <div className="mb-2"><StampBadge size={128}/></div>
         <div className="text-2xl font-black text-gray-800">좌표 10문제 끝!</div>
         <div className="text-4xl font-black text-indigo-600 mt-3">{correct} / {TOTAL}</div>
         <div className="text-sm font-bold text-gray-500 mt-2">
@@ -490,7 +703,7 @@ function CoordDailyTab({userData,onUpdate}){
     </div>
 
     {/* 최상 유리·무리함수 보기는 글이 길어서 한 줄에 하나씩 (두 줄로 꺾이지 않게) */}
-    <div className={`grid gap-3 ${q.lv==='rat'||q.lv==='irr'?'grid-cols-1':'grid-cols-2'}`}>
+    <div className={`grid gap-3 ${q.cols===1||q.lv==='rat'||q.lv==='irr'?'grid-cols-1':'grid-cols-2'}`}>
       {q.choices.map((c,i)=>{
         const isSel=sel===i,isAns=i===q.ans;
         let cls='bg-white border-gray-200 text-gray-700';
@@ -502,7 +715,7 @@ function CoordDailyTab({userData,onUpdate}){
         return(
           <button key={i} onClick={()=>choose(i)} disabled={phase==='feedback'}
             className={`py-4 px-3 rounded-2xl border-2 font-black text-lg transition-all active:scale-95 ${cls}`}>
-            <span className="opacity-60 mr-1">{ORD[i]}</span> {c}
+            <span className="opacity-60 mr-1">{ORD[i]}</span> {q.choiceHtml?<span className="block mt-1" dangerouslySetInnerHTML={{__html:q.choiceHtml[i]}}/>:c}
           </button>
         );
       })}
@@ -520,6 +733,7 @@ function CoordDailyTab({userData,onUpdate}){
           ))}
         </ol>
         {(q.lv==='mid'||q.lv==='high')&&<div className="text-xs font-bold text-gray-400 mt-3">위 그림의 초록 점이 옮겨진 자리입니다.</div>}
+        {q.lv==='div'&&<div className="text-xs font-bold text-gray-400 mt-3">위 그림의 초록 P 가 내분점, 회색 눈금·점이 한 칸씩입니다.</div>}
       </div>
     )}
 
@@ -539,7 +753,8 @@ function CoordDailyTab({userData,onUpdate}){
         <div className="bg-white rounded-t-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl" onClick={e=>e.stopPropagation()}>
           <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-2"/>
           <p className="text-center text-base font-black text-gray-800 leading-relaxed">
-            「<span className="text-indigo-600">{ORD[sel]} {q.choices[sel]}</span>」를 골랐습니다.
+            {q.choiceHtml?<React.Fragment><span className="text-indigo-600">{ORD[sel]}</span> 그림을 골랐습니다.<span className="block mt-2" dangerouslySetInnerHTML={{__html:q.choiceHtml[sel]}}/></React.Fragment>
+              :<React.Fragment>「<span className="text-indigo-600">{ORD[sel]} {q.choices[sel]}</span>」를 골랐습니다.</React.Fragment>}
           </p>
           <p className="text-center text-gray-500 font-bold text-sm">제출하시겠습니까?</p>
           <div className="flex gap-3">

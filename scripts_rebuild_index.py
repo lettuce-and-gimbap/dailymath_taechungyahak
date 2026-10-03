@@ -27,6 +27,7 @@ FILES = [
     "js/ui/splash.js",
     "js/ui/sessionPrint.js",
     "js/ui/voiceMsg.js",
+    "js/ui/stamp.js",
     "js/ui/push.js",
     "js/ui/recentSessions.js",
     "js/student/exploreModules.js",

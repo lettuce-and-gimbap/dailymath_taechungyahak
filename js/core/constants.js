@@ -14,6 +14,8 @@ var DAY_KO=['월','화','수','목','금','토','일'];
    [선생님 이름, 학생 이름] 순서로 등록한다. 두 이름 모두 Firestore users 에 실제 계정이 있어야 한다.
    quickSwitchTarget(name) 은 그 이름의 짝(반대쪽)을 돌려주고, 등록되지 않은 이름이면 null. */
 var QUICK_SWITCH_PAIRS=[['박소명','박소명_학생']];
+/* 새 유형을 공개 전에 먼저 풀어 볼 수 있는 계정 (선생님의 학생 확인용 계정). 좌표 탭 openAt 참고 */
+var PREVIEW_USERS=['박소명_학생'];
 function quickSwitchTarget(name){
   for(const[teacher,student]of QUICK_SWITCH_PAIRS){
     if(name===teacher)return student;
