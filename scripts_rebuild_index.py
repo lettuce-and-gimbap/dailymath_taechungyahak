@@ -3,6 +3,7 @@ import io
 FILES = [
     "js/core/constants.js",
     "js/core/utils.js",
+    "js/core/replay.js",
     "js/core/examSource.js",
     "js/core/logMetrics.js",
     "js/core/db.js",
@@ -42,6 +43,7 @@ FILES = [
     "js/student/dashboard.js",
     "js/teacher/analysisEngine.js",
     "js/teacher/wrongNote.js",
+    "js/teacher/logQView.js",
     "js/teacher/wrongNotePanel.js",
     "js/teacher/notice.js",
     "js/teacher/analysisTab.js",

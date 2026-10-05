@@ -402,6 +402,40 @@ function genIneqQ(){
       `따라서 해는 <b>${choices[ans]}</b>`]};
 }
 
+/* ── 기록 → 문제 다시 만들기 (선생님 화면 · teacher/logQView.js) ──────────
+   새 기록 : 남겨 둔 씨앗(cSeed)으로 같은 문제를 그대로 만든다.
+   예전 기록(씨앗 없음) : 씨앗을 차례로 돌려 문제 글·정답·학생 답이 기록과 같게 나오는 것을 찾는다.
+     찾는 동안은 GS.planeSVG 를 빈 함수로 바꿔 빠르게 돌고, 찾은 씨앗으로 한 번 더 제대로 그린다.
+     예전 기록은 보기 순서가 남아 있지 않아, 보기 순서는 학생이 본 것과 다를 수 있다(exact:false).
+   돌려주는 값 : {q, exact} 또는 null(생성기 글이 바뀐 아주 옛 기록 등) */
+var COORD_TOPIC_LV={'좌표 읽기':'low','평행이동':'mid','대칭이동':'high','유리함수 평행이동':'rat','무리함수 평행이동':'irr',
+  '이차함수 최대·최소':'quad','내분점(수직선)':'div','내분점(좌표평면)':'div','이차부등식':'ineq'};
+var _coordReplayCache=new Map();
+function coordReplay(rec){
+  const full=rec.qFull||'',pre=rec.qTxt||'';
+  const key=[rec.cSeed,rec.meta&&rec.meta.type,full||pre,rec.cAns,rec.uAns].join('|');
+  if(_coordReplayCache.has(key))return _coordReplayCache.get(key);
+  const sameText=q=>full?q.q===full:(pre&&q.q.slice(0,pre.length)===pre);
+  const sameAns=q=>{const c=q.choices.map(String);
+    if(rec.choices)return c.join('|')===rec.choices.join('|')&&q.ans===rec.answerIdx;
+    return c[q.ans]===String(rec.cAns)&&(rec.uAns==null||c.includes(String(rec.uAns)));};
+  const pr=(async()=>{
+    if(rec.cSeed!=null&&rec.cLv){
+      const q=withSeed(rec.cSeed,()=>genCoordQ(rec.cLv));
+      if(sameText(q)&&sameAns(q))return{q,exact:true};
+    }
+    const lv=COORD_TOPIC_LV[rec.meta&&rec.meta.type];
+    if(!lv||!(full||pre))return null;
+    const G=window.GS;
+    const hit=await replaySearch([()=>genCoordQ(lv)],q=>sameText(q)&&sameAns(q),
+      {limit:lv==='low'?6000:80000,wrap:f=>{const P=G.planeSVG;G.planeSVG=()=>'';try{f();}finally{G.planeSVG=P;}}});
+    if(!hit)return null;
+    return{q:withSeed(hit.seed,()=>genCoordQ(lv)),exact:!!rec.choices};
+  })();
+  _coordReplayCache.set(key,pr);
+  return pr;
+}
+
 /* ── 문항 생성 ───────────────────────────────────────────────── */
 function genCoordQ(level){
   const G=window.GS;
@@ -521,7 +555,8 @@ function CoordDailyTab({userData,onUpdate}){
 
   const start=(k)=>{
     if(coordLevelLocked(COORD_LEVELS.find(l=>l.k===k),userData.name)){setLockMsg(true);return;}
-    const list=[];for(let i=0;i<TOTAL;i++)list.push(genCoordQ(k));
+    // 씨앗을 남겨 두면 선생님 화면에서 같은 문제(식·그림·보기 순서)를 그대로 다시 그릴 수 있다 (core/replay.js)
+    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(k)),seed,genLv:k});}
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
     savingRef.current=false;savedRef.current=null;
@@ -543,7 +578,8 @@ function CoordDailyTab({userData,onUpdate}){
       timeSec:Math.round((Date.now()-qStartAt)/1000),
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
-      meta:{category:'geometry',type:q.topic,diff:q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'}};
+      meta:{category:'geometry',type:q.topic,diff:q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
+      cSeed:q.seed,cLv:q.genLv,choices:q.choices.map(String),answerIdx:q.ans};
     const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
     setRecs(newRecs);setCorrect(newCorrect);
     setPhase('feedback');

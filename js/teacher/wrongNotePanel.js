@@ -97,7 +97,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
     if(!confirm(`오답 ${qs.length}문제를 ${studentName} 학생에게 숙제로 내시겠어요?`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
-      const hwQs=qs.map(q=>({q:restoreQText(q)||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
+      const hwQs=qs.map(q=>({q:restoreQText(q)||'',choices:q.choices||[],answer:q.answerIdx??q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
       await db.collection('homework').add({title:`${studentName} 학생 오답 문제지`,level:'오답',questions:hwQs,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:[studentName]});
       alert('✅ 숙제로 등록되었습니다!');
     }catch(e){alert('등록 실패');}
@@ -150,14 +150,11 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
           {isOpen&&<div className="divide-y divide-gray-100">
             {items.map(({q,i})=>{
               const on=wrongQSel.has(i);
-              const effGraph=tryReconstructGraph(q);
               return(<label key={i} className={`flex items-start gap-2 px-3 py-2 cursor-pointer ${on?'bg-red-50':'hover:bg-gray-50'}`}>
                 <input type="checkbox" checked={on} onChange={()=>setWrongQSel(prev=>{const s=new Set(prev);on?s.delete(i):s.add(i);return s;})} className="mt-0.5 w-4 h-4 flex-shrink-0 rounded"/>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-bold text-gray-400 mb-0.5">{q._logDate} · {fmtLogType(q._logType)}</div>
-                  <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{restoreQText(q)||'(문제 없음)'}</div>
-                  {effGraph&&<div className="mt-1 flex justify-center"><GraphPreview q={{...q,graph:effGraph}}/></div>}
-                  {q.cAns&&<div className="text-xs text-indigo-600 mt-0.5">정답: {q.cAns}</div>}
+                  <LogQView q={q} logType={q._logType}/>
                 </div>
               </label>);
             })}

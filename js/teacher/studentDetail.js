@@ -1400,11 +1400,12 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
                   const rCls=q.revisionCount!=null?REV_CFG[classifyRevision(q.revisionCount,q.isOk)]?.cls:'';
                   return(
                     <div key={j} className={`rounded-xl p-3 text-xs border ${q.isOk?'bg-white border-gray-200':'bg-red-50 border-red-200'}`}>
-                      <div className="flex gap-2 mb-1">
-                        <span className="font-black text-gray-500">Q{j+1}.</span>
-                        <span className="font-bold text-gray-800 flex-1 leading-relaxed break-keep">{restoreQText(q)||''}</span>
+                      <div className="flex gap-2 mb-2 items-center">
+                        <span className="font-black text-gray-500 flex-1">Q{j+1}.</span>
                         <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
                       </div>
+                      {/* 학생이 본 문제 화면 그대로 (식·그림·보기, 해설 없음) — teacher/logQView.js */}
+                      <LogQView q={q} logType={log.type}/>
                       {q.examSource&&<div className="pl-6 mb-1 text-[10px] text-blue-500 font-bold">📌 {q.examSource}</div>}
                       {/* 행동 지표 뱃지 */}
                       <div className="flex items-center gap-1.5 pl-6 flex-wrap mt-1">
@@ -1423,7 +1424,6 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
                           <span className="text-[10px] text-gray-400 font-bold">⏱️{q.timeSec}초</span>
                         )}
                       </div>
-                      {!q.isOk&&<div className="mt-1.5 pl-6 text-gray-500">내 답: {q.uAns} → <span className="text-red-600 font-bold">{q.cAns}</span></div>}
                     </div>
                   );
                 })}

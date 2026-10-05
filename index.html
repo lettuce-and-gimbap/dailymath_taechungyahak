@@ -369,6 +369,53 @@ var autoMathHtml=(text)=>{
 };
 
 
+// ========== js\core\replay.js ==========
+// === js/core/replay.js ===
+/* --------------------------------------------------------------------
+   기록 다시 그리기 — 생성기를 '씨앗(seed)'으로 똑같이 다시 돌린다 (2026-10-05)
+   쓰는 곳 : student/coordDaily.js (문제를 만들 때 씨앗을 남김) · teacher/logQView.js (선생님 화면에서 다시 그림)
+
+   - 학생 기록(users.logs)에는 문제 글만 남고 그림·식(KaTeX)·보기 그림은 남지 않는다.
+     그림 SVG 를 통째로 저장하면 users 문서(1MiB 한도)가 금방 찬다.
+     대신 Math.random 을 씨앗이 있는 난수로 잠깐 바꿔 생성기를 돌리면, 같은 씨앗 → 같은 문제가 나온다.
+   - 씨앗이 없는 예전 기록은 replaySearch 로 씨앗 1, 2, 3 … 을 차례로 돌려
+     '문제 글·정답이 기록과 똑같이 나오는' 씨앗을 찾는다. 화면이 멈추지 않도록 조금씩 나눠 돈다.
+   -------------------------------------------------------------------- */
+function _mulberry32(seed){
+  let a=seed>>>0;
+  return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};
+}
+/* fn 을 씨앗 난수로 한 번 돌린다. 끝나면 Math.random 을 반드시 되돌린다 */
+function withSeed(seed,fn){
+  const R=Math.random;Math.random=_mulberry32(seed);
+  try{return fn();}finally{Math.random=R;}
+}
+var newSeed=()=>(Math.random()*4294967296)>>>0;
+
+/* 씨앗 찾기 : gens 를 씨앗 1…limit 로 돌려 pred(q) 가 참인 첫 결과 {seed, gen, q}. 못 찾으면 null.
+   opt.wrap(fn) : 한 덩어리를 돌리는 동안 무거운 그림 함수를 잠시 빈 함수로 바꿀 때 쓴다(찾을 때는 글만 비교하므로). */
+function replaySearch(gens,pred,opt){
+  const {limit=60000,chunk=2000,wrap=f=>f()}=opt||{};
+  return new Promise(res=>{
+    let s=1;
+    const step=()=>{
+      let hit=null;
+      wrap(()=>{
+        const end=Math.min(limit,s+chunk-1);
+        for(;s<=end&&!hit;s++)for(const g of gens){
+          let q=null;try{q=withSeed(s,g);}catch(e){}
+          if(q&&pred(q)){hit={seed:s,gen:g,q};break;}
+        }
+      });
+      if(hit)return res(hit);
+      if(s>limit)return res(null);
+      setTimeout(step,0);
+    };
+    step();
+  });
+}
+
+
 // ========== js\core\examSource.js ==========
 // === js/core/examSource.js ===
 /* --------------------------------------------------------------------
@@ -8938,6 +8985,8 @@ function GeometryQuiz({userData, onUpdate}){
         qTopicHash: getTopicHash(p),
         explanation: easyExplanation(p),
         graph: p.graph || null,
+        // 선생님 화면(teacher/logQView.js)이 학생 화면 그대로 다시 그릴 수 있게 식(TeX)·보기 순서도 남긴다
+        qTex: p.qTex || null, choices: p.choices, answerIdx: p.answer,
         meta: { category: 'geometry', type: concept.lbl, diff: '기하' }
       };
     });
@@ -10603,6 +10652,40 @@ function genIneqQ(){
       `따라서 해는 <b>${choices[ans]}</b>`]};
 }
 
+/* ── 기록 → 문제 다시 만들기 (선생님 화면 · teacher/logQView.js) ──────────
+   새 기록 : 남겨 둔 씨앗(cSeed)으로 같은 문제를 그대로 만든다.
+   예전 기록(씨앗 없음) : 씨앗을 차례로 돌려 문제 글·정답·학생 답이 기록과 같게 나오는 것을 찾는다.
+     찾는 동안은 GS.planeSVG 를 빈 함수로 바꿔 빠르게 돌고, 찾은 씨앗으로 한 번 더 제대로 그린다.
+     예전 기록은 보기 순서가 남아 있지 않아, 보기 순서는 학생이 본 것과 다를 수 있다(exact:false).
+   돌려주는 값 : {q, exact} 또는 null(생성기 글이 바뀐 아주 옛 기록 등) */
+var COORD_TOPIC_LV={'좌표 읽기':'low','평행이동':'mid','대칭이동':'high','유리함수 평행이동':'rat','무리함수 평행이동':'irr',
+  '이차함수 최대·최소':'quad','내분점(수직선)':'div','내분점(좌표평면)':'div','이차부등식':'ineq'};
+var _coordReplayCache=new Map();
+function coordReplay(rec){
+  const full=rec.qFull||'',pre=rec.qTxt||'';
+  const key=[rec.cSeed,rec.meta&&rec.meta.type,full||pre,rec.cAns,rec.uAns].join('|');
+  if(_coordReplayCache.has(key))return _coordReplayCache.get(key);
+  const sameText=q=>full?q.q===full:(pre&&q.q.slice(0,pre.length)===pre);
+  const sameAns=q=>{const c=q.choices.map(String);
+    if(rec.choices)return c.join('|')===rec.choices.join('|')&&q.ans===rec.answerIdx;
+    return c[q.ans]===String(rec.cAns)&&(rec.uAns==null||c.includes(String(rec.uAns)));};
+  const pr=(async()=>{
+    if(rec.cSeed!=null&&rec.cLv){
+      const q=withSeed(rec.cSeed,()=>genCoordQ(rec.cLv));
+      if(sameText(q)&&sameAns(q))return{q,exact:true};
+    }
+    const lv=COORD_TOPIC_LV[rec.meta&&rec.meta.type];
+    if(!lv||!(full||pre))return null;
+    const G=window.GS;
+    const hit=await replaySearch([()=>genCoordQ(lv)],q=>sameText(q)&&sameAns(q),
+      {limit:lv==='low'?6000:80000,wrap:f=>{const P=G.planeSVG;G.planeSVG=()=>'';try{f();}finally{G.planeSVG=P;}}});
+    if(!hit)return null;
+    return{q:withSeed(hit.seed,()=>genCoordQ(lv)),exact:!!rec.choices};
+  })();
+  _coordReplayCache.set(key,pr);
+  return pr;
+}
+
 /* ── 문항 생성 ───────────────────────────────────────────────── */
 function genCoordQ(level){
   const G=window.GS;
@@ -10722,7 +10805,8 @@ function CoordDailyTab({userData,onUpdate}){
 
   const start=(k)=>{
     if(coordLevelLocked(COORD_LEVELS.find(l=>l.k===k),userData.name)){setLockMsg(true);return;}
-    const list=[];for(let i=0;i<TOTAL;i++)list.push(genCoordQ(k));
+    // 씨앗을 남겨 두면 선생님 화면에서 같은 문제(식·그림·보기 순서)를 그대로 다시 그릴 수 있다 (core/replay.js)
+    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(k)),seed,genLv:k});}
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
     savingRef.current=false;savedRef.current=null;
@@ -10744,7 +10828,8 @@ function CoordDailyTab({userData,onUpdate}){
       timeSec:Math.round((Date.now()-qStartAt)/1000),
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
-      meta:{category:'geometry',type:q.topic,diff:q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'}};
+      meta:{category:'geometry',type:q.topic,diff:q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
+      cSeed:q.seed,cLv:q.genLv,choices:q.choices.map(String),answerIdx:q.ans};
     const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
     setRecs(newRecs);setCorrect(newCorrect);
     setPhase('feedback');
@@ -11281,6 +11366,7 @@ function MockExamTab({userData,onUpdate}){
         revisionCount:revisionCounts[i]??0,
         qTopicHash:getTopicHash(q),
         sol:Array.isArray(q.sol)&&q.sol.length?q.sol:null,
+        graph:q.graph||null,   // 선생님 화면에서 문제 그림을 그대로 다시 그린다
         explanation:easyExplanation(q),
         meta:q.meta
       };
@@ -12547,6 +12633,165 @@ function graphToSVGStr(g){
 }
 
 
+// ========== js\teacher\logQView.js ==========
+// === js/teacher/logQView.js ===
+/* --------------------------------------------------------------------
+   기록 속 한 문항을 '학생이 본 문제 화면 그대로' 보여 준다 (해설은 빼고) — 2026-10-05
+   쓰는 곳 : teacher/studentDetail.js (세션 기록 → 문항보기) · teacher/wrongNotePanel.js (오답 목록)
+
+   기록 종류에 따라 다시 그리는 방법이 다르다.
+   - 좌표 10문제 : 기록에는 글만 있으므로 생성기를 씨앗으로 다시 돌린다 (coordReplay — student/coordDaily.js).
+                  식은 KaTeX, 그림은 학생이 문제를 풀 때 본 그림(정답 점은 숨긴 그림), 보기 그림도 그대로.
+   - 기하학(기하: …) : 식 qTex · 그림 graph · 보기 순서 choices 가 있으면 그대로. 예전 기록(qTex 없음)은
+                  기하 생성기(GEO_GENS)를 씨앗으로 돌려 같은 문제를 찾아 식과 보기를 얻는다.
+   - 문제풀기 검정고시 · 모의고사 : 문제 글 + 그림(graph) + 보기(choices). 그림이 없는 예전 기록은
+                  글에서 그림 조건을 읽어 내거나(tryReconstructGraph), 생성기를 씨앗으로 돌려 찾는다.
+   - 그 밖(나눗셈·약수 등) : 문제 글 그대로.
+   보기는 학생 화면의 채점 뒤 모양처럼 정답은 초록, 학생이 고른 오답은 빨강으로 칠한다.
+   -------------------------------------------------------------------- */
+var LQ_ORD=['①','②','③','④','⑤'];
+
+/* 보기 한 칸의 색 — 정답 초록 · 고른 오답 빨강 · 나머지 흐리게 */
+function lqChoiceCls(i,ansIdx,pickIdx){
+  if(i===ansIdx)return'bg-emerald-500 border-emerald-500 text-white';
+  if(i===pickIdx)return'bg-red-100 border-red-300 text-red-600';
+  return'bg-white border-gray-200 text-gray-500';
+}
+function lqPickIdx(choices,uAns){const u=String(uAns==null?'':uAns);return(choices||[]).findIndex(c=>String(c)===u);}
+function LqNote({children}){return<div className="text-[11px] font-bold text-gray-400 mt-2">{children}</div>;}
+function LqLoading(){return<div className="text-xs font-bold text-gray-400 py-3 text-center">문제 화면을 다시 그리는 중…</div>;}
+
+/* 씨앗 찾기 결과를 기다렸다가 그리는 공용 훅 */
+function useReplay(fn,deps){
+  const[st,setSt]=useState({busy:true,r:null});
+  useEffect(()=>{let live=true;setSt({busy:true,r:null});
+    Promise.resolve().then(fn).then(r=>{if(live)setSt({busy:false,r});},()=>{if(live)setSt({busy:false,r:null});});
+    return()=>{live=false;};},deps);
+  return st;
+}
+
+/* ── 좌표 10문제 ── */
+function CoordLogQ({rec}){
+  const st=useReplay(()=>coordReplay(rec),[rec]);
+  const ref=useRef(null);
+  useEffect(()=>{if(ref.current&&window.GS)GS.renderTex(ref.current);});
+  if(st.busy)return<LqLoading/>;
+  if(!st.r)return<LqPlain rec={rec} note="이 기록은 예전 방식으로 저장되어 그림을 다시 그리지 못했습니다."/>;
+  const q=st.r.q;
+  const L=COORD_LEVELS.find(l=>l.k===q.lv)||{};
+  const pick=lqPickIdx(q.choices,rec.uAns);
+  const one=q.cols===1||q.lv==='rat'||q.lv==='irr';
+  return(<div ref={ref} className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
+    <style>{`.lqv svg.plane{max-width:100%;height:auto}`}</style>
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-black px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700">{L.badge||'좌표'}</span>
+      <span className="text-xs font-bold text-gray-400">{q.topic}</span>
+    </div>
+    {q.qHtml
+      ?<div className="text-base font-black text-gray-800 leading-loose break-keep" dangerouslySetInnerHTML={{__html:q.qHtml}}/>
+      :<div className="text-base font-black text-gray-800 leading-relaxed break-keep">{q.q}</div>}
+    {q.svg&&<div className="lqv flex justify-center overflow-x-auto" dangerouslySetInnerHTML={{__html:q.svg}}/>}
+    <div className={`grid gap-2 ${one?'grid-cols-1':'grid-cols-2'}`}>
+      {q.choices.map((c,i)=>(
+        <div key={i} className={`py-3 px-3 rounded-2xl border-2 font-black text-base text-center ${lqChoiceCls(i,q.ans,pick)}`}>
+          <span className="opacity-60 mr-1">{LQ_ORD[i]}</span> {q.choiceHtml?<span className="block mt-1" dangerouslySetInnerHTML={{__html:q.choiceHtml[i]}}/>:c}
+        </div>))}
+    </div>
+    {!st.r.exact&&<LqNote>예전 기록이라 보기 순서는 학생이 본 것과 다를 수 있습니다.</LqNote>}
+  </div>);
+}
+
+/* ── 기하학 탭 ── */
+var _geoReplayCache=new Map();
+function geoReplay(rec){
+  const txt=rec.qTxt||'';const key=txt+'|'+rec.cAns+'|'+rec.uAns;
+  if(_geoReplayCache.has(key))return _geoReplayCache.get(key);
+  const pr=replaySearch(GEO_GENS,q=>q.q===txt&&String(q.choices[q.answer])===String(rec.cAns)
+    &&(rec.uAns==null||rec.uAns==='미입력'||q.choices.map(String).includes(String(rec.uAns))),{limit:20000});
+  _geoReplayCache.set(key,pr);return pr;
+}
+function GeoLogQ({rec}){
+  const has=!!(rec.qTex&&Array.isArray(rec.choices));
+  const st=useReplay(()=>has?null:geoReplay(rec),[rec]);
+  if(!has&&st.busy)return<LqLoading/>;
+  const found=st.r&&st.r.q;
+  const qTex=rec.qTex||(found&&found.qTex)||null;
+  const choices=has?rec.choices:found?found.choices:null;
+  const ansIdx=has?rec.answerIdx:found?found.answer:-1;
+  const graph=rec.graph||(found&&found.graph)||tryReconstructGraph(rec);
+  const pick=choices?lqPickIdx(choices,rec.uAns):-1;
+  return(<div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
+    <p className="text-base text-gray-800 leading-loose font-medium break-keep">{qTex?<TexHtml tex={qTex}/>:<QText v={rec.qTxt}/>}</p>
+    {graph&&<div className="flex justify-center"><GraphPreview q={{graph}}/></div>}
+    {choices
+      ?<div className="grid grid-cols-1 gap-2">
+        {choices.map((c,j)=><div key={j} className={`text-left text-base px-4 py-2.5 rounded-xl border-2 ${lqChoiceCls(j,ansIdx,pick)}`}>{LQ_ORD[j]} <TexHtml tex={geoTex(c)}/></div>)}
+      </div>
+      :<LqAnswers rec={rec} tex/>}
+    {!has&&found&&<LqNote>예전 기록이라 보기 순서는 학생이 본 것과 다를 수 있습니다.</LqNote>}
+  </div>);
+}
+
+/* ── 문제풀기 검정고시 · 모의고사 (보기가 기록에 있는 문항) ── */
+var _examReplayCache=new Map();
+function examGraphReplay(rec){
+  const txt=rec.qFull||'';
+  if(_examReplayCache.has(txt))return _examReplayCache.get(txt);
+  const M=typeof MID_DOMAIN_GENS!=='undefined'?MID_DOMAIN_GENS:{};
+  const gens=[genMockEqInequal,genMockGeometry,genMockSetFunc,M['문자와 식'],M['함수'],M['기하']].filter(Boolean);
+  const pr=replaySearch(gens,q=>q.q===txt,{limit:30000}).then(h=>h&&h.q.graph||null);
+  _examReplayCache.set(txt,pr);return pr;
+}
+/* 그림이 들어갈 만한 문제인지 — 그림 없는 다항식·확률 문제까지 씨앗을 찾느라 시간을 쓰지 않게 */
+var LQ_GRAPHY=/좌표|그래프|그림|직선|원의|원 |함수|평행이동|대칭이동|연립|넓이|삼각형|평행선|대응|두 점/;
+function ExamLogQ({rec,mock}){
+  const parsed=rec.graph||tryReconstructGraph(rec);
+  const need=!parsed&&LQ_GRAPHY.test(rec.qFull||'');
+  const st=useReplay(()=>need?examGraphReplay(rec):null,[rec]);
+  const graph=parsed||st.r;
+  const choices=rec.choices||[];
+  const ansIdx=rec.answerIdx!=null?rec.answerIdx:choices.map(String).indexOf(String(rec.cAns));
+  const pick=lqPickIdx(choices,rec.uAns);
+  const sys=graph&&graph.type==='system_eq';
+  return(<div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
+    {(rec.topic||rec.meta?.type)&&<div className="inline-block bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full">📚 {rec.topic||rec.meta?.type}</div>}
+    {sys&&<div className="flex justify-center"><GraphPreview q={{graph}}/></div>}
+    <div className="text-base font-bold text-gray-800 leading-relaxed break-keep">{mock?<QText v={rec.qFull}/>:rec.qFull}</div>
+    {graph&&!sys&&<div className="flex justify-center"><GraphPreview q={{graph}}/></div>}
+    {need&&st.busy&&<LqLoading/>}
+    <div className="flex flex-col gap-2">
+      {choices.map((c,i)=><div key={i} className={`p-3 rounded-2xl border-2 text-base font-bold text-left leading-relaxed ${lqChoiceCls(i,ansIdx,pick)}`}>
+        <span>{LQ_ORD[i]}</span> <MathText v={c}/></div>)}
+    </div>
+  </div>);
+}
+
+/* ── 그 밖 : 문제 글 그대로 ── */
+function LqAnswers({rec,tex}){
+  const show=v=>tex?<TexHtml tex={geoTex(v)}/>:String(v);
+  return<div className="text-sm font-bold text-gray-600">학생 답 <span className={rec.isOk?'text-emerald-600':'text-red-600'}>{rec.uAns!=null?show(rec.uAns):'-'}</span>
+    {!rec.isOk&&<> · 정답 <span className="text-emerald-600">{show(rec.cAns)}</span></>}</div>;
+}
+function LqPlain({rec,note}){
+  const graph=tryReconstructGraph(rec);
+  return(<div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
+    <div className="text-base font-bold text-gray-800 leading-relaxed break-keep"><QText v={restoreQText(rec)||''}/></div>
+    {graph&&<div className="flex justify-center"><GraphPreview q={{graph}}/></div>}
+    <LqAnswers rec={rec}/>
+    {note&&<LqNote>{note}</LqNote>}
+  </div>);
+}
+
+/* 진입점 — logType : 이 문항이 들어 있는 기록의 type (오답 목록에서는 q._logType) */
+function LogQView({q,logType}){
+  const t=String(logType||q._logType||'');
+  if(t.indexOf('좌표 10문제')===0||q.cSeed!=null)return<CoordLogQ rec={q}/>;
+  if(t.indexOf('기하:')===0)return<GeoLogQ rec={q}/>;
+  if(q.qFull&&Array.isArray(q.choices)&&q.choices.length)return<ExamLogQ rec={q} mock={t.indexOf('📝')===0||t.indexOf('모의고사')>=0}/>;
+  return<LqPlain rec={q}/>;
+}
+
+
 // ========== js\teacher\wrongNotePanel.js ==========
 // === js/teacher/wrongNotePanel.js ===
 /* --------------------------------------------------------------------
@@ -12647,7 +12892,7 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
     if(!confirm(`오답 ${qs.length}문제를 ${studentName} 학생에게 숙제로 내시겠어요?`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
-      const hwQs=qs.map(q=>({q:restoreQText(q)||'',choices:q.choices||[],answer:q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
+      const hwQs=qs.map(q=>({q:restoreQText(q)||'',choices:q.choices||[],answer:q.answerIdx??q.answer??0,topic:q.topic||'오답 재도전',explanation:q.explanation||''}));
       await db.collection('homework').add({title:`${studentName} 학생 오답 문제지`,level:'오답',questions:hwQs,active:true,createdAt:now,expiresAt:exp,completedBy:[],assignedTo:[studentName]});
       alert('✅ 숙제로 등록되었습니다!');
     }catch(e){alert('등록 실패');}
@@ -12700,14 +12945,11 @@ function WrongQCategoryPanel({allWrongQs,wrongQSel,setWrongQSel,wrongQShowAns,se
           {isOpen&&<div className="divide-y divide-gray-100">
             {items.map(({q,i})=>{
               const on=wrongQSel.has(i);
-              const effGraph=tryReconstructGraph(q);
               return(<label key={i} className={`flex items-start gap-2 px-3 py-2 cursor-pointer ${on?'bg-red-50':'hover:bg-gray-50'}`}>
                 <input type="checkbox" checked={on} onChange={()=>setWrongQSel(prev=>{const s=new Set(prev);on?s.delete(i):s.add(i);return s;})} className="mt-0.5 w-4 h-4 flex-shrink-0 rounded"/>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-bold text-gray-400 mb-0.5">{q._logDate} · {fmtLogType(q._logType)}</div>
-                  <div className="text-sm font-bold text-gray-800 break-keep leading-snug">{restoreQText(q)||'(문제 없음)'}</div>
-                  {effGraph&&<div className="mt-1 flex justify-center"><GraphPreview q={{...q,graph:effGraph}}/></div>}
-                  {q.cAns&&<div className="text-xs text-indigo-600 mt-0.5">정답: {q.cAns}</div>}
+                  <LogQView q={q} logType={q._logType}/>
                 </div>
               </label>);
             })}
@@ -14893,11 +15135,12 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
                   const rCls=q.revisionCount!=null?REV_CFG[classifyRevision(q.revisionCount,q.isOk)]?.cls:'';
                   return(
                     <div key={j} className={`rounded-xl p-3 text-xs border ${q.isOk?'bg-white border-gray-200':'bg-red-50 border-red-200'}`}>
-                      <div className="flex gap-2 mb-1">
-                        <span className="font-black text-gray-500">Q{j+1}.</span>
-                        <span className="font-bold text-gray-800 flex-1 leading-relaxed break-keep">{restoreQText(q)||''}</span>
+                      <div className="flex gap-2 mb-2 items-center">
+                        <span className="font-black text-gray-500 flex-1">Q{j+1}.</span>
                         <span className={`font-black text-sm flex-shrink-0 ${q.isOk?'text-green-500':'text-red-500'}`}>{q.isOk?'O':'X'}</span>
                       </div>
+                      {/* 학생이 본 문제 화면 그대로 (식·그림·보기, 해설 없음) — teacher/logQView.js */}
+                      <LogQView q={q} logType={log.type}/>
                       {q.examSource&&<div className="pl-6 mb-1 text-[10px] text-blue-500 font-bold">📌 {q.examSource}</div>}
                       {/* 행동 지표 뱃지 */}
                       <div className="flex items-center gap-1.5 pl-6 flex-wrap mt-1">
@@ -14916,7 +15159,6 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
                           <span className="text-[10px] text-gray-400 font-bold">⏱️{q.timeSec}초</span>
                         )}
                       </div>
-                      {!q.isOk&&<div className="mt-1.5 pl-6 text-gray-500">내 답: {q.uAns} → <span className="text-red-600 font-bold">{q.cAns}</span></div>}
                     </div>
                   );
                 })}

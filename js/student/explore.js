@@ -244,6 +244,8 @@ function GeometryQuiz({userData, onUpdate}){
         qTopicHash: getTopicHash(p),
         explanation: easyExplanation(p),
         graph: p.graph || null,
+        // 선생님 화면(teacher/logQView.js)이 학생 화면 그대로 다시 그릴 수 있게 식(TeX)·보기 순서도 남긴다
+        qTex: p.qTex || null, choices: p.choices, answerIdx: p.answer,
         meta: { category: 'geometry', type: concept.lbl, diff: '기하' }
       };
     });

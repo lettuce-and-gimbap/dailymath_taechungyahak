@@ -60,6 +60,7 @@ js/
 ├── core/          앱 기반 — React·화면과 무관한 순수 로직
 │   ├── constants.js     React 훅 구조분해 · 관리자 명단 · 요일
 │   ├── utils.js         날짜/주차 · 수 계산 · 수식 문자열 포맷
+│   ├── replay.js        씨앗 난수로 생성기 다시 돌리기 (기록 → 문제 화면 재현)
 │   ├── examSource.js    유형 → 기출 연도·회차·문항 번호 매핑
 │   ├── logMetrics.js    유휴 시간 보정 · 망설임/수정 분류 · 문항 해시
 │   └── db.js            Firestore 접근 (users · math_logs)
@@ -254,6 +255,20 @@ js/
 - **'참 잘했어요' 도장** (`js/ui/stamp.js`, 그림 `stamp.webp`) : 좌표 10문제·문제풀기 10문제를 끝내면 `StampOverlay` 가 쾅 찍힌다(소리는 Web Audio 로 합성, 파일 없음).
   결과 화면에는 `StampBadge`. 그림을 바꿀 때는 원 바깥을 투명하게 자른 정사각형 webp 로 같은 이름에 덮어쓴다.
 - `scripts_rebuild_index.py`는 이제 `<script type="text/babel">` 줄을 직접 찾으므로 head에 줄을 추가해도 안전하다.
+
+## 🔎 선생님 화면 · 문항을 학생 화면 그대로 (js/teacher/logQView.js · js/core/replay.js)
+
+학생 상세 → 세션 기록 → [문항보기], 오답 목록에서 문항마다 `LogQView` 가 학생이 본 문제 화면(식 KaTeX · 그림 · 보기, 해설 없음)을 다시 그린다.
+보기는 정답 초록 · 학생이 고른 오답 빨강.
+
+- 기록(`users.logs`)에 그림 SVG 를 넣지 않는다 — users 문서 1MiB 한도. 대신 **씨앗(seed)** 으로 생성기를 다시 돌린다 (`withSeed(seed, fn)`).
+- 좌표 10문제 : 문제를 만들 때 `withSeed(newSeed(), …)` 로 만들고 기록에 `cSeed · cLv(고른 단계 k) · choices · answerIdx` 를 남긴다.
+  선생님 화면은 `coordReplay(rec)` 로 같은 문제를 만든다. **생성기 글을 바꾸면** 옛 씨앗이 다른 문제를 내므로, 문제 글이 기록과 다르면 씨앗 찾기로 넘어간다.
+- 씨앗이 없는 예전 기록 : `replaySearch` 가 씨앗 1, 2, 3 … 을 돌려 문제 글 · 정답 · 학생 답이 기록과 같은 문제를 찾는다(조금씩 나눠 돌아 화면이 멈추지 않음).
+  좌표는 찾는 동안 `GS.planeSVG` 를 빈 함수로 바꿔 빠르게 돈다. 예전 기록은 보기 순서가 없어 '순서가 다를 수 있다'는 안내가 붙는다.
+- 기하학 : 새 기록에 `qTex · choices · answerIdx` 를 남긴다. 예전 기록은 `GEO_GENS` 로 씨앗 찾기.
+- 모의고사 : 새 기록에 `graph` 를 남긴다. 그림이 없던 예전 기록은 `tryReconstructGraph` → 안 되면 그림이 있을 법한 문제만 생성기 씨앗 찾기.
+- 새 문제 종류(탭)를 만들면 기록에 식·그림을 다시 그릴 재료(씨앗 또는 graph·qTex·choices)를 남기고 `LogQView` 에 분기를 하나 더한다.
 
 ## 📐 학생 기하학 탭 수식 (js/student/explore.js · js/math/expr.js)
 

@@ -102,6 +102,7 @@ function MockExamTab({userData,onUpdate}){
         revisionCount:revisionCounts[i]??0,
         qTopicHash:getTopicHash(q),
         sol:Array.isArray(q.sol)&&q.sol.length?q.sol:null,
+        graph:q.graph||null,   // 선생님 화면에서 문제 그림을 그대로 다시 그린다
         explanation:easyExplanation(q),
         meta:q.meta
       };
