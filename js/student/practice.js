@@ -523,7 +523,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       firstClickMs:firstActionMs,  // DailyPractice: 진정한 망설임 시간 (one-at-a-time)
       revisionCount:null,          // 자유입력 형식 → 수정 횟수 미적용
       qTopicHash:topicHash,
-      examSource:getExamSource(q)||null,
+      examSource:(q._src!==undefined?q._src:getExamSource(q))||null,   // 화면에 보인 출처와 같게
       explanation:Array.isArray(q.sol)&&q.sol.length?q.sol.join('\n'):easyExplanation(q),
       meta};
     // 검정고시(exam5)는 회차 인쇄/PDF를 위해 원문제 전체를 함께 저장 (그림·선택지·해설 포함)
@@ -533,6 +533,8 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       newQ.choices=q.choices;
       newQ.answerIdx=q.answer;
       if(q.graph)newQ.graph=q.graph;
+      // 선생님 화면이 학생 화면 그대로(MockQBody) 다시 그릴 재료 — 표 · 자료 상자 · 보기 그림 · 수식
+      ['choicePic','table','box','boxUnit','qTex'].forEach(k=>{if(q[k])newQ[k]=q[k];});
       if(Array.isArray(q.sol))newQ.sol=q.sol;
     }
     
@@ -621,13 +623,15 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       {q.category==='exam5'
         ?<div className="flex flex-col items-start gap-1 mb-3 w-full">
           <div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">📚 {q.topic||q.meta?.type||'검정고시 영역 연습'}</div>
-          {(()=>{var src=getExamSource(q);return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
+          {(()=>{var src=(q._src===undefined?(q._src=getExamSource(q)):q._src);   // 문항마다 한 번만 고른다 (다시 그릴 때마다 회차가 바뀌지 않게)
+return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
         </div>
         :<div className="inline-block bg-yellow-100 text-yellow-800 text-sm font-bold px-3 py-1 rounded-full mb-4">{q.category==='div'?'약수 구하기':'나눗셈'}</div>
       }
-      {q.category==='exam5'&&q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2 w-full"><GraphPreview q={q}/></div>}
-      {q.category==='exam5'&&<div className="text-base font-bold text-gray-800 leading-relaxed text-left w-full break-keep">{q.q}</div>}
-      {q.category==='exam5'&&q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mt-3 w-full"><GraphPreview q={q}/></div>}
+      {/* 검정고시 문항 : 모의고사 탭과 같은 MockQBody (시험지 모양 수식 · 기출 모양 그림 · 표 · 수직선 그림 보기, 2026-10-06)
+          보기는 섞어 둔 mcOpts 순서 그대로 넘긴다. 채점 뒤에는 정답 초록 · 고른 오답 빨강으로 남는다. */}
+      {q.category==='exam5'&&<div className="w-full"><MockQBody q={{...q,choices:mcOpts.map(o=>o.text),answer:mcOpts.findIndex(o=>o.isC)}}
+        sel={selMC} isGraded={phase==='feedback'} readOnly={phase!=='question'} onPick={i=>{if(phase==='question')setSelMC(i);}}/></div>}
       {q.category==='math'&&<div className="text-4xl font-black text-gray-800 tracking-wide">{q.a} ÷ {q.b} = ?</div>}
       {q.category==='div'&&<div className="text-3xl font-black text-gray-800 leading-relaxed">
         <span className="text-indigo-600">{q.target}</span> 의<br/>
@@ -635,21 +639,12 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       </div>}
     </div>
     {fb&&<div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 fade-in ${fb.ok?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>{fb.msg}</div>}
-    {fb&&<SolutionBox q={q}/>}
+    {fb&&<SolutionBox q={q.category==='exam5'&&Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식 */}
     {phase==='question'&&(<div className="space-y-3">
       {q.isMC?(
         <React.Fragment>
           {q.category==='exam5'
-            ?<div className="flex flex-col gap-3">
-              {mcOpts.map((opt,i)=>{
-                let cls='border-gray-200 bg-white text-gray-700';
-                if(selMC===i) cls='border-indigo-500 bg-indigo-50 text-indigo-700';
-                return(<button key={i} onClick={()=>{if(phase==='question')setSelMC(i);}}
-                  className={`p-4 rounded-2xl border-2 text-base font-bold transition-all text-left leading-relaxed ${cls}`}>
-                  <span className="text-indigo-900">{['①','②','③','④'][i]}</span> <span className="leading-relaxed"><MathText v={opt.text}/></span>
-                </button>);
-              })}
-            </div>
+            ?null   /* 검정고시 보기는 위 문제 카드(MockQBody) 안에 있다 */
             :<div className="grid grid-cols-2 gap-3">
               {mcOpts.map((opt,i)=>{
                 let cls2='border-gray-200 bg-white text-gray-800';
@@ -682,7 +677,12 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
           <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-2"/>
           <p className="text-center text-base font-black text-gray-800 leading-relaxed">
             {q.isMC
-              ?<React.Fragment>「<span className="text-indigo-600">{selMC!==null?mcOpts[selMC]?.text:''}</span>」를 선택했습니다.</React.Fragment>
+              ?(q.category==='exam5'&&selMC!==null
+                /* 검정고시 : 고른 보기를 수식(또는 수직선 그림) 그대로 보여 준다 */
+                ?<React.Fragment><span className="text-indigo-600">{['①','②','③','④'][selMC]}</span>{q.choicePic==='ineq'
+                  ?<React.Fragment> 그림을 선택했습니다.<span className="block mt-2" dangerouslySetInnerHTML={{__html:(exfIneqChoices(mcOpts.map(o=>o.text))||[])[selMC]||''}}/></React.Fragment>
+                  :<React.Fragment> 「<span className="text-indigo-600" dangerouslySetInnerHTML={{__html:examChoiceHtml(mcOpts[selMC]?.text)}}/>」를 선택했습니다.</React.Fragment>}</React.Fragment>
+                :<React.Fragment>「<span className="text-indigo-600">{selMC!==null?mcOpts[selMC]?.text:''}</span>」를 선택했습니다.</React.Fragment>)
               :q.hasR
                 ?<React.Fragment>몫 <span className="text-indigo-600 text-xl">{ans.ansQ}</span>, 나머지 <span className="text-indigo-600 text-xl">{ans.ansR}</span> 입력했습니다.</React.Fragment>
                 :<React.Fragment><span className="text-indigo-600 text-2xl">{ans.ansQ}</span> 입력했습니다.</React.Fragment>

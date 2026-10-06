@@ -8,7 +8,7 @@
                   식은 KaTeX, 그림은 학생이 문제를 풀 때 본 그림(정답 점은 숨긴 그림), 보기 그림도 그대로.
    - 기하학(기하: …) : 식 qTex · 그림 graph · 보기 순서 choices 가 있으면 그대로. 예전 기록(qTex 없음)은
                   기하 생성기(GEO_GENS)를 씨앗으로 돌려 같은 문제를 찾아 식과 보기를 얻는다.
-   - 모의고사 : 학생 화면과 같은 MockQBody(student/mockExam.js)로 그린다.
+   - 모의고사 · 문제풀기 검정고시 연습 : 학생 화면과 같은 MockQBody(student/mockExam.js)로 그린다.
    - 문제풀기 검정고시 · 모의고사 : 문제 글 + 그림(graph) + 보기(choices). 그림이 없는 예전 기록은
                   글에서 그림 조건을 읽어 내거나(tryReconstructGraph), 생성기를 씨앗으로 돌려 찾는다.
    - 그 밖(나눗셈·약수 등) : 문제 글 그대로.
@@ -158,6 +158,6 @@ function LogQView({q,logType}){
   const t=String(logType||q._logType||'');
   if(t.indexOf('좌표 10문제')===0||q.cSeed!=null)return<CoordLogQ rec={q}/>;
   if(t.indexOf('기하:')===0)return<GeoLogQ rec={q}/>;
-  if(q.qFull&&Array.isArray(q.choices)&&q.choices.length)return<ExamLogQ rec={q} mock={t.indexOf('📝')===0||t.indexOf('모의고사')>=0}/>;
+  if(q.qFull&&Array.isArray(q.choices)&&q.choices.length)return<ExamLogQ rec={q} mock={t.indexOf('📝')===0||t.indexOf('모의고사')>=0||t.indexOf('검정고시 연습')>=0}/>;
   return<LqPlain rec={q}/>;
 }

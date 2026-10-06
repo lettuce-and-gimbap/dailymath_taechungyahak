@@ -275,7 +275,8 @@ js/
 ## 📝 모의고사 탭 · 시험지 모양 (2026-10-06 · js/student/mockExam.js `MockQBody`)
 
 학생 모의고사 문항은 좌표 탭처럼 큰 글씨로, 수식은 KaTeX, 그림은 2021~2026 기출 모양으로 그린다.
-선생님 화면(`LogQView` 모의고사 기록)과 학습지 탭 미리보기도 같은 `MockQBody` 를 쓴다. 인쇄는 `examExtrasHTML(q)` · `examChoiceItems(q)`.
+**문제풀기 탭의 검정고시 연습**(중졸·고졸)도 같은 `MockQBody` 를 쓴다 (보기는 섞어 둔 `mcOpts` 순서로 넘기고, 채점 뒤에는 정답 초록 · 고른 오답 빨강).
+선생님 화면(`LogQView` 모의고사·검정고시 연습 기록)과 학습지 탭 미리보기도 같은 `MockQBody` 를 쓴다. 기출 출처는 문항마다 `q._src` 에 한 번만 골라 둔다(다시 그릴 때 회차가 바뀌지 않게). 인쇄는 `examExtrasHTML(q)` · `examChoiceItems(q)`.
 
 - **문제 글은 평문 그대로 둔다** (기록·인쇄·선생님 화면이 글자로 쓴다). 화면에서만 `toExamTex()`(js/math/examTex.js)가
   한글이 끊는 자리마다 수식 덩어리를 `$…$` 로 감싸고 ² · √ · a/b · ≤ · ∠ · ° 를 TeX 로 바꾼다. 대문자 이름은 바로 선 글씨, `AB=` 처럼 길이로 쓴 두 글자는 윗줄, 단위(cm·g·mg…)는 바로 선 글씨.

@@ -348,7 +348,8 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center">{i+1}</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{q.topic}</span>
-            {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
+            {(()=>{var src=(q._src===undefined?(q._src=getExamSource(q)):q._src);   // 문항마다 한 번만 고른다 (다시 그릴 때마다 회차가 바뀌지 않게)
+return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
           </div>
           {/* 학생 모의고사 화면과 같은 모양 (시험지 수식 · 그림 · 표) — 정답을 초록으로 */}
           <MockQBody q={q} sel={q.answer} isGraded={true} readOnly={true}/>
