@@ -56,6 +56,21 @@ var patchLogFeeling=async(logId,userData,feeling)=>{
   return upd;
 };
 
+/* 학생의 세션 하나 지우기 — 기록이 두 곳에 있다 : users 문서의 logs 배열(화면·분석용) + math_logs 컬렉션(브리핑·최근 세션용).
+   math_logs 문서는 log 안에 id 가 없어 studentName 으로 가져온 뒤 date·time·type 이 같은 것을 골라 지운다. 새 logs 배열을 돌려준다. */
+var deleteSessionLog=async(student,log)=>{
+  const all=student.logs||[];
+  const idx=all.indexOf(log);
+  if(idx<0)throw new Error('지울 세션을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+  const logs=all.filter((_,i)=>i!==idx);
+  await db.collection('users').doc(student.id).update({logs});
+  const snap=await db.collection('math_logs').where('studentName','==',student.name).get();
+  const batch=db.batch();let n=0;
+  snap.forEach(d=>{const v=d.data();if(v.date===log.date&&v.time===log.time&&v.type===log.type){batch.delete(d.ref);n++;}});
+  if(n)await batch.commit();
+  return logs;
+};
+
 /* ── 학생 이름 바꾸기 ──────────────────────────────────────────────
    이름이 users 문서의 id이자 다른 컬렉션의 studentName 값이라,
    한 군데만 고치면 기록·피드백·숙제가 옛 이름에 남아 흩어진다.

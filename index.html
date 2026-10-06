@@ -815,6 +815,21 @@ var patchLogFeeling=async(logId,userData,feeling)=>{
   return upd;
 };
 
+/* 학생의 세션 하나 지우기 — 기록이 두 곳에 있다 : users 문서의 logs 배열(화면·분석용) + math_logs 컬렉션(브리핑·최근 세션용).
+   math_logs 문서는 log 안에 id 가 없어 studentName 으로 가져온 뒤 date·time·type 이 같은 것을 골라 지운다. 새 logs 배열을 돌려준다. */
+var deleteSessionLog=async(student,log)=>{
+  const all=student.logs||[];
+  const idx=all.indexOf(log);
+  if(idx<0)throw new Error('지울 세션을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+  const logs=all.filter((_,i)=>i!==idx);
+  await db.collection('users').doc(student.id).update({logs});
+  const snap=await db.collection('math_logs').where('studentName','==',student.name).get();
+  const batch=db.batch();let n=0;
+  snap.forEach(d=>{const v=d.data();if(v.date===log.date&&v.time===log.time&&v.type===log.type){batch.delete(d.ref);n++;}});
+  if(n)await batch.commit();
+  return logs;
+};
+
 /* ── 학생 이름 바꾸기 ──────────────────────────────────────────────
    이름이 users 문서의 id이자 다른 컬렉션의 studentName 값이라,
    한 군데만 고치면 기록·피드백·숙제가 옛 이름에 남아 흩어진다.
@@ -14677,6 +14692,11 @@ function StudentAnalysisTab(){
     onAssignFolder={(fid,sid)=>{assignFolder(fid,sid);}}
     onClearFolder={(sid)=>{clearFolder(sid);}}
     onDeleteStudent={(s)=>{deleteStudent(s);setSelected(null);}}
+    onLogDeleted={(log,logs)=>{
+      setSelected(prev=>prev?{...prev,logs}:prev);
+      setStudents(prev=>prev.map(x=>x.id===selected.id?{...x,logs}:x));
+      setRecentSessions(prev=>prev.filter(r=>!(r.studentName===selected.name&&r.date===log.date&&r.time===log.time&&r.type===log.type)));
+    }}
     onRenamed={(oldName,newName,r)=>{
       // 목록 · 폴더 · 열려 있는 상세 화면을 새 이름으로 맞춘다 (다시 불러오지 않아도 되게)
       setStudents(prev=>prev.map(x=>x.id===oldName?{...x,id:newName,name:newName}:x));
@@ -14970,8 +14990,17 @@ function StudentRenamePanel({student,onRenamed}){
   </div>);
 }
 
-function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed}){
+function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed,onLogDeleted}){
   const[open,setOpen]=useState(null);
+  const[delBusy,setDelBusy]=useState(false);
+  const removeLog=async(log)=>{
+    if(delBusy)return;
+    if(!confirm(`${fmtDate(log.date)} ${log.time||''} · ${fmtLogType(log.type)}\n이 세션 기록을 지울까요? 되돌릴 수 없습니다.`))return;
+    setDelBusy(true);
+    try{const logs=await deleteSessionLog(student,log);setOpen(null);onLogDeleted&&onLogDeleted(log,logs);}
+    catch(e){alert('세션 삭제 실패: '+e.message);}
+    setDelBusy(false);
+  };
   const[tab,setTab]=useState('overview');
   const[qStats,setQStats]=useState({});
   const[qStatsLoading,setQStatsLoading]=useState(false);
@@ -16304,6 +16333,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
               </div>
               <button onClick={()=>setPrintLog(log)} className="text-xs text-emerald-700 font-bold px-3 py-2 bg-emerald-50 rounded-xl ml-2 flex-shrink-0">🖨️인쇄</button>
               <button onClick={()=>setOpen(isOpen?null:i)} className="text-xs text-indigo-600 font-bold px-3 py-2 bg-indigo-50 rounded-xl ml-2 flex-shrink-0">{isOpen?'닫기':'문항보기'}</button>
+              <button onClick={()=>removeLog(log)} disabled={delBusy} className="text-xs text-red-600 font-bold px-3 py-2 bg-red-50 rounded-xl ml-2 flex-shrink-0 disabled:opacity-50">🗑️삭제</button>
             </div>
             {isOpen&&log.questions&&(
               <div className="p-3 space-y-2 bg-gray-50">

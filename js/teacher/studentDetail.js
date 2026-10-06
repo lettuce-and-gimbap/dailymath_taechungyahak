@@ -58,8 +58,17 @@ function StudentRenamePanel({student,onRenamed}){
   </div>);
 }
 
-function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed}){
+function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onClearFolder,onDeleteStudent,onRenamed,onLogDeleted}){
   const[open,setOpen]=useState(null);
+  const[delBusy,setDelBusy]=useState(false);
+  const removeLog=async(log)=>{
+    if(delBusy)return;
+    if(!confirm(`${fmtDate(log.date)} ${log.time||''} · ${fmtLogType(log.type)}\n이 세션 기록을 지울까요? 되돌릴 수 없습니다.`))return;
+    setDelBusy(true);
+    try{const logs=await deleteSessionLog(student,log);setOpen(null);onLogDeleted&&onLogDeleted(log,logs);}
+    catch(e){alert('세션 삭제 실패: '+e.message);}
+    setDelBusy(false);
+  };
   const[tab,setTab]=useState('overview');
   const[qStats,setQStats]=useState({});
   const[qStatsLoading,setQStatsLoading]=useState(false);
@@ -1392,6 +1401,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
               </div>
               <button onClick={()=>setPrintLog(log)} className="text-xs text-emerald-700 font-bold px-3 py-2 bg-emerald-50 rounded-xl ml-2 flex-shrink-0">🖨️인쇄</button>
               <button onClick={()=>setOpen(isOpen?null:i)} className="text-xs text-indigo-600 font-bold px-3 py-2 bg-indigo-50 rounded-xl ml-2 flex-shrink-0">{isOpen?'닫기':'문항보기'}</button>
+              <button onClick={()=>removeLog(log)} disabled={delBusy} className="text-xs text-red-600 font-bold px-3 py-2 bg-red-50 rounded-xl ml-2 flex-shrink-0 disabled:opacity-50">🗑️삭제</button>
             </div>
             {isOpen&&log.questions&&(
               <div className="p-3 space-y-2 bg-gray-50">
