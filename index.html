@@ -10780,6 +10780,20 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
   return{...genDivRemainder(rangeMin,rangeMax),category:'math',isMC};
 }
 
+/* ===== 문제 카드에 넘길 화면용 문항 (2026-10-06) =====
+   나눗셈·약수 문항은 글자가 따로 없어 여기서 시험지 모양 문장과 가운데 큰 식(bigTex)을 만든다.
+   보기는 섞어 둔 mcOpts 순서 그대로 (기록·채점은 mcOpts 를 쓰므로 순서가 같아야 한다). */
+function practiceViewQ(q,mcOpts){
+  const choices=q.isMC?mcOpts.map(o=>o.text):[];
+  const answer=q.isMC?mcOpts.findIndex(o=>o.isC):-1;
+  if(q.category==='exam5')return{...q,choices,answer};
+  if(q.category==='math')return{q:q.hasR?'다음 나눗셈의 몫과 나머지를 구하시오.':'다음 나눗셈의 몫을 구하시오.',bigTex:`${q.a}\\div ${q.b}`,choices,answer};
+  const t=q.target;
+  const text=q.divQType==='count'||q.isCount?`${t}의 약수는 모두 몇 개인가?`
+    :q.divQType==='notDiv'?`다음 중 ${t}의 약수가 아닌 것은?`:`${t}의 약수를 모두 쓴 것은?`;
+  return{q:text,choices,answer};
+}
+
 /* ===== 풀이과정 박스 ===== */
 function SolutionBox({q}){
   if(!q)return null;
@@ -10904,29 +10918,32 @@ function NumPadInput({q,ans,setAns,activeField,setActiveField,onConfirmRequest,h
   };
   const canSubmit=q.hasR?(ans.ansQ!==''&&ans.ansR!==''):(ans.ansQ!=='');
   const PAD=['7','8','9','4','5','6','1','2','3','C','0','←'];
-  const padCls=k=>k==='C'?'bg-red-50 border-red-200 text-red-600 text-base':k==='←'?'bg-orange-50 border-orange-200 text-orange-600 text-xl':'bg-white border-gray-200 text-gray-800 text-xl';
+  const padCls=k=>k==='C'?'bg-red-50 border-red-200 text-red-600 text-lg':k==='←'?'bg-orange-50 border-orange-200 text-orange-600 text-2xl':'bg-white border-gray-200 text-gray-900 text-2xl';
+  const NUM={fontFamily:EXF_SERIF};      // 숫자는 문제 카드(시험지 모양)와 같은 글꼴
   return(
     <div className="space-y-3">
       {q.hasR?(
         <div className="flex gap-3">
           <button onClick={()=>setActiveField('Q')} className={`flex-1 py-3 rounded-2xl border-2 text-center transition-all ${activeField==='Q'?'border-indigo-500 bg-indigo-50':'border-gray-200 bg-white'}`}>
             <div className="text-xs text-gray-400 font-bold mb-1">몫</div>
-            <div className={`text-2xl font-black ${activeField==='Q'?'text-indigo-700':'text-gray-500'}`}>{ans.ansQ||<span className="opacity-25">_</span>}</div>
+            <div style={NUM} className={`text-3xl font-bold ${activeField==='Q'?'text-indigo-700':'text-gray-500'}`}>{ans.ansQ||<span className="opacity-25">_</span>}</div>
           </button>
           <button onClick={()=>setActiveField('R')} className={`flex-1 py-3 rounded-2xl border-2 text-center transition-all ${activeField==='R'?'border-indigo-500 bg-indigo-50':'border-gray-200 bg-white'}`}>
             <div className="text-xs text-gray-400 font-bold mb-1">나머지</div>
-            <div className={`text-2xl font-black ${activeField==='R'?'text-indigo-700':'text-gray-500'}`}>{ans.ansR||<span className="opacity-25">_</span>}</div>
+            <div style={NUM} className={`text-3xl font-bold ${activeField==='R'?'text-indigo-700':'text-gray-500'}`}>{ans.ansR||<span className="opacity-25">_</span>}</div>
           </button>
         </div>
       ):(
         <div className="w-full py-3 rounded-2xl border-2 border-indigo-400 bg-indigo-50 text-center">
-          <div className="text-3xl font-black text-indigo-700">{ans.ansQ||<span className="opacity-25">0</span>}</div>
+          <div className="text-xs text-gray-400 font-bold mb-1">몫</div>
+          <div style={NUM} className="text-4xl font-bold text-indigo-700">{ans.ansQ||<span className="opacity-25">_</span>}</div>
         </div>
       )}
       <div className="grid grid-cols-3 gap-2">
         {PAD.map(k=>(
           <button key={k} onClick={()=>press(k)}
-            className={`py-4 rounded-2xl border font-black shadow-sm active:scale-95 transition-all ${padCls(k)}`}>
+            style={/\d/.test(k)?NUM:undefined}
+            className={`py-4 rounded-2xl border-2 font-bold shadow-sm active:scale-95 transition-all ${padCls(k)}`}>
             {k}
           </button>
         ))}
@@ -11084,7 +11101,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       if(q.category==='exam5'){
         cAns=q.choices?.[q.answer]||'';
       } else {
-        cAns=q.category==='math'?(q.hasR?`몫: ${q.ansC}, 나머지: ${q.ansR}`:`${q.ansC}`):(q.divQType==='count'||q.isCount?`${q.divisors.length}개`:q.divQType==='notDiv'?mcOpts[selMC].isC?mcOpts[selMC].text:'(약수 아닌 것)':q.divisors.join(', '));
+        cAns=q.category==='math'?(q.hasR?`몫: ${q.ansC}, 나머지: ${q.ansR}`:`${q.ansC}`):(q.divQType==='count'||q.isCount?`${q.divisors.length}개`:q.divQType==='notDiv'?(mcOpts.find(o=>o.isC)||{}).text  /* 틀려도 실제 정답 수를 알려 준다 */:q.divisors.join(', '));
       }
     } else if(q.category==='math'){
       if(q.hasR){const vQ=parseInt(ans.ansQ),vR=parseInt(ans.ansR);if(isNaN(vQ)||isNaN(vR))return;isOk=vQ===q.ansC&&vR===q.ansR;uAns=`몫: ${vQ}, 나머지: ${vR}`;cAns=`몫: ${q.ansC}, 나머지: ${q.ansR}`}
@@ -11202,40 +11219,25 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500" style={{width:`${pct}%`}}/></div>
       <div className="bg-indigo-100 text-indigo-700 font-black px-4 py-2 rounded-full text-base">✅ {correctCount}/10</div>
     </div>
-    <div className={`bg-white rounded-3xl p-6 shadow-md flex flex-col ${q.category==='exam5'?'items-start':'items-center justify-center'} ${q.category==='exam5'?(q.graph?'':'min-h-48'):'min-h-40'}`}>
-      {q.category==='exam5'
-        ?<div className="flex flex-col items-start gap-1 mb-3 w-full">
-          <div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">📚 {q.topic||q.meta?.type||'검정고시 영역 연습'}</div>
-          {(()=>{var src=(q._src===undefined?(q._src=getExamSource(q)):q._src);   // 문항마다 한 번만 고른다 (다시 그릴 때마다 회차가 바뀌지 않게)
-return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
+    {/* 문제 카드 — 검정고시 · 나눗셈 · 약수 모두 같은 구성 (2026-10-06)
+        머리표 → 문제 글(시험지 모양 수식) → 가운데 큰 식 → 보기(MockQBody, 채점 뒤 정답 초록 · 고른 오답 빨강) */}
+    <div className="bg-white rounded-3xl p-5 shadow-md w-full">
+      <div className="flex flex-col items-start gap-1 mb-3 w-full">
+        <div className="inline-block bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">
+          {q.category==='exam5'?`📚 ${q.topic||q.meta?.type||'검정고시 영역 연습'}`:q.category==='div'?'🔢 약수 구하기':q.hasR?'➗ 나눗셈 (몫과 나머지)':'➗ 나눗셈'}
         </div>
-        :<div className="inline-block bg-yellow-100 text-yellow-800 text-sm font-bold px-3 py-1 rounded-full mb-4">{q.category==='div'?'약수 구하기':'나눗셈'}</div>
-      }
-      {/* 검정고시 문항 : 모의고사 탭과 같은 MockQBody (시험지 모양 수식 · 기출 모양 그림 · 표 · 수직선 그림 보기, 2026-10-06)
-          보기는 섞어 둔 mcOpts 순서 그대로 넘긴다. 채점 뒤에는 정답 초록 · 고른 오답 빨강으로 남는다. */}
-      {q.category==='exam5'&&<div className="w-full"><MockQBody q={{...q,choices:mcOpts.map(o=>o.text),answer:mcOpts.findIndex(o=>o.isC)}}
-        sel={selMC} isGraded={phase==='feedback'} readOnly={phase!=='question'} onPick={i=>{if(phase==='question')setSelMC(i);}}/></div>}
-      {q.category==='math'&&<div className="text-4xl font-black text-gray-800 tracking-wide">{q.a} ÷ {q.b} = ?</div>}
-      {q.category==='div'&&<div className="text-3xl font-black text-gray-800 leading-relaxed">
-        <span className="text-indigo-600">{q.target}</span> 의<br/>
-        {q.divQType==='count'?'약수는 모두 몇 개?':q.divQType==='notDiv'?<span className="text-sm font-bold text-red-600 block mb-1">약수가 <u>아닌</u> 것은?</span>:<span className="text-sm font-bold text-blue-600 block mb-1">약수를 <u>모두</u> 쓴 것은?</span>}
-      </div>}
+        {q.category==='exam5'&&(()=>{var src=(q._src===undefined?(q._src=getExamSource(q)):q._src);   // 문항마다 한 번만 고른다 (다시 그릴 때마다 회차가 바뀌지 않게)
+          return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
+      </div>
+      <MockQBody q={practiceViewQ(q,mcOpts)} sel={selMC} isGraded={phase==='feedback'} readOnly={phase!=='question'}
+        onPick={i=>{if(phase==='question')setSelMC(i);}}/>
     </div>
     {fb&&<div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 fade-in ${fb.ok?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>{fb.msg}</div>}
     {fb&&<SolutionBox q={q.category==='exam5'&&Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식 */}
     {phase==='question'&&(<div className="space-y-3">
       {q.isMC?(
         <React.Fragment>
-          {q.category==='exam5'
-            ?null   /* 검정고시 보기는 위 문제 카드(MockQBody) 안에 있다 */
-            :<div className="grid grid-cols-2 gap-3">
-              {mcOpts.map((opt,i)=>{
-                let cls2='border-gray-200 bg-white text-gray-800';
-                if(selMC===i) cls2='border-indigo-400 bg-indigo-50 text-indigo-700';
-                return(<button key={i} onClick={()=>{if(phase==='question')setSelMC(i);}} className={`p-4 rounded-2xl border-2 text-base font-bold transition-all ${cls2}`}>{opt.text}</button>);
-              })}
-            </div>
-          }
+          {/* 보기는 위 문제 카드(MockQBody) 안에 있다 */}
           <button onClick={()=>{if(selMC!==null)setShowConfirm(true);}}
             disabled={selMC===null}
             className={`w-full py-5 rounded-3xl text-xl font-black shadow-lg transition-all ${selMC!==null?'bg-gradient-to-r from-indigo-500 to-blue-600 text-white active:scale-95':'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
@@ -12353,7 +12355,7 @@ function HistoryTab({userData, feedbacks}){
 
 /* ── 문항 하나 (2026-10-06) : 좌표 탭처럼 큰 글씨 · 시험지 모양 수식(js/math/examTex.js) · 기출 모양 그림(js/ui/examFig.js)
    q.graph 종류를 examFigSVG 가 모르면 예전 GraphPreview 로 그린다.
-   q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) 를 읽는다.
+   q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) · q.bigTex(가운데 큰 식, 나눗셈 연습) 를 읽는다.
    선생님 화면(teacher/logQView.js)도 이 컴포넌트를 그대로 쓴다 — 학생이 본 화면과 같게. */
 var MOCK_ORD=['①','②','③','④'];
 var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:keep-all}
@@ -12371,6 +12373,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
   return(<div>
     <style>{MOCK_CSS}</style>
     <div className="exq text-lg font-bold text-gray-900 leading-loose mb-3" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>
+    {q.bigTex&&<div className="exq text-center text-3xl my-4" dangerouslySetInnerHTML={{__html:examHtml(`$${q.bigTex}$`)}}/>}
     {sysHtml&&<div className="text-xl text-center mb-3" dangerouslySetInnerHTML={{__html:sysHtml}}/>}
     {q.boxUnit&&<div className="text-right text-sm text-gray-600 mb-1">{q.boxUnit}</div>}
     {q.box&&(/^[-−\d.\s,]+$/.test(q.box)
@@ -12382,7 +12385,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
       {q.table.rows.map((r,i)=><tr key={i} className={q.table.sumRow&&i===q.table.rows.length-1?'sum':''}>{r.map((c,j)=><td key={j} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(c))}}/>)}</tr>)}</tbody></table></div>}
     {fig?<div className="flex justify-center mb-3" dangerouslySetInnerHTML={{__html:fig}}/>
       :(g&&!sys&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>)}
-    <div className={`grid gap-2 ${cols}`}>
+    {q.choices.length>0&&<div className={`grid gap-2 ${cols}`}>
       {q.choices.map((ch,j)=>{
         let cls='bg-white border-gray-200 text-gray-800';
         if(isGraded){if(sel===j)cls=j===q.answer?'bg-green-100 border-green-500 text-green-900':'bg-red-100 border-red-400 text-red-700';else if(j===q.answer)cls='bg-green-50 border-green-400 text-green-800';}
@@ -12394,7 +12397,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
             :<span dangerouslySetInnerHTML={{__html:examChoiceHtml(ch)}}/>}
         </button>);
       })}
-    </div>
+    </div>}
   </div>);
 }
 

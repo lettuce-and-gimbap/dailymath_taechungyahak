@@ -6,7 +6,7 @@
 
 /* ── 문항 하나 (2026-10-06) : 좌표 탭처럼 큰 글씨 · 시험지 모양 수식(js/math/examTex.js) · 기출 모양 그림(js/ui/examFig.js)
    q.graph 종류를 examFigSVG 가 모르면 예전 GraphPreview 로 그린다.
-   q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) 를 읽는다.
+   q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) · q.bigTex(가운데 큰 식, 나눗셈 연습) 를 읽는다.
    선생님 화면(teacher/logQView.js)도 이 컴포넌트를 그대로 쓴다 — 학생이 본 화면과 같게. */
 var MOCK_ORD=['①','②','③','④'];
 var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:keep-all}
@@ -24,6 +24,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
   return(<div>
     <style>{MOCK_CSS}</style>
     <div className="exq text-lg font-bold text-gray-900 leading-loose mb-3" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>
+    {q.bigTex&&<div className="exq text-center text-3xl my-4" dangerouslySetInnerHTML={{__html:examHtml(`$${q.bigTex}$`)}}/>}
     {sysHtml&&<div className="text-xl text-center mb-3" dangerouslySetInnerHTML={{__html:sysHtml}}/>}
     {q.boxUnit&&<div className="text-right text-sm text-gray-600 mb-1">{q.boxUnit}</div>}
     {q.box&&(/^[-−\d.\s,]+$/.test(q.box)
@@ -35,7 +36,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
       {q.table.rows.map((r,i)=><tr key={i} className={q.table.sumRow&&i===q.table.rows.length-1?'sum':''}>{r.map((c,j)=><td key={j} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(c))}}/>)}</tr>)}</tbody></table></div>}
     {fig?<div className="flex justify-center mb-3" dangerouslySetInnerHTML={{__html:fig}}/>
       :(g&&!sys&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>)}
-    <div className={`grid gap-2 ${cols}`}>
+    {q.choices.length>0&&<div className={`grid gap-2 ${cols}`}>
       {q.choices.map((ch,j)=>{
         let cls='bg-white border-gray-200 text-gray-800';
         if(isGraded){if(sel===j)cls=j===q.answer?'bg-green-100 border-green-500 text-green-900':'bg-red-100 border-red-400 text-red-700';else if(j===q.answer)cls='bg-green-50 border-green-400 text-green-800';}
@@ -47,7 +48,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
             :<span dangerouslySetInnerHTML={{__html:examChoiceHtml(ch)}}/>}
         </button>);
       })}
-    </div>
+    </div>}
   </div>);
 }
 
