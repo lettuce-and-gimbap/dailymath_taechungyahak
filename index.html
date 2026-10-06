@@ -9461,7 +9461,7 @@ function useRecentCount(){
   return[n,set];
 }
 
-function useRecentSessions(n){
+function useRecentSessions(n,reloadKey){
   const[all,setAll]=useState([]);
   useEffect(()=>{
     db.collection('math_logs').orderBy('date','desc').limit(RECENT_FETCH).get().then(snap=>{
@@ -9469,7 +9469,7 @@ function useRecentSessions(n){
       arr.sort((a,b)=>`${b.date||''} ${b.time||''}`.localeCompare(`${a.date||''} ${a.time||''}`));
       setAll(arr);
     }).catch(()=>{});
-  },[]);
+  },[reloadKey]);   // 세션을 지운 뒤 reloadKey 를 올리면 다시 읽는다
   return all.slice(0,n);
 }
 
@@ -14670,7 +14670,8 @@ function StudentAnalysisTab(){
 
   const[recentN,setRecentN]=useRecentCount();
   const[showRecent,setShowRecent]=useState(true);
-  const recentSessions=useRecentSessions(recentN);
+  const[recentKey,setRecentKey]=useState(0);
+  const recentSessions=useRecentSessions(recentN,recentKey);
 
   const load=async()=>{
     setLoading(true);
@@ -14695,7 +14696,7 @@ function StudentAnalysisTab(){
     onLogDeleted={(log,logs)=>{
       setSelected(prev=>prev?{...prev,logs}:prev);
       setStudents(prev=>prev.map(x=>x.id===selected.id?{...x,logs}:x));
-      setRecentSessions(prev=>prev.filter(r=>!(r.studentName===selected.name&&r.date===log.date&&r.time===log.time&&r.type===log.type)));
+      setRecentKey(k=>k+1);
     }}
     onRenamed={(oldName,newName,r)=>{
       // 목록 · 폴더 · 열려 있는 상세 화면을 새 이름으로 맞춘다 (다시 불러오지 않아도 되게)

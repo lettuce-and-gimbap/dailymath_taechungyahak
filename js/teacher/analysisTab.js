@@ -85,7 +85,8 @@ function StudentAnalysisTab(){
 
   const[recentN,setRecentN]=useRecentCount();
   const[showRecent,setShowRecent]=useState(true);
-  const recentSessions=useRecentSessions(recentN);
+  const[recentKey,setRecentKey]=useState(0);
+  const recentSessions=useRecentSessions(recentN,recentKey);
 
   const load=async()=>{
     setLoading(true);
@@ -110,7 +111,7 @@ function StudentAnalysisTab(){
     onLogDeleted={(log,logs)=>{
       setSelected(prev=>prev?{...prev,logs}:prev);
       setStudents(prev=>prev.map(x=>x.id===selected.id?{...x,logs}:x));
-      setRecentSessions(prev=>prev.filter(r=>!(r.studentName===selected.name&&r.date===log.date&&r.time===log.time&&r.type===log.type)));
+      setRecentKey(k=>k+1);
     }}
     onRenamed={(oldName,newName,r)=>{
       // 목록 · 폴더 · 열려 있는 상세 화면을 새 이름으로 맞춘다 (다시 불러오지 않아도 되게)

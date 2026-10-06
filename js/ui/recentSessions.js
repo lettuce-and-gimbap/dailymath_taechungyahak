@@ -25,7 +25,7 @@ function useRecentCount(){
   return[n,set];
 }
 
-function useRecentSessions(n){
+function useRecentSessions(n,reloadKey){
   const[all,setAll]=useState([]);
   useEffect(()=>{
     db.collection('math_logs').orderBy('date','desc').limit(RECENT_FETCH).get().then(snap=>{
@@ -33,7 +33,7 @@ function useRecentSessions(n){
       arr.sort((a,b)=>`${b.date||''} ${b.time||''}`.localeCompare(`${a.date||''} ${a.time||''}`));
       setAll(arr);
     }).catch(()=>{});
-  },[]);
+  },[reloadKey]);   // 세션을 지운 뒤 reloadKey 를 올리면 다시 읽는다
   return all.slice(0,n);
 }
 
