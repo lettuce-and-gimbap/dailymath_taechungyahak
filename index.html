@@ -8831,7 +8831,9 @@ var EXAM_FIG={
     const{a,p,ds,de}=g,k=g.q,F=x=>a*(x-p)**2+k;
     const mid=/그래프에 대한 설명|식으로 옳은/.test(q&&q.q||'');      // 중학교 '그래프 설명' — 꼭짓점·절편을 보여 준다
     const xs=[ds,de,p],ys=[F(ds),F(de),k];
-    const w=exfWin(xs,ys,1);w.ymax=Math.max(w.ymax,k+1);w.ymin=Math.min(w.ymin,k-1);
+    const w=exfWin(xs,ys,1);
+    /* 곡선이 그림 위·아래로 잘리지 않게 : 창 양 끝에서의 곡선 높이까지 세로 범위에 넣는다 */
+    const ye=[F(w.xmin),F(w.xmax)];w.ymax=Math.max(w.ymax,k+1,...ye.map(v=>v+0.5));w.ymin=Math.min(w.ymin,k-1,...ye.map(v=>v-0.5));
     const P=exfPlane(w,{maxH:320,unit:56,free:true});
     P.axes(false);
     if(mid){
@@ -8842,15 +8844,18 @@ var EXAM_FIG={
       return P.svg();
     }
     P.fn(F,w.xmin,w.xmax,{w:1.6,dash:'6 6',color:'#555'});P.fn(F,ds,de,{w:3.2});
-    [ds,de].forEach(x=>{P.dot(x,F(x));P.seg(x,0,x,F(x),{w:1.4,dash:'5 5',color:'#444'});P.xval(x,null,F(x)<0?false:true);});
-    if(p>ds&&p<de){P.dot(p,k,{hollow:true,r:5});P.seg(p,0,p,k,{w:1.2,dash:'3 5',color:'#777'});P.xval(p,null,k<0?false:true);}
+    /* 범위 양 끝과 (범위 안이면) 꼭짓점 : 두 축으로 점선을 내리고 x값·y값을 모두 쓴다 (기출 그림처럼 — x만 주고 식으로 찾게 하지 않는다) */
+    const keys=[ds,de].concat(p>ds&&p<de?[p]:[]);
+    keys.forEach(x=>{const y=F(x);P.dot(x,y);P.guide(x,y);P.xval(x,null,y<0?false:true);P.yval(y,null,de<=0);});
     return P.svg();
   },
   /* 무리함수 : y=√x 와 옮긴 그래프, 시작점에서 두 축으로 점선, 곡선 이름표 */
   radical(g){
     const a=g.a||1,p=g.p,k=g.q,sg=a<0?-1:1;
     const f0=x=>x<0?NaN:sg*Math.sqrt(x),f=x=>x<p?NaN:sg*Math.sqrt(x-p)+k;
-    const w={xmin:Math.min(-1,p-1),xmax:Math.max(7,p+6),ymin:Math.min(-1,k-1,sg<0?-3:0),ymax:Math.max(3.5,k+(sg>0?3:1))};
+    const xmx=Math.max(7,p+6);
+    /* 곡선 끝(오른쪽 끝)의 높이까지 넣어 위가 잘리지 않게 */
+    const w={xmin:Math.min(-1,p-1),xmax:xmx,ymin:Math.min(-1,k-1,sg<0?f(xmx)-0.8:0,sg<0?f0(xmx)-0.8:0),ymax:Math.max(3.5,k+1,sg>0?f(xmx)+0.8:0,sg>0?f0(xmx)+0.8:0)};
     const P=exfPlane(w,{unit:44});P.axes(false);
     P.fn(f0,0,w.xmax,{w:2.4});P.fn(f,p,w.xmax,{w:2.8});
     P.dot(p,k);P.guide(p,k);if(p)P.xval(p,null,k<0?false:true);if(k)P.yval(k,null,p<0);
