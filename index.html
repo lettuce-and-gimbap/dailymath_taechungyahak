@@ -8860,8 +8860,16 @@ var EXAM_FIG={
     P.fn(f0,0,w.xmax,{w:2.4});P.fn(f,p,w.xmax,{w:2.8});
     P.dot(p,k);P.guide(p,k);if(p)P.xval(p,null,k<0?false:true);if(k)P.yval(k,null,p<0);
     const lx=w.xmax-0.3;
-    P.text(lx,f0(lx),'y=√x',{math:true,anchor:'end',dy:sg>0?FSo(P,1.1):-10,size:20});
-    P.text(lx,f(lx),`y=√(x${p<0?'+'+(-p):'−'+p})${k?(k<0?'−'+(-k):'+'+k):''}`,{math:true,anchor:'end',dy:sg>0?-12:FSo(P,1.1),size:20});
+    /* 곡선 이름표 : 오른쪽 끝에서 위에 있는 곡선은 그 위에, 아래 곡선은 그 아래에 쓴다.
+       두 곡선이 가까이 지나가도 이름표끼리 겹치지 않게 최소 간격(글자 두 줄)을 벌린다 */
+    const n1='y=√x',n2=`y=√(x${p<0?'+'+(-p):'−'+p})${k?(k<0?'−'+(-k):'+'+k):''}`;
+    const y0=P.Y(f0(lx)),y1=P.Y(f(lx));
+    const up1=y1<=y0;                                  // 옮긴 그래프가 위(화면 y 가 작음)인가
+    let top=Math.min(y0,y1)-12,bot=Math.max(y0,y1)+P.FS+4;
+    if(bot-top<P.FS*2.2){const m=(top+bot)/2;top=m-P.FS*1.1;bot=m+P.FS*1.1;}
+    top=Math.max(top,P.FS+4);bot=Math.min(bot,P.H-6);
+    P.text(lx,0,up1?n1:n2,{math:true,anchor:'end',py:bot,size:20});
+    P.text(lx,0,up1?n2:n1,{math:true,anchor:'end',py:top,size:20});
     return P.svg();
   },
   /* 유리함수 : 점근선 x=p, y=q (점선) 과 두 갈래 곡선 */
