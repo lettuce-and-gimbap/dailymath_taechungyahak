@@ -416,13 +416,6 @@ function CoordDailyTab({userData,onUpdate}){
           </button>
         ))}
       </div>
-
-      <div className="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-4">
-        <div className="text-sm font-black text-indigo-700 mb-1">💡 이렇게 나옵니다</div>
-        <div className="text-sm font-bold text-indigo-600 leading-relaxed break-keep">
-          옮긴 점은 <b>그림에 그려 주지 않습니다.</b> 머릿속으로 규칙을 써서 좌표를 구하고, 답을 고른 뒤에 그림으로 확인하게 됩니다.
-        </div>
-      </div>
     </div>);
   }
 
