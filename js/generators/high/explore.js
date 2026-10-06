@@ -111,7 +111,7 @@ function genCircleQ(){
     const ws=circleWrongs(h,k,r2,correct);
     const{choices,answer}=makeChoices(correct,ws);
     return{topic:'원의 방정식',q:`중심이 (${h}, ${k})이고 반지름이 ${r}인 원의 방정식은?`,
-      qTex:`중심이 $(${h},\\ ${k})$ 이고 반지름의 길이가 $${r}$ 인 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},
+      qTex:`중심이 $(${h},\\ ${k})$ 이고 반지름의 길이가 $${r}$ 인 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r,show:'center'},
       sol:[
         `원의 방정식 기본형: 중심 (a, b), 반지름 r → (x−a)²+(y−b)²=r²`,
         `중심 (${h}, ${k}), 반지름 ${r}을 대입합니다.`,

@@ -181,7 +181,7 @@ function gen_circle_eq_mock(){
       .forEach(w=>{if(w!==correct)ws.add(w);});
     const{choices,answer}=makeChoices(correct,[...ws].slice(0,3));
     const axisDesc=axis==='x'?`x축에 접하면 반지름 = 중심의 y좌표의 절댓값 = |${k}| = ${r}`:`y축에 접하면 반지름 = 중심의 x좌표의 절댓값 = |${h}| = ${r}`;
-    return{topic:'원의 방정식',q:`중심의 좌표가 (${h}, ${k})이고 ${axis}축에 접하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+    return{topic:'원의 방정식',q:`중심의 좌표가 (${h}, ${k})이고 ${axis}축에 접하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r,show:'center'},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
       sol:[
         `원의 방정식 기본형: (x−h)²+(y−k)²=r² (중심 (h,k), 반지름 r)`,
         axisDesc,
@@ -270,7 +270,7 @@ function gen_circle_diameter_pts(){
   const{choices,answer}=makeChoices(correct,ws.slice(0,3));
   const pn=v=>v<0?`(${v})`:String(v);
   const h2=(A[0]+B[0]),k2=(A[1]+B[1]);
-  return{topic:'원의 방정식(지름)',q:`두 점 A(${A[0]}, ${A[1]}), B(${B[0]}, ${B[1]})을 지름의 양 끝 점으로 하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+  return{topic:'원의 방정식(지름)',q:`두 점 A(${A[0]}, ${A[1]}), B(${B[0]}, ${B[1]})을 지름의 양 끝 점으로 하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r,A,B},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
     sol:[
       `지름의 두 끝점 A(${A[0]},${A[1]}), B(${B[0]},${B[1]})이 주어지면 → 중심 = 두 점의 중점입니다.`,
       `중심 x좌표: (${_add(A[0],B[0])})÷2=${h2}÷2=${h},  y좌표: (${_add(A[1],B[1])})÷2=${k2}÷2=${k}`,
@@ -293,7 +293,7 @@ function gen_circle_sym_move(){
   const{choices,answer}=makeChoices(correct,ws);
   const origEq=mkEq(h,k);
   const symDesc={'x축':`x축 대칭: 중심의 y좌표 부호만 바꿉니다. (${h},${k}) → (${nh},${nk})`,'y축':`y축 대칭: 중심의 x좌표 부호만 바꿉니다. (${h},${k}) → (${nh},${nk})`,'원점':`원점 대칭: 중심의 x, y 좌표 모두 부호를 바꿉니다. (${h},${k}) → (${nh},${nk})`};
-  return{topic:'원의 대칭이동',q:`원 ${origEq}을 ${sym}에 대하여 대칭이동한 도형의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},   // 처음 원만 그린다 (옮긴 원을 그리면 답이 보인다)
+  return{topic:'원의 대칭이동',q:`원 ${origEq}을 ${sym}에 대하여 대칭이동한 도형의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r,show:'center'},   // 처음 원만 그린다 (옮긴 원을 그리면 답이 보인다)
 meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
     sol:[
       `원을 대칭이동해도 반지름은 그대로이고, 중심의 좌표만 바뀝니다.`,

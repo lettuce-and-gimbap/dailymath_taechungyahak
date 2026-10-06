@@ -57,7 +57,7 @@ function exfPlane(win,opt){
       el.push(`<line x1="${X(0)}" y1="${Y(ymin)+10}" x2="${X(0)}" y2="${Y(ymax)-12}" ${ax}/><polygon points="${X(0)},${Y(ymax)-20} ${X(0)-5},${Y(ymax)-9} ${X(0)+5},${Y(ymax)-9}" fill="#111"/>`);
       labels.push(`<text x="${X(xmax)+14}" y="${Y(0)+FS+2}" font-size="${FS}" font-style="italic" font-family="${EXF_SERIF}">x</text>`);
       labels.push(`<text x="${X(0)+9}" y="${Y(ymax)-8}" font-size="${FS}" font-style="italic" font-family="${EXF_SERIF}">y</text>`);
-      labels.push(`<text x="${X(0)-6}" y="${Y(0)+FS}" font-size="${FS}" text-anchor="end" font-family="${EXF_SERIF}">O</text>`);
+      labels.push(`<text x="${X(0)-6}" y="${Y(0)+FS}" font-size="${FS}" text-anchor="end" font-family="${EXF_SERIF}" paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round">O</text>`);
       if(ticks){const fs=Math.min(FS-2,u*0.62);
         for(let i=Math.ceil(xmin);i<=xmax;i++){if(!i)continue;el.push(`<line x1="${X(i)}" y1="${Y(0)-4}" x2="${X(i)}" y2="${Y(0)+4}" stroke="#111" stroke-width="1.5"/>`);
           labels.push(`<text x="${X(i)}" y="${Y(0)+fs+5}" font-size="${fs}" text-anchor="middle" font-family="${EXF_SERIF}">${i<0?'−'+(-i):i}</text>`);}
@@ -80,7 +80,7 @@ function exfPlane(win,opt){
     num(v){return v<0?'−'+(-v):String(v);},
     /* x축 값(점 아래) · y축 값(축 왼쪽) — 겹치지 않게 기억해 둔다 */
     xval(x,s,below){if(!x&&s==null)return;if(P._xs.some(t=>Math.abs(t-x)*u<FS*0.9))return;P._xs.push(x);
-      if(below!==false&&x<0&&(X(0)-X(x))<FS*1.6)below=false;            // O 글자와 겹치면 축 위로
+      if(below!==false&&below!=='force'&&x<0&&(X(0)-X(x))<FS*1.6)below=false;            // O 글자와 겹치면 축 위로
       P.text(x,0,s!=null?s:P.num(x),{dy:below===false?-8:FS+4});},
     yval(y,s,right){if(!y&&s==null)return;if(P._ys.some(t=>Math.abs(t-y)*uY<FS*0.8))return;P._ys.push(y);
       if(!right&&y<0&&(Y(y)-Y(0))<FS*1.4)right=true;
@@ -155,12 +155,50 @@ var EXAM_FIG={
     if(p)P.xval(p,null,q<0?false:true);if(q)P.yval(q,null,p<0);
     return P.svg();
   },
-  /* 원 : 원과 중심점만 — 중심·반지름을 묻는 문제가 많아 숫자를 쓰지 않는다 */
-  circle(g){
-    const{h,k,r}=g;
+  /* 원 (2021~2026 기출 13번 그림)
+     - 지름 문제(g.A·g.B) : 지름의 양 끝 점 A·B 와 선분 AB, 끝 점마다 'A(−3, 0)' 처럼 좌표를 쓴다.
+     - g.show==='center' : 문제에 중심이 주어진 경우 — 중심에서 두 축으로 점선을 내리고 x값·y값을 쓴다.
+     - 그 밖(중심·반지름을 묻는 문제) : 원과 중심점만 (숫자를 쓰면 답이 보인다) */
+  circle(g,q){
+    const{h,k,r}=g;let{A,B}=g;
+    /* 예전 기록(graph 에 A·B 가 없음)은 문제 글에서 두 점을 읽는다 */
+    const mq=!A&&/지름/.test(q&&q.q||'')&&String(q.q).replace(/−/g,'-').match(/A\((-?\d+),\s*(-?\d+)\),\s*B\((-?\d+),\s*(-?\d+)\)/);
+    if(mq){A=[+mq[1],+mq[2]];B=[+mq[3],+mq[4]];}
     const w={xmin:Math.min(-1,h-r-1),xmax:Math.max(1,h+r+1),ymin:Math.min(-1,k-r-1),ymax:Math.max(1,k+r+1)};
+    if(A&&B){w.ymax+=0.8;w.ymin-=0.8;w.xmin-=2;w.xmax+=2;}   // 끝 점 이름표 자리
     const P=exfPlane(w,{unit:Math.min(44,300/(2*r+3))});P.axes(false);
     P.circle(h,k,r);P.dot(h,k,{r:4});
+    if(A&&B){
+      P.seg(A[0],A[1],B[0],B[1],{w:2});
+      const fs=19;
+      /* 이름표 자리 : 바깥쪽(중심 반대편)부터 위·아래·왼쪽·오른쪽 후보를 보고,
+         그림 밖으로 나가거나 축 선을 가로지르거나 다른 이름표와 겹치는 자리는 건너뛴다 */
+      const boxes=[[P.X(0)-6-P.FS*0.8,P.Y(0)+2,P.FS*0.8]];       // 원점 O 글자 자리
+      [[A,'A'],[B,'B']].forEach(([pt,n])=>{
+        const[x,y]=pt;P.dot(x,y);
+        const s=`${n}(${P.num(x)}, ${P.num(y)})`,tw=s.length*fs*0.56,X0=P.X(x),Y0=P.Y(y);
+        const cand={up:[X0-tw/2,Y0-12-fs,'middle',X0,Y0-12],dn:[X0-tw/2,Y0+10,'middle',X0,Y0+fs+10],
+          lf:[X0-12-tw,Y0-fs-4,'end',X0-12,Y0-6],rt:[X0+12,Y0-fs-4,'start',X0+12,Y0-6],
+          ul:[X0-6-tw,Y0-fs-14,'end',X0-6,Y0-14],ur:[X0+6,Y0-fs-14,'start',X0+6,Y0-14],
+          dl:[X0-6-tw,Y0+8,'end',X0-6,Y0+fs+8],dr:[X0+6,Y0+8,'start',X0+6,Y0+fs+8]};
+        const dx=x-h,dy=y-k,order=[];
+        if(Math.abs(dx)>=Math.abs(dy))order.push(dx<0?'lf':'rt',dy>=0?'up':'dn',dy>=0?'dn':'up',dx<0?'rt':'lf');
+        else order.push(dy>0?'up':'dn',dx<0?'lf':'rt',dx<0?'rt':'lf',dy>0?'dn':'up');
+        order.splice(1,0,(dy>=0?'u':'d')+(dx<0?'l':'r'),(dy>=0?'u':'d')+(dx<0?'r':'l'),(dy>=0?'d':'u')+(dx<0?'l':'r'));
+        const ax=P.X(0),ay=P.Y(0);
+        /* 원의 선을 가로지르는가 (상자 안 가장 가까운 점은 원 안, 가장 먼 꼭짓점은 원 밖) */
+        const cX=P.X(h),cY=P.Y(k),R=r*P.u;
+        const cut=(l,t)=>{const b=t+fs+4,nx=Math.max(l,Math.min(cX,l+tw)),ny=Math.max(t,Math.min(cY,b));
+          const dmin=Math.hypot(nx-cX,ny-cY),dmax=Math.max(...[[l,t],[l+tw,t],[l,b],[l+tw,b]].map(([a,c])=>Math.hypot(a-cX,c-cY)));return dmin<R+3&&dmax>R-3;};
+        const ok=([l,t],strict)=>(!strict||!cut(l,t))&&l>=2&&l+tw<=P.W-2&&t>=2&&t+fs+4<=P.H-2&&!(l<ax&&l+tw>ax)&&!(t-2<ay&&t+fs+8>ay)
+          &&!boxes.some(([l2,t2,w2])=>l<l2+w2&&l+tw>l2&&t<t2+fs+4&&t+fs+4>t2);
+        const key=order.find(c=>ok(cand[c],true))||order.find(c=>ok(cand[c]))||order[0];
+        const[l,t,anchor,px,py]=cand[key];boxes.push([l,t,tw]);
+        P.text(x,y,s,{math:true,px,py,anchor,size:fs});
+      });
+    }else if(g.show==='center'||/중심(이|의 좌표가) \(|대칭이동/.test(q&&q.q||'')){
+      P.guide(h,k);if(h)P.xval(h,null,k<0?false:'force');if(k)P.yval(k,null,h<0);
+    }
     return P.svg();
   },
   /* 직선과 원 (기출 그림 1) : x²+y²=r² 과 직선 x=a(또는 y=a) — 이름표만 */
