@@ -9,16 +9,16 @@ function gen_quad_double_root(){
   // x²+ax+b=0이 중근 → D=a²−4b=0 → b=a²/4 → a를 짝수로
   const a0=pick([2,4,6,-2,-4,-6]);
   const b0=a0**2/4;
-  const ans=Math.abs(a0); // 보통 양수 물음
-  const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2<0?ans+4:ans-2,ans+4].filter(w=>w!==ans).slice(0,3).map(String));
-  const aS=_pltail([[a0,'x']]);
-  const half=a0/2, halfS=`(x${half>=0?'+':'−'}${Math.abs(half)})`;
-  return{topic:'이차방정식 중근',q:`이차방정식 x²${aS}+${b0}=0이 중근을 가질 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+  const ans=Math.abs(a0); // 양수 a 를 묻는다 (예전에는 a 자리에 값이 그대로 찍혀 문제가 성립하지 않았다)
+  const{choices,answer}=makeChoices(String(ans),[ans+2,ans-2<=0?ans+4:ans-2,ans+4].filter(w=>w!==ans).slice(0,3).map(String));
+  const aS=_pltail([[ans,'x']]);
+  const half=ans/2, halfS=`(x+${half})`;
+  return{topic:'이차방정식 중근',q:`이차방정식 x²+ax+${b0}=0이 중근을 가질 때, 양수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `중근: 이차방정식의 두 근이 같은 경우. 판별식 D = a²−4b = 0 이 조건입니다.`,
-      `이 식에서 a=${a0}, b=${b0}이므로 D = ${a0}²−4×${b0} = ${a0*a0}−${4*b0} = 0. ✓`,
+      `D = a²−4×${b0} = 0 → a² = ${4*b0} → a = ±${ans}, 양수이므로 a = ${ans}`,
       `검산: x²${aS}+${b0} = ${halfS}² = 0 → x = ${-a0/2} (중근)`,
-      `문제에서 a의 값(양수)을 묻고 있으므로 |${a0}| = ${ans}입니다.`
+      `따라서 a = ${ans}입니다.`
     ]};
 }
 
@@ -50,7 +50,7 @@ function gen_from_roots(){
   const ans=ask==='sum'?sum:prod;
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1<0?ans+2:ans-1,ask==='sum'?prod:sum].filter(w=>w!==ans).slice(0,3).map(String));
   if(ask==='sum'){
-    return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}를 근으로 하고 x²의 계수가 1인 이차방정식이 x²−ax+${prod}=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+    return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}${/[0136789]$/.test(String(r2v))?'을':'를'} 근으로 하고 x²의 계수가 1인 이차방정식이 x²−ax+${prod}=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
       sol:[
         `두 근이 ${r1}, ${r2v}인 이차방정식 → (x−${r1})(x−${r2v})=0으로 씁니다.`,
         `전개: x²−(${r1}+${r2v})x+${r1}×${r2v} = x²−${sum}x+${prod} = 0`,
@@ -58,7 +58,7 @@ function gen_from_roots(){
         `따라서 a = ${ans}입니다.`
       ]};
   }
-  return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}를 근으로 하고 x²의 계수가 1인 이차방정식이 x²−${sum}x+a=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
+  return{topic:'두 근→이차방정식',q:`두 수 ${r1}, ${r2v}${/[0136789]$/.test(String(r2v))?'을':'를'} 근으로 하고 x²의 계수가 1인 이차방정식이 x²−${sum}x+a=0일 때, 상수 a의 값은?`,choices,answer,meta:{category:'eq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `두 근이 ${r1}, ${r2v}인 이차방정식 → (x−${r1})(x−${r2v})=0으로 씁니다.`,
       `전개: x²−(${r1}+${r2v})x+${r1}×${r2v} = x²−${sum}x+${prod} = 0`,
@@ -169,22 +169,22 @@ function gen_system_eq(){
 // 2-9. 이차부등식 해 범위  (기출 Q10 패턴A)
 function gen_quad_ineq(){
   const r1=randInt(-3,1),r2=r1+randInt(2,5);
-  const op=pick(['≤0','≥0']);
+  const op=pick(['≤','≥','<','>']);
+  const inside=op==='≤'||op==='<',closed=op==='≤'||op==='≥';
   const lhs=`${_fac(r1)}${_fac(r2)}`;            // 근이 0이면 (x−0) 대신 그냥 x
-  const corrLE=`${r1}≤x≤${r2}`;
-  const corrGE=`x≤${r1} 또는 x≥${r2}`;
-  const correct=op==='≤0'?corrLE:corrGE;
-  const wrong1=op==='≤0'?corrGE:corrLE;
-  const wrong2=`${r1+1}≤x≤${r2}`;
-  const wrong3=`x≤${r1} 또는 x≥${r2+1}`;
-  const{choices,answer}=makeChoices(correct,[wrong1,wrong2,wrong3].filter(w=>w!==correct));
-  return{topic:'이차부등식',q:`이차부등식 ${lhs}${op}의 해는?`,choices,answer,meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
+  const T=(ins,cl)=>ins?(cl?`${r1}≤x≤${r2}`:`${r1}<x<${r2}`):(cl?`x≤${r1} 또는 x≥${r2}`:`x<${r1} 또는 x>${r2}`);
+  const correct=T(inside,closed);
+  /* 2026-2회 9번처럼 '수직선 위에 나타낸 것은?' 이면 보기를 그림으로 — 사이/바깥 × ●/○ 네 가지 */
+  const pic=Math.random()<0.5;
+  const wr=pic?[[!inside,closed],[inside,!closed],[!inside,!closed]].map(([i,c])=>T(i,c))
+    :[T(!inside,closed),T(inside,!closed),inside?`${r1+1}${closed?'≤':'<'}x${closed?'≤':'<'}${r2}`:`x${closed?'≤':'<'}${r1} 또는 x${closed?'≥':'>'}${r2+1}`];
+  const{choices,answer}=makeChoices(correct,wr);
+  return{topic:'이차부등식',q:`이차부등식 ${lhs}${op}0의 해${pic?'를 수직선 위에 나타낸 것은':'는'}?`,choices,answer,choicePic:pic?'ineq':undefined,
+    meta:{category:'ineq',type:'방정식과 부등식',diff:'기초'},
     sol:[
       `${lhs}=0의 두 근을 구합니다: x=${r1} 또는 x=${r2}`,
-      `이 두 근이 부등식의 경계점이 됩니다.`,
-      op==='≤0'
-        ? `${lhs}≤0 → 두 근 사이에서 0 이하가 됩니다. (∩ 모양 포물선의 아랫부분)`
-        : `${lhs}≥0 → 두 근 바깥쪽에서 0 이상이 됩니다. (∩ 모양 포물선의 위쪽)`,
+      inside?`${op} 0 → 아래로 볼록한 곡선이 x축 아래(또는 위에 닿는) 곳 = 두 근 사이`:`${op} 0 → 곡선이 x축 위(또는 닿는) 곳 = 두 근 바깥쪽`,
+      closed?`'같다(=)'가 있으므로 두 근도 해에 들어갑니다 (●)`:`'같다(=)'가 없으므로 두 근은 빠집니다 (○)`,
       `따라서 해는 ${correct}입니다.`
     ]};
 }

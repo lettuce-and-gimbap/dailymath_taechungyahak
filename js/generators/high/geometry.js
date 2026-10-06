@@ -35,19 +35,24 @@ function gen_two_point_dist(){
 
 // 3-2. 내분점 — 수직선  (기출 Q11 패턴A: 2023~)
 function gen_internal_1d(){
-  const mnOpts=[[1,2],[2,1],[1,3],[3,1],[2,3],[3,2],[1,1]];
+  const mnOpts=[[1,2],[2,1],[1,3],[3,1],[2,3],[3,2],[3,4],[4,3],[3,5],[5,3]];
   let m,n,a,b,p,att=0;
   do{
-    [m,n]=pick(mnOpts); a=randInt(-2,4); b=randInt(a+2,8);
+    [m,n]=pick(mnOpts); a=randInt(-2,4); b=randInt(a+2,10);
     const num=m*b+n*a, den=m+n;
     if(num%den===0){p=num/den;break;}
     att++;
-  }while(att<30);
-  if(att>=30){m=1;n=2;a=1;b=7;p=3;}
+  }while(att<60);
+  if(att>=60){m=1;n=2;a=1;b=7;p=3;}
   const correct=String(p);
-  const{choices,answer}=makeChoices(correct,[p+1,p-1<a?p+2:p-1,p+2].filter(w=>String(w)!==correct).slice(0,3).map(String));
+  const{choices,answer}=makeChoices(correct,[p+1,p-1<a?p+2:p-1,p+2,a+(b-a)*n/(m+n)].filter(w=>Number.isInteger(w)&&String(w)!==correct).slice(0,3).map(String));
   const pn=v=>v<0?`(${v})`:`${v}`;
-  return{topic:'내분점(수직선)',q:`수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점 P의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_1d',a,b,p,m,n},
+  const ro=k=>/[036]$/.test(String(k))?'으로':'로';
+  /* 2025-2회 · 2026-2회처럼 생활 이야기를 붙인다 (좌표 탭 응용 4 와 같은 이야기 목록) */
+  const st=typeof DIV_STORIES!=='undefined'&&Math.random()<0.5?pick(DIV_STORIES):null;
+  const q=st?`${st.txt} 수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m} : ${n}${ro(n)} 내분하는 점 P에 ${st.act}, 점 P의 좌표는?`
+    :`수직선 위의 두 점 A(${a}), B(${b})에 대하여 선분 AB를 ${m} : ${n}${ro(n)} 내분하는 점 P의 좌표는?`;
+  return{topic:'내분점(수직선)',q,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_1d',a,b,p,m,n,icon:st?st.icon:undefined},
     sol:[
       `내분점 공식: 선분 AB를 m:n으로 내분하는 점은 (m×B+n×A)÷(m+n)으로 구합니다.`,
       `여기서 m=${m}, n=${n}, A=${a}, B=${b}입니다.`,
@@ -76,7 +81,7 @@ function gen_internal_2d(){
   const{choices,answer}=makeChoices(correct,wrongs);
   const s=m+n;
   const pn=v=>v<0?`(${v})`:`${v}`;
-  return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m}:${n}으로 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_2d',ax,ay,bx,by,px,py,m,n},
+  return{topic:'내분점(좌표평면)',q:`좌표평면 위의 두 점 A(${ax}, ${ay}), B(${bx}, ${by})에 대하여 선분 AB를 ${m} : ${n}${/[036]$/.test(String(n))?'으로':'로'} 내분하는 점의 좌표는?`,choices,answer,meta:{category:'geometry',type:'도형과 기하',diff:'기초'},graph:{type:'section_2d',ax,ay,bx,by,px,py,m,n},
     sol:[
       `내분점 공식을 x좌표, y좌표에 각각 적용합니다. m:n=${m}:${n}, A(${ax}, ${ay}), B(${bx}, ${by}).`,
       `x좌표=(${m}×${pn(bx)}+${n}×${pn(ax)})÷${s}=(${_add(m*bx,n*ax)})÷${s}=${m*bx+n*ax}÷${s}=${px}`,
@@ -140,7 +145,8 @@ function gen_parallel_perp_line(){
 // 3-6. 평행이동  (기출 Q14 패턴A)
 function gen_translation(){
   const x=randInt(-2,4),y=randInt(-2,4);
-  const px=randInt(-3,4),py=randInt(-3,4);
+  const nz=(a,b)=>{let v=0;while(!v)v=randInt(a,b);return v;};   // '0만큼' 평행이동이 나오지 않게
+  const px=nz(-3,4),py=nz(-3,4);
   const rx=x+px,ry=y+py;
   const correct=`(${rx}, ${ry})`;
   const w=[`(${rx+1}, ${ry})`,`(${rx}, ${ry-1})`,`(${x}, ${y})`].filter(w=>w!==correct);
@@ -287,7 +293,8 @@ function gen_circle_sym_move(){
   const{choices,answer}=makeChoices(correct,ws);
   const origEq=mkEq(h,k);
   const symDesc={'x축':`x축 대칭: 중심의 y좌표 부호만 바꿉니다. (${h},${k}) → (${nh},${nk})`,'y축':`y축 대칭: 중심의 x좌표 부호만 바꿉니다. (${h},${k}) → (${nh},${nk})`,'원점':`원점 대칭: 중심의 x, y 좌표 모두 부호를 바꿉니다. (${h},${k}) → (${nh},${nk})`};
-  return{topic:'원의 대칭이동',q:`원 ${origEq}을 ${sym}에 대하여 대칭이동한 도형의 방정식은?`,choices,answer,graph:{type:'circle',h:nh,k:nk,r},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
+  return{topic:'원의 대칭이동',q:`원 ${origEq}을 ${sym}에 대하여 대칭이동한 도형의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r},   // 처음 원만 그린다 (옮긴 원을 그리면 답이 보인다)
+meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
     sol:[
       `원을 대칭이동해도 반지름은 그대로이고, 중심의 좌표만 바뀝니다.`,
       symDesc[sym],

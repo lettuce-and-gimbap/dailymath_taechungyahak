@@ -156,7 +156,8 @@ function WorksheetTab(){
     examSheet.questions.forEach((q,i)=>{
       html+=`<div class="q">
         <div><span class="qnum">${i+1}.</span>${q.q}<span class="qtag">${q.topic}</span></div>
-        <div class="choices">${q.choices.map((c,j)=>`<div class="choice">${ORD[j]} ${c}</div>`).join('')}</div>
+        ${examExtrasHTML(q)}
+        <div class="choices">${examChoiceItems(q).map((c,j)=>`<div class="choice">${ORD[j]} ${c}</div>`).join('')}</div>
         <div class="ans">정답: ${ORD[q.answer]} ${q.choices[q.answer]}</div>
         <div class="exp"><b>쉬운 해설:</b> ${easyExplanation(q)}</div>
       </div>`;
@@ -349,12 +350,8 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{q.topic}</span>
             {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full">📌 {src}</span>:null;})()}
           </div>
-          {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="text-sm font-bold text-gray-800 leading-relaxed mb-3"><QText v={q.q}/></div>
-          {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="grid grid-cols-2 gap-1.5">
-            {q.choices.map((c,j)=><div key={j} className={`text-xs px-3 py-2 rounded-xl border font-semibold ${j===q.answer?'bg-green-50 border-green-300 text-green-800':'bg-gray-50 border-gray-200 text-gray-600'}`}>{ORD[j]} <MathText v={c}/></div>)}
-          </div>
+          {/* 학생 모의고사 화면과 같은 모양 (시험지 수식 · 그림 · 표) — 정답을 초록으로 */}
+          <MockQBody q={q} sel={q.answer} isGraded={true} readOnly={true}/>
           <div className="mt-2 text-xs text-green-700 font-black bg-green-50 px-3 py-1.5 rounded-xl inline-block">정답: {ORD[q.answer]} <MathText v={q.choices[q.answer]}/></div>
           <ExplanationBox q={q}/>
         </div>
@@ -436,7 +433,8 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
         ws.questions.forEach((q,i)=>{
           html+=`<div class="q">
             <div><span class="qnum">${i+1}.</span>${q.q}<span class="qtag">${q.topic}</span></div>
-            <div class="choices">${q.choices.map((c,j)=>`<div class="choice">${ORD[j]} ${c}</div>`).join('')}</div>
+            ${examExtrasHTML(q)}
+            <div class="choices">${examChoiceItems(q).map((c,j)=>`<div class="choice">${ORD[j]} ${c}</div>`).join('')}</div>
             <div class="ans">정답: ${ORD[q.answer]} ${q.choices[q.answer]}</div>
             <div class="exp"><b>쉬운 해설:</b> ${easyExplanation(q)}</div>
           </div>`;

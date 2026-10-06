@@ -67,6 +67,7 @@ js/
 ├── math/          수학 표현 — 여러 화면이 함께 쓰는 렌더링 재료
 │   ├── primitives.js    격자·점·분수·루트 SVG 요소 + 캔버스 훅
 │   ├── expr.js          MathExpr(=MathText) · QText
+│   ├── examTex.js       생성기 평문 → 시험지 모양 KaTeX (toExamTex · examHtml)
 │   ├── explain.js       ExplanationBox
 │   ├── graphPreview.js  문제의 graph 데이터를 그리는 React 미리보기
 │   └── graphSvg.js      그래프 → SVG 문자열 (인쇄·PDF용)
@@ -83,6 +84,7 @@ js/
 │       └── probStat.js     ⑤ 확률과 통계
 ├── worksheet/     만능 학습지 엔진 (gedCore.js · gedUnits.js)
 ├── ui/            로그인·스플래시·인쇄 모달 등 학생/선생님 공용 화면
+│                  examFig.js · examFigShapes.js = 기출 모양 그림(graph 데이터 → SVG)
 ├── student/       학생 화면 (홈 · 문제풀기 · 기하학 · 모의고사 · 기록 · 숙제)
 ├── teacher/       선생님 화면 (학생관리 · 상세분석 · 오답노트 · 공지 · 학습지)
 └── app.js         진입점
@@ -269,6 +271,26 @@ js/
 - 기하학 : 새 기록에 `qTex · choices · answerIdx` 를 남긴다. 예전 기록은 `GEO_GENS` 로 씨앗 찾기.
 - 모의고사 : 새 기록에 `graph` 를 남긴다. 그림이 없던 예전 기록은 `tryReconstructGraph` → 안 되면 그림이 있을 법한 문제만 생성기 씨앗 찾기.
 - 새 문제 종류(탭)를 만들면 기록에 식·그림을 다시 그릴 재료(씨앗 또는 graph·qTex·choices)를 남기고 `LogQView` 에 분기를 하나 더한다.
+
+## 📝 모의고사 탭 · 시험지 모양 (2026-10-06 · js/student/mockExam.js `MockQBody`)
+
+학생 모의고사 문항은 좌표 탭처럼 큰 글씨로, 수식은 KaTeX, 그림은 2021~2026 기출 모양으로 그린다.
+선생님 화면(`LogQView` 모의고사 기록)과 학습지 탭 미리보기도 같은 `MockQBody` 를 쓴다. 인쇄는 `examExtrasHTML(q)` · `examChoiceItems(q)`.
+
+- **문제 글은 평문 그대로 둔다** (기록·인쇄·선생님 화면이 글자로 쓴다). 화면에서만 `toExamTex()`(js/math/examTex.js)가
+  한글이 끊는 자리마다 수식 덩어리를 `$…$` 로 감싸고 ² · √ · a/b · ≤ · ∠ · ° 를 TeX 로 바꾼다. 대문자 이름은 바로 선 글씨, `AB=` 처럼 길이로 쓴 두 글자는 윗줄, 단위(cm·g·mg…)는 바로 선 글씨.
+  평문으로 못 쓰는 것(순환소수 점, 연립방정식 중괄호)만 생성기가 `qTex` 를 따로 준다. 풀이(sol)도 같은 변환을 거친다.
+  변환을 고치면 모든 생성기의 q·choices·sol 을 수백 번 돌려 `katex.renderToString(…,{throwOnError:true})` 오류가 0인지 확인한다.
+- **그림은 `graph` 데이터 → `examFigSVG(q)`**. 좌표·함수 그림은 `js/ui/examFig.js`(`exfPlane` : 모눈·눈금 없이 필요한 점에만 점선과 큰 숫자, 겹치면 비킴),
+  도형·통계·이야기 그림은 `js/ui/examFigShapes.js`(소인수분해 나뭇가지, 이동 거리 그래프, 평행선, 부채꼴, 회전체, 삼각형, 닮음, 원, 주머니, 메뉴판, 주사위…).
+  **정답이 그림에 드러나면 안 된다** (원의 중심을 묻는데 중심 좌표를 쓰지 않는다, 원의 대칭이동은 처음 원만, 내분점 P 는 찍지 않는다).
+  모르는 graph 종류는 예전 `GraphPreview` 로 그린다. 새 그림 종류는 `EXAM_FIG` 에 함수 하나를 더한다.
+- 문항에 `table:{head,rows,sumRow}`(도수분포표·줄기와 잎) · `box`(자료 상자, 숫자만이면 한 값씩 띄워 씀) · `boxUnit` · `choicePic:'ineq'`(보기를 ●/○ 수직선 그림으로) 를 쓸 수 있다.
+  모의고사 기록에는 graph · choicePic · table · box · boxUnit · qTex 를 함께 남긴다 (선생님 화면이 그대로 다시 그린다).
+- **중졸 생성기(js/generators/middle.js)는 기출 20문항 번호 순서**로 나뉘어 있다 (1 소인수분해 … 20 대푯값). 같은 유형도 이야기 목록
+  (`MID_EXPR_STORIES` · `MID_TRIP_STORIES` · `MID_FREQ_STORIES` · `MID_COUNT_STORIES` · `MID_PROB_STORIES` · `MID_REP_STORIES`)에서 골라 매번 다르게 낸다. 이야기를 늘릴 때는 이 배열에 한 줄을 더한다.
+- 중졸 기출 출처(`MID_Q_SPECIFIC`, js/core/examSource.js)는 2021-1회~2026-2회 12회분 문제지를 문항 번호별로 대조해 채웠다. 생성기 topic 이름과 같아야 출처가 붙는다.
+- 검증 : 모든 중졸·고졸 생성기를 300회씩 돌려 보기 4개 · 중복 없음 · 정답 번호 · NaN · KaTeX 오류 · 그림 생성 실패가 0인지, 위 '표기 도우미' 정규식(1x·+0)이 걸리지 않는지 본다.
 
 ## 📐 학생 기하학 탭 수식 (js/student/explore.js · js/math/expr.js)
 

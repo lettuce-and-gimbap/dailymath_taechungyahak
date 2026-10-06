@@ -8,6 +8,7 @@
                   식은 KaTeX, 그림은 학생이 문제를 풀 때 본 그림(정답 점은 숨긴 그림), 보기 그림도 그대로.
    - 기하학(기하: …) : 식 qTex · 그림 graph · 보기 순서 choices 가 있으면 그대로. 예전 기록(qTex 없음)은
                   기하 생성기(GEO_GENS)를 씨앗으로 돌려 같은 문제를 찾아 식과 보기를 얻는다.
+   - 모의고사 : 학생 화면과 같은 MockQBody(student/mockExam.js)로 그린다.
    - 문제풀기 검정고시 · 모의고사 : 문제 글 + 그림(graph) + 보기(choices). 그림이 없는 예전 기록은
                   글에서 그림 조건을 읽어 내거나(tryReconstructGraph), 생성기를 씨앗으로 돌려 찾는다.
    - 그 밖(나눗셈·약수 등) : 문제 글 그대로.
@@ -117,6 +118,12 @@ function ExamLogQ({rec,mock}){
   const ansIdx=rec.answerIdx!=null?rec.answerIdx:choices.map(String).indexOf(String(rec.cAns));
   const pick=lqPickIdx(choices,rec.uAns);
   const sys=graph&&graph.type==='system_eq';
+  /* 모의고사 : 학생 화면과 같은 MockQBody (시험지 모양 수식 · 그림 · 표) — 채점 뒤 모양(정답 초록 · 고른 오답 빨강) */
+  if(mock)return(<div className="bg-white rounded-2xl p-4 border border-gray-200">
+    <MockQBody q={{q:rec.qFull,qTex:rec.qTex,choices,answer:ansIdx,graph,choicePic:rec.choicePic,table:rec.table,box:rec.box,boxUnit:rec.boxUnit}}
+      sel={pick} isGraded={true} readOnly={true}/>
+    {need&&st.busy&&<LqLoading/>}
+  </div>);
   return(<div className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
     {(rec.topic||rec.meta?.type)&&<div className="inline-block bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full">📚 {rec.topic||rec.meta?.type}</div>}
     {sys&&<div className="flex justify-center"><GraphPreview q={{graph}}/></div>}

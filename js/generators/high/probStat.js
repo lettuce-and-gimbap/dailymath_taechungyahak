@@ -25,6 +25,13 @@ function genMockProbStat(){
       (n,r)=>`서로 다른 ${n}장의 한국 문화 카드 중에서 ${r}장을 골라 일렬로 나열하는 경우의 수는?`,
       (n,r)=>`서로 다른 ${n}종류의 채소 모종 중에서 ${r}개를 골라 화분에 하나씩 심는 순서를 정하는 경우의 수는?`,
       (n,r)=>`${n}개의 팀 중에서 ${r}개 팀을 뽑아 1위·2위를 정하는 경우의 수는?`,
+      (n,r)=>`야학 학생 ${n}명 중에서 반장 1명과 부반장 1명을 뽑는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}개의 전통 놀이 중에서 ${r}개를 골라 체험할 순서를 정하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}권의 책 중에서 ${r}권을 골라 책꽂이에 일렬로 꽂는 경우의 수는?`,
+      (n,r)=>`합창 대회에 나온 ${n}개 반 중에서 ${r}개 반을 골라 공연 순서를 정하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}가지 색 중에서 ${r}가지를 골라 깃발의 위·아래 칸을 칠하는 경우의 수는? (단, 위·아래 칸은 서로 다른 색으로 칠한다.)`,
+      (n,r)=>`서로 다른 ${n}곳의 체험 부스 중에서 ${r}곳을 골라 방문할 순서를 정하는 경우의 수는?`,
+      (n,r)=>`${n}명의 달리기 선수 중에서 금메달과 은메달을 받을 선수를 정하는 경우의 수는?`,
     ];
     const safeOpts=[[3,2],[4,2],[5,2]];
     const[n,r]=pick(safeOpts);
@@ -48,6 +55,13 @@ function genMockProbStat(){
       (n,r)=>`서로 다른 ${n}개의 문화 센터 프로그램 중에서 ${r}개를 선택하는 경우의 수는?`,
       (n,r)=>`${n}명의 후보 중에서 대표 ${r}명을 뽑는 경우의 수는?`,
       (n,r)=>`서로 다른 ${n}가지 색 중에서 ${r}가지를 골라 사용하는 경우의 수는?`,
+      (n,r)=>`김밥 재료 ${n}가지 중에서 서로 다른 ${r}가지를 골라 넣는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}종류의 꽃씨 중에서 ${r}종류를 골라 화단에 심는 경우의 수는?`,
+      (n,r)=>`야학 동아리 ${n}개 중에서 서로 다른 ${r}개에 가입하는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}곡의 노래 중에서 합창 대회에서 부를 ${r}곡을 고르는 경우의 수는?`,
+      (n,r)=>`${n}명의 학생 중에서 청소 당번 ${r}명을 뽑는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}가지 과일 중에서 ${r}가지를 골라 과일 바구니를 만드는 경우의 수는?`,
+      (n,r)=>`서로 다른 ${n}개의 견학 장소 중에서 ${r}곳을 고르는 경우의 수는?`,
     ];
     const safeCombs=[[4,2],[5,2],[6,2],[4,3],[5,3],[6,3]];
     const[n,r]=pick(safeCombs);
@@ -74,12 +88,14 @@ function genMockProbStat(){
     ];
     const c=pick(cases);
     const ans=frac(c.w,c.total);
-    const poolFracs=['1/2','1/3','2/3','1/4','3/4','2/5','3/5','1/5','4/5','1/6','5/6','3/10','7/10','2/10','4/10'];
+    const poolFracs=shuffle(['1/2','1/3','2/3','1/4','3/4','2/5','3/5','1/5','4/5','1/6','5/6','3/10','7/10']);
     const wrongs=[...new Set(poolFracs.filter(f=>f!==ans))].slice(0,3);
     const{choices,answer}=makeChoices(ans,wrongs);
+    const ga=/[공돌]$/.test(c.obj)?'이':'가';            // 공이 · 바둑돌이 · 카드가
     const qCtxs=[
-      `주머니에 ${c.wLabel} ${c.obj} ${c.w}개, ${c.rLabel} ${c.obj} ${c.r}개가 들어 있다. 이 주머니에서 ${c.obj} 한 개를 꺼낼 때, ${c.wLabel} ${c.obj}가 나올 확률은?`,
+      `주머니에 ${c.wLabel} ${c.obj} ${c.w}개, ${c.rLabel} ${c.obj} ${c.r}개가 들어 있다. 이 주머니에서 ${c.obj} 한 개를 꺼낼 때, ${c.wLabel} ${c.obj}${ga} 나올 확률은?`,
       `상자 안에 ${c.wLabel} ${c.obj} ${c.w}개와 ${c.rLabel} ${c.obj} ${c.r}개가 있다. 임의로 한 개를 꺼낼 때 ${c.wLabel} ${c.obj}일 확률은?`,
+      `야학 바자회 뽑기 상자에 ${c.wLabel} ${c.obj} ${c.w}개와 ${c.rLabel} ${c.obj} ${c.r}개가 들어 있다. 한 개를 뽑을 때 ${c.wLabel} ${c.obj}${ga} 나올 확률은?`,
     ];
     return{topic:'확률',q:pick(qCtxs),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`확률 = (사건이 일어나는 경우의 수) ÷ (전체 경우의 수)`,`P(${c.wLabel} ${c.obj}) = ${c.w} ÷ ${c.total} = ${ans}`]};
@@ -118,6 +134,12 @@ function genMockProbStat(){
       {a:5,b:2,ans:10,aLabel:'책 5권',bLabel:'읽는 순서 2가지'},
       {a:3,b:3,ans:9,aLabel:'앞면 3가지',bLabel:'뒷면 3가지'},
       {a:2,b:4,ans:8,aLabel:'경로 A 2가지',bLabel:'경로 B 4가지'},
+      {a:3,b:4,ans:12,aLabel:'국 3가지',bLabel:'반찬 4가지'},
+      {a:4,b:3,ans:12,aLabel:'김밥 4종류',bLabel:'음료 3종류'},
+      {a:2,b:3,ans:6,aLabel:'우산 2개',bLabel:'장화 3켤레'},
+      {a:5,b:3,ans:15,aLabel:'편지지 5종류',bLabel:'봉투 3종류'},
+      {a:3,b:5,ans:15,aLabel:'운동화 3켤레',bLabel:'양말 5켤레'},
+      {a:4,b:4,ans:16,aLabel:'케이크 맛 4가지',bLabel:'초 모양 4가지'},
     ];
     const multCtxs=[
       c=>`${c.aLabel}와 ${c.bLabel}가 있다. 각각 하나씩 고르는 경우의 수는?`,
@@ -125,7 +147,7 @@ function genMockProbStat(){
       c=>`${c.aLabel}와 ${c.bLabel}가 있다. 한 가지씩 선택하는 모든 경우의 수는?`,
     ];
     const c=pick(multCases);
-    const poolNums=[6,8,10,12,9,15,16,20].filter(v=>v!==c.ans);
+    const poolNums=shuffle([c.a+c.b,c.ans+1,c.ans-1,c.ans+2,c.ans+3,c.a*(c.b+1)]).filter(v=>v>0&&v!==c.ans);
     const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(c.ans),wrongs);
     return{topic:'경우의 수(곱)',q:pick(multCtxs)(c),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
@@ -140,13 +162,17 @@ function genMockProbStat(){
     {a:5,b:4,ans:9,aLabel:'연필 5자루',bLabel:'볼펜 4자루',desc:'필기구를 한 자루 고르는'},
     {a:3,b:6,ans:9,aLabel:'한식 3가지',bLabel:'양식 6가지',desc:'식당에서 메뉴를 하나 고르는'},
     {a:4,b:5,ans:9,aLabel:'소설책 4권',bLabel:'만화책 5권',desc:'책 한 권을 고르는'},
+    {a:3,b:4,ans:7,aLabel:'시내버스 3개 노선',bLabel:'마을버스 4개 노선',desc:'야학에서 집까지 가는'},
+    {a:5,b:3,ans:8,aLabel:'영화 5편',bLabel:'연극 3편',desc:'주말에 하나를 보러 가는'},
+    {a:2,b:6,ans:8,aLabel:'따뜻한 음료 2가지',bLabel:'차가운 음료 6가지',desc:'음료 한 잔을 고르는'},
+    {a:4,b:4,ans:8,aLabel:'수학 문제집 4권',bLabel:'국어 문제집 4권',desc:'문제집 한 권을 고르는'},
   ];
   const sumCtxs=[
-    c=>`${c.desc} 방법: ${c.aLabel}과 ${c.bLabel}이 있다. 이 중 한 가지를 선택하는 경우의 수는?`,
+    c=>`${c.desc} 방법으로 ${c.aLabel}과 ${c.bLabel}이 있다. 이 중 한 가지를 선택하는 경우의 수는?`,
     c=>`${c.aLabel}과 ${c.bLabel}이 있을 때, 이 중 하나를 선택하는 방법의 수는? (중복 없음)`,
   ];
   const c=pick(sumCases);
-  const poolNums=[4,5,6,7,8,9,10,11,12].filter(v=>v!==c.ans);
+  const poolNums=shuffle([c.a*c.b,c.ans+1,c.ans-1,c.ans+2]).filter(v=>v>0&&v!==c.ans);
   const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(c.ans),wrongs);
   return{topic:'경우의 수(합)',q:pick(sumCtxs)(c),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},

@@ -267,11 +267,11 @@ function gen_rational_asymptote(){
     // y=k/(x-a)+b 형태, 점근선 x=a, y=b → a+b 또는 a-b
     const op=pick(['a+b','a-b']);
     const ans=op==='a+b'?p+q:p-q;
-    const kStr=k===1?'':k===-1?'−':String(k);
+    const kStr=k<0?'−':'';const kAbs=Math.abs(k);
     const pStr=p>0?`x−${p}`:`x+${-p}`;
     const qStr=q>=0?`+${q}`:String(q);
     const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2,p,q].filter(w=>w!==ans).slice(0,3).map(String));
-    return{topic:'유리함수 점근선',q:`유리함수 y=${kStr}1/(${pStr})${qStr}의 그래프의 점근선이 x=a, y=b일 때, ${op}의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+    return{topic:'유리함수 점근선',q:`유리함수 y=${kStr}${kAbs}/(${pStr})${qStr}의 그래프의 점근선이 x=a, y=b일 때, ${op}의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
       graph:{type:'rational',k,p,q},
       sol:[
         `세로 점근선 x=a는 분모를 0으로 만드는 x값, 가로 점근선 y=b는 맨 끝 상수항입니다.`,
@@ -297,16 +297,16 @@ function gen_rational_asymptote(){
   // y=k/(x-a)+b가 y=k/x 이동 → a+b
   const aV=pick([1,2,3,-1,-2]),bV=pick([2,3,4,-1,-2]);
   const ans=aV+bV;
-  const kStr=Math.abs(k)===1?'':String(Math.abs(k));
+  const kStr=String(Math.abs(k));                 // 분자 (예전에는 '2'+'1/' 가 붙어 21/(x−3) 으로 찍혔다)
   const sign=k<0?'−':'';
   const pStr=aV>0?`x−${aV}`:`x+${-aV}`;
   const bStr=bV>=0?`+${bV}`:String(bV);
   const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans).map(String));
-  return{topic:'유리함수 평행이동',q:`유리함수 y=${sign}${kStr||''}1/(${pStr})${bStr}의 그래프는 y=${sign}${kStr||''}1/x의 그래프를 x축 방향으로 a만큼, y축 방향으로 b만큼 평행이동한 것이다. 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
+  return{topic:'유리함수 평행이동',q:`유리함수 y=${sign}${kStr}/(${pStr})${bStr}의 그래프는 y=${sign}${kStr}/x의 그래프를 x축 방향으로 a만큼, y축 방향으로 b만큼 평행이동한 것이다. 두 상수 a, b에 대하여 a+b의 값은?`,choices,answer,meta:{category:'func',type:'집합과 함수',diff:'기초'},
     graph:{type:'rational',k,p:aV,q:bV},
     sol:[
       `y=k/x를 x축으로 a만큼, y축으로 b만큼 옮기면 분모는 (x−a), 끝에 +b가 붙어 y=k/(x−a)+b가 됩니다.`,
-      `주어진 식 y=${sign}${kStr||''}1/(${pStr})${bStr}와 비교하면 a=${aV}, b=${bV}입니다.`,
+      `주어진 식 y=${sign}${kStr}/(${pStr})${bStr}와 비교하면 a=${aV}, b=${bV}입니다.`,
       `a+b=${aV}+${pn(bV)}=${ans}입니다.`
     ]};
 }

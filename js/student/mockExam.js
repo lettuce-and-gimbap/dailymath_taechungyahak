@@ -4,6 +4,53 @@
    중졸·고졸 검정고시 모의고사 응시
    -------------------------------------------------------------------- */
 
+/* ── 문항 하나 (2026-10-06) : 좌표 탭처럼 큰 글씨 · 시험지 모양 수식(js/math/examTex.js) · 기출 모양 그림(js/ui/examFig.js)
+   q.graph 종류를 examFigSVG 가 모르면 예전 GraphPreview 로 그린다.
+   q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) 를 읽는다.
+   선생님 화면(teacher/logQView.js)도 이 컴포넌트를 그대로 쓴다 — 학생이 본 화면과 같게. */
+var MOCK_ORD=['①','②','③','④'];
+var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:keep-all}
+.extbl{border-collapse:collapse;margin:0 auto;font-size:1rem}.extbl th,.extbl td{border:1.5px solid #9aa1ad;padding:4px 12px;text-align:center}
+.extbl th{background:#eceef2;font-weight:700}.extbl tr.sum td{background:#eceef2;font-weight:700}`;
+function MockQBody({q,sel,isGraded,onPick,readOnly}){
+  const g=q.graph;
+  const sys=g&&g.type==='system_eq';
+  const fig=sys?null:examFigSVG(q);
+  const sysHtml=sys?examHtml(`$\\begin{cases}${g.eqs.map(e=>_exRunTex(e)).join('\\\\')}\\end{cases}$`):null;
+  const pics=q.choicePic==='ineq'?exfIneqChoices(q.choices):null;
+  /* 2단 배치는 숫자·분수·짧은 값만 (식은 KaTeX 로 넓어져 2단에서 줄이 꺾인다) */
+  const short=q.choices.every(c=>{const t=String(c).replace(/\s/g,'');return t.length<=6&&!/[=<>≤≥]/.test(t)||/^[−-]?\d+\/\d+$/.test(t);});
+  const cols=!pics&&short?'grid-cols-2':'grid-cols-1';      // 수직선 그림 보기는 한 줄에 하나 (숫자가 작아지지 않게)
+  return(<div>
+    <style>{MOCK_CSS}</style>
+    <div className="exq text-lg font-bold text-gray-900 leading-loose mb-3" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>
+    {sysHtml&&<div className="text-xl text-center mb-3" dangerouslySetInnerHTML={{__html:sysHtml}}/>}
+    {q.boxUnit&&<div className="text-right text-sm text-gray-600 mb-1">{q.boxUnit}</div>}
+    {q.box&&(/^[-−\d.\s,]+$/.test(q.box)
+      /* 자료 상자 : 숫자 사이를 넓게 띄워 한 값씩 읽히게 (기출 20번) */
+      ?<div className="border-2 border-gray-400 rounded px-3 py-3 mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xl" style={{fontFamily:EXF_SERIF}}>{q.box.split(/[\s,]+/).filter(Boolean).map((v,i)=><span key={i}>{v.replace('-','−')}</span>)}</div>
+      :<div className="border-2 border-gray-400 rounded px-4 py-3 mb-3 text-center text-lg" dangerouslySetInnerHTML={{__html:examHtml(toExamTex(q.box))}}/>)}
+    {q.table&&<div className="overflow-x-auto mb-3"><table className="extbl">
+      <tbody>{q.table.head&&<tr>{q.table.head.map((h,i)=><th key={i} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(h))}}/>)}</tr>}
+      {q.table.rows.map((r,i)=><tr key={i} className={q.table.sumRow&&i===q.table.rows.length-1?'sum':''}>{r.map((c,j)=><td key={j} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(c))}}/>)}</tr>)}</tbody></table></div>}
+    {fig?<div className="flex justify-center mb-3" dangerouslySetInnerHTML={{__html:fig}}/>
+      :(g&&!sys&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>)}
+    <div className={`grid gap-2 ${cols}`}>
+      {q.choices.map((ch,j)=>{
+        let cls='bg-white border-gray-200 text-gray-800';
+        if(isGraded){if(sel===j)cls=j===q.answer?'bg-green-100 border-green-500 text-green-900':'bg-red-100 border-red-400 text-red-700';else if(j===q.answer)cls='bg-green-50 border-green-400 text-green-800';}
+        else if(sel===j)cls='bg-indigo-100 border-indigo-500 text-indigo-900';
+        return(<button key={j} disabled={readOnly} onClick={()=>onPick&&onPick(j)}
+          className={`exc text-left text-lg font-bold px-3 py-3 rounded-xl border-2 transition-all active:scale-95 ${cls}`}>
+          <span className="mr-1">{MOCK_ORD[j]}</span>
+          {pics?<span className="block mt-1" dangerouslySetInnerHTML={{__html:pics[j]}}/>
+            :<span dangerouslySetInnerHTML={{__html:examChoiceHtml(ch)}}/>}
+        </button>);
+      })}
+    </div>
+  </div>);
+}
+
 function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
@@ -103,6 +150,7 @@ function MockExamTab({userData,onUpdate}){
         qTopicHash:getTopicHash(q),
         sol:Array.isArray(q.sol)&&q.sol.length?q.sol:null,
         graph:q.graph||null,   // 선생님 화면에서 문제 그림을 그대로 다시 그린다
+        choicePic:q.choicePic||null,table:q.table||null,box:q.box||null,boxUnit:q.boxUnit||null,qTex:q.qTex||null,
         explanation:easyExplanation(q),
         meta:q.meta
       };
@@ -224,31 +272,15 @@ function MockExamTab({userData,onUpdate}){
             {(()=>{var src=getExamSource(q);return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
-          {q.graph?.type==='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="font-bold text-gray-800 text-sm leading-relaxed mb-3"><QText v={q.q}/></div>
-          {/* 기하 문제 그래프 미리보기 */}
-          {q.graph&&q.graph.type!=='system_eq'&&<div className="flex justify-center mb-2"><GraphPreview q={q}/></div>}
-          <div className="grid grid-cols-1 gap-2">
-            {q.choices.map((ch,j)=>{
-              let cls='bg-gray-50 border-gray-200 text-gray-700';
-              if(isGraded){if(sel[i]===j)cls=j===q.answer?'bg-green-100 border-green-400 text-green-800 font-bold':'bg-red-100 border-red-400 text-red-700';else if(j===q.answer)cls='bg-green-50 border-green-300 text-green-700 font-semibold';}
-              else if(sel[i]===j)cls='bg-indigo-100 border-indigo-400 text-indigo-800 font-semibold';
-              return(<button key={j} onClick={()=>{
-                if(isGraded)return;
-                const now=Date.now()-startTime;
-                // 첫 선택: firstClickMs 기록
-                if(firstClickTimes[i]===undefined) setFirstClickTimes(p=>({...p,[i]:now}));
-                // 이후 선택: 이미 다른 답 선택한 경우에만 revisionCount++
-                else if(sel[i]!==undefined&&sel[i]!==j) setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
-                setSel(s=>({...s,[i]:j}));
-              }}
-                className={`text-left text-base px-4 py-3 rounded-xl border-2 transition-all active:scale-95 ${cls}`}>
-                {ORD[j]} <MathText v={ch}/>
-              </button>);
-            })}
-          </div>
-          {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <MathText v={q.choices[q.answer]}/></div>)}
-          {isGraded&&<ExplanationBox q={q}/>}
+          <MockQBody q={q} sel={sel[i]} isGraded={isGraded} onPick={j=>{
+            if(isGraded)return;
+            const now=Date.now()-startTime;
+            if(firstClickTimes[i]===undefined) setFirstClickTimes(p=>({...p,[i]:now}));
+            else if(sel[i]!==undefined&&sel[i]!==j) setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
+            setSel(s=>({...s,[i]:j}));
+          }}/>
+          {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
+          {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
         </div>);
       })}
       {answered===10&&!isGraded&&(<div className="fade-in">
