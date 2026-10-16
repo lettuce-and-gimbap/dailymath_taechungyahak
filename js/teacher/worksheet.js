@@ -40,7 +40,7 @@ function WorksheetTab(){
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
   // 영역별 정답률 계산 (학생 로그 기반)
-  const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
+  const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS_T=wsType==='mock_middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS_T;
   const DOMAINS_T=Object.keys(DOMAIN_GENS_T);
   const computeStatsT=(logs)=>{
@@ -71,7 +71,7 @@ function WorksheetTab(){
   // 모의고사 문제지 생성
   const createExamSheet=()=>{
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
-    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T;
+    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T.filter(d=>d!=='내분점');   // 고르지 않으면 내분점(도형과 기하 안에 이미 있음)은 빼고 섞는다
     let pool=[];
     if(examMode==='weak'&&targetStudent){
       const stu=studentList.find(s=>s.name===targetStudent);

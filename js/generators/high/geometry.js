@@ -335,6 +335,9 @@ function genMockInternalPt(){return gen_internal_2d();}
 
 function genMockLine(){return gen_line_eq();}
 
+/* 내분점만 따로 연습 (문제풀기 · 모의고사 · 학습지의 '내분점' 영역) — 수직선형과 좌표평면형을 반반 */
+function genMockInternalAny(){return Math.random()<0.5?gen_internal_1d():gen_internal_2d();}
+
 function genMockGeometry(){
   const gens=[
     [gen_two_point_dist,4],[gen_internal_1d,2],[gen_internal_2d,4],

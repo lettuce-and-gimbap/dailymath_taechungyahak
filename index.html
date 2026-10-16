@@ -5145,6 +5145,9 @@ function genMockInternalPt(){return gen_internal_2d();}
 
 function genMockLine(){return gen_line_eq();}
 
+/* 내분점만 따로 연습 (문제풀기 · 모의고사 · 학습지의 '내분점' 영역) — 수직선형과 좌표평면형을 반반 */
+function genMockInternalAny(){return Math.random()<0.5?gen_internal_1d():gen_internal_2d();}
+
 function genMockGeometry(){
   const gens=[
     [gen_two_point_dist,4],[gen_internal_1d,2],[gen_internal_2d,4],
@@ -10717,7 +10720,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume}){
   const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
   const MID_DOMAINS=['전체(혼합)','수와 연산','문자와 식','함수','기하','확률과 통계'];
-  const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','집합과 함수','확률과 통계'];
+  const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','내분점','집합과 함수','확률과 통계'];
   const domainList=ver===5?MID_DOMAINS:HIGH_DOMAINS;
   return(<div className="p-4 space-y-4 pb-36">
     {savedData&&(<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
@@ -10820,7 +10823,8 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
         gen=()=>genMiddleMock(domain);
       } else {
         const dIdx=highLabels.indexOf(domain);
-        gen=dIdx>=0?highGens[dIdx]:highGens[Math.floor(Math.random()*highGens.length)];
+        // '내분점'은 혼합 순환(highLabels)에는 넣지 않고, 골랐을 때만 따로 낸다
+        gen=domain==='내분점'?genMockInternalAny:dIdx>=0?highGens[dIdx]:highGens[Math.floor(Math.random()*highGens.length)];
       }
     } else {
       const areaLabels=qType===5?midLabels:highLabels;
@@ -12484,7 +12488,7 @@ function MockExamTab({userData,onUpdate}){
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
   const[selectedDomains,setSelectedDomains]=useState([]);
 
-  const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
+  const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS=examLevel==='middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS;
   const DOMAINS=Object.keys(DOMAIN_GENS);
 
@@ -12535,11 +12539,12 @@ function MockExamTab({userData,onUpdate}){
       }
       pool=shuffle(pool);
     }else{
-      DOMAINS.forEach(dom=>{for(let j=0;j<2;j++){const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
+      DOMAINS.filter(d=>d!=='내분점').forEach(dom=>{for(let j=0;j<2;j++){   // 내분점은 '도형과 기하'에도 들어 있으므로 랜덤 혼합에서는 빼 둔다
+        const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
       pool=shuffle(pool);
     }
     let safety=0;
-    while(pool.length<10&&safety++<50){const q=safeGen(pick(Object.values(DOMAIN_GENS)));if(q)pool.push(q);}
+    while(pool.length<10&&safety++<50){const q=safeGen(pick(DOMAINS.filter(d=>d!=='내분점').map(d=>DOMAIN_GENS[d])));if(q)pool.push(q);}
     setQuestions(pool.slice(0,10));setSel({});setIsGraded(false);setSaved(false);setFeelingDone(false);savingRef.current=false;savedUpdRef.current=null;setStartTime(Date.now());setScreen('exam');
     setFirstClickTimes({});setRevisionCounts({});
   };
@@ -16425,7 +16430,7 @@ function WorksheetTab(){
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
   // 영역별 정답률 계산 (학생 로그 기반)
-  const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
+  const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS_T=wsType==='mock_middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS_T;
   const DOMAINS_T=Object.keys(DOMAIN_GENS_T);
   const computeStatsT=(logs)=>{
@@ -16456,7 +16461,7 @@ function WorksheetTab(){
   // 모의고사 문제지 생성
   const createExamSheet=()=>{
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
-    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T;
+    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T.filter(d=>d!=='내분점');   // 고르지 않으면 내분점(도형과 기하 안에 이미 있음)은 빼고 섞는다
     let pool=[];
     if(examMode==='weak'&&targetStudent){
       const stu=studentList.find(s=>s.name===targetStudent);

@@ -68,7 +68,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume}){
   const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
   const MID_DOMAINS=['전체(혼합)','수와 연산','문자와 식','함수','기하','확률과 통계'];
-  const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','집합과 함수','확률과 통계'];
+  const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','내분점','집합과 함수','확률과 통계'];
   const domainList=ver===5?MID_DOMAINS:HIGH_DOMAINS;
   return(<div className="p-4 space-y-4 pb-36">
     {savedData&&(<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-transform flex items-center gap-3">
@@ -171,7 +171,8 @@ function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=nul
         gen=()=>genMiddleMock(domain);
       } else {
         const dIdx=highLabels.indexOf(domain);
-        gen=dIdx>=0?highGens[dIdx]:highGens[Math.floor(Math.random()*highGens.length)];
+        // '내분점'은 혼합 순환(highLabels)에는 넣지 않고, 골랐을 때만 따로 낸다
+        gen=domain==='내분점'?genMockInternalAny:dIdx>=0?highGens[dIdx]:highGens[Math.floor(Math.random()*highGens.length)];
       }
     } else {
       const areaLabels=qType===5?midLabels:highLabels;

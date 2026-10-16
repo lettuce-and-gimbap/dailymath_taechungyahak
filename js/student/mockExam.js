@@ -69,7 +69,7 @@ function MockExamTab({userData,onUpdate}){
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
   const[selectedDomains,setSelectedDomains]=useState([]);
 
-  const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
+  const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS=examLevel==='middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS;
   const DOMAINS=Object.keys(DOMAIN_GENS);
 
@@ -120,11 +120,12 @@ function MockExamTab({userData,onUpdate}){
       }
       pool=shuffle(pool);
     }else{
-      DOMAINS.forEach(dom=>{for(let j=0;j<2;j++){const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
+      DOMAINS.filter(d=>d!=='내분점').forEach(dom=>{for(let j=0;j<2;j++){   // 내분점은 '도형과 기하'에도 들어 있으므로 랜덤 혼합에서는 빼 둔다
+        const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
       pool=shuffle(pool);
     }
     let safety=0;
-    while(pool.length<10&&safety++<50){const q=safeGen(pick(Object.values(DOMAIN_GENS)));if(q)pool.push(q);}
+    while(pool.length<10&&safety++<50){const q=safeGen(pick(DOMAINS.filter(d=>d!=='내분점').map(d=>DOMAIN_GENS[d])));if(q)pool.push(q);}
     setQuestions(pool.slice(0,10));setSel({});setIsGraded(false);setSaved(false);setFeelingDone(false);savingRef.current=false;savedUpdRef.current=null;setStartTime(Date.now());setScreen('exam');
     setFirstClickTimes({});setRevisionCounts({});
   };
