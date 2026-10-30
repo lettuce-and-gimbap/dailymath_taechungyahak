@@ -320,42 +320,78 @@ function genDivQ(){
 }
 
 /* ── 응용 5 : 원의 방정식 — 기초 (2026-10-30) ─────────────────────
-   그림에 원의 중심 좌표와 반지름 길이를 그대로 적어 주고, 이를 원의 방정식 (x−a)²+(y−b)²=r² 으로
-   옳게 쓴 것을 고른다. 오답은 학생이 실제로 하는 실수 : 부호 뒤집기 · 반지름을 제곱하지 않기 · x와 y 자리 바꾸기. */
+   문제 종류는 4가지 : 반지름 주어짐 · x축에 접함 · y축에 접함 · 원과 직선의 접점 (만능학습지 13번과 같은 구성).
+   그림에는 중심 좌표(와 반지름)를 모서리 안내 칸에 적어 주고, 이를 (x−a)²+(y−b)²=r² 로 옳게 쓴 것을 고른다.
+   오답은 학생이 실제로 하는 실수 : 부호 뒤집기 · 반지름을 제곱하지 않기 · x와 y 자리 바꾸기.
+   접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y=±r, y축 접함 → 중심 x=±r). */
 function genCircQ(){
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
-  let a,b,r;do{a=ri(-3,3);b=ri(-3,3);r=ri(1,3);}while(a===0&&b===0);
+  const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
+  const kind=pk(['r','x','y','tan']);
+  const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400};
+  const RED='#e11d48';
+  /* 안내 글자는 원·점·눈금 위에 얹지 않는다 — 원과 가장 먼 모서리 칸에 따로 적는다 (글자 뒤 흰 배경도 없음) */
+  const legend=(a,b,r,lines)=>{
+    const BW=4.7,BH=0.95*lines.length+0.1;
+    const c=[[-5.9,4.0],[1.2,4.0],[-5.9,-5.9],[1.2,-5.9]].map(([x0,y0])=>{
+      const dx=Math.max(x0-a,0,a-(x0+BW)),dy=Math.max(y0-b,0,b-(y0+BH));
+      return{x0,y0,gap:Math.hypot(dx,dy)-r};
+    }).sort((p,q)=>q.gap-p.gap)[0];
+    const top=c.y0>0?c.y0+BH-0.7:c.y0+BH-0.7;
+    return lines.map((s,i)=>({t:'text',x:c.x0,y:top-0.95*i,s,anchor:'start',size:18,color:RED}));
+  };
   const term=(v,s)=>v===0?`${s}²`:`(${s}${v>0?'−'+v:'+'+(-v)})²`;
   const eqn=(p,q,rr)=>`${term(p,'x')}+${term(q,'y')}=${rr}`;
+
+  if(kind==='tan'){            // 원과 직선의 접점 : x²+y²=r² 과 직선 x=a(또는 y=a)가 한 점에서 만날 때 양수 a
+    const r=ri(1,4),vert=Math.random()<0.65,dir=vert?'x=a':'y=a';
+    const cands=[r+1,r-1,r+2,r*r,2*r,r+3,r+4].filter((v,i,arr)=>v>0&&v!==r&&arr.indexOf(v)===i).slice(0,3);
+    const list=_shuffleList([r,...cands]);
+    const circ=[{t:'circle',cx:0,cy:0,r},{t:'pt',x:0,y:0,r:5,color:'#111'}];
+    const lg=legend(0,0,r,[`원 x²+y²=${r*r}`]);
+    const before=[...circ,vert?{t:'vline',x:5.4,label:dir,dash:'',color:'#1d3b8f',width:3}:{t:'hline',y:5.4,label:dir,dash:'',color:'#1d3b8f',width:3},...lg];
+    const after=[...circ,vert?{t:'vline',x:r,label:dir,dash:'',color:'#1d3b8f',width:3}:{t:'hline',y:r,label:dir,dash:'',color:'#1d3b8f',width:3},
+      {t:'seg',x1:0,y1:0,x2:vert?r:0,y2:vert?0:r,color:'#2e7d32',width:4,dash:'9 6'},...lg];
+    return{lv:'circ',topic:'원의 방정식(접점)',
+      qHtml:`직선 <b>${dir}</b>와 원 <b>x²+y²=${r*r}</b>이 한 점에서 만날 때, 양수 a의 값은?<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">(직선은 a에 따라 움직입니다)</div>`,
+      q:`직선 ${dir} 와 원 x²+y²=${r*r} 이 한 점에서 만날 때 양수 a`,
+      svg:G.planeSVG(g,before),svgAfter:G.planeSVG(g,after),
+      choices:list.map(String),ans:list.indexOf(r),answer:String(r),cols:2,
+      sol:[`원 x²+y²=${r*r} 의 중심은 원점, 반지름은 ${_tx(`\sqrt{${r*r}}=${r}`)} 입니다.`,
+        `직선 ${dir} 가 원과 <b>한 점에서 만난다 = 접한다</b> → 원점에서 직선까지의 거리가 반지름과 같습니다. (초록 점선)`,
+        `따라서 a = <b>${r}</b> (양수)`]};
+  }
+
+  let a,b,r;
+  if(kind==='r'){do{a=ri(-3,3);b=ri(-3,3);r=ri(1,3);}while(a===0&&b===0);}
+  else if(kind==='x'){r=ri(1,3);a=ri(-3,3);b=pk([-1,1])*r;}
+  else{r=ri(1,3);b=ri(-3,3);a=pk([-1,1])*r;}
   const right=eqn(a,b,r*r);
   const cands=[eqn(-a,-b,r*r),eqn(a,b,r),eqn(b,a,r*r),eqn(-a,b,r*r),eqn(a,-b,r*r),eqn(a,b,2*r),eqn(a,b,r*r+r)]
     .filter((c,i,arr)=>c!==right&&arr.indexOf(c)===i).slice(0,3);
   const list=_shuffleList([right,...cands]);
-  const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400};
-  /* 중심 좌표·반지름 글자는 원·점·눈금 위에 얹지 않는다 — 원과 가장 먼 모서리 안내 칸에 따로 적는다
-     (r=1 처럼 작은 원에서는 글자가 원과 눈금 숫자를 덮어 버린다). 글자 뒤에 흰 배경도 깔지 않는다. */
-  const BW=4.7,BH=1.9;                                    // 안내 칸 크기(좌표 단위)
-  const corner=[[-5.9,4.0],[1.2,4.0],[-5.9,-5.9],[1.2,-5.9]].map(([x0,y0])=>{   // [왼쪽 x, 아래쪽 y]
-    const dx=Math.max(x0-a,0,a-(x0+BW)),dy=Math.max(y0-b,0,b-(y0+BH));
-    return{x0,y0,gap:Math.hypot(dx,dy)-r};
-  }).sort((p,q)=>q.gap-p.gap)[0];
-  const ty=corner.y0+BH-0.7;
   const items=[
     {t:'circle',cx:a,cy:b,r},
-    {t:'seg',x1:a,y1:b,x2:a+r,y2:b,color:'#e11d48',width:3,dash:'6 4'},
-    {t:'pt',x:a,y:b,r:6,color:'#e11d48'},
-    {t:'text',x:corner.x0,y:ty,s:`● 중심 (${_neg(a)}, ${_neg(b)})`,anchor:'start',size:18,color:'#e11d48'},
-    {t:'text',x:corner.x0,y:ty-0.95,s:`┅ 반지름 ${r}`,anchor:'start',size:18,color:'#e11d48'},
+    kind==='r'?{t:'seg',x1:a,y1:b,x2:a+r,y2:b,color:RED,width:3,dash:'6 4'}
+      :kind==='x'?{t:'seg',x1:a,y1:b,x2:a,y2:0,color:'#2e7d32',width:3,dash:'6 4'}
+      :{t:'seg',x1:a,y1:b,x2:0,y2:b,color:'#2e7d32',width:3,dash:'6 4'},
+    {t:'pt',x:a,y:b,r:6,color:RED},
+    ...legend(a,b,r,kind==='r'?[`● 중심 (${_neg(a)}, ${_neg(b)})`,`┅ 반지름 ${r}`]:[`● 중심 (${_neg(a)}, ${_neg(b)})`]),
   ];
   const svg=G.planeSVG(g,items);
+  const cond=kind==='r'?'':kind==='x'?'x축에 접하는 ':'y축에 접하는 ';
+  const sub=kind==='r'?'중심의 좌표와 반지름의 길이가 그림에 적혀 있습니다.':'중심의 좌표가 그림에 적혀 있습니다. 반지름은 그림에서 구하세요.';
+  const why=kind==='r'?`반지름은 <b>${r}</b> 입니다.`
+    :kind==='x'?`x축에 접하므로 반지름 = 중심에서 x축까지의 거리 = |y좌표| = |${_neg(b)}| = <b>${r}</b>`
+    :`y축에 접하므로 반지름 = 중심에서 y축까지의 거리 = |x좌표| = |${_neg(a)}| = <b>${r}</b>`;
   return{lv:'circ',topic:'원의 방정식',
-    qHtml:`다음 그림과 같은 원의 방정식으로 옳은 것은?<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">중심의 좌표와 반지름의 길이가 그림에 적혀 있습니다.</div>`,
-    q:`중심 (${a}, ${b}), 반지름 ${r} 인 원의 방정식`,
+    qHtml:`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">${sub}</div>`,
+    q:`중심 (${a}, ${b}), ${kind==='r'?`반지름 ${r} 인`:kind==='x'?'x축에 접하는':'y축에 접하는'} 원의 방정식`,
     svg,svgAfter:svg,
     choices:list,ans:list.indexOf(right),answer:right,cols:1,
     sol:[`중심이 (a, b), 반지름이 r 인 원의 방정식은 ${_tx('(x-a)^2+(y-b)^2=r^2')} 입니다.`,
-      `그림에서 중심은 <b>(${_neg(a)}, ${_neg(b)})</b>, 반지름은 <b>${r}</b> 입니다.`,
+      `그림에서 중심은 <b>(${_neg(a)}, ${_neg(b)})</b> 입니다. ${why}`,
       `x 자리에는 <b>x − (${_neg(a)})</b>${a<0?` = x + ${-a}`:a===0?' = x':''}, y 자리에는 <b>y − (${_neg(b)})</b>${b<0?` = y + ${-b}`:b===0?' = y':''} 를 넣습니다. 중심 좌표의 부호를 <b>반대로</b> 쓰는 실수에 조심!`,
       `오른쪽은 반지름을 <b>제곱</b>한 ${r}² = <b>${r*r}</b> → <b>${right}</b>`]};
 }
@@ -453,7 +489,7 @@ function genIneqQ(){
      예전 기록은 보기 순서가 남아 있지 않아, 보기 순서는 학생이 본 것과 다를 수 있다(exact:false).
    돌려주는 값 : {q, exact} 또는 null(생성기 글이 바뀐 아주 옛 기록 등) */
 var COORD_TOPIC_LV={'좌표 읽기':'low','평행이동':'mid','대칭이동':'high','유리함수 평행이동':'rat','무리함수 평행이동':'irr',
-  '이차함수 최대·최소':'quad','내분점(수직선)':'div','내분점(좌표평면)':'div','원의 방정식':'circ','이차부등식':'ineq'};
+  '이차함수 최대·최소':'quad','내분점(수직선)':'div','내분점(좌표평면)':'div','원의 방정식':'circ','원의 방정식(접점)':'circ','이차부등식':'ineq'};
 var _coordReplayCache=new Map();
 function coordReplay(rec){
   const full=rec.qFull||'',pre=rec.qTxt||'';

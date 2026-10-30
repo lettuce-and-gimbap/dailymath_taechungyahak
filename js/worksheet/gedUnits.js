@@ -782,34 +782,18 @@ var GED_UNITS=(function(){
     }
   },
   { id:'u13', tag:'13번', area:'C', title:'원의 방정식', src:'2023~2026 매회 13번', coord:true,
-    fields:[{k:'kind',label:'문제 종류',sel:['반지름 주어짐','x축에 접함','y축에 접함','원점을 지남','원과 직선의 접점','지름의 양 끝점']},
-      {k:'a',label:'중심 x',min:-4,max:4},{k:'b',label:'중심 y',min:-4,max:4},{k:'r',label:'반지름 r',min:1,max:4},{k:'dir',label:'[접점] 직선 종류',sel:['x=a','y=a']},
-      {k:'ex',label:'[지름] 반가로',min:1,max:4},{k:'ey',label:'[지름] 반세로',min:0,max:4}],
-    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a',ex:2,ey:2},
-    rand(){const kind=pick(['반지름 주어짐','반지름 주어짐','x축에 접함','y축에 접함','원점을 지남','원과 직선의 접점','지름의 양 끝점']);
-      let a=nz(-3,3),b=nz(-3,3);if(kind==='원점을 지남'){const t=pick([[3,4],[4,3],[1,1],[2,1],[1,2]]);a=t[0]*pick([1,-1]);b=t[1]*pick([1,-1]);}
-      if(kind==='지름의 양 끝점'){a=rnd(-2,2);b=rnd(-2,2);}
-      return{kind,a,b,r:rnd(1,4),dir:pick(['x=a','x=a','y=a']),ex:rnd(1,3),ey:rnd(0,3)};},
+    /* 문제 종류는 4가지만 (2026-10-30) : 반지름 주어짐 · x축에 접함 · y축에 접함 · 원과 직선의 접점.
+       접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y = ±r, y축 접함 → 중심 x = ±r, 부호는 입력한 중심 값의 부호를 따른다).
+       그래서 반지름을 고치면 그림 속 원의 크기가 실제로 바뀐다. 옛 저장본의 '원점을 지남'·'지름의 양 끝점'은 '반지름 주어짐'으로 읽는다. */
+    fields:[{k:'kind',label:'문제 종류',sel:['반지름 주어짐','x축에 접함','y축에 접함','원과 직선의 접점']},
+      {k:'a',label:'중심 x',min:-4,max:4},{k:'b',label:'중심 y',min:-4,max:4},{k:'r',label:'반지름 r',min:1,max:4},{k:'dir',label:'[접점] 직선 종류',sel:['x=a','y=a']}],
+    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a'},
+    rand(){const kind=pick(['반지름 주어짐','반지름 주어짐','x축에 접함','y축에 접함','원과 직선의 접점']);
+      const r=rnd(1,3);let a=nz(-3,3),b=nz(-3,3);
+      if(kind==='x축에 접함')b=b<0?-r:r;
+      if(kind==='y축에 접함')a=a<0?-r:r;
+      return{kind,a,b,r,dir:pick(['x=a','x=a','y=a'])};},
     build(p){
-      /* ── 지름의 양 끝 점이 주어진 원 (2021-2회 13번) : 중심 = 두 점의 중점, r² = (지름/2)² ── */
-      if(p.kind==='지름의 양 끝점'){
-        const ex=p.ex||2,ey=(p.ey===undefined?2:p.ey);
-        if(ex===0&&ey===0)return{err:'반가로·반세로가 모두 0이면 두 점이 같아집니다.'};
-        const Ax=p.a-ex,Ay=p.b-ey,Bx=p.a+ex,By=p.b+ey,R2=ex*ex+ey*ey,R=Math.sqrt(R2);
-        const eqOf2=(a,b,k)=>`(${xm(a)})^2+(${ym(b)})^2=${nf(k)}`;
-        const eq2=eqOf2(p.a,p.b,R2);
-        const ch2=pickChoices(eq2,[eqOf2(-p.a,-p.b,R2),eqOf2(-p.a,p.b,R2),eqOf2(p.a,-p.b,R2),eqOf2(p.a,p.b,4*R2),eqOf2(Ax,Ay,R2)],k=>eqOf2(p.a,p.b,R2+k));
-        const lim2=Math.ceil(Math.max(Math.abs(Ax),Math.abs(Bx),Math.abs(Ay),Math.abs(By)))+1;
-        const items2=[{t:'circle',cx:p.a,cy:p.b,r:R},{t:'seg',x1:Ax,y1:Ay,x2:Bx,y2:By,color:GREEN,width:3.4},
-          {t:'pt',x:Ax,y:Ay,label:'A',guide:true},{t:'pt',x:Bx,y:By,label:'B',guide:true},{t:'pt',x:p.a,y:p.b,r:6,color:'#000'}];
-        return{q:`두 점 ${tex(`\\mathrm{A}${pr(Ax,Ay)}`)}, ${tex(`\\mathrm{B}${pr(Bx,By)}`)}을 지름의 양 끝 점으로 하는 원의 방정식은?`,
-          figure:fig(planeSVG({xmin:-lim2,xmax:lim2,ymin:-lim2,ymax:lim2,s:Math.min(32,Math.floor(340/lim2)),maxW:420},items2)),
-          choices:ch2.list,ans:ch2.ans,layout:'two',answerTex:eq2,
-          sol:[`지름의 양 끝 점을 알면 <b>중심은 두 점의 중점</b>입니다.`,
-            `중심 : ${tex(`\\left(\\dfrac{${nf(Ax)}+${par(Bx)}}{2},\\ \\dfrac{${nf(Ay)}+${par(By)}}{2}\\right)=${pr(p.a,p.b)}`)}`,
-            `반지름은 중심에서 A까지의 거리 : ${tex(`\\sqrt{${nf(ex)}^2+${nf(ey)}^2}=\\sqrt{${nf(R2)}}`)} → ${tex(`r^2=${nf(R2)}`)}`,
-            `따라서 ${tex(eq2)}`]};
-      }
       if(p.kind==='원과 직선의 접점'){
         const r=p.r,r2=r*r,vert=p.dir==='x=a';const ch=numChoices(r);
         const q=`직선 ${tex(p.dir)}와 원 ${tex(`x^2+y^2=${nf(r2)}`)}가 한 점에서 만날 때, 양수 ${tex('a')}의 값은?`;
@@ -822,29 +806,29 @@ var GED_UNITS=(function(){
           `따라서 ${tex('a='+nf(r))}`];
         return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(r)};
       }
-      let R2,why,Rtx,Rtt;
-      if(p.kind==='반지름 주어짐'){R2=p.r*p.r;why=`반지름을 문제에서 바로 주었습니다. 길이는 ${nf(p.r)}입니다.`;}
-      else if(p.kind==='x축에 접함'){if(p.b===0)return{err:'x축에 접하려면 중심 y가 0이 아니어야 합니다.'};R2=p.b*p.b;why=`x축(가로선)에 딱 붙어 있으므로, 중심에서 x축까지의 세로 거리가 곧 반지름입니다. 중심의 y가 ${par(p.b)}이니 길이는 ${nf(Math.abs(p.b))}입니다.`;}
-      else if(p.kind==='y축에 접함'){if(p.a===0)return{err:'y축에 접하려면 중심 x가 0이 아니어야 합니다.'};R2=p.a*p.a;why=`y축(세로선)에 딱 붙어 있으므로, 중심에서 y축까지의 가로 거리가 곧 반지름입니다. 중심의 x가 ${par(p.a)}이니 길이는 ${nf(Math.abs(p.a))}입니다.`;}
-      else{if(p.a===0&&p.b===0)return{err:'중심이 원점이면 원점을 지나는 원이 될 수 없습니다.'};R2=p.a*p.a+p.b*p.b;why=`원이 원점을 지나므로, 중심에서 원점까지의 거리가 반지름입니다. 가로 ${nf(Math.abs(p.a))}, 세로 ${nf(Math.abs(p.b))}인 직각삼각형의 빗변이므로 길이는 ${tex(`\\sqrt{${nf(p.a*p.a)}+${nf(p.b*p.b)}}=${sqrtTex(R2)}`)}입니다.`;}
-      const R=Math.sqrt(R2);Rtx=sqrtTex(R2);Rtt=sqrtTxt(R2);
+      /* 반지름 r 이 원의 크기를 정한다. 접하는 원은 중심을 r 에 맞춰 옮긴다 (부호는 입력한 중심의 부호) */
+      const r=Math.max(1,Math.round(p.r)||1);
+      let a=p.a,b=p.b,why;
+      const R2=r*r,R=r,Rtx=String(r);
+      if(p.kind==='x축에 접함'){b=(p.b<0?-1:1)*r;why=`x축(가로선)에 딱 붙어 있으므로, 중심에서 x축까지의 세로 거리가 곧 반지름입니다. 중심의 y가 ${par(b)}이니 길이는 ${nf(r)}입니다.`;}
+      else if(p.kind==='y축에 접함'){a=(p.a<0?-1:1)*r;why=`y축(세로선)에 딱 붙어 있으므로, 중심에서 y축까지의 가로 거리가 곧 반지름입니다. 중심의 x가 ${par(a)}이니 길이는 ${nf(r)}입니다.`;}
+      else why=`반지름을 문제에서 바로 주었습니다. 길이는 ${nf(r)}입니다.`;
       const eqOf=(a,b,k)=>`(${xm(a)})^2+(${ym(b)})^2=${nf(k)}`;
-      const eq=p.a===0&&p.b===0?`x^2+y^2=${nf(R2)}`:eqOf(p.a,p.b,R2);
-      const cands=[eqOf(-p.a,-p.b,R2),eqOf(p.b,p.a,R2),eqOf(p.a,p.b,(Math.round(R)+1)**2),eqOf(p.a,p.b,R2===R?R2+1:Math.round(R)),eqOf(-p.a,p.b,R2)];
-      const ch=pickChoices(eq,cands,k=>eqOf(p.a,p.b,R2+k));
-      const cond={'반지름 주어짐':`반지름의 길이가 ${tex(nf(p.r))}인`,'x축에 접함':'x축에 접하는','y축에 접함':'y축에 접하는','원점을 지남':'원점을 지나는'}[p.kind];
-      const q=`중심의 좌표가 ${tex(pr(p.a,p.b))}이고 ${cond} 원의 방정식은?`;
-      const lim=Math.ceil(Math.max(Math.abs(p.a)+R,Math.abs(p.b)+R))+1;
+      const eq=a===0&&b===0?`x^2+y^2=${nf(R2)}`:eqOf(a,b,R2);
+      const cands=[eqOf(-a,-b,R2),eqOf(b,a,R2),eqOf(a,b,(r+1)**2),eqOf(a,b,r),eqOf(-a,b,R2)];
+      const ch=pickChoices(eq,cands,k=>eqOf(a,b,R2+k));
+      const cond={'반지름 주어짐':`반지름의 길이가 ${tex(nf(r))}인`,'x축에 접함':'x축에 접하는','y축에 접함':'y축에 접하는'}[p.kind]||`반지름의 길이가 ${tex(nf(r))}인`;
+      const q=`중심의 좌표가 ${tex(pr(a,b))}이고 ${cond} 원의 방정식은?`;
+      const lim=Math.ceil(Math.max(Math.abs(a)+R,Math.abs(b)+R))+1;
       /* 기출 그림에는 '중심' 같은 글자 없이 점과 안내 점선만 그려진다 */
-      const items=[{t:'circle',cx:p.a,cy:p.b,r:R},{t:'pt',x:p.a,y:p.b,guide:true,r:7}];
-      if(p.kind==='x축에 접함')items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:p.a,y:0,color:GREEN,r:6});
-      else if(p.kind==='y축에 접함')items.push({t:'seg',x1:p.a,y1:p.b,x2:0,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:0,y:p.b,color:GREEN,r:6});
-      else if(p.kind==='원점을 지남')items.push({t:'seg',x1:p.a,y1:p.b,x2:0,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'seg',x1:p.a,y1:p.b,x2:p.a,y2:0,color:GREY,width:2.4,dash:'6 5'},{t:'seg',x1:0,y1:0,x2:p.a,y2:0,color:GREY,width:2.4,dash:'6 5'});
-      else items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a+R,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'text',x:p.a+R/2,y:p.b<0?p.b-0.8:p.b+0.35,s:'r='+nf(R),size:19,color:GREEN,anchor:'middle'});
+      const items=[{t:'circle',cx:a,cy:b,r:R},{t:'pt',x:a,y:b,guide:true,r:7}];
+      if(p.kind==='x축에 접함')items.push({t:'seg',x1:a,y1:b,x2:a,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:a,y:0,color:GREEN,r:6});
+      else if(p.kind==='y축에 접함')items.push({t:'seg',x1:a,y1:b,x2:0,y2:b,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:0,y:b,color:GREEN,r:6});
+      else items.push({t:'seg',x1:a,y1:b,x2:a+R,y2:b,color:GREEN,width:4,dash:'9 6'},{t:'text',x:a+R/2,y:b<0?b-0.8:b+0.35,s:'r='+nf(R),size:19,color:GREEN,anchor:'middle'});
       const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim)),maxW:420},items));
-      const sol=[`원의 기본 모양은 ${tex('(x-a)^2+(y-b)^2=r^2')}입니다. 중심 ${tex(pr(p.a,p.b))}를 자리에 넣습니다. (괄호 안 부호는 반대!)`,
+      const sol=[`원의 기본 모양은 ${tex('(x-a)^2+(y-b)^2=r^2')}입니다. 중심 ${tex(pr(a,b))}를 자리에 넣습니다. (괄호 안 부호는 반대!)`,
         why,
-        `오른쪽에는 반지름을 <b>두 번 곱한 값</b>을 씁니다. ${tex(`${Rtx}\\times${Rtx}=${nf(R2)}`)}`,
+        `오른쪽에는 반지름을 <b>두 번 곱한 값</b>을 씁니다. ${tex(`${Rtx}\times${Rtx}=${nf(R2)}`)}`,
         `따라서 ${tex(eq)}`];
       return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:eq,layout:'two'};
     }
