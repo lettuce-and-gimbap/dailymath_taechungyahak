@@ -131,15 +131,15 @@ var GS=(function(){
         if(it.guide){
           c+=L(X(it.x),Y(0),X(it.x),Y(it.y),col,1.8,'6 5')+L(X(0),Y(it.y),X(it.x),Y(it.y),col,1.8,'6 5');
           if(!it.nolabel){
-            if(it.x)c+=`<rect x="${X(it.x)-fsz*0.9}" y="${Y(0)+6}" width="${fsz*1.8}" height="${fsz+6}" fill="#fff"/><text x="${X(it.x)}" y="${Y(0)+fsz+8}" font-size="${fsz}" text-anchor="middle" fill="${col}" font-weight="700">${it.xl!==undefined?it.xl:nf(it.x)}</text>`;
-            if(it.y)c+=`<rect x="${X(0)-fsz*2.2}" y="${Y(it.y)-fsz*0.7}" width="${fsz*2.1}" height="${fsz+4}" fill="#fff"/><text x="${X(0)-11}" y="${Y(it.y)+7}" font-size="${fsz}" text-anchor="end" fill="${col}" font-weight="700" ${it.yl!==undefined?'font-style="italic"':''}>${it.yl!==undefined?it.yl:nf(it.y)}</text>`;
+            if(it.x)c+=`<text x="${X(it.x)}" y="${Y(0)+fsz+8}" font-size="${fsz}" text-anchor="middle" fill="${col}" font-weight="700">${it.xl!==undefined?it.xl:nf(it.x)}</text>`;
+            if(it.y)c+=`<text x="${X(0)-11}" y="${Y(it.y)+7}" font-size="${fsz}" text-anchor="end" fill="${col}" font-weight="700" ${it.yl!==undefined?'font-style="italic"':''}>${it.yl!==undefined?it.yl:nf(it.y)}</text>`;
           }
         }
         c+=`<circle cx="${X(it.x)}" cy="${Y(it.y)}" r="${it.r||7}" fill="${it.hollow?'#fff':col}" stroke="${col}" stroke-width="3.2"/>`;
         if(it.label){const dx=it.lx!==undefined?it.lx:12,dy=it.ly!==undefined?it.ly:-12;
           c+=`<text x="${X(it.x)+dx}" y="${Y(it.y)+dy}" font-size="${fsz+3}" fill="${col}" font-weight="700">${it.label}</text>`;}
       }
-      else if(it.t==='text'){c+=`<text x="${X(it.x)}" y="${Y(it.y)}" font-size="${it.size||fsz}" fill="${it.color||'#111'}" text-anchor="${it.anchor||'start'}" ${it.italic?'font-style="italic"':''} ${it.halo?'paint-order="stroke" stroke="#fff" stroke-width="6" stroke-linejoin="round" font-weight="600"':''}>${it.s!==undefined?it.s:it.text}</text>`;}
+      else if(it.t==='text'){c+=`<text x="${X(it.x)}" y="${Y(it.y)}" font-size="${it.size||fsz}" fill="${it.color||'#111'}" text-anchor="${it.anchor||'start'}" ${it.italic?'font-style="italic"':''} ${it.halo?'paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round" font-weight="600"':''}>${it.s!==undefined?it.s:it.text}</text>`;}
       else if(it.t==='rangle'){const px=X(it.x),py=Y(it.y),k=9;const ux=it.u[0]*k,uy=-it.u[1]*k,vx=it.v[0]*k,vy=-it.v[1]*k;
         c+=`<path d="M ${px+ux} ${py+uy} L ${px+ux+vx} ${py+uy+vy} L ${px+vx} ${py+vy}" fill="none" stroke="#000" stroke-width="1.8"/>`;}
     }
