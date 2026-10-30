@@ -165,7 +165,7 @@ function gen_translation(){
 function gen_circle_eq_mock(){
   const t=pick([1,2,3]);
   if(t===1){ // 중심+반지름
-    const q=genCircleQ();
+    const q=genCircleQ('eq');
     return{...q,meta:{category:'geometry',type:'도형과 기하',diff:'기하'}};
   }
   if(t===2){ // x축 또는 y축에 접하는 원
@@ -195,33 +195,19 @@ function gen_circle_eq_mock(){
 
 // 3-8. 직선과 원의 관계  (기출 Q11/Q13: 2024~2025~)
 function gen_circle_line_rel(){
+  // 기출 13번 대조(2021~2026): 직선과 원은 '한 점에서 만날 때'(2026-1·2026-2)만 나왔다 → '만나지 않을 때' 문제는 뺐다
   const r=pick([2,3,4,5]);
-  const t=pick([1,2]);
-  if(t===1){ // 직선 y=a와 원 x²+y²=r²이 한 점에서 만날 때
-    const correct=String(r);
-    const{choices,answer}=makeChoices(correct,[r-1,r+1,r+2].filter(w=>w!==r&&w>0).map(String));
-    return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,
-      graph:{type:'circle_line',h:0,k:0,r,lineType:'h',lineVal:r},
-      meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
-      sol:[
-        `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 √${r*r}=${r}입니다.`,
-        `직선 y=a와 원이 한 점에서 만난다 = 접한다 = 중심에서 직선까지의 거리 = 반지름`,
-        `직선 y=a와 원점 사이의 거리 = |a|이므로 |a| = ${r}`,
-        `a는 자연수이므로 a = ${r}입니다.`
-      ]};
-  }
-  // 직선 x=a와 원이 만나지 않을 때 a<N인 자연수
-  const N=r+2;
-  const aVal=r+1;
-  const{choices,answer}=makeChoices(String(aVal),[aVal-1<r?aVal+1:aVal-1,aVal+1,r].filter(w=>w!==aVal&&w>0).slice(0,3).map(String));
-  return{topic:'직선과 원',q:`직선 x=a와 원 x²+y²=${r*r}이 만나지 않을 때, a<${N}인 자연수 a의 값은?`,choices,answer,
-    graph:{type:'circle_line',h:0,k:0,r,lineType:'v',lineVal:aVal},
+  // 직선 y=a와 원 x²+y²=r²이 한 점에서 만날 때
+  const correct=String(r);
+  const{choices,answer}=makeChoices(correct,[r-1,r+1,r+2].filter(w=>w!==r&&w>0).map(String));
+  return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,
+    graph:{type:'circle_line',h:0,k:0,r,lineType:'h',lineVal:r},
     meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
-      `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 ${r}입니다.`,
-      `직선 x=a와 원점 사이의 거리 = |a|입니다.`,
-      `만나지 않으려면 거리 > 반지름: |a| > ${r} → a > ${r} (자연수이므로 a ≥ ${r+1})`,
-      `a < ${N}인 자연수 조건과 함께: a = ${aVal}입니다.`
+      `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 √${r*r}=${r}입니다.`,
+      `직선 y=a와 원이 한 점에서 만난다 = 접한다 = 중심에서 직선까지의 거리 = 반지름`,
+      `직선 y=a와 원점 사이의 거리 = |a|이므로 |a| = ${r}`,
+      `a는 자연수이므로 a = ${r}입니다.`
     ]};
 }
 

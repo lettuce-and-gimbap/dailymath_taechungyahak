@@ -99,11 +99,12 @@ function genDistanceQ(){
     ]};
 }
 
-function genCircleQ(){
+/* only : 'eq' 이면 '중심·반지름 → 방정식' 문제만 낸다 (고졸 기출 13번에는 이 꼴만 나왔다 — 문제풀이·모의고사용) */
+function genCircleQ(only){
   const h=randInt(-3,3),k=randInt(-3,3),r=randInt(1,4),r2=r*r;
   const hEq=fmtCircleTerm(h,'x'),kEq=fmtCircleTerm(k,'y');
   const eq=`${hEq}+${kEq}=${r2}`;
-  const qt=pick(['eq','center','radius']);
+  const qt=(only==='eq'||only==='center'||only==='radius')?only:pick(['eq','center','radius']);
   const hSign=h===0?'':(h>0?`−${h}`:`+${-h}`);
   const kSign=k===0?'':(k>0?`−${k}`:`+${-k}`);
   if(qt==='eq'){
