@@ -57,7 +57,7 @@ function exfPlane(win,opt){
       el.push(`<line x1="${X(0)}" y1="${Y(ymin)+10}" x2="${X(0)}" y2="${Y(ymax)-12}" ${ax}/><polygon points="${X(0)},${Y(ymax)-20} ${X(0)-5},${Y(ymax)-9} ${X(0)+5},${Y(ymax)-9}" fill="#111"/>`);
       labels.push(`<text x="${X(xmax)+14}" y="${Y(0)+FS+2}" font-size="${FS}" font-style="italic" font-family="${EXF_SERIF}">x</text>`);
       labels.push(`<text x="${X(0)+9}" y="${Y(ymax)-8}" font-size="${FS}" font-style="italic" font-family="${EXF_SERIF}">y</text>`);
-      labels.push(`<text x="${X(0)-6}" y="${Y(0)+FS}" font-size="${FS}" text-anchor="end" font-family="${EXF_SERIF}" paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round">O</text>`);
+      labels.push(`<text x="${X(0)-6}" y="${Y(0)+FS}" font-size="${FS}" text-anchor="end" font-family="${EXF_SERIF}" paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">O</text>`);
       if(ticks){const fs=Math.min(FS-2,u*0.62);
         for(let i=Math.ceil(xmin);i<=xmax;i++){if(!i)continue;el.push(`<line x1="${X(i)}" y1="${Y(0)-4}" x2="${X(i)}" y2="${Y(0)+4}" stroke="#111" stroke-width="1.5"/>`);
           labels.push(`<text x="${X(i)}" y="${Y(0)+fs+5}" font-size="${fs}" text-anchor="middle" font-family="${EXF_SERIF}">${i<0?'−'+(-i):i}</text>`);}
@@ -76,7 +76,7 @@ function exfPlane(win,opt){
     guide(x,y){if(y)P.seg(x,0,x,y,{w:1.4,dash:'5 5',color:'#444'});if(x)P.seg(0,y,x,y,{w:1.4,dash:'5 5',color:'#444'});},
     /* 글자. math:true 면 exfMath, 아니면 그대로 */
     text(x,y,s,o){o=o||{};const fs=o.size||FS;
-      labels.push(`<text x="${(o.px!=null?o.px:X(x))+(o.dx||0)}" y="${(o.py!=null?o.py:Y(y))+(o.dy||0)}" font-size="${fs}" text-anchor="${o.anchor||'middle'}" font-family="${o.sans?EXF_SANS:EXF_SERIF}" ${o.bold?'font-weight="700"':''} paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round">${o.math?exfMath(s,fs):s}</text>`);},
+      labels.push(`<text x="${(o.px!=null?o.px:X(x))+(o.dx||0)}" y="${(o.py!=null?o.py:Y(y))+(o.dy||0)}" font-size="${fs}" text-anchor="${o.anchor||'middle'}" font-family="${o.sans?EXF_SANS:EXF_SERIF}" ${o.bold?'font-weight="700"':''} paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">${o.math?exfMath(s,fs):s}</text>`);},
     num(v){return v<0?'−'+(-v):String(v);},
     /* x축 값(점 아래) · y축 값(축 왼쪽) — 겹치지 않게 기억해 둔다 */
     xval(x,s,below){if(!x&&s==null)return;if(P._xs.some(t=>Math.abs(t-x)*u<FS*0.9))return;P._xs.push(x);

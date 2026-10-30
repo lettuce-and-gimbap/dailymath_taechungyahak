@@ -930,7 +930,7 @@ var renameUser=async(oldName,newName,onStep)=>{
    격자/점/분수/루트 표기 · 크기·드래그·확대 훅
    -------------------------------------------------------------------- */
 
-function Grid({W,H,SC,cx,cy}){
+function Grid({W,H,SC,cx,cy,skipX=[],skipY=[]}){   // skipX·skipY : 굵은 색 좌표 숫자가 대신 쓰이는 눈금은 그리지 않는다(겹침 방지)
   // cx/cy: 원점의 픽셀 위치 (팬 이동 반영됨), 범위 ±12까지 확장
   const rX=Math.min(12,Math.ceil(Math.max(cx,W-cx)/SC)+1);
   const rY=Math.min(12,Math.ceil(Math.max(cy,H-cy)/SC)+1);
@@ -939,11 +939,11 @@ function Grid({W,H,SC,cx,cy}){
   return(<g>
     {txs.map(n=>{const px=cx+n*SC;if(px<-2||px>W+2)return null;return(<g key={'x'+n}>
       <line x1={px} y1={0} x2={px} y2={H} stroke={n===0?'#0f172a':'#e2e8f0'} strokeWidth={n===0?3:0.9}/>
-      {n!==0&&px>14&&px<W-6&&<text x={px} y={Math.max(16,Math.min(H-4,cy+18))} textAnchor="middle" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
+      {n!==0&&px>14&&px<W-6&&!skipX.includes(n)&&<text x={px} y={Math.max(16,Math.min(H-4,cy+18))} textAnchor="middle" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
     </g>);})}
     {tys.map(n=>{const py=cy-n*SC;if(py<-2||py>H+2)return null;return(<g key={'y'+n}>
       <line x1={0} y1={py} x2={W} y2={py} stroke={n===0?'#0f172a':'#e2e8f0'} strokeWidth={n===0?3:0.9}/>
-      {n!==0&&py>6&&py<H-6&&<text x={Math.max(16,Math.min(W-6,cx-10))} y={py+4} textAnchor="end" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
+      {n!==0&&py>6&&py<H-6&&!skipY.includes(n)&&<text x={Math.max(16,Math.min(W-6,cx-10))} y={py+4} textAnchor="end" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
     </g>);})}
     {cy>=0&&cy<=H&&<polygon points={`${W-2},${cy} ${W-11},${cy-4} ${W-11},${cy+4}`} fill="#0f172a"/>}
     {cx>=0&&cx<=W&&<polygon points={`${cx},2 ${cx-4},11 ${cx+4},11`} fill="#0f172a"/>}
@@ -967,16 +967,16 @@ function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
       {/* 발 위치 채운 원 */}
       <circle cx={sx} cy={cy} r={6} fill={color} stroke="white" strokeWidth={2}/>
       {/* x 좌표 라벨 */}
-      <text x={sx} y={cy+32} textAnchor="middle" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{label[0]}</text>
+      <text x={sx} y={cy+32} textAnchor="middle" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{label[0]}</text>
       {/* ── y축의 수선의 발 강조 ── */}
       {/* 발 위치 굵은 눈금 */}
       <line x1={cx-10} y1={sy} x2={cx+10} y2={sy} stroke={color} strokeWidth={4.5}/>
       {/* 발 위치 채운 원 */}
       <circle cx={cx} cy={sy} r={6} fill={color} stroke="white" strokeWidth={2}/>
       {/* y 좌표 라벨 */}
-      <text x={cx-20} y={sy+9} textAnchor="end" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{label[1]}</text>
+      <text x={cx-20} y={sy+9} textAnchor="end" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{label[1]}</text>
       {/* ── 점 좌표 라벨 ── */}
-      <text x={sx+18} y={sy-18} fontSize={26} fill={color} fontWeight="900" stroke="white" strokeWidth="5" paintOrder="stroke">({label[0]}, {label[1]})</text>
+      <text x={sx+18} y={sy-18} fontSize={26} fill={color} fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">({label[0]}, {label[1]})</text>
     </>}
     <circle cx={sx} cy={sy} r={26} fill={color} opacity={0.12}/>
     <circle cx={sx} cy={sy} r={14} fill={color} stroke="white" strokeWidth={3.5}/>
@@ -1511,10 +1511,10 @@ function GraphPreview({q}){
         {axXvis&&<polygon points={`${axX},4 ${axX-3},12 ${axX+3},12`} fill="#374151"/>}
         {axXvis&&<text x={axX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>}
         {/* 축 숫자 라벨 (듬성듬성, 0 제외) */}
-        {axYvis&&allXInts.filter((n,i)=>n!==0&&i%xStep===0&&toQx(n)>12&&toQx(n)<W-10).map(n=>(
+        {axYvis&&allXInts.filter((n,i)=>n!==0&&i%xStep===0&&toQx(n)>12&&toQx(n)<W-10&&![extremePt.x,...(!isDsExtreme?[ds]:[]),...(!isDeExtreme?[de]:[])].includes(n)).map(n=>(
           <text key={'lx'+n} x={toQx(n)} y={Math.min(axY+13,H-2)} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
         ))}
-        {axXvis&&allYInts.filter((n,i)=>n!==0&&i%yStep===0&&toQy(n)>10&&toQy(n)<H-6).map(n=>(
+        {axXvis&&allYInts.filter((n,i)=>n!==0&&i%yStep===0&&toQy(n)>10&&toQy(n)<H-6&&![Math.round(extremePt.y*100)/100,...(!isDsExtreme?[yDs]:[]),...(!isDeExtreme?[yDe]:[])].includes(n)).map(n=>(
           <text key={'ly'+n} x={Math.max(axX-6,14)} y={toQy(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
         ))}
         {/* 포물선 전체(옅게) */}
@@ -2405,8 +2405,8 @@ function graphToSvgString(q){
     allYI.forEach(n=>s+=`<line x1="4" y1="${toQy(n)}" x2="${W-4}" y2="${toQy(n)}" stroke="#eef1f6" stroke-width="0.6"/>`);
     if(axYvis)s+=`<line x1="4" y1="${axY}" x2="${W-4}" y2="${axY}" stroke="#374151" stroke-width="1.8"/><polygon points="${W-4},${axY} ${W-12},${axY-3} ${W-12},${axY+3}" fill="#374151"/><text x="${W-3}" y="${Math.min(axY+12,H-2)}" font-size="9" fill="#374151" font-weight="bold">x</text>`;
     if(axXvis)s+=`<line x1="${axX}" y1="4" x2="${axX}" y2="${H-4}" stroke="#374151" stroke-width="1.8"/><polygon points="${axX},4 ${axX-3},12 ${axX+3},12" fill="#374151"/><text x="${axX+5}" y="14" font-size="9" fill="#374151" font-weight="bold">y</text>`;
-    if(axYvis)allXI.filter((n,i)=>n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10).forEach(n=>s+=`<text x="${toQx(n)}" y="${Math.min(axY+13,H-2)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
-    if(axXvis)allYI.filter((n,i)=>n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6).forEach(n=>s+=`<text x="${Math.max(axX-6,14)}" y="${toQy(n)+3}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
+    if(axYvis)allXI.filter((n,i)=>n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10&&n!==ext.x).forEach(n=>s+=`<text x="${toQx(n)}" y="${Math.min(axY+13,H-2)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
+    if(axXvis)allYI.filter((n,i)=>n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6&&n!==Math.round(ext.y*100)/100).forEach(n=>s+=`<text x="${Math.max(axX-6,14)}" y="${toQy(n)+3}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
     if(pts.length>1)s+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#c7d2fe" stroke-width="1.4"/>`;
     if(rPts.length>1)s+=`<polyline points="${rPts.join(' ')}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"/>`;
     const exSx=toQx(ext.x),exSy=toQy(ext.y);
@@ -8775,7 +8775,7 @@ function exfPlane(win,opt){
       el.push(`<line x1="${X(0)}" y1="${Y(ymin)+10}" x2="${X(0)}" y2="${Y(ymax)-12}" ${ax}/><polygon points="${X(0)},${Y(ymax)-20} ${X(0)-5},${Y(ymax)-9} ${X(0)+5},${Y(ymax)-9}" fill="#111"/>`);
       labels.push(`<text x="${X(xmax)+14}" y="${Y(0)+FS+2}" font-size="${FS}" font-style="italic" font-family="${EXF_SERIF}">x</text>`);
       labels.push(`<text x="${X(0)+9}" y="${Y(ymax)-8}" font-size="${FS}" font-style="italic" font-family="${EXF_SERIF}">y</text>`);
-      labels.push(`<text x="${X(0)-6}" y="${Y(0)+FS}" font-size="${FS}" text-anchor="end" font-family="${EXF_SERIF}" paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round">O</text>`);
+      labels.push(`<text x="${X(0)-6}" y="${Y(0)+FS}" font-size="${FS}" text-anchor="end" font-family="${EXF_SERIF}" paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">O</text>`);
       if(ticks){const fs=Math.min(FS-2,u*0.62);
         for(let i=Math.ceil(xmin);i<=xmax;i++){if(!i)continue;el.push(`<line x1="${X(i)}" y1="${Y(0)-4}" x2="${X(i)}" y2="${Y(0)+4}" stroke="#111" stroke-width="1.5"/>`);
           labels.push(`<text x="${X(i)}" y="${Y(0)+fs+5}" font-size="${fs}" text-anchor="middle" font-family="${EXF_SERIF}">${i<0?'−'+(-i):i}</text>`);}
@@ -8794,7 +8794,7 @@ function exfPlane(win,opt){
     guide(x,y){if(y)P.seg(x,0,x,y,{w:1.4,dash:'5 5',color:'#444'});if(x)P.seg(0,y,x,y,{w:1.4,dash:'5 5',color:'#444'});},
     /* 글자. math:true 면 exfMath, 아니면 그대로 */
     text(x,y,s,o){o=o||{};const fs=o.size||FS;
-      labels.push(`<text x="${(o.px!=null?o.px:X(x))+(o.dx||0)}" y="${(o.py!=null?o.py:Y(y))+(o.dy||0)}" font-size="${fs}" text-anchor="${o.anchor||'middle'}" font-family="${o.sans?EXF_SANS:EXF_SERIF}" ${o.bold?'font-weight="700"':''} paint-order="stroke" stroke="#fff" stroke-width="5" stroke-linejoin="round">${o.math?exfMath(s,fs):s}</text>`);},
+      labels.push(`<text x="${(o.px!=null?o.px:X(x))+(o.dx||0)}" y="${(o.py!=null?o.py:Y(y))+(o.dy||0)}" font-size="${fs}" text-anchor="${o.anchor||'middle'}" font-family="${o.sans?EXF_SANS:EXF_SERIF}" ${o.bold?'font-weight="700"':''} paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">${o.math?exfMath(s,fs):s}</text>`);},
     num(v){return v<0?'−'+(-v):String(v);},
     /* x축 값(점 아래) · y축 값(축 왼쪽) — 겹치지 않게 기억해 둔다 */
     xval(x,s,below){if(!x&&s==null)return;if(P._xs.some(t=>Math.abs(t-x)*u<FS*0.9))return;P._xs.push(x);
@@ -9513,7 +9513,7 @@ function RadicalModule({sz}){
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       {pts.length>1&&<path d={`M ${pts.join(' L ')}`} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
       <Dot sx={cx+p*SC} sy={cy-q*SC} color="#3b82f6" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
     </svg>
@@ -9551,7 +9551,7 @@ function RationalModule({sz}){
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       <line x1={cx+p*SC} y1={0} x2={cx+p*SC} y2={H} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
       <line x1={0} y1={cy-q*SC} x2={W} y2={cy-q*SC} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
       <path d={branch(true)} fill="none" stroke="#9333ea" strokeWidth={3} strokeLinecap="round"/>
@@ -9582,6 +9582,7 @@ function QuadraticModule({sz}){
   const validY = [a * (ds - p)**2 + q, a * (de - p)**2 + q];
   if (p >= ds && p <= de) validY.push(q);
   const extreme = a > 0 ? Math.min(...validY) : Math.max(...validY);
+  const extremeXg = extreme===a*(ds-p)**2+q ? ds : de;   // 극점 밖 최대·최소의 x (굵은 색 숫자가 대신 쓰이는 눈금)
   
   const aStr=a===-1?'−':a===1?'':String(a);
   
@@ -9617,7 +9618,7 @@ function QuadraticModule({sz}){
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p,extremeXg]} skipY={[q,Math.round(extreme)]}/>
       {ghost.length>1&&<path d={`M ${ghost.join(' L ')}`} fill="none" stroke="#bbf7d0" strokeWidth={2} strokeDasharray="6,4"/>}
       <line x1={cx+ds*SC} y1={0} x2={cx+ds*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       <line x1={cx+de*SC} y1={0} x2={cx+de*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
@@ -9634,9 +9635,9 @@ function QuadraticModule({sz}){
           <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
           <line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
           <line x1={esx} y1={cy-8} x2={esx} y2={cy+8} stroke={col} strokeWidth={3.5}/>
-          <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{extremeX}</text>
+          <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{extremeX}</text>
           <line x1={cx-8} y1={esy} x2={cx+8} y2={esy} stroke={col} strokeWidth={3.5}/>
-          <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{Math.round(extreme)}</text>
+          <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{Math.round(extreme)}</text>
         </>);
       })()}
     </svg>
@@ -9702,7 +9703,7 @@ function DistanceModule({sz}){
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[ptX]} skipY={[ptY]}/>
       {le.length>=2&&<line x1={le[0][0]} y1={le[0][1]} x2={le[1][0]} y2={le[1][1]} stroke="#ea580c" strokeWidth={2.5}/>}
       <line x1={cx+ptX*SC} y1={cy-ptY*SC} x2={cx+fX*SC} y2={cy-fY*SC} stroke="#fb923c" strokeWidth={1.8} strokeDasharray="4,3"/>
       <circle cx={cx+fX*SC} cy={cy-fY*SC} r={6} fill="#fb923c" stroke="white" strokeWidth={2}/>
@@ -9769,7 +9770,7 @@ function CircleModule({sz}){
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>
       {lineEnabled&&(lineDir==='h'
         ?<line x1={0} y1={cy-linePos*SC} x2={W} y2={cy-linePos*SC} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
         :<line x1={cx+linePos*SC} y1={0} x2={cx+linePos*SC} y2={H} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
@@ -9828,7 +9829,7 @@ function SymmetryModule({sz}){
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy}/>
+      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[px]} skipY={[py]}/>
       {symLine}
       
       {/* 버튼이 눌려있을 때(type이 있을 때)만 이동 후의 점과 점선을 그려줍니다. */}
@@ -13726,17 +13727,17 @@ function graphToSVGStr(g){
     const xSt=Math.max(1,Math.ceil(xI.length/5)),ySt=Math.max(1,Math.ceil(yI.length/5));
     let qg='';xI.forEach(n=>{qg+=`<line x1="${toQx(n).toFixed(1)}" y1="4" x2="${toQx(n).toFixed(1)}" y2="${H-4}" stroke="#eef1f6" stroke-width="0.6"/>`;});
     yI.forEach(n=>{qg+=`<line x1="4" y1="${toQy(n).toFixed(1)}" x2="${W-4}" y2="${toQy(n).toFixed(1)}" stroke="#eef1f6" stroke-width="0.6"/>`;});
-    let qa='';
-    if(axYv){qa+=`<line x1="4" y1="${axY.toFixed(1)}" x2="${W-4}" y2="${axY.toFixed(1)}" stroke="#374151" stroke-width="1.8"/><polygon points="${W-4},${axY.toFixed(1)} ${W-12},${(axY-3).toFixed(1)} ${W-12},${(axY+3).toFixed(1)}" fill="#374151"/><text x="${W-3}" y="${Math.min(axY+12,H-2).toFixed(1)}" font-size="9" fill="#374151" font-weight="bold">x</text>`;
-      xI.forEach((n,i)=>{if(n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10)qa+=`<text x="${toQx(n).toFixed(1)}" y="${Math.min(axY+13,H-2).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
-    if(axXv){qa+=`<line x1="${axX.toFixed(1)}" y1="4" x2="${axX.toFixed(1)}" y2="${H-4}" stroke="#374151" stroke-width="1.8"/><polygon points="${axX.toFixed(1)},4 ${(axX-3).toFixed(1)},12 ${(axX+3).toFixed(1)},12" fill="#374151"/><text x="${(axX+5).toFixed(1)}" y="14" font-size="9" fill="#374151" font-weight="bold">y</text>`;
-      yI.forEach((n,i)=>{if(n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6)qa+=`<text x="${Math.max(axX-6,14).toFixed(1)}" y="${(toQy(n)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
-    const pts=[],rpPts=[];
-    for(let xi=xLo;xi<=xHi;xi+=0.1){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sx>=-4&&sx<=W+4&&sy>=-4&&sy<=H+4)pts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
-    for(let xi=ds;xi<=de;xi+=0.08){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sy>=-4&&sy<=H+4)rpPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
     const vxInR=p>=ds&&p<=de,cand=[{x:ds,y:yDs},{x:de,y:yDe}];
     if(vxInR)cand.push({x:p,y:vq});
     const ep=a>0?cand.reduce((m,c)=>c.y<m.y?c:m):cand.reduce((m,c)=>c.y>m.y?c:m);
+    let qa='';
+    if(axYv){qa+=`<line x1="4" y1="${axY.toFixed(1)}" x2="${W-4}" y2="${axY.toFixed(1)}" stroke="#374151" stroke-width="1.8"/><polygon points="${W-4},${axY.toFixed(1)} ${W-12},${(axY-3).toFixed(1)} ${W-12},${(axY+3).toFixed(1)}" fill="#374151"/><text x="${W-3}" y="${Math.min(axY+12,H-2).toFixed(1)}" font-size="9" fill="#374151" font-weight="bold">x</text>`;
+      xI.forEach((n,i)=>{if(n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10&&n!==ep.x)qa+=`<text x="${toQx(n).toFixed(1)}" y="${Math.min(axY+13,H-2).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
+    if(axXv){qa+=`<line x1="${axX.toFixed(1)}" y1="4" x2="${axX.toFixed(1)}" y2="${H-4}" stroke="#374151" stroke-width="1.8"/><polygon points="${axX.toFixed(1)},4 ${(axX-3).toFixed(1)},12 ${(axX+3).toFixed(1)},12" fill="#374151"/><text x="${(axX+5).toFixed(1)}" y="14" font-size="9" fill="#374151" font-weight="bold">y</text>`;
+      yI.forEach((n,i)=>{if(n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6&&n!==Math.round(ep.y*100)/100)qa+=`<text x="${Math.max(axX-6,14).toFixed(1)}" y="${(toQy(n)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
+    const pts=[],rpPts=[];
+    for(let xi=xLo;xi<=xHi;xi+=0.1){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sx>=-4&&sx<=W+4&&sy>=-4&&sy<=H+4)pts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
+    for(let xi=ds;xi<=de;xi+=0.08){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sy>=-4&&sy<=H+4)rpPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
     const ec=a>0?'#2563eb':'#ef4444',col=a>0?'#4f46e5':'#ef4444';
     let qc='';
     if(pts.length>1)qc+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#c7d2fe" stroke-width="1.4"/>`;

@@ -97,8 +97,8 @@ function graphToSvgString(q){
     allYI.forEach(n=>s+=`<line x1="4" y1="${toQy(n)}" x2="${W-4}" y2="${toQy(n)}" stroke="#eef1f6" stroke-width="0.6"/>`);
     if(axYvis)s+=`<line x1="4" y1="${axY}" x2="${W-4}" y2="${axY}" stroke="#374151" stroke-width="1.8"/><polygon points="${W-4},${axY} ${W-12},${axY-3} ${W-12},${axY+3}" fill="#374151"/><text x="${W-3}" y="${Math.min(axY+12,H-2)}" font-size="9" fill="#374151" font-weight="bold">x</text>`;
     if(axXvis)s+=`<line x1="${axX}" y1="4" x2="${axX}" y2="${H-4}" stroke="#374151" stroke-width="1.8"/><polygon points="${axX},4 ${axX-3},12 ${axX+3},12" fill="#374151"/><text x="${axX+5}" y="14" font-size="9" fill="#374151" font-weight="bold">y</text>`;
-    if(axYvis)allXI.filter((n,i)=>n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10).forEach(n=>s+=`<text x="${toQx(n)}" y="${Math.min(axY+13,H-2)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
-    if(axXvis)allYI.filter((n,i)=>n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6).forEach(n=>s+=`<text x="${Math.max(axX-6,14)}" y="${toQy(n)+3}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
+    if(axYvis)allXI.filter((n,i)=>n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10&&n!==ext.x).forEach(n=>s+=`<text x="${toQx(n)}" y="${Math.min(axY+13,H-2)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
+    if(axXvis)allYI.filter((n,i)=>n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6&&n!==Math.round(ext.y*100)/100).forEach(n=>s+=`<text x="${Math.max(axX-6,14)}" y="${toQy(n)+3}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`);
     if(pts.length>1)s+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#c7d2fe" stroke-width="1.4"/>`;
     if(rPts.length>1)s+=`<polyline points="${rPts.join(' ')}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"/>`;
     const exSx=toQx(ext.x),exSy=toQy(ext.y);

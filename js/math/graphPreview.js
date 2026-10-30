@@ -168,10 +168,10 @@ function GraphPreview({q}){
         {axXvis&&<polygon points={`${axX},4 ${axX-3},12 ${axX+3},12`} fill="#374151"/>}
         {axXvis&&<text x={axX+5} y={14} fontSize={9} fill="#374151" fontWeight="bold">y</text>}
         {/* 축 숫자 라벨 (듬성듬성, 0 제외) */}
-        {axYvis&&allXInts.filter((n,i)=>n!==0&&i%xStep===0&&toQx(n)>12&&toQx(n)<W-10).map(n=>(
+        {axYvis&&allXInts.filter((n,i)=>n!==0&&i%xStep===0&&toQx(n)>12&&toQx(n)<W-10&&![extremePt.x,...(!isDsExtreme?[ds]:[]),...(!isDeExtreme?[de]:[])].includes(n)).map(n=>(
           <text key={'lx'+n} x={toQx(n)} y={Math.min(axY+13,H-2)} textAnchor="middle" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
         ))}
-        {axXvis&&allYInts.filter((n,i)=>n!==0&&i%yStep===0&&toQy(n)>10&&toQy(n)<H-6).map(n=>(
+        {axXvis&&allYInts.filter((n,i)=>n!==0&&i%yStep===0&&toQy(n)>10&&toQy(n)<H-6&&![Math.round(extremePt.y*100)/100,...(!isDsExtreme?[yDs]:[]),...(!isDeExtreme?[yDe]:[])].includes(n)).map(n=>(
           <text key={'ly'+n} x={Math.max(axX-6,14)} y={toQy(n)+3} textAnchor="end" fontSize={9} fill="#9ca3af" fontWeight="600">{n}</text>
         ))}
         {/* 포물선 전체(옅게) */}

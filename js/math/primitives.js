@@ -4,7 +4,7 @@
    격자/점/분수/루트 표기 · 크기·드래그·확대 훅
    -------------------------------------------------------------------- */
 
-function Grid({W,H,SC,cx,cy}){
+function Grid({W,H,SC,cx,cy,skipX=[],skipY=[]}){   // skipX·skipY : 굵은 색 좌표 숫자가 대신 쓰이는 눈금은 그리지 않는다(겹침 방지)
   // cx/cy: 원점의 픽셀 위치 (팬 이동 반영됨), 범위 ±12까지 확장
   const rX=Math.min(12,Math.ceil(Math.max(cx,W-cx)/SC)+1);
   const rY=Math.min(12,Math.ceil(Math.max(cy,H-cy)/SC)+1);
@@ -13,11 +13,11 @@ function Grid({W,H,SC,cx,cy}){
   return(<g>
     {txs.map(n=>{const px=cx+n*SC;if(px<-2||px>W+2)return null;return(<g key={'x'+n}>
       <line x1={px} y1={0} x2={px} y2={H} stroke={n===0?'#0f172a':'#e2e8f0'} strokeWidth={n===0?3:0.9}/>
-      {n!==0&&px>14&&px<W-6&&<text x={px} y={Math.max(16,Math.min(H-4,cy+18))} textAnchor="middle" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
+      {n!==0&&px>14&&px<W-6&&!skipX.includes(n)&&<text x={px} y={Math.max(16,Math.min(H-4,cy+18))} textAnchor="middle" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
     </g>);})}
     {tys.map(n=>{const py=cy-n*SC;if(py<-2||py>H+2)return null;return(<g key={'y'+n}>
       <line x1={0} y1={py} x2={W} y2={py} stroke={n===0?'#0f172a':'#e2e8f0'} strokeWidth={n===0?3:0.9}/>
-      {n!==0&&py>6&&py<H-6&&<text x={Math.max(16,Math.min(W-6,cx-10))} y={py+4} textAnchor="end" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
+      {n!==0&&py>6&&py<H-6&&!skipY.includes(n)&&<text x={Math.max(16,Math.min(W-6,cx-10))} y={py+4} textAnchor="end" fontSize={17} fill="#475569" fontWeight="700">{n}</text>}
     </g>);})}
     {cy>=0&&cy<=H&&<polygon points={`${W-2},${cy} ${W-11},${cy-4} ${W-11},${cy+4}`} fill="#0f172a"/>}
     {cx>=0&&cx<=W&&<polygon points={`${cx},2 ${cx-4},11 ${cx+4},11`} fill="#0f172a"/>}
@@ -41,16 +41,16 @@ function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
       {/* 발 위치 채운 원 */}
       <circle cx={sx} cy={cy} r={6} fill={color} stroke="white" strokeWidth={2}/>
       {/* x 좌표 라벨 */}
-      <text x={sx} y={cy+32} textAnchor="middle" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{label[0]}</text>
+      <text x={sx} y={cy+32} textAnchor="middle" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{label[0]}</text>
       {/* ── y축의 수선의 발 강조 ── */}
       {/* 발 위치 굵은 눈금 */}
       <line x1={cx-10} y1={sy} x2={cx+10} y2={sy} stroke={color} strokeWidth={4.5}/>
       {/* 발 위치 채운 원 */}
       <circle cx={cx} cy={sy} r={6} fill={color} stroke="white" strokeWidth={2}/>
       {/* y 좌표 라벨 */}
-      <text x={cx-20} y={sy+9} textAnchor="end" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="4" paintOrder="stroke">{label[1]}</text>
+      <text x={cx-20} y={sy+9} textAnchor="end" fontSize={28} fill={color} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{label[1]}</text>
       {/* ── 점 좌표 라벨 ── */}
-      <text x={sx+18} y={sy-18} fontSize={26} fill={color} fontWeight="900" stroke="white" strokeWidth="5" paintOrder="stroke">({label[0]}, {label[1]})</text>
+      <text x={sx+18} y={sy-18} fontSize={26} fill={color} fontWeight="900" stroke="white" strokeWidth="2.5" paintOrder="stroke">({label[0]}, {label[1]})</text>
     </>}
     <circle cx={sx} cy={sy} r={26} fill={color} opacity={0.12}/>
     <circle cx={sx} cy={sy} r={14} fill={color} stroke="white" strokeWidth={3.5}/>

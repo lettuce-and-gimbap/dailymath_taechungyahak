@@ -284,17 +284,17 @@ function graphToSVGStr(g){
     const xSt=Math.max(1,Math.ceil(xI.length/5)),ySt=Math.max(1,Math.ceil(yI.length/5));
     let qg='';xI.forEach(n=>{qg+=`<line x1="${toQx(n).toFixed(1)}" y1="4" x2="${toQx(n).toFixed(1)}" y2="${H-4}" stroke="#eef1f6" stroke-width="0.6"/>`;});
     yI.forEach(n=>{qg+=`<line x1="4" y1="${toQy(n).toFixed(1)}" x2="${W-4}" y2="${toQy(n).toFixed(1)}" stroke="#eef1f6" stroke-width="0.6"/>`;});
-    let qa='';
-    if(axYv){qa+=`<line x1="4" y1="${axY.toFixed(1)}" x2="${W-4}" y2="${axY.toFixed(1)}" stroke="#374151" stroke-width="1.8"/><polygon points="${W-4},${axY.toFixed(1)} ${W-12},${(axY-3).toFixed(1)} ${W-12},${(axY+3).toFixed(1)}" fill="#374151"/><text x="${W-3}" y="${Math.min(axY+12,H-2).toFixed(1)}" font-size="9" fill="#374151" font-weight="bold">x</text>`;
-      xI.forEach((n,i)=>{if(n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10)qa+=`<text x="${toQx(n).toFixed(1)}" y="${Math.min(axY+13,H-2).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
-    if(axXv){qa+=`<line x1="${axX.toFixed(1)}" y1="4" x2="${axX.toFixed(1)}" y2="${H-4}" stroke="#374151" stroke-width="1.8"/><polygon points="${axX.toFixed(1)},4 ${(axX-3).toFixed(1)},12 ${(axX+3).toFixed(1)},12" fill="#374151"/><text x="${(axX+5).toFixed(1)}" y="14" font-size="9" fill="#374151" font-weight="bold">y</text>`;
-      yI.forEach((n,i)=>{if(n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6)qa+=`<text x="${Math.max(axX-6,14).toFixed(1)}" y="${(toQy(n)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
-    const pts=[],rpPts=[];
-    for(let xi=xLo;xi<=xHi;xi+=0.1){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sx>=-4&&sx<=W+4&&sy>=-4&&sy<=H+4)pts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
-    for(let xi=ds;xi<=de;xi+=0.08){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sy>=-4&&sy<=H+4)rpPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
     const vxInR=p>=ds&&p<=de,cand=[{x:ds,y:yDs},{x:de,y:yDe}];
     if(vxInR)cand.push({x:p,y:vq});
     const ep=a>0?cand.reduce((m,c)=>c.y<m.y?c:m):cand.reduce((m,c)=>c.y>m.y?c:m);
+    let qa='';
+    if(axYv){qa+=`<line x1="4" y1="${axY.toFixed(1)}" x2="${W-4}" y2="${axY.toFixed(1)}" stroke="#374151" stroke-width="1.8"/><polygon points="${W-4},${axY.toFixed(1)} ${W-12},${(axY-3).toFixed(1)} ${W-12},${(axY+3).toFixed(1)}" fill="#374151"/><text x="${W-3}" y="${Math.min(axY+12,H-2).toFixed(1)}" font-size="9" fill="#374151" font-weight="bold">x</text>`;
+      xI.forEach((n,i)=>{if(n!==0&&i%xSt===0&&toQx(n)>12&&toQx(n)<W-10&&n!==ep.x)qa+=`<text x="${toQx(n).toFixed(1)}" y="${Math.min(axY+13,H-2).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
+    if(axXv){qa+=`<line x1="${axX.toFixed(1)}" y1="4" x2="${axX.toFixed(1)}" y2="${H-4}" stroke="#374151" stroke-width="1.8"/><polygon points="${axX.toFixed(1)},4 ${(axX-3).toFixed(1)},12 ${(axX+3).toFixed(1)},12" fill="#374151"/><text x="${(axX+5).toFixed(1)}" y="14" font-size="9" fill="#374151" font-weight="bold">y</text>`;
+      yI.forEach((n,i)=>{if(n!==0&&i%ySt===0&&toQy(n)>10&&toQy(n)<H-6&&n!==Math.round(ep.y*100)/100)qa+=`<text x="${Math.max(axX-6,14).toFixed(1)}" y="${(toQy(n)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9ca3af" font-weight="600">${n}</text>`;});}
+    const pts=[],rpPts=[];
+    for(let xi=xLo;xi<=xHi;xi+=0.1){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sx>=-4&&sx<=W+4&&sy>=-4&&sy<=H+4)pts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
+    for(let xi=ds;xi<=de;xi+=0.08){const yi=a*(xi-p)**2+vq,sx=toQx(xi),sy=toQy(yi);if(sy>=-4&&sy<=H+4)rpPts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);}
     const ec=a>0?'#2563eb':'#ef4444',col=a>0?'#4f46e5':'#ef4444';
     let qc='';
     if(pts.length>1)qc+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#c7d2fe" stroke-width="1.4"/>`;
