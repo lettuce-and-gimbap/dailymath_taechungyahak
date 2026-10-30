@@ -802,7 +802,7 @@ var GED_UNITS=(function(){
         else items.push({t:'hline',y:r,label:'y=a',dash:'',color:NAVY},{t:'seg',x1:0,y1:0,x2:0,y2:r,color:GREEN,width:4,dash:'9 6'});
         const figure=fig(planeSVG({xmin:-R,xmax:R,ymin:-R,ymax:R,s:32},items));
         const sol=[`원의 반지름 : ${tex(`x^2+y^2=${nf(r2)}=${nf(r)}^2`)} → ${tex('r='+nf(r))}`,
-          `${vert?'세로':'가로'}선 ${tex(p.dir)}가 원에 딱 닿으려면(접하려면) 원점에서 ${tex('a')}만큼 떨어진 거리가 반지름과 같아야 합니다. (초록 점선)`,
+          `원점에서 ${vert?'오른쪽':'위쪽'}으로 반지름 ${nf(r)}칸을 가면 원의 끝입니다. ${vert?'세로':'가로'}선 ${tex(p.dir)}가 그 끝에 딱 닿으려면(접하려면) ${tex('a')}가 반지름과 같아야 합니다. (초록 점선)`,
           `따라서 ${tex('a='+nf(r))}`];
         return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(r)};
       }

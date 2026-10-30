@@ -358,8 +358,8 @@ function genCircQ(){
       q:`직선 ${dir} 와 원 x²+y²=${r*r} 이 한 점에서 만날 때 양수 a`,
       svg:G.planeSVG(g,before),svgAfter:G.planeSVG(g,after),
       choices:list.map(String),ans:list.indexOf(r),answer:String(r),cols:2,
-      sol:[`원 x²+y²=${r*r} 의 중심은 원점, 반지름은 ${_tx(`\sqrt{${r*r}}=${r}`)} 입니다.`,
-        `직선 ${dir} 가 원과 <b>한 점에서 만난다 = 접한다</b> → 원점에서 직선까지의 거리가 반지름과 같습니다. (초록 점선)`,
+      sol:[`원 x²+y²=${r*r} 의 중심은 원점이고, 오른쪽 우변이 반지름의 제곱이므로 r² = ${r*r} → 반지름은 <b>${r}</b> 입니다.`,
+        `직선 ${dir} 가 원과 <b>한 점에서 만난다 = 접한다</b> → 원점에서 ${vert?'오른쪽':'위쪽'}으로 반지름 ${r}칸을 간 원의 끝에 직선이 닿습니다. (초록 점선)`,
         `따라서 a = <b>${r}</b> (양수)`]};
   }
 

@@ -204,9 +204,9 @@ function gen_circle_line_rel(){
     graph:{type:'circle_line',h:0,k:0,r,lineType:'h',lineVal:r},
     meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
-      `원 x²+y²=${r*r}의 중심은 원점(0,0), 반지름은 √${r*r}=${r}입니다.`,
-      `직선 y=a와 원이 한 점에서 만난다 = 접한다 = 중심에서 직선까지의 거리 = 반지름`,
-      `직선 y=a와 원점 사이의 거리 = |a|이므로 |a| = ${r}`,
+      `원 x²+y²=${r*r}의 중심은 원점(0,0)이고, 우변 ${r*r}은 반지름의 제곱(${r}×${r})이므로 반지름은 ${r}입니다.`,
+      `직선 y=a가 원과 한 점에서 만난다 = 접한다 → 원점에서 위쪽으로 반지름 ${r}칸을 간 원의 맨 위에 직선이 닿습니다.`,
+      `따라서 |a| = ${r}`,
       `a는 자연수이므로 a = ${r}입니다.`
     ]};
 }
@@ -233,7 +233,7 @@ function gen_symmetry_pt(){
 }
 
 // 3-10. 지름 끝점 → 원의 방정식  (기출 Q13: 2021-2회)
-// ※ 반지름이 항상 자연수가 되도록 서로소 피타고라스 삼각수 기반 쌍만 사용
+// ※ 반지름은 늘 정수 : 두 점이 가로 또는 세로로 나란한 쌍만 쓴다 → 반지름 = 지름의 길이 ÷ 2 (루트·거리 공식 없이)
 function gen_circle_diameter_pts(){
   const PAIRS=[
     {A:[-2,0],B:[2,0],h:0,k:0,r:2,r2:4},
@@ -241,27 +241,26 @@ function gen_circle_diameter_pts(){
     {A:[-2,1],B:[2,1],h:0,k:1,r:2,r2:4},
     {A:[0,0],B:[0,4],h:0,k:2,r:2,r2:4},
     {A:[1,1],B:[5,1],h:3,k:1,r:2,r2:4},
+    {A:[1,-2],B:[1,2],h:1,k:0,r:2,r2:4},
     {A:[-3,0],B:[3,0],h:0,k:0,r:3,r2:9},
     {A:[-1,2],B:[5,2],h:2,k:2,r:3,r2:9},
     {A:[0,-1],B:[6,-1],h:3,k:-1,r:3,r2:9},
-    {A:[-3,-4],B:[3,4],h:0,k:0,r:5,r2:25},
-    {A:[-4,-3],B:[4,3],h:0,k:0,r:5,r2:25},
-    {A:[0,-4],B:[6,4],h:3,k:0,r:5,r2:25},
-    {A:[-3,0],B:[3,8],h:0,k:4,r:5,r2:25},
+    {A:[-1,-3],B:[-1,3],h:-1,k:0,r:3,r2:9},
+    {A:[2,0],B:[2,6],h:2,k:3,r:3,r2:9},
   ];
   const{A,B,h,k,r,r2}=pick(PAIRS);
   const hEq=fmtCircleTerm(h,'x'),kEq=fmtCircleTerm(k,'y');
   const correct=`${hEq}+${kEq}=${r2}`;
   const ws=circleWrongs(h,k,r2,correct,[`${hEq}+${kEq}=${r2-2}`,`${hEq}+${kEq}=${r2+2}`]);
   const{choices,answer}=makeChoices(correct,ws.slice(0,3));
-  const pn=v=>v<0?`(${v})`:String(v);
   const h2=(A[0]+B[0]),k2=(A[1]+B[1]);
+  const len=Math.abs(B[0]-A[0])+Math.abs(B[1]-A[1]);
   return{topic:'원의 방정식(지름)',q:`두 점 A(${A[0]}, ${A[1]}), B(${B[0]}, ${B[1]})을 지름의 양 끝 점으로 하는 원의 방정식은?`,choices,answer,graph:{type:'circle',h,k,r,A,B},meta:{category:'geometry',type:'도형과 기하',diff:'기하'},
     sol:[
       `지름의 두 끝점 A(${A[0]},${A[1]}), B(${B[0]},${B[1]})이 주어지면 → 중심 = 두 점의 중점입니다.`,
       `중심 x좌표: (${_add(A[0],B[0])})÷2=${h2}÷2=${h},  y좌표: (${_add(A[1],B[1])})÷2=${k2}÷2=${k}`,
-      `반지름 r = 중심~A 거리 = √((${h}−${pn(A[0])})²+(${k}−${pn(A[1])})²) = √${r2} = ${r}`,
-      `원의 방정식: (x중심이 ${h}, y중심이 ${k}, r=${r}) → ${correct}`,
+      `두 점이 ${A[1]===B[1]?'가로':'세로'}로 나란하므로 지름의 길이는 ${len}칸 → 반지름 r = ${len}÷2 = ${r}`,
+      `원의 방정식: 중심 (${h}, ${k}), r=${r} → ${correct}`,
       `따라서 정답은 ${correct}입니다.`
     ]};
 }
