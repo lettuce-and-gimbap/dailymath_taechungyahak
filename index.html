@@ -11738,12 +11738,20 @@ function genCircQ(){
     .filter((c,i,arr)=>c!==right&&arr.indexOf(c)===i).slice(0,3);
   const list=_shuffleList([right,...cands]);
   const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400};
+  /* 중심 좌표·반지름 글자는 원·점·눈금 위에 얹지 않는다 — 원과 가장 먼 모서리 안내 칸에 따로 적는다
+     (r=1 처럼 작은 원에서는 글자가 원과 눈금 숫자를 덮어 버린다). 글자 뒤에 흰 배경도 깔지 않는다. */
+  const BW=4.7,BH=1.9;                                    // 안내 칸 크기(좌표 단위)
+  const corner=[[-5.9,4.0],[1.2,4.0],[-5.9,-5.9],[1.2,-5.9]].map(([x0,y0])=>{   // [왼쪽 x, 아래쪽 y]
+    const dx=Math.max(x0-a,0,a-(x0+BW)),dy=Math.max(y0-b,0,b-(y0+BH));
+    return{x0,y0,gap:Math.hypot(dx,dy)-r};
+  }).sort((p,q)=>q.gap-p.gap)[0];
+  const ty=corner.y0+BH-0.7;
   const items=[
     {t:'circle',cx:a,cy:b,r},
     {t:'seg',x1:a,y1:b,x2:a+r,y2:b,color:'#e11d48',width:3,dash:'6 4'},
     {t:'pt',x:a,y:b,r:6,color:'#e11d48'},
-    {t:'text',x:a+r/2,y:b+0.22,s:`r=${r}`,anchor:'middle',size:19,color:'#e11d48',halo:true},
-    {t:'text',x:a,y:b-0.75,s:`(${_neg(a)}, ${_neg(b)})`,anchor:'middle',size:19,color:'#111',halo:true},
+    {t:'text',x:corner.x0,y:ty,s:`● 중심 (${_neg(a)}, ${_neg(b)})`,anchor:'start',size:18,color:'#e11d48'},
+    {t:'text',x:corner.x0,y:ty-0.95,s:`┅ 반지름 ${r}`,anchor:'start',size:18,color:'#e11d48'},
   ];
   const svg=G.planeSVG(g,items);
   return{lv:'circ',topic:'원의 방정식',
