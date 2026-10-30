@@ -840,7 +840,7 @@ var GED_UNITS=(function(){
       if(p.kind==='x축에 접함')items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:p.a,y:0,color:GREEN,r:6});
       else if(p.kind==='y축에 접함')items.push({t:'seg',x1:p.a,y1:p.b,x2:0,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:0,y:p.b,color:GREEN,r:6});
       else if(p.kind==='원점을 지남')items.push({t:'seg',x1:p.a,y1:p.b,x2:0,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'seg',x1:p.a,y1:p.b,x2:p.a,y2:0,color:GREY,width:2.4,dash:'6 5'},{t:'seg',x1:0,y1:0,x2:p.a,y2:0,color:GREY,width:2.4,dash:'6 5'});
-      else items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a+R,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'text',x:p.a+R/2,y:p.b+0.35,s:'r='+nf(R),size:19,color:GREEN,anchor:'middle'});
+      else items.push({t:'seg',x1:p.a,y1:p.b,x2:p.a+R,y2:p.b,color:GREEN,width:4,dash:'9 6'},{t:'text',x:p.a+R/2,y:p.b<0?p.b-0.8:p.b+0.35,s:'r='+nf(R),size:19,color:GREEN,anchor:'middle'});
       const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim)),maxW:420},items));
       const sol=[`원의 기본 모양은 ${tex('(x-a)^2+(y-b)^2=r^2')}입니다. 중심 ${tex(pr(p.a,p.b))}를 자리에 넣습니다. (괄호 안 부호는 반대!)`,
         why,

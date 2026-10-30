@@ -97,13 +97,16 @@ var GS=(function(){
     o+=`<text x="${X(xmax)+24}" y="${Y(0)+9}" font-size="${fsz+4}" font-style="italic">x</text>`;
     o+=`<text x="${X(0)+11}" y="${Y(ymax)-22}" font-size="${fsz+4}" font-style="italic">y</text>`;
     /* 눈금 */
+    /* 좌표를 알려 주는 점(guide)의 x·y 값은 빨간 굵은 글씨로 그 자리의 검정 눈금 숫자를 '대신'한다 — 겹쳐 쓰면 둘 다 안 읽힌다 */
+    const gX=new Set(),gY=new Set();
+    for(const it of(items||[]))if(it.t==='pt'&&it.guide&&!it.nolabel){if(it.x&&it.xl===undefined)gX.add(it.x);if(it.y&&it.yl===undefined)gY.add(it.y);}
     if(g.ticks!==false){
       const step=(xmax-xmin)>14?2:1;
       /* 눈금 숫자도 [숫자·수식 크기](--ms)를 따른다. 칸 너비의 0.9배(px)를 넘지 않게 해서 옆 숫자('-6' 두 글자)와 겹치지 않는다 */
       const maxPx=Math.max(14,Math.floor(s*step*0.9));
       const tk=`style="font-size:min(calc(var(--ms,1)*${fsz}px),${maxPx}px);font-weight:600"`;
-      for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" ${tk} text-anchor="middle">${i}</text>`;}
-      for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" ${tk} text-anchor="end">${j}</text>`;}
+      for(let i=xmin;i<=xmax;i++){if(i===0||i%step)continue;o+=L(X(i),Y(0)-5,X(i),Y(0)+5,'#000',2.6);if(gX.has(i))continue;o+=`<text x="${X(i)}" y="${Y(0)+fsz+8}" font-size="${fsz}" ${tk} text-anchor="middle">${i}</text>`;}
+      for(let j=ymin;j<=ymax;j++){if(j===0||j%step)continue;o+=L(X(0)-5,Y(j),X(0)+5,Y(j),'#000',2.6);if(gY.has(j))continue;o+=`<text x="${X(0)-11}" y="${Y(j)+7}" font-size="${fsz}" ${tk} text-anchor="end">${j}</text>`;}
     }
     /* O 는 원점 바로 왼쪽 아래 구석에 작게 — 눈금 숫자(-1)와 붙어 '-1O' 처럼 보이지 않게 */
     o+=`<text x="${X(0)-5}" y="${Y(0)+fsz-3}" font-size="${fsz-5}" text-anchor="end">O</text>`;
