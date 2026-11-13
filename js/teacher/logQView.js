@@ -43,7 +43,7 @@ function CoordLogQ({rec}){
   if(st.busy)return<LqLoading/>;
   if(!st.r)return<LqPlain rec={rec} note="이 기록은 예전 방식으로 저장되어 그림을 다시 그리지 못했습니다."/>;
   const q=st.r.q;
-  const L=COORD_LEVELS.find(l=>l.k===q.lv)||{};
+  const L=COORD_LEVELS.find(l=>l.k===(q.lv==='count'?'count2':q.lv))||{};
   const pick=lqPickIdx(q.choices,rec.uAns);
   const one=q.cols===1||q.lv==='rat'||q.lv==='irr';
   return(<div ref={ref} className="bg-white rounded-2xl p-4 border border-gray-200 space-y-3">
