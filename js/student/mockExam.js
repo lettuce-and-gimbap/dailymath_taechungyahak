@@ -218,15 +218,19 @@ function MockExamTab({userData,onUpdate}){
 
   if(screen==='start'){
     if(!examLevel)return(<div className="p-4 pb-36 space-y-4 fade-in">
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
-        <h2 className="text-xl font-black mb-1">📝 검정고시 모의고사</h2>
-        <p className="text-sm opacity-90">먼저 응시할 학력을 골라 주세요.</p>
+      <div className="mb-1">
+        <h2 className="text-2xl font-black text-gray-800">📝 검정고시 모의고사</h2>
+        <p className="text-sm font-bold text-gray-500 mt-1">응시할 학력을 선택해 주세요.</p>
       </div>
-      <button onClick={()=>setExamLevel('middle')} className="w-full p-6 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</div>
+      <button onClick={()=>setExamLevel('middle')} className="w-full p-5 bg-white rounded-3xl text-left shadow-md border-2 border-slate-200 flex items-center gap-4 active:scale-[0.98] transition-transform">
+        <span className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-3xl shrink-0">📘</span>
+        <span className="flex-1"><span className="block text-lg font-black text-gray-800">중졸 모의고사</span><span className="block text-sm mt-1 font-bold text-gray-500">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</span></span>
+        <span className="text-2xl text-gray-300">›</span>
       </button>
-      <button onClick={()=>setExamLevel('high')} className="w-full p-6 bg-gradient-to-r from-violet-500 to-indigo-700 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</div>
+      <button onClick={()=>setExamLevel('high')} className="w-full p-5 bg-white rounded-3xl text-left shadow-md border-2 border-slate-200 flex items-center gap-4 active:scale-[0.98] transition-transform">
+        <span className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center text-3xl shrink-0">📚</span>
+        <span className="flex-1"><span className="block text-lg font-black text-gray-800">고졸 모의고사</span><span className="block text-sm mt-1 font-bold text-gray-500">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</span></span>
+        <span className="text-2xl text-gray-300">›</span>
       </button>
     </div>);
     const stats=computeStats(userData.logs||[]);

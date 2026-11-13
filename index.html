@@ -7341,14 +7341,17 @@ function gedCountSlotInfo(action,r){
  else if(action.includes('왼쪽부터'))title='왼쪽→';
  return {title,vertical:title==='위→아래'||title==='아래→위',labels:Array.from({length:r},(_,i)=>label(title==='아래→위'?r-1-i:i))};
 }
-function gedCountFigure(scene,n,r,ordered,action){
- const cellW=82, width=n*cellW+12;
- const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+i*cellW},5)"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
+function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
+ const cellW=82, columns=studentGrid?(n===4?2:Math.min(n,3)):n, width=columns*cellW+12;
+ const extraY=studentGrid&&n>columns?86:0;
+ const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+(i%columns)*cellW},${5+Math.floor(i/columns)*86})"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
  const info=action?gedCountSlotInfo(action,r):{title:'순서',labels:Array.from({length:r},(_,i)=>String(i+1))};
  const vertical=ordered&&!!info.vertical;
- let slots='',height=ordered?128:90;
+ let slots='',height=(ordered?128:90)+extraY;
  if(ordered&&!action){
-   slots=`<text x="10" y="113" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>`<rect x="${55+i*53}" y="91" width="45" height="28" fill="white" stroke="#555"/><text x="${77+i*53}" y="110" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`).join('')}`;
+   const slotCols=studentGrid?Math.min(columns,3):r;
+   slots=`<text x="10" y="${113+extraY}" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>{const x=55+(i%slotCols)*53,y=91+extraY+Math.floor(i/slotCols)*32;return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`;}).join('')}`;
+   if(studentGrid&&r>slotCols)height+=32;
  }else if(ordered){
    const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
    const shapes={
@@ -7362,12 +7365,12 @@ function gedCountFigure(scene,n,r,ordered,action){
      board:'<rect x="6" y="8" width="48" height="39" rx="2"/><rect x="10" y="12" width="40" height="31" rx="1" stroke-dasharray="3 2"/><path d="M21 8 V5 H39 V8 M24 5 V3 H36 V5 M8 46 H52 M13 16 H17 M43 16 H47"/><circle cx="13" cy="10" r="1"/><circle cx="47" cy="10" r="1"/>',
      shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>'
    };
-   const slotX=vertical?55:14,slotY=vertical?91:105,step=vertical?32:70;
-   slots=`<text x="10" y="99" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
-     const x=slotX+(vertical?0:i*step),y=slotY+(vertical?i*step:0);
+   const slotX=vertical?55:14,slotY=(vertical?91:105)+extraY,step=vertical?32:70,slotCols=studentGrid?Math.min(columns,3):r;
+   slots=`<text x="10" y="${99+extraY}" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
+     const x=slotX+(vertical?0:(i%slotCols)*step),y=slotY+(vertical?i*step:Math.floor(i/slotCols)*80);
      return `<g class="count-placement" data-placement="${kind}" transform="translate(${x},${y})" fill="white" stroke="#444" stroke-width="1.4" stroke-linejoin="round">${shapes[kind]}</g><text x="${x+30}" y="${y+(vertical?20:65)}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#111">${label}</text>`;
    }).join('');
-   height=vertical?99+r*32:180;
+   height=(vertical?99+r*32:180+(studentGrid?Math.floor((r-1)/slotCols)*80:0))+extraY;
  }
  return `<div class="fig"><svg class="count-figure" data-count="${n}" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
 }
@@ -8492,7 +8495,7 @@ var GED_UNITS=(function(){
     rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:opts&&opts.version===3?3:4,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
-      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_COUNT_SCENES_V4:p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v>=3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
+      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_COUNT_SCENES_V4:p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v>=3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null,!!p.studentGrid),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
       const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
@@ -8508,7 +8511,7 @@ var GED_UNITS=(function(){
     rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:opts&&opts.version===3?3:4,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
-      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_CHOICE_SCENES_V4:p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
+      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_CHOICE_SCENES_V4:p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false,null,!!p.studentGrid),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
       const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
@@ -10933,6 +10936,7 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
   const weekLabel=`${monDate.getMonth()+1}/${monDate.getDate()}(월) ~ ${sunDate.getMonth()+1}/${sunDate.getDate()}(일)`;
   const praise=todayLessons===0?'시작이 반이에요! 도전해봐요 💪':todayLessons<goal?`정말 잘하고 있어요! 조금만 더! 🌟`:'🎊 오늘 목표 달성! 대단해요!';
   const[showArchive,setShowArchive]=useState(false);
+  const[showMathForest,setShowMathForest]=useState(false);
 
   // 토픽 기준의 3단 영역 지도. 알 수 없는 유형은 기타에 남겨 분모에서 누락시키지 않는다.
   const treeDomains=[
@@ -11091,7 +11095,7 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
         <div className="flex items-center gap-2 mb-3">
           <span className="text-2xl">📚</span>
           <div>
-            <div className="font-black text-base">중졸·고졸 검정고시 연습이 필요해요!</div>
+            <div className="font-black text-base">중졸·고졸 모의고사 연습이 필요해요!</div>
             <div className="text-xs opacity-80 mt-0.5">아직 충분히 풀지 않은 영역이 있어요</div>
           </div>
         </div>
@@ -11104,26 +11108,27 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
           ))}
         </div>
         <div className="text-xs opacity-80 bg-white/10 rounded-xl p-3 leading-relaxed">
-          💡 <b>문제풀기 탭 → 중졸 또는 고졸 검정고시 연습</b>을 선택하면 필요한 영역을 골고루 연습할 수 있어요!
+          💡 <b>모의고사 탭</b>에서 실전 모의고사나 약점 집중 문제를 풀어 보세요.
         </div>
       </div>
     )}
 
     {/* 나의 수학 나무 숲: 누적 성장 배지와 세분 영역 지도 */}
     <div className="bg-white rounded-3xl shadow-md border-t-4 border-t-green-400 overflow-hidden">
-      <div className="px-5 pt-5 pb-3 bg-gradient-to-br from-green-50 via-white to-emerald-50">
+      <button onClick={()=>setShowMathForest(v=>!v)} aria-expanded={showMathForest} className="w-full text-left px-5 pt-5 pb-3 bg-gradient-to-br from-green-50 via-white to-emerald-50">
         <div className="flex items-start gap-3">
           <div className="text-4xl">🌳</div>
           <div className="min-w-0 flex-1">
             <div className="text-base font-black text-green-800">나의 수학나무 숲</div>
             <div className="text-xs text-green-700 mt-1">오늘까지 {treeQuestions.length}문제를 만나고 {activeTotal}일 함께했어요.</div>
           </div>
-          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-white text-green-700 border border-green-100">성장 중</span>
+          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-white text-green-700 border border-green-100">{showMathForest?'접기 ▲':'펼치기 ▼'}</span>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-4">
+      </button>
+      {showMathForest&&<>
+        <div className="px-5 pt-4 grid grid-cols-3 gap-2">
           {[["🌱",treeQuestions.length,"만난 문제"],["🔁",recovered,"되찾은 문제"],["⭐",activeTotal,"함께한 날"]].map(([ico,val,label])=><div key={label} className="rounded-2xl bg-white/90 border border-green-100 p-2.5 text-center shadow-sm"><div className="text-[10px] text-gray-500 font-bold">{ico} {label}</div><div className="text-xl text-green-800 font-black mt-0.5">{val}<span className="text-xs ml-0.5">개</span></div>{label==='되찾은 문제'&&<div className="text-[9px] text-green-600 font-bold">이번 주 +{recoveredThisWeek}</div>}</div>)}
         </div>
-      </div>
       <div className="px-5 pb-5 pt-3">
         <div className="flex items-center justify-between mb-2"><div className="text-xs font-black text-gray-700">배움의 영역 지도</div><div className="text-[10px] text-gray-400">색 막대 = 지금까지 정답 비율</div></div>
         <div className="space-y-2">
@@ -11137,8 +11142,8 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
           })}
         </div>
         <div className="mt-3 rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-[10px] text-amber-800 leading-relaxed"><b>🌟 다음 성장 미션</b><br/>{treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length?`기록이 적은 ${treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length}개 영역에서 문제를 더 만나봐요.`:treeQuestions.length===0?'첫 문제를 풀어 나무에 씨앗을 심어봐요!':'가장 많이 자란 영역의 다음 유형에도 도전해봐요!'} 오답은 성장 과정의 일부이고, 되찾은 문제는 실력이 된 순간이에요.</div>
-        <div className="mt-2 text-[9px] text-gray-400 leading-relaxed">정답 비율은 저장된 전체 풀이 기준의 참고값이에요. 영역 분류는 문항 토픽 이름과 범주에 따르며, ‘되찾은 문제’는 같은 문항 기록에서 오답 뒤 정답으로 바뀐 경우만 셉니다.</div>
       </div>
+      </>}
     </div>
 
     {/* 학생 의견 보내기 */}
@@ -11268,13 +11273,12 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
   {v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 구합니다'},
   {v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 문제와 없는 문제를 함께 풉니다'},
   {v:3,lbl:'약수 구하기',desc:'약수를 모두 찾거나 개수를 구합니다'},
-  {v:4,lbl:'약수 (하드모드)',desc:'더 큰 수의 약수를 구합니다'},
-  {v:5,lbl:'중졸 검정고시 연습',desc:'영역을 선택해 중졸 문제를 풉니다'},
-  {v:6,lbl:'고졸 검정고시 연습',desc:'영역을 선택해 고졸 문제를 풉니다'}
+  {v:4,lbl:'약수 (하드모드)',desc:'더 큰 수의 약수를 구합니다'}
  ];
- const groups=[{id:'arithmetic',title:'사칙연산',icon:'✏️',desc:'나눗셈 · 약수 · 검정고시 연습'},
+ const groups=[{id:'arithmetic',title:'사칙연산',icon:'✏️',desc:'나눗셈 · 약수'},
   {id:'coordinate',title:'좌표',icon:'📍',desc:'좌표 읽기부터 함수와 방정식까지'},
-  {id:'count',title:'경우의 수',icon:'🎲',desc:'순열과 조합'}];
+  {id:'count',title:'경우의 수',icon:'🎲',desc:'순열과 조합'},
+  {id:'sets',title:'집합과 명제',icon:'🧩',desc:'집합과 명제를 나누어 연습합니다'}];
  const card=(key,badge,title,desc,onClick,locked=false)=>
   <button key={key} onClick={onClick} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-slate-200 flex items-center gap-3 active:scale-[0.98] transition-transform">
    <span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs text-center font-black shrink-0 px-1">{badge}</span>
@@ -11283,13 +11287,13 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
  return <div className="p-4 space-y-4 pb-36"><div><div className="text-2xl font-black text-gray-800">✏️ 오늘의 문제풀이</div><div className="text-sm font-bold text-gray-500 mt-1">풀고 싶은 유형을 골라 10문제에 도전해 보세요.</div></div>
   {savedData&&<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 font-black text-amber-800">📚 하던 공부 이어서 풀기 ({savedData.correctCount||0}/10) →</button>}
   {groups.map(g=><section key={g.id} className="bg-white rounded-3xl shadow-md overflow-hidden"><button onClick={()=>setSection(section===g.id?null:g.id)} aria-expanded={section===g.id} className="w-full p-5 text-left flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span className="flex-1"><span className="block text-lg font-black text-gray-800">{g.title}</span><span className="block text-sm font-bold text-gray-500">{g.desc}</span></span><span className="font-black text-indigo-500">{section===g.id?'−':'+'}</span></button>
-   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
+   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><div key={topic} className="w-full text-left bg-slate-50 rounded-3xl p-4 border-2 border-slate-200 flex items-center gap-3 opacity-80"><span className="w-14 h-14 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center text-2xl shrink-0">🔒</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">선생님이 준비 중이에요</span></span></div>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
 }
 
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
-  const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
+  const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'}];
   const MID_DOMAINS=['전체(혼합)','수와 연산','문자와 식','함수','기하','확률과 통계'];
   const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','내분점','집합과 함수','확률과 통계'];
   const domainList=ver===5?MID_DOMAINS:HIGH_DOMAINS;
@@ -12010,15 +12014,15 @@ var COORD_LEVELS=[
   /* openAt : 이 시각(한국 시간)부터 학생에게 열린다. 그 전에는 PREVIEW_USERS(core/constants.js)만 풀 수 있다 */
   {k:'div', badge:'응용 4', logName:'최상 내분점', lbl:'선분의 내분점', desc:'선분을 정해진 비율로 나누는 점을 찾습니다 (수직선 · 좌표평면)',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-06T00:00:00+09:00', openLbl:'10/6(화)'},
-  {k:'circ',badge:'응용 5', logName:'최상 원의 방정식', lbl:'원의 방정식 (기초)', desc:'그림 속 원의 중심·반지름으로 방정식을 찾습니다',
+  {k:'circ',badge:'응용 5', logName:'최상 원의 방정식', lbl:'원의 방정식', desc:'그림을 보고 원의 방정식을 찾습니다',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-30T00:00:00+09:00', openLbl:'10/30(금)'},
-  {k:'ineq',badge:'응용 6', logName:'최상 이차부등식', lbl:'이차부등식의 해', desc:'해의 범위를 수직선에 나타냅니다 (● 이상·이하 / ○ 초과·미만)',
+  {k:'ineq',badge:'응용 6', logName:'최상 이차부등식', lbl:'이차부등식의 해', desc:'해의 범위를 수직선에 나타냅니다 (● 이상·이하 / ○ 초과·미만)', locked:true,
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-08T00:00:00+09:00', openLbl:'10/8(목)'},
   {k:'count3',badge:'응용 7',logName:'경우의 수',lbl:'경우의 수 · 순열과 조합',desc:'그림을 보고 순서대로 배열하거나 순서 없이 고릅니다',
     border:'border-rose-300',chip:'bg-rose-100 text-rose-700'},
 ];
 /* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
-var coordLevelLocked=(L,name)=>!!(L&&L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name));
+var coordLevelLocked=(L,name)=>!!(L&&(L.locked||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
 
 /* 좌표 보기 만들기 — GS.coordChoices는 학습지(KaTeX)용이라 "(1,\ -2)" 처럼
    수식 표기가 섞여 있다. 학생 화면에서는 그대로 읽히는 글자여야 하므로 따로 만든다.
@@ -12059,14 +12063,14 @@ function topShiftChoices(p,q){
 function genCountQ(version){
   const id=Math.random()<0.5?'u19':'u20';
   const unit=GED_UNITS.find(u=>u.id===id);
-  const p=unit.rand({legacy:version===1,version:version<3?2:version}),r=unit.build(p),topic=unit.id==='u19'?'순열':'조합';
+  const p=unit.rand({legacy:version===1,version:version<3?2:version}),r=unit.build({...p,studentGrid:true}),topic=unit.id==='u19'?'순열':'조합';
   return{lv:version===1?'count':version===2?'count2':version===3?'count3':'count4',topic,q:r.q,svg:r.figure,svgAfter:r.figure,
     choices:r.choices.map(String),ans:r.ans,answer:String(r.choices[r.ans]),sol:r.sol,cols:2};
 }
-function genTopQ(lv){
+function genTopQ(lv,options){
   if(lv==='count'||lv==='count2'||lv==='count3'||lv==='count4')return genCountQ(lv==='count'?1:lv==='count2'?2:lv==='count3'?3:4);
   if(lv==='div')return genDivQ();
-  if(lv==='circ')return genCircQ();
+  if(lv==='circ')return genCircQ(options);
   if(lv==='ineq')return genIneqQ();
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
@@ -12313,12 +12317,13 @@ function genDivQ(){
    그림에는 중심 좌표(와 반지름)를 모서리 안내 칸에 적어 주고, 이를 (x−a)²+(y−b)²=r² 로 옳게 쓴 것을 고른다.
    오답은 학생이 실제로 하는 실수 : 부호 뒤집기 · 반지름을 제곱하지 않기 · x와 y 자리 바꾸기.
    접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y=±r, y축 접함 → 중심 x=±r). */
-function genCircQ(){
+function genCircQ(options){
+  const gridMode=!options||options.circleGrid!==false;
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
   const kind=pk(['r','x','y','tan']);
-  const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400};
+  const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400,grid:gridMode,ticks:gridMode};
   const RED='#e11d48';
   /* 안내 글자는 원·점·눈금 위에 얹지 않는다 — 원과 가장 먼 모서리 칸에 따로 적는다 (글자 뒤 흰 배경도 없음) */
   const legend=(a,b,r,lines)=>{
@@ -12370,12 +12375,11 @@ function genCircQ(){
   ];
   const svg=G.planeSVG(g,items);
   const cond=kind==='r'?'':kind==='x'?'x축에 접하는 ':'y축에 접하는 ';
-  const sub=kind==='r'?'중심의 좌표와 반지름의 길이가 그림에 적혀 있습니다.':'중심의 좌표가 그림에 적혀 있습니다. 반지름은 그림에서 구하세요.';
   const why=kind==='r'?`반지름은 <b>${r}</b> 입니다.`
     :kind==='x'?`x축에 접하므로 반지름 = 중심에서 x축까지의 거리 = |y좌표| = |${_neg(b)}| = <b>${r}</b>`
     :`y축에 접하므로 반지름 = 중심에서 y축까지의 거리 = |x좌표| = |${_neg(a)}| = <b>${r}</b>`;
   return{lv:'circ',topic:'원의 방정식',
-    qHtml:`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">${sub}</div>`,
+    qHtml:`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?`,
     q:`중심 (${a}, ${b}), ${kind==='r'?`반지름 ${r} 인`:kind==='x'?'x축에 접하는':'y축에 접하는'} 원의 방정식`,
     svg,svgAfter:svg,
     choices:list,ans:list.indexOf(right),answer:right,cols:1,
@@ -12490,29 +12494,29 @@ function coordReplay(rec){
     return c[q.ans]===String(rec.cAns)&&(rec.uAns==null||c.includes(String(rec.uAns)));};
   const pr=(async()=>{
     if(rec.cSeed!=null&&rec.cLv){
-      const q=withSeed(rec.cSeed,()=>genCoordQ(rec.cLv));
+      const q=withSeed(rec.cSeed,()=>genCoordQ(rec.cLv,rec.cGrid==null?undefined:{circleGrid:rec.cGrid}));
       if(sameText(q)&&sameAns(q))return{q,exact:true};
     }
     const lv=COORD_TOPIC_LV[rec.meta&&rec.meta.type];
     if(!lv||!(full||pre))return null;
     const G=window.GS;
-    const hit=await replaySearch([()=>genCoordQ(lv)],q=>sameText(q)&&sameAns(q),
+    const hit=await replaySearch([()=>genCoordQ(lv,rec.cGrid==null?undefined:{circleGrid:rec.cGrid})],q=>sameText(q)&&sameAns(q),
       {limit:lv==='low'?6000:80000,wrap:f=>{const P=G.planeSVG;G.planeSVG=()=>'';try{f();}finally{G.planeSVG=P;}}});
     if(!hit)return null;
-    return{q:withSeed(hit.seed,()=>genCoordQ(lv)),exact:!!rec.choices};
+    return{q:withSeed(hit.seed,()=>genCoordQ(lv,rec.cGrid==null?undefined:{circleGrid:rec.cGrid})),exact:!!rec.choices};
   })();
   _coordReplayCache.set(key,pr);
   return pr;
 }
 
 /* ── 문항 생성 ───────────────────────────────────────────────── */
-function genCoordQ(level){
+function genCoordQ(level,options){
   const G=window.GS;
   const nz=(a,b)=>{let v=a+Math.floor(Math.random()*(b-a+1));let g=0;while(v===0&&g++<20)v=a+Math.floor(Math.random()*(b-a+1));return v===0?1:v;};
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
   const lv=level==='mix'?pk(['low','mid','high']):level;
-  if(TOP_LEVELS.includes(lv))return genTopQ(lv);
+  if(TOP_LEVELS.includes(lv)){const q=genTopQ(lv,options);return lv==='circ'&&options?{...q,circleGrid:options.circleGrid!==false}:q;}
   const x=nz(-5,5),y=nz(-5,5);
   const P={t:'pt',x,y,label:'P',guide:true,r:8};
   const plane=items=>G.planeSVG({xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400},items);
@@ -12622,11 +12626,13 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
   const doneToday=(userData.logs||[]).some(l=>l.date===today&&(l.type||'').indexOf('좌표 10문제')===0);
 
-  const start=(k)=>{
+  const start=(k,gridChoice)=>{
     if(coordLevelLocked(COORD_LEVELS.find(l=>l.k===k),userData.name)){setLockMsg(true);return;}
+    if(k==='circ'&&gridChoice==null){setLevel(k);setPhase('circle-grid');return;}
     // 씨앗을 남겨 두면 선생님 화면에서 같은 문제(식·그림·보기 순서)를 그대로 다시 그릴 수 있다 (core/replay.js)
     const genLevel=k==='count3'?'count4':k;
-    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(genLevel)),seed,genLv:genLevel});}
+    const options=k==='circ'?{circleGrid:gridChoice}:undefined;
+    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(genLevel,options)),seed,genLv:genLevel});}
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
     savingRef.current=false;savedRef.current=null;
@@ -12651,7 +12657,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
       meta:{category:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')?'stat':'geometry',type:q.topic,diff:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')?'기초':q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
-      cSeed:q.seed,cLv:q.genLv,choices:q.choices.map(String),answerIdx:q.ans};
+      cSeed:q.seed,cLv:q.genLv,cGrid:q.circleGrid,choices:q.choices.map(String),answerIdx:q.ans};
     const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
     setRecs(newRecs);setCorrect(newCorrect);
     setPhase('feedback');
@@ -12693,14 +12699,30 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
     if(sv){const upd=await patchLogFeeling(sv.id,sv.upd,feeling);onUpdate&&onUpdate(upd);}
   };
 
+  if(phase==='circle-grid')return(<div className="p-4 pb-36 space-y-4 fade-in">
+    <button onClick={exitPick} className="text-sm font-bold text-gray-500 px-3 py-2 bg-gray-100 rounded-xl">← 유형 선택</button>
+    <div className="bg-white rounded-3xl p-5 shadow-md border border-gray-100">
+      <div className="text-xl font-black text-gray-800">⭕ 원의 방정식 연습</div>
+      <div className="text-sm text-gray-500 font-bold mt-2">문제 그림에 좌표 격자를 표시할지 골라 주세요.</div>
+    </div>
+    <button onClick={()=>start('circ',true)} className="w-full text-left bg-white rounded-3xl p-5 shadow-md border-2 border-indigo-200 active:scale-[0.98]">
+      <div className="font-black text-lg text-indigo-800">▦ 격자 있는 그림</div>
+      <div className="text-sm text-gray-500 mt-1">좌표 칸을 세어 중심과 반지름을 확인합니다.</div>
+    </button>
+    <button onClick={()=>start('circ',false)} className="w-full text-left bg-white rounded-3xl p-5 shadow-md border-2 border-emerald-200 active:scale-[0.98]">
+      <div className="font-black text-lg text-emerald-800">◯ 격자 없는 그림</div>
+      <div className="text-sm text-gray-500 mt-1">실제 검정고시처럼 좌표 격자 없이 중심과 접선 정보를 보고 풉니다.</div>
+    </button>
+  </div>);
+
   /* ── 난이도 고르기 ── */
   if(phase==='pick'){
     if(initialLevel){
       if(!lockMsg)return null;
       return <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-5" onClick={exitPick}>
         <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center fade-in" onClick={e=>e.stopPropagation()}>
-          <div className="text-5xl mb-3">🛠️</div>
-          <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 학생분들을 위해 작업중이에요!<br/>얼른 보여드릴게요!</div>
+          <div className="text-5xl mb-3">🔒</div>
+          <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 작업 중이에요!<br/>곧 공개할 예정이에요.</div>
           <button onClick={exitPick} className="mt-5 w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">확인</button>
         </div>
       </div>;
@@ -12729,7 +12751,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
             <div className="flex items-center gap-3">
               <div className={`w-14 h-14 rounded-2xl ${l.chip} flex items-center justify-center text-sm leading-tight text-center font-black shrink-0 px-1`}>{l.badge}</div>
               <div className="flex-1">
-                <div className="text-lg font-black text-gray-800">{l.lbl}{locked&&<span className="ml-2 text-xs font-black text-gray-400">🔒 {l.openLbl} 열림</span>}</div>
+                <div className="text-lg font-black text-gray-800">{l.lbl}{locked&&<span className="ml-2 text-xs font-black text-gray-400">🔒 {l.locked?'준비 중':`${l.openLbl} 열림`}</span>}</div>
                 <div className="text-sm font-bold text-gray-500 mt-0.5">{l.desc}</div>
               </div>
               <div className="text-2xl text-gray-300">›</div>
@@ -12740,8 +12762,8 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       {lockMsg&&(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-5" onClick={()=>setLockMsg(false)}>
           <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center fade-in" onClick={e=>e.stopPropagation()}>
-            <div className="text-5xl mb-3">🛠️</div>
-            <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 학생분들을 위해 작업중이에요!<br/>얼른 보여드릴게요!</div>
+            <div className="text-5xl mb-3">🔒</div>
+            <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 작업 중이에요!<br/>곧 공개할 예정이에요.</div>
             <button onClick={()=>setLockMsg(false)} className="mt-5 w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">확인</button>
           </div>
         </div>
@@ -12798,12 +12820,8 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
   const isCount=['count','count2','count3','count4'].includes(q.lv);
   return(<div ref={texRef} className="p-4 space-y-4 pb-36">
     <style>{`svg.plane{max-width:100%;height:auto}
-      .student-count-figure .fig{width:max-content;margin:0 auto}
-      .student-count-figure .count-figure{display:block;max-width:none!important;height:auto}
-      .student-count-figure .count-figure[data-count="3"]{width:330px}
-      .student-count-figure .count-figure[data-count="4"]{width:440px}
-      .student-count-figure .count-figure[data-count="5"]{width:550px}
-      .student-count-figure .count-figure[data-count="6"]{width:660px}`}</style>
+      .student-count-figure .fig{width:100%;max-width:390px;margin:0 auto}
+      .student-count-figure .count-figure{display:block;width:100%;max-width:100%;height:auto}`}</style>
 
     <div className="flex items-center gap-3">
       <button onClick={exitPick} className="text-sm font-bold text-gray-400 px-3 py-2 bg-gray-100 rounded-xl">← 그만</button>
@@ -12823,9 +12841,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       {q.qHtml
         ?<div className="text-lg font-black text-gray-800 leading-loose break-keep mb-4" dangerouslySetInnerHTML={{__html:q.qHtml}}/>
         :<div className="text-lg font-black text-gray-800 leading-relaxed break-keep mb-4">{q.q}</div>}
-      {isCount&&<div className="text-xs font-bold text-gray-500 mb-2">그림이 화면보다 넓으면 옆으로 밀어 보세요.</div>}
-      <div className={isCount?'student-count-figure overflow-x-auto':'flex justify-center overflow-x-auto'}
-        role={isCount?'region':undefined} aria-label={isCount?'경우의 수 그림, 가로로 스크롤 가능':undefined} tabIndex={isCount?0:undefined}
+      <div className={isCount?'student-count-figure':'flex justify-center overflow-x-auto'}
         dangerouslySetInnerHTML={{__html:phase==='feedback'?q.svgAfter:q.svg}}/>
     </div>
 
@@ -13323,15 +13339,19 @@ function MockExamTab({userData,onUpdate}){
 
   if(screen==='start'){
     if(!examLevel)return(<div className="p-4 pb-36 space-y-4 fade-in">
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
-        <h2 className="text-xl font-black mb-1">📝 검정고시 모의고사</h2>
-        <p className="text-sm opacity-90">먼저 응시할 학력을 골라 주세요.</p>
+      <div className="mb-1">
+        <h2 className="text-2xl font-black text-gray-800">📝 검정고시 모의고사</h2>
+        <p className="text-sm font-bold text-gray-500 mt-1">응시할 학력을 선택해 주세요.</p>
       </div>
-      <button onClick={()=>setExamLevel('middle')} className="w-full p-6 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</div>
+      <button onClick={()=>setExamLevel('middle')} className="w-full p-5 bg-white rounded-3xl text-left shadow-md border-2 border-slate-200 flex items-center gap-4 active:scale-[0.98] transition-transform">
+        <span className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-3xl shrink-0">📘</span>
+        <span className="flex-1"><span className="block text-lg font-black text-gray-800">중졸 모의고사</span><span className="block text-sm mt-1 font-bold text-gray-500">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</span></span>
+        <span className="text-2xl text-gray-300">›</span>
       </button>
-      <button onClick={()=>setExamLevel('high')} className="w-full p-6 bg-gradient-to-r from-violet-500 to-indigo-700 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</div>
+      <button onClick={()=>setExamLevel('high')} className="w-full p-5 bg-white rounded-3xl text-left shadow-md border-2 border-slate-200 flex items-center gap-4 active:scale-[0.98] transition-transform">
+        <span className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center text-3xl shrink-0">📚</span>
+        <span className="flex-1"><span className="block text-lg font-black text-gray-800">고졸 모의고사</span><span className="block text-sm mt-1 font-bold text-gray-500">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</span></span>
+        <span className="text-2xl text-gray-300">›</span>
       </button>
     </div>);
     const stats=computeStats(userData.logs||[]);

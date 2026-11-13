@@ -127,6 +127,7 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
   const weekLabel=`${monDate.getMonth()+1}/${monDate.getDate()}(월) ~ ${sunDate.getMonth()+1}/${sunDate.getDate()}(일)`;
   const praise=todayLessons===0?'시작이 반이에요! 도전해봐요 💪':todayLessons<goal?`정말 잘하고 있어요! 조금만 더! 🌟`:'🎊 오늘 목표 달성! 대단해요!';
   const[showArchive,setShowArchive]=useState(false);
+  const[showMathForest,setShowMathForest]=useState(false);
 
   // 토픽 기준의 3단 영역 지도. 알 수 없는 유형은 기타에 남겨 분모에서 누락시키지 않는다.
   const treeDomains=[
@@ -285,7 +286,7 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
         <div className="flex items-center gap-2 mb-3">
           <span className="text-2xl">📚</span>
           <div>
-            <div className="font-black text-base">중졸·고졸 검정고시 연습이 필요해요!</div>
+            <div className="font-black text-base">중졸·고졸 모의고사 연습이 필요해요!</div>
             <div className="text-xs opacity-80 mt-0.5">아직 충분히 풀지 않은 영역이 있어요</div>
           </div>
         </div>
@@ -298,26 +299,27 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
           ))}
         </div>
         <div className="text-xs opacity-80 bg-white/10 rounded-xl p-3 leading-relaxed">
-          💡 <b>문제풀기 탭 → 중졸 또는 고졸 검정고시 연습</b>을 선택하면 필요한 영역을 골고루 연습할 수 있어요!
+          💡 <b>모의고사 탭</b>에서 실전 모의고사나 약점 집중 문제를 풀어 보세요.
         </div>
       </div>
     )}
 
     {/* 나의 수학 나무 숲: 누적 성장 배지와 세분 영역 지도 */}
     <div className="bg-white rounded-3xl shadow-md border-t-4 border-t-green-400 overflow-hidden">
-      <div className="px-5 pt-5 pb-3 bg-gradient-to-br from-green-50 via-white to-emerald-50">
+      <button onClick={()=>setShowMathForest(v=>!v)} aria-expanded={showMathForest} className="w-full text-left px-5 pt-5 pb-3 bg-gradient-to-br from-green-50 via-white to-emerald-50">
         <div className="flex items-start gap-3">
           <div className="text-4xl">🌳</div>
           <div className="min-w-0 flex-1">
             <div className="text-base font-black text-green-800">나의 수학나무 숲</div>
             <div className="text-xs text-green-700 mt-1">오늘까지 {treeQuestions.length}문제를 만나고 {activeTotal}일 함께했어요.</div>
           </div>
-          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-white text-green-700 border border-green-100">성장 중</span>
+          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-white text-green-700 border border-green-100">{showMathForest?'접기 ▲':'펼치기 ▼'}</span>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-4">
+      </button>
+      {showMathForest&&<>
+        <div className="px-5 pt-4 grid grid-cols-3 gap-2">
           {[["🌱",treeQuestions.length,"만난 문제"],["🔁",recovered,"되찾은 문제"],["⭐",activeTotal,"함께한 날"]].map(([ico,val,label])=><div key={label} className="rounded-2xl bg-white/90 border border-green-100 p-2.5 text-center shadow-sm"><div className="text-[10px] text-gray-500 font-bold">{ico} {label}</div><div className="text-xl text-green-800 font-black mt-0.5">{val}<span className="text-xs ml-0.5">개</span></div>{label==='되찾은 문제'&&<div className="text-[9px] text-green-600 font-bold">이번 주 +{recoveredThisWeek}</div>}</div>)}
         </div>
-      </div>
       <div className="px-5 pb-5 pt-3">
         <div className="flex items-center justify-between mb-2"><div className="text-xs font-black text-gray-700">배움의 영역 지도</div><div className="text-[10px] text-gray-400">색 막대 = 지금까지 정답 비율</div></div>
         <div className="space-y-2">
@@ -331,8 +333,8 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
           })}
         </div>
         <div className="mt-3 rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-[10px] text-amber-800 leading-relaxed"><b>🌟 다음 성장 미션</b><br/>{treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length?`기록이 적은 ${treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length}개 영역에서 문제를 더 만나봐요.`:treeQuestions.length===0?'첫 문제를 풀어 나무에 씨앗을 심어봐요!':'가장 많이 자란 영역의 다음 유형에도 도전해봐요!'} 오답은 성장 과정의 일부이고, 되찾은 문제는 실력이 된 순간이에요.</div>
-        <div className="mt-2 text-[9px] text-gray-400 leading-relaxed">정답 비율은 저장된 전체 풀이 기준의 참고값이에요. 영역 분류는 문항 토픽 이름과 범주에 따르며, ‘되찾은 문제’는 같은 문항 기록에서 오답 뒤 정답으로 바뀐 경우만 셉니다.</div>
       </div>
+      </>}
     </div>
 
     {/* 학생 의견 보내기 */}

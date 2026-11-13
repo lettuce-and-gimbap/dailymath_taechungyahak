@@ -645,14 +645,17 @@ function gedCountSlotInfo(action,r){
  else if(action.includes('왼쪽부터'))title='왼쪽→';
  return {title,vertical:title==='위→아래'||title==='아래→위',labels:Array.from({length:r},(_,i)=>label(title==='아래→위'?r-1-i:i))};
 }
-function gedCountFigure(scene,n,r,ordered,action){
- const cellW=82, width=n*cellW+12;
- const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+i*cellW},5)"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
+function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
+ const cellW=82, columns=studentGrid?(n===4?2:Math.min(n,3)):n, width=columns*cellW+12;
+ const extraY=studentGrid&&n>columns?86:0;
+ const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+(i%columns)*cellW},${5+Math.floor(i/columns)*86})"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
  const info=action?gedCountSlotInfo(action,r):{title:'순서',labels:Array.from({length:r},(_,i)=>String(i+1))};
  const vertical=ordered&&!!info.vertical;
- let slots='',height=ordered?128:90;
+ let slots='',height=(ordered?128:90)+extraY;
  if(ordered&&!action){
-   slots=`<text x="10" y="113" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>`<rect x="${55+i*53}" y="91" width="45" height="28" fill="white" stroke="#555"/><text x="${77+i*53}" y="110" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`).join('')}`;
+   const slotCols=studentGrid?Math.min(columns,3):r;
+   slots=`<text x="10" y="${113+extraY}" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>{const x=55+(i%slotCols)*53,y=91+extraY+Math.floor(i/slotCols)*32;return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`;}).join('')}`;
+   if(studentGrid&&r>slotCols)height+=32;
  }else if(ordered){
    const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
    const shapes={
@@ -666,12 +669,12 @@ function gedCountFigure(scene,n,r,ordered,action){
      board:'<rect x="6" y="8" width="48" height="39" rx="2"/><rect x="10" y="12" width="40" height="31" rx="1" stroke-dasharray="3 2"/><path d="M21 8 V5 H39 V8 M24 5 V3 H36 V5 M8 46 H52 M13 16 H17 M43 16 H47"/><circle cx="13" cy="10" r="1"/><circle cx="47" cy="10" r="1"/>',
      shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>'
    };
-   const slotX=vertical?55:14,slotY=vertical?91:105,step=vertical?32:70;
-   slots=`<text x="10" y="99" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
-     const x=slotX+(vertical?0:i*step),y=slotY+(vertical?i*step:0);
+   const slotX=vertical?55:14,slotY=(vertical?91:105)+extraY,step=vertical?32:70,slotCols=studentGrid?Math.min(columns,3):r;
+   slots=`<text x="10" y="${99+extraY}" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
+     const x=slotX+(vertical?0:(i%slotCols)*step),y=slotY+(vertical?i*step:Math.floor(i/slotCols)*80);
      return `<g class="count-placement" data-placement="${kind}" transform="translate(${x},${y})" fill="white" stroke="#444" stroke-width="1.4" stroke-linejoin="round">${shapes[kind]}</g><text x="${x+30}" y="${y+(vertical?20:65)}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#111">${label}</text>`;
    }).join('');
-   height=vertical?99+r*32:180;
+   height=(vertical?99+r*32:180+(studentGrid?Math.floor((r-1)/slotCols)*80:0))+extraY;
  }
  return `<div class="fig"><svg class="count-figure" data-count="${n}" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
 }
@@ -1796,7 +1799,7 @@ var GED_UNITS=(function(){
     rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:opts&&opts.version===3?3:4,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
-      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_COUNT_SCENES_V4:p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v>=3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
+      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_COUNT_SCENES_V4:p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v>=3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null,!!p.studentGrid),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
       const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
@@ -1812,7 +1815,7 @@ var GED_UNITS=(function(){
     rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:opts&&opts.version===3?3:4,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
-      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_CHOICE_SCENES_V4:p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
+      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_CHOICE_SCENES_V4:p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false,null,!!p.studentGrid),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
       const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;

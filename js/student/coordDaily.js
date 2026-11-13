@@ -32,15 +32,15 @@ var COORD_LEVELS=[
   /* openAt : 이 시각(한국 시간)부터 학생에게 열린다. 그 전에는 PREVIEW_USERS(core/constants.js)만 풀 수 있다 */
   {k:'div', badge:'응용 4', logName:'최상 내분점', lbl:'선분의 내분점', desc:'선분을 정해진 비율로 나누는 점을 찾습니다 (수직선 · 좌표평면)',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-06T00:00:00+09:00', openLbl:'10/6(화)'},
-  {k:'circ',badge:'응용 5', logName:'최상 원의 방정식', lbl:'원의 방정식 (기초)', desc:'그림 속 원의 중심·반지름으로 방정식을 찾습니다',
+  {k:'circ',badge:'응용 5', logName:'최상 원의 방정식', lbl:'원의 방정식', desc:'그림을 보고 원의 방정식을 찾습니다',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-30T00:00:00+09:00', openLbl:'10/30(금)'},
-  {k:'ineq',badge:'응용 6', logName:'최상 이차부등식', lbl:'이차부등식의 해', desc:'해의 범위를 수직선에 나타냅니다 (● 이상·이하 / ○ 초과·미만)',
+  {k:'ineq',badge:'응용 6', logName:'최상 이차부등식', lbl:'이차부등식의 해', desc:'해의 범위를 수직선에 나타냅니다 (● 이상·이하 / ○ 초과·미만)', locked:true,
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-08T00:00:00+09:00', openLbl:'10/8(목)'},
   {k:'count3',badge:'응용 7',logName:'경우의 수',lbl:'경우의 수 · 순열과 조합',desc:'그림을 보고 순서대로 배열하거나 순서 없이 고릅니다',
     border:'border-rose-300',chip:'bg-rose-100 text-rose-700'},
 ];
 /* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
-var coordLevelLocked=(L,name)=>!!(L&&L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name));
+var coordLevelLocked=(L,name)=>!!(L&&(L.locked||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
 
 /* 좌표 보기 만들기 — GS.coordChoices는 학습지(KaTeX)용이라 "(1,\ -2)" 처럼
    수식 표기가 섞여 있다. 학생 화면에서는 그대로 읽히는 글자여야 하므로 따로 만든다.
@@ -81,14 +81,14 @@ function topShiftChoices(p,q){
 function genCountQ(version){
   const id=Math.random()<0.5?'u19':'u20';
   const unit=GED_UNITS.find(u=>u.id===id);
-  const p=unit.rand({legacy:version===1,version:version<3?2:version}),r=unit.build(p),topic=unit.id==='u19'?'순열':'조합';
+  const p=unit.rand({legacy:version===1,version:version<3?2:version}),r=unit.build({...p,studentGrid:true}),topic=unit.id==='u19'?'순열':'조합';
   return{lv:version===1?'count':version===2?'count2':version===3?'count3':'count4',topic,q:r.q,svg:r.figure,svgAfter:r.figure,
     choices:r.choices.map(String),ans:r.ans,answer:String(r.choices[r.ans]),sol:r.sol,cols:2};
 }
-function genTopQ(lv){
+function genTopQ(lv,options){
   if(lv==='count'||lv==='count2'||lv==='count3'||lv==='count4')return genCountQ(lv==='count'?1:lv==='count2'?2:lv==='count3'?3:4);
   if(lv==='div')return genDivQ();
-  if(lv==='circ')return genCircQ();
+  if(lv==='circ')return genCircQ(options);
   if(lv==='ineq')return genIneqQ();
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
@@ -335,12 +335,13 @@ function genDivQ(){
    그림에는 중심 좌표(와 반지름)를 모서리 안내 칸에 적어 주고, 이를 (x−a)²+(y−b)²=r² 로 옳게 쓴 것을 고른다.
    오답은 학생이 실제로 하는 실수 : 부호 뒤집기 · 반지름을 제곱하지 않기 · x와 y 자리 바꾸기.
    접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y=±r, y축 접함 → 중심 x=±r). */
-function genCircQ(){
+function genCircQ(options){
+  const gridMode=!options||options.circleGrid!==false;
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
   const kind=pk(['r','x','y','tan']);
-  const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400};
+  const g={xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400,grid:gridMode,ticks:gridMode};
   const RED='#e11d48';
   /* 안내 글자는 원·점·눈금 위에 얹지 않는다 — 원과 가장 먼 모서리 칸에 따로 적는다 (글자 뒤 흰 배경도 없음) */
   const legend=(a,b,r,lines)=>{
@@ -392,12 +393,11 @@ function genCircQ(){
   ];
   const svg=G.planeSVG(g,items);
   const cond=kind==='r'?'':kind==='x'?'x축에 접하는 ':'y축에 접하는 ';
-  const sub=kind==='r'?'중심의 좌표와 반지름의 길이가 그림에 적혀 있습니다.':'중심의 좌표가 그림에 적혀 있습니다. 반지름은 그림에서 구하세요.';
   const why=kind==='r'?`반지름은 <b>${r}</b> 입니다.`
     :kind==='x'?`x축에 접하므로 반지름 = 중심에서 x축까지의 거리 = |y좌표| = |${_neg(b)}| = <b>${r}</b>`
     :`y축에 접하므로 반지름 = 중심에서 y축까지의 거리 = |x좌표| = |${_neg(a)}| = <b>${r}</b>`;
   return{lv:'circ',topic:'원의 방정식',
-    qHtml:`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">${sub}</div>`,
+    qHtml:`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?`,
     q:`중심 (${a}, ${b}), ${kind==='r'?`반지름 ${r} 인`:kind==='x'?'x축에 접하는':'y축에 접하는'} 원의 방정식`,
     svg,svgAfter:svg,
     choices:list,ans:list.indexOf(right),answer:right,cols:1,
@@ -512,29 +512,29 @@ function coordReplay(rec){
     return c[q.ans]===String(rec.cAns)&&(rec.uAns==null||c.includes(String(rec.uAns)));};
   const pr=(async()=>{
     if(rec.cSeed!=null&&rec.cLv){
-      const q=withSeed(rec.cSeed,()=>genCoordQ(rec.cLv));
+      const q=withSeed(rec.cSeed,()=>genCoordQ(rec.cLv,rec.cGrid==null?undefined:{circleGrid:rec.cGrid}));
       if(sameText(q)&&sameAns(q))return{q,exact:true};
     }
     const lv=COORD_TOPIC_LV[rec.meta&&rec.meta.type];
     if(!lv||!(full||pre))return null;
     const G=window.GS;
-    const hit=await replaySearch([()=>genCoordQ(lv)],q=>sameText(q)&&sameAns(q),
+    const hit=await replaySearch([()=>genCoordQ(lv,rec.cGrid==null?undefined:{circleGrid:rec.cGrid})],q=>sameText(q)&&sameAns(q),
       {limit:lv==='low'?6000:80000,wrap:f=>{const P=G.planeSVG;G.planeSVG=()=>'';try{f();}finally{G.planeSVG=P;}}});
     if(!hit)return null;
-    return{q:withSeed(hit.seed,()=>genCoordQ(lv)),exact:!!rec.choices};
+    return{q:withSeed(hit.seed,()=>genCoordQ(lv,rec.cGrid==null?undefined:{circleGrid:rec.cGrid})),exact:!!rec.choices};
   })();
   _coordReplayCache.set(key,pr);
   return pr;
 }
 
 /* ── 문항 생성 ───────────────────────────────────────────────── */
-function genCoordQ(level){
+function genCoordQ(level,options){
   const G=window.GS;
   const nz=(a,b)=>{let v=a+Math.floor(Math.random()*(b-a+1));let g=0;while(v===0&&g++<20)v=a+Math.floor(Math.random()*(b-a+1));return v===0?1:v;};
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
   const lv=level==='mix'?pk(['low','mid','high']):level;
-  if(TOP_LEVELS.includes(lv))return genTopQ(lv);
+  if(TOP_LEVELS.includes(lv)){const q=genTopQ(lv,options);return lv==='circ'&&options?{...q,circleGrid:options.circleGrid!==false}:q;}
   const x=nz(-5,5),y=nz(-5,5);
   const P={t:'pt',x,y,label:'P',guide:true,r:8};
   const plane=items=>G.planeSVG({xmin:-6,xmax:6,ymin:-6,ymax:6,s:30,maxW:400},items);
@@ -644,11 +644,13 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
   // 오늘 이미 푼 기록이 있는지 (홈의 도장과 같은 기준)
   const doneToday=(userData.logs||[]).some(l=>l.date===today&&(l.type||'').indexOf('좌표 10문제')===0);
 
-  const start=(k)=>{
+  const start=(k,gridChoice)=>{
     if(coordLevelLocked(COORD_LEVELS.find(l=>l.k===k),userData.name)){setLockMsg(true);return;}
+    if(k==='circ'&&gridChoice==null){setLevel(k);setPhase('circle-grid');return;}
     // 씨앗을 남겨 두면 선생님 화면에서 같은 문제(식·그림·보기 순서)를 그대로 다시 그릴 수 있다 (core/replay.js)
     const genLevel=k==='count3'?'count4':k;
-    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(genLevel)),seed,genLv:genLevel});}
+    const options=k==='circ'?{circleGrid:gridChoice}:undefined;
+    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(genLevel,options)),seed,genLv:genLevel});}
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
     savingRef.current=false;savedRef.current=null;
@@ -673,7 +675,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
       meta:{category:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')?'stat':'geometry',type:q.topic,diff:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')?'기초':q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
-      cSeed:q.seed,cLv:q.genLv,choices:q.choices.map(String),answerIdx:q.ans};
+      cSeed:q.seed,cLv:q.genLv,cGrid:q.circleGrid,choices:q.choices.map(String),answerIdx:q.ans};
     const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
     setRecs(newRecs);setCorrect(newCorrect);
     setPhase('feedback');
@@ -715,14 +717,30 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
     if(sv){const upd=await patchLogFeeling(sv.id,sv.upd,feeling);onUpdate&&onUpdate(upd);}
   };
 
+  if(phase==='circle-grid')return(<div className="p-4 pb-36 space-y-4 fade-in">
+    <button onClick={exitPick} className="text-sm font-bold text-gray-500 px-3 py-2 bg-gray-100 rounded-xl">← 유형 선택</button>
+    <div className="bg-white rounded-3xl p-5 shadow-md border border-gray-100">
+      <div className="text-xl font-black text-gray-800">⭕ 원의 방정식 연습</div>
+      <div className="text-sm text-gray-500 font-bold mt-2">문제 그림에 좌표 격자를 표시할지 골라 주세요.</div>
+    </div>
+    <button onClick={()=>start('circ',true)} className="w-full text-left bg-white rounded-3xl p-5 shadow-md border-2 border-indigo-200 active:scale-[0.98]">
+      <div className="font-black text-lg text-indigo-800">▦ 격자 있는 그림</div>
+      <div className="text-sm text-gray-500 mt-1">좌표 칸을 세어 중심과 반지름을 확인합니다.</div>
+    </button>
+    <button onClick={()=>start('circ',false)} className="w-full text-left bg-white rounded-3xl p-5 shadow-md border-2 border-emerald-200 active:scale-[0.98]">
+      <div className="font-black text-lg text-emerald-800">◯ 격자 없는 그림</div>
+      <div className="text-sm text-gray-500 mt-1">실제 검정고시처럼 좌표 격자 없이 중심과 접선 정보를 보고 풉니다.</div>
+    </button>
+  </div>);
+
   /* ── 난이도 고르기 ── */
   if(phase==='pick'){
     if(initialLevel){
       if(!lockMsg)return null;
       return <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-5" onClick={exitPick}>
         <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center fade-in" onClick={e=>e.stopPropagation()}>
-          <div className="text-5xl mb-3">🛠️</div>
-          <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 학생분들을 위해 작업중이에요!<br/>얼른 보여드릴게요!</div>
+          <div className="text-5xl mb-3">🔒</div>
+          <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 작업 중이에요!<br/>곧 공개할 예정이에요.</div>
           <button onClick={exitPick} className="mt-5 w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">확인</button>
         </div>
       </div>;
@@ -751,7 +769,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
             <div className="flex items-center gap-3">
               <div className={`w-14 h-14 rounded-2xl ${l.chip} flex items-center justify-center text-sm leading-tight text-center font-black shrink-0 px-1`}>{l.badge}</div>
               <div className="flex-1">
-                <div className="text-lg font-black text-gray-800">{l.lbl}{locked&&<span className="ml-2 text-xs font-black text-gray-400">🔒 {l.openLbl} 열림</span>}</div>
+                <div className="text-lg font-black text-gray-800">{l.lbl}{locked&&<span className="ml-2 text-xs font-black text-gray-400">🔒 {l.locked?'준비 중':`${l.openLbl} 열림`}</span>}</div>
                 <div className="text-sm font-bold text-gray-500 mt-0.5">{l.desc}</div>
               </div>
               <div className="text-2xl text-gray-300">›</div>
@@ -762,8 +780,8 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       {lockMsg&&(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-5" onClick={()=>setLockMsg(false)}>
           <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center fade-in" onClick={e=>e.stopPropagation()}>
-            <div className="text-5xl mb-3">🛠️</div>
-            <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 학생분들을 위해 작업중이에요!<br/>얼른 보여드릴게요!</div>
+            <div className="text-5xl mb-3">🔒</div>
+            <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 작업 중이에요!<br/>곧 공개할 예정이에요.</div>
             <button onClick={()=>setLockMsg(false)} className="mt-5 w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">확인</button>
           </div>
         </div>
@@ -820,12 +838,8 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
   const isCount=['count','count2','count3','count4'].includes(q.lv);
   return(<div ref={texRef} className="p-4 space-y-4 pb-36">
     <style>{`svg.plane{max-width:100%;height:auto}
-      .student-count-figure .fig{width:max-content;margin:0 auto}
-      .student-count-figure .count-figure{display:block;max-width:none!important;height:auto}
-      .student-count-figure .count-figure[data-count="3"]{width:330px}
-      .student-count-figure .count-figure[data-count="4"]{width:440px}
-      .student-count-figure .count-figure[data-count="5"]{width:550px}
-      .student-count-figure .count-figure[data-count="6"]{width:660px}`}</style>
+      .student-count-figure .fig{width:100%;max-width:390px;margin:0 auto}
+      .student-count-figure .count-figure{display:block;width:100%;max-width:100%;height:auto}`}</style>
 
     <div className="flex items-center gap-3">
       <button onClick={exitPick} className="text-sm font-bold text-gray-400 px-3 py-2 bg-gray-100 rounded-xl">← 그만</button>
@@ -845,9 +859,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       {q.qHtml
         ?<div className="text-lg font-black text-gray-800 leading-loose break-keep mb-4" dangerouslySetInnerHTML={{__html:q.qHtml}}/>
         :<div className="text-lg font-black text-gray-800 leading-relaxed break-keep mb-4">{q.q}</div>}
-      {isCount&&<div className="text-xs font-bold text-gray-500 mb-2">그림이 화면보다 넓으면 옆으로 밀어 보세요.</div>}
-      <div className={isCount?'student-count-figure overflow-x-auto':'flex justify-center overflow-x-auto'}
-        role={isCount?'region':undefined} aria-label={isCount?'경우의 수 그림, 가로로 스크롤 가능':undefined} tabIndex={isCount?0:undefined}
+      <div className={isCount?'student-count-figure':'flex justify-center overflow-x-auto'}
         dangerouslySetInnerHTML={{__html:phase==='feedback'?q.svgAfter:q.svg}}/>
     </div>
 

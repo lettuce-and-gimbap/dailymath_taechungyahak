@@ -27,3 +27,15 @@ for(const [seed,kind] of [[1,'calendar'],[2,'shelf'],[3,'vase'],[5,'flag'],[9,'t
  assert.equal((figure.match(new RegExp('data-placement="'+kind+'"','g'))||[]).length,3,`${seed}: ${kind}`);
 }
 console.log('Context-specific placements and exact slot counts: PASS');
+for(const [n,expected] of [[3,[3]],[4,[2,2]],[5,[3,2]],[6,[3,3]]]){
+ for(const ordered of [false,true]){
+  const s=now.GED_COUNT_SCENES_V4[33],figure=now.gedCountFigure(s,n,Math.min(n,4),ordered,ordered?'첫째부터 4번째까지 순서를 정하는':null,true);
+  const positions=[...figure.matchAll(/<g transform="translate\((\d+),(\d+)\)"><rect x="0" y="0" width="74"/g)].map(m=>[+m[1],+m[2]]);
+  const rows=[...new Set(positions.map(p=>p[1]))].map(y=>positions.filter(p=>p[1]===y).length);
+  assert.deepEqual(rows,expected,`${n}개의 그림 배열`);
+  const box=figure.match(/viewBox="0 0 (\d+) (\d+)"/),w=+box[1],h=+box[2];
+  assert(positions.every(([x,y])=>x+74<=w&&y+78<=h),'그림이 SVG 경계를 벗어남');
+  if(ordered){const placements=[...figure.matchAll(/class="count-placement"[^>]*transform="translate\((\d+),(\d+)\)"/g)].map(m=>[+m[1],+m[2]]);assert.equal(placements.length,Math.min(n,4));assert(placements.every(([x,y])=>x+60<=w&&y+65<=h),'배치 칸이 SVG 경계를 벗어남');assert(placements.every(([,y])=>y>=Math.max(...positions.map(p=>p[1]))+78),'배치 칸과 그림이 겹침');}
+ }
+}
+console.log('Student 3, 2×2, 3+2 and 3×2 layouts and placement bounds: PASS');

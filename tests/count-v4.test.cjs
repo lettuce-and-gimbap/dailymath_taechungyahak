@@ -12,9 +12,18 @@ function load(old=false){
  }
  c.window.GS=c.GS;return c;
 }
-function snap(q){return JSON.stringify({q:q.q,svg:q.svg,choices:q.choices,ans:q.ans,sol:q.sol})}
+function snap(q){return JSON.stringify({q:q.q,svg:q.svg&&q.svg.replace(/gsclip\d+/g,'gsclip'),choices:q.choices,ans:q.ans,sol:q.sol})}
 async function main(){
  const now=load(),before=load(true),duplicates=[];
+ for(let seed=1;seed<=24;seed++){
+  const bare=now.withSeed(seed,()=>now.genCoordQ('circ',{circleGrid:false}));
+  const grid=now.withSeed(seed,()=>now.genCoordQ('circ',{circleGrid:true}));
+  assert.equal(bare.circleGrid,false);assert(!bare.svg.includes('#8d8d8d'),`circle seed ${seed}: no-grid option should remove coordinate lattice`);
+  assert(grid.svg.includes('#8d8d8d'),`circle seed ${seed}: grid option should retain coordinate lattice`);
+  const rec={cSeed:seed,cLv:'circ',cGrid:false,qFull:bare.q,qTxt:bare.q.slice(0,60),cAns:bare.answer,choices:Array.from(bare.choices),answerIdx:bare.ans,meta:{type:bare.topic}};
+  const replay=await now.coordReplay(rec);assert(replay&&replay.exact,`circle seed ${seed}: no-grid replay failed`);assert.equal(snap(replay.q),snap(bare),`circle seed ${seed}: no-grid replay changed`);
+ }
+ console.log('Circle grid/no-grid selection and saved-question replay: PASS');
  for(const [label,scenes] of [['순열',now.GED_COUNT_SCENES_V4],['조합',now.GED_CHOICE_SCENES_V4]]){
   assert.equal(scenes.length,60,`${label}: 60개 상황`);
   scenes.forEach((scene,i)=>{

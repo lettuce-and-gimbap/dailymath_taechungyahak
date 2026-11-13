@@ -79,13 +79,12 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
   {v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 구합니다'},
   {v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 문제와 없는 문제를 함께 풉니다'},
   {v:3,lbl:'약수 구하기',desc:'약수를 모두 찾거나 개수를 구합니다'},
-  {v:4,lbl:'약수 (하드모드)',desc:'더 큰 수의 약수를 구합니다'},
-  {v:5,lbl:'중졸 검정고시 연습',desc:'영역을 선택해 중졸 문제를 풉니다'},
-  {v:6,lbl:'고졸 검정고시 연습',desc:'영역을 선택해 고졸 문제를 풉니다'}
+  {v:4,lbl:'약수 (하드모드)',desc:'더 큰 수의 약수를 구합니다'}
  ];
- const groups=[{id:'arithmetic',title:'사칙연산',icon:'✏️',desc:'나눗셈 · 약수 · 검정고시 연습'},
+ const groups=[{id:'arithmetic',title:'사칙연산',icon:'✏️',desc:'나눗셈 · 약수'},
   {id:'coordinate',title:'좌표',icon:'📍',desc:'좌표 읽기부터 함수와 방정식까지'},
-  {id:'count',title:'경우의 수',icon:'🎲',desc:'순열과 조합'}];
+  {id:'count',title:'경우의 수',icon:'🎲',desc:'순열과 조합'},
+  {id:'sets',title:'집합과 명제',icon:'🧩',desc:'집합과 명제를 나누어 연습합니다'}];
  const card=(key,badge,title,desc,onClick,locked=false)=>
   <button key={key} onClick={onClick} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-slate-200 flex items-center gap-3 active:scale-[0.98] transition-transform">
    <span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs text-center font-black shrink-0 px-1">{badge}</span>
@@ -94,13 +93,13 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
  return <div className="p-4 space-y-4 pb-36"><div><div className="text-2xl font-black text-gray-800">✏️ 오늘의 문제풀이</div><div className="text-sm font-bold text-gray-500 mt-1">풀고 싶은 유형을 골라 10문제에 도전해 보세요.</div></div>
   {savedData&&<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 font-black text-amber-800">📚 하던 공부 이어서 풀기 ({savedData.correctCount||0}/10) →</button>}
   {groups.map(g=><section key={g.id} className="bg-white rounded-3xl shadow-md overflow-hidden"><button onClick={()=>setSection(section===g.id?null:g.id)} aria-expanded={section===g.id} className="w-full p-5 text-left flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span className="flex-1"><span className="block text-lg font-black text-gray-800">{g.title}</span><span className="block text-sm font-bold text-gray-500">{g.desc}</span></span><span className="font-black text-indigo-500">{section===g.id?'−':'+'}</span></button>
-   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
+   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><div key={topic} className="w-full text-left bg-slate-50 rounded-3xl p-4 border-2 border-slate-200 flex items-center gap-3 opacity-80"><span className="w-14 h-14 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center text-2xl shrink-0">🔒</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">선생님이 준비 중이에요</span></span></div>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
 }
 
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
-  const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'},{v:5,lbl:'중졸 검정고시 연습 📘',desc:'최근 6개년 핵심 5개 영역을 골고루 풀어요'},{v:6,lbl:'고졸 검정고시 연습 📚',desc:'고졸 기출의 5개 영역을 실전처럼 풀어요'}];
+  const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'}];
   const MID_DOMAINS=['전체(혼합)','수와 연산','문자와 식','함수','기하','확률과 통계'];
   const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','내분점','집합과 함수','확률과 통계'];
   const domainList=ver===5?MID_DOMAINS:HIGH_DOMAINS;
