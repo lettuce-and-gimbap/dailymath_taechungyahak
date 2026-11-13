@@ -4,6 +4,25 @@
    보기 만들기 · 정답 텍스트 · 쉬운 해설 · 가중치 추첨 · 수식 표기
    -------------------------------------------------------------------- */
 
+/* 2026년 제1·2회 실제 검정고시 문항 분포를 참고한 20문항 실전 출제 비율.
+   교사·학생 화면이 같은 기준을 사용하고, 선택 영역은 이 비율로 재배분한다. */
+var MOCK_EXAM_BLUEPRINTS={
+  middle:{'수와 연산':5,'문자와 식':4,'함수':3,'기하':5,'확률과 통계':3},
+  high:{'다항식 계산':4,'방정식과 부등식':5,'도형과 기하':5,'집합과 함수':4,'확률과 통계':2}
+};
+function mockExamDomainCounts(level,domains,total){
+  const weightOf=d=>MOCK_EXAM_BLUEPRINTS[level]?.[d]??(level==='high'&&d==='내분점'?MOCK_EXAM_BLUEPRINTS.high['도형과 기하']:null);
+  const names=(domains||[]).filter(d=>d&&weightOf(d)!=null);
+  if(!names.length||total<=0)return{};
+  const weights=names.map(weightOf);
+  const weightSum=weights.reduce((a,b)=>a+b,0);
+  const exact=weights.map(w=>total*w/weightSum);
+  const counts=exact.map(Math.floor);
+  let left=total-counts.reduce((a,b)=>a+b,0);
+  exact.map((v,i)=>({i,r:v-counts[i]})).sort((a,b)=>b.r-a.r).slice(0,left).forEach(x=>counts[x.i]++);
+  return Object.fromEntries(names.map((d,i)=>[d,counts[i]]));
+}
+
 function makeChoices(correct,wrongs){
   const cs=String(correct);
   const uw=[...new Set(wrongs.map(String).filter(w=>w!==cs&&w!==undefined&&w!=='undefined'))].slice(0,3);

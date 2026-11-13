@@ -197,15 +197,16 @@ function gen_circle_eq_mock(){
 function gen_circle_line_rel(){
   // 기출 13번 대조(2021~2026): 직선과 원은 '한 점에서 만날 때'(2026-1·2026-2)만 나왔다 → '만나지 않을 때' 문제는 뺐다
   const r=pick([2,3,4,5]);
-  // 직선 y=a와 원 x²+y²=r²이 한 점에서 만날 때
+  // 2026년 1회는 y=a, 2회는 x=a로 출제되어 두 방향을 모두 연습한다.
+  const lineType=pick(['h','v']),axisName=lineType==='v'?'x':'y',position=lineType==='v'?'오른쪽':'위쪽';
   const correct=String(r);
   const{choices,answer}=makeChoices(correct,[r-1,r+1,r+2].filter(w=>w!==r&&w>0).map(String));
-  return{topic:'직선과 원',q:`자연수 a에 대하여 직선 y=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,
-    graph:{type:'circle_line',h:0,k:0,r,lineType:'h',lineVal:r},
+  return{topic:'직선과 원',q:`자연수 a에 대하여 직선 ${axisName}=a와 원 x²+y²=${r*r}이 한 점에서 만날 때, a의 값은?`,choices,answer,
+    graph:{type:'circle_line',h:0,k:0,r,lineType,lineVal:r},
     meta:{category:'geometry',type:'도형과 기하',diff:'기초'},
     sol:[
       `원 x²+y²=${r*r}의 중심은 원점(0,0)이고, 우변 ${r*r}은 반지름의 제곱(${r}×${r})이므로 반지름은 ${r}입니다.`,
-      `직선 y=a가 원과 한 점에서 만난다 = 접한다 → 원점에서 위쪽으로 반지름 ${r}칸을 간 원의 맨 위에 직선이 닿습니다.`,
+      `직선 ${axisName}=a가 원과 한 점에서 만난다 = 접한다 → 원점에서 ${position}으로 반지름 ${r}칸을 간 원의 가장자리에 직선이 닿습니다.`,
       `따라서 |a| = ${r}`,
       `a는 자연수이므로 a = ${r}입니다.`
     ]};
@@ -326,7 +327,7 @@ function genMockInternalAny(){return Math.random()<0.5?gen_internal_1d():gen_int
 function genMockGeometry(){
   const gens=[
     [gen_two_point_dist,4],[gen_internal_1d,2],[gen_internal_2d,4],
-    [gen_line_eq,4],[gen_parallel_perp_line,5],
+    [gen_line_eq,4],[gen_parallel_perp_line,5],[gen_translation,3],
     [()=>({...genDistanceQ(),meta:{category:'geometry',type:'도형과 기하',diff:'기하'}}),2],
     [gen_circle_eq_mock,5],[gen_circle_line_rel,2],[gen_symmetry_pt,5],
     [gen_circle_diameter_pts,3],[gen_circle_sym_move,2],[gen_origin_line_dist,2]

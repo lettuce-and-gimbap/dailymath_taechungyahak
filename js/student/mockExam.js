@@ -72,6 +72,8 @@ function MockExamTab({userData,onUpdate}){
   const HIGH_DOMAIN_GENS={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS=examLevel==='middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS;
   const DOMAINS=Object.keys(DOMAIN_GENS);
+  const CORE_DOMAINS=DOMAINS.filter(d=>d!=='내분점');
+  const questionCount=questions.length;
 
   const computeStats=(logs)=>{
     const s={};DOMAINS.forEach(d=>s[d]={c:0,t:0});
@@ -103,30 +105,31 @@ function MockExamTab({userData,onUpdate}){
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
+    const levelKey=examLevel==='middle'?'middle':'high';
+    const targetCount=examMode==='random'?20:10;
     let pool=[];
-    if(examMode==='weak'){
-      const targets=weakDomains.length>0?weakDomains:DOMAINS;
-      for(let i=0;i<10;i++){
-        const dom=i<7?targets[i%targets.length]:DOMAINS[i%DOMAINS.length];
-        const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);
-      }
-    }else if(examMode==='domain'){
-      const targets=domainList&&domainList.length>0?domainList:DOMAINS;
-      let safety2=0;
-      while(pool.length<10&&safety2++<80){
-        const dom=pick(targets);
-        const q=safeGen(DOMAIN_GENS[dom]);
-        if(q)pool.push(q);
-      }
-      pool=shuffle(pool);
-    }else{
-      DOMAINS.filter(d=>d!=='내분점').forEach(dom=>{for(let j=0;j<2;j++){   // 내분점은 '도형과 기하'에도 들어 있으므로 랜덤 혼합에서는 빼 둔다
-        const q=safeGen(DOMAIN_GENS[dom]);if(q)pool.push(q);}});
-      pool=shuffle(pool);
-    }
+    let targets=CORE_DOMAINS;
+    if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
+    else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
+    const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
+    const usedQ=new Set();
+    const addQuestion=(dom,allowDuplicate)=>{
+      const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
+      const key=`${q.topic}::${q.q||''}`;
+      if(!allowDuplicate&&usedQ.has(key))return false;
+      usedQ.add(key);pool.push(q);return true;
+    };
+    Object.entries(quotas).forEach(([dom,count])=>{
+      let added=0,attempts=0;
+      while(added<count&&attempts<count*20){if(addQuestion(dom,false))added++;attempts++;}
+      while(added<count&&attempts<count*22){if(addQuestion(dom,true))added++;attempts++;}
+    });
+    // 실패한 생성기만 같은 대상 영역에서 보충한다. 취약점 모드가 일반 영역으로 섞이지 않게 유지한다.
+    const fallbackDomains=Object.keys(quotas);
     let safety=0;
-    while(pool.length<10&&safety++<50){const q=safeGen(pick(DOMAINS.filter(d=>d!=='내분점').map(d=>DOMAIN_GENS[d])));if(q)pool.push(q);}
-    setQuestions(pool.slice(0,10));setSel({});setIsGraded(false);setSaved(false);setFeelingDone(false);savingRef.current=false;savedUpdRef.current=null;setStartTime(Date.now());setScreen('exam');
+    while(pool.length<targetCount&&fallbackDomains.length&&safety++<targetCount*40){addQuestion(pick(fallbackDomains),true);}
+    pool=shuffle(pool);
+    setQuestions(pool.slice(0,targetCount));setSel({});setIsGraded(false);setSaved(false);setFeelingDone(false);savingRef.current=false;savedUpdRef.current=null;setStartTime(Date.now());setScreen('exam');
     setFirstClickTimes({});setRevisionCounts({});
   };
 
@@ -158,8 +161,8 @@ function MockExamTab({userData,onUpdate}){
       };
     });
     const levelLabel=examLevel==='middle'?'중졸':'고졸';
-    const typeLabel=mode==='weak'?`📝 ${levelLabel} 약점 집중 모의고사`:mode==='domain'?`📝 ${levelLabel} 영역집중 [${selectedDomains.join('+')}]`:`📝 ${levelLabel} 랜덤 혼합 모의고사`;
-    const log={date:todayStr(),time:timeStr(),type:typeLabel,score:`${correctCount} / 10`,questions:qs,totalSec,feeling};
+    const typeLabel=mode==='weak'?`📝 ${levelLabel} 약점 집중 모의고사`:mode==='domain'?`📝 ${levelLabel} 영역집중 [${selectedDomains.join('+')}]`:`📝 ${levelLabel} 실전 모의고사`;
+    const log={date:todayStr(),time:timeStr(),type:typeLabel,score:`${correctCount} / ${questions.length}`,questions:qs,totalSec,feeling};
     const newLogs=[log,...(userData.logs||[])];
     const newTodayLessons=(userData.todayLessons||0)+1;
     const activeDates=[...new Set([...(userData.activeDates||[]),todayStr()])];
@@ -191,10 +194,10 @@ function MockExamTab({userData,onUpdate}){
         <p className="text-sm opacity-90">먼저 응시할 학력을 골라 주세요.</p>
       </div>
       <button onClick={()=>setExamLevel('middle')} className="w-full p-6 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2023~2026 최근 핵심 유형 · 중학교 과정 5개 영역</div>
+        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2026년 1·2회 문항 비율 반영 · 최근 기출 유형 변형</div>
       </button>
       <button onClick={()=>setExamLevel('high')} className="w-full p-6 bg-gradient-to-r from-violet-500 to-indigo-700 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2023~2026 고졸 기출 변형 · 고등학교 과정 5개 영역</div>
+        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2026년 1·2회 문항 비율 반영 · 최근 기출 유형 변형</div>
       </button>
     </div>);
     const stats=computeStats(userData.logs||[]);
@@ -206,7 +209,7 @@ function MockExamTab({userData,onUpdate}){
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
         <button onClick={()=>setExamLevel(null)} className="text-sm font-bold opacity-90 mb-3">← 학력 다시 선택</button>
         <h2 className="text-xl font-black mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
-        <p className="text-sm opacity-90">2023~2026 기출 패턴 변형 · 최근 유형 우선</p>
+        <p className="text-sm opacity-90">2026년 1·2회 출제 비율 반영 · 생활 맥락과 그림형 문항 변형</p>
       </div>
       {weakDomains.length>0&&(<div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
         <div className="text-sm font-black text-orange-700 mb-2">🎯 현재 취약 영역 (정답률 70% 미만)</div>
@@ -218,8 +221,8 @@ function MockExamTab({userData,onUpdate}){
           <div className="text-xs font-normal opacity-80 mt-1">취약 영역 집중 + 기출 변형 자동 출제</div>
         </button>
         <button onClick={()=>startExam('random')} className="w-full p-5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-3xl font-black text-lg shadow-lg active:scale-95 transition-transform">
-          🎲 랜덤 혼합 모의고사 10문제
-          <div className="text-xs font-normal opacity-80 mt-1">5개 영역 골고루 · 매번 새 문제</div>
+          🎲 실전 모의고사 20문제
+          <div className="text-xs font-normal opacity-80 mt-1">최근 검정고시 구성에 맞춘 5개 영역 실전형 문항</div>
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -262,8 +265,8 @@ function MockExamTab({userData,onUpdate}){
     return(<div className="p-4 pb-36 space-y-4 fade-in">
       <div className="sticky top-0 bg-white border-b py-3 flex items-center gap-3 z-10 -mx-4 px-4 shadow-sm">
         <button onClick={()=>setScreen('start')} className="text-gray-500 text-sm font-bold">← 나가기</button>
-        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 랜덤 혼합'} ({answered}/10)</span>
-        {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/10점</span>}
+        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({answered}/{questionCount})</span>
+        {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/{questionCount}점</span>}
       </div>
       {questions.map((q,i)=>{
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
@@ -286,11 +289,11 @@ return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {sr
           {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
         </div>);
       })}
-      {answered===10&&!isGraded&&(<div className="fade-in">
+      {answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
         <button onClick={()=>{setIsGraded(true);saveResult(null);}} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-lg active:scale-95 transition-transform">채점하기 📝</button>
       </div>)}
       {isGraded&&!feelingDone&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">
-        <div className="text-2xl font-black text-indigo-700 mb-1">🎯 {correctCount}/10 정답!</div>
+        <div className="text-2xl font-black text-indigo-700 mb-1">🎯 {correctCount}/{questionCount} 정답!</div>
         <div className="text-sm text-gray-500 mb-4">이번 모의고사는 어떠셨나요? 기록은 저장됐어요.</div>
         <div className="flex gap-2 justify-center">
           <button onClick={()=>chooseFeeling('easy')} className="flex-1 py-4 bg-green-100 text-green-700 rounded-2xl font-black active:scale-95 transition-transform">쉬웠어요 😊</button>

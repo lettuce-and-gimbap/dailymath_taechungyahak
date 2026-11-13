@@ -31,6 +31,43 @@ function _angArc(px,py,a1,a2,r,fill){
 var _deg=(x1,y1,x2,y2)=>Math.atan2(-(y2-y1),x2-x1)*180/Math.PI;
 
 Object.assign(EXAM_FIG,{
+  /* 함수 대응도 : 기출처럼 흰 바탕·검정 선으로 간단히 그린다. */
+  composite_map(g){
+    const sets=[g.X,g.Y,g.Z],maps=[g.f_map,g.g_map],W=330,H=210;
+    const cx=[55,165,275],cy=105,rx=34,ry=Math.min(70,Math.max(38,sets[0].length*15));
+    let s='';
+    sets.forEach((a,k)=>{
+      s+=`<ellipse cx="${cx[k]}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#111" stroke-width="1.6"/>`;
+      s+=_fsT(cx[k],cy-ry-10,['X','Y','Z'][k],{size:17,italic:true});
+      a.forEach((v,i)=>s+=_fsT(cx[k],cy-(a.length-1)*13/2+i*13+5,String(v),{size:16}));
+    });
+    maps.forEach((map,k)=>map.forEach(([from,to])=>{
+      const a=sets[k],b=sets[k+1],i=a.indexOf(from),j=b.indexOf(to);
+      if(i<0||j<0)return;
+      const y1=cy-(a.length-1)*13/2+i*13,y2=cy-(b.length-1)*13/2+j*13;
+      const x1=cx[k]+rx,x2=cx[k+1]-rx,mid=(x1+x2)/2;
+      s+=`<line x1="${x1}" y1="${y1}" x2="${x2-5}" y2="${y2}" stroke="#111" stroke-width="1.2"/><path d="M ${x2-5} ${y2} l -6 -4 l 0 8 Z" fill="#111"/>`;
+      s+=_fsT(mid,cy-ry-10,k===0?'f':'g',{size:15,italic:true});
+    }));
+    s+=_fsT(W/2,H-8,`(g∘f)(${g.inp}) = ?`,{size:16});
+    return _sv(W,H,s);
+  },
+  inverse_map(g){
+    const{X,Y,f_map,ask_y}=g,W=250,H=190,cx=[75,175],cy=94,rx=43,ry=Math.min(65,Math.max(38,X.length*15));
+    let s='';
+    [X,Y].forEach((a,k)=>{
+      s+=`<ellipse cx="${cx[k]}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#111" stroke-width="1.6"/>`;
+      s+=_fsT(cx[k],cy-ry-9,k?'Y':'X',{size:16,italic:true});
+      a.forEach((v,i)=>s+=_fsT(cx[k],cy-(a.length-1)*14/2+i*14+5,String(v),{size:16}));
+    });
+    f_map.forEach(([from,to])=>{
+      const i=X.indexOf(from),j=Y.indexOf(to);if(i<0||j<0)return;
+      const y1=cy-(X.length-1)*14/2+i*14,y2=cy-(Y.length-1)*14/2+j*14,x1=cx[0]+rx,x2=cx[1]-rx;
+      s+=`<line x1="${x1}" y1="${y1}" x2="${x2-5}" y2="${y2}" stroke="#111" stroke-width="1.2"/><path d="M ${x2-5} ${y2} l -6 -4 l 0 8 Z" fill="#111"/>`;
+    });
+    s+=_fsT(W/2,H-6,`f⁻¹(${ask_y}) = ?`,{size:15});
+    return _sv(W,H,s);
+  },
   /* 소인수분해 : 나뭇가지(tree) 또는 나눗셈 사다리(ladder) */
   factor_tree(g){
     const f=_primeFactors(g.n);

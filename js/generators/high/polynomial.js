@@ -150,7 +150,7 @@ function gen_poly_synthetic(){
 // 다항식 영역 디스패처
 function genMockPoly(){
   return weightedGen([[gen_poly_arith,4],[gen_poly_identity,4],[gen_poly_remainder,7],
-    [gen_poly_factor,4],[gen_poly_synthetic,5]]);
+    [gen_poly_divisible,3],[gen_poly_factor,4],[gen_poly_synthetic,5]]);
 }
 
 function gen_complex_calc(){

@@ -37,7 +37,7 @@ function WorksheetTab(){
   const[homeworkTargets,setHomeworkTargets]=useState([]);
   const[examPrintCols,setExamPrintCols]=useState(1);
 
-  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2023~2026 중졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',mock_high:'2023~2026 고졸 검정고시 최근 핵심 유형 변형 (10문항 사지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
+  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2026년 실제 기출 분포 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',mock_high:'2026년 실제 기출 분포 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
   // 영역별 정답률 계산 (학생 로그 기반)
   const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
@@ -70,65 +70,41 @@ function WorksheetTab(){
 
   // 모의고사 문제지 생성
   const createExamSheet=()=>{
+    if(examMode==='weak'&&!targetStudent){showToast('취약점을 분석할 학생을 먼저 선택해 주세요.');return;}
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
     const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T.filter(d=>d!=='내분점');   // 고르지 않으면 내분점(도형과 기하 안에 이미 있음)은 빼고 섞는다
-    let pool=[];
-    if(examMode==='weak'&&targetStudent){
+    const levelKey=wsType==='mock_middle'?'middle':'high';
+    const targetCount=examMode==='weak'?10:20;
+    let pool=[],targets=activeDomains;
+    if(examMode==='weak'){
       const stu=studentList.find(s=>s.name===targetStudent);
       const stats=stu?computeStatsT(stu.logs||[]):{};
       const weakDomains=activeDomains.filter(d=>!stats[d]||stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
-      const targets=weakDomains.length>0?weakDomains:activeDomains;
-      // ── 취약점 모드 중복 방지: 토픽 + 문제 텍스트 기준 ──
-      const seenQ=new Set();
-      let safety=0;
-      while(pool.length<10&&safety<60){
-        safety++;
-        const dom=targets[pool.length%targets.length];
-        const q=safeGen(DOMAIN_GENS_T[dom]);
-        if(q){
-          const qKey=`${q.topic}::${q.q?.slice(0,30)||''}`;
-          if(!seenQ.has(qKey)){seenQ.add(qKey);pool.push(q);}
-        }
-      }
-    }else{
-      // ── 랜덤 모드: 토픽 중복 방지 + 문제 텍스트 중복 방지 ──
-      const usedTopics=new Set();
-      const usedQTexts=new Set();
-      activeDomains.forEach(dom=>{
-        let added=0,retries=0;
-        while(added<2&&retries<15){
-          const q=safeGen(DOMAIN_GENS_T[dom]);
-          if(q){
-            const qKey=`${q.topic}::${q.q?.slice(0,30)||''}`;
-            const topicOk=!usedTopics.has(q.topic);
-            const textOk=!usedQTexts.has(qKey);
-            if(topicOk&&textOk){
-              usedTopics.add(q.topic);usedQTexts.add(qKey);pool.push(q);added++;
-            } else if(retries>=13&&textOk){
-              // 토픽 중복은 허용하되 문제 텍스트 중복은 끝까지 방지
-              usedQTexts.add(qKey);pool.push(q);added++;
-            }
-          }
-          retries++;
-        }
-      });
-      pool=shuffle(pool);
+      targets=weakDomains.length>0?weakDomains:activeDomains;
     }
-    let safety=0;
-    const usedTopicsAll=new Set(pool.map(q=>q.topic));
-    const usedQAll=new Set(pool.map(q=>`${q.topic}::${q.q?.slice(0,30)||''}`));
-    while(pool.length<10&&safety++<30){
-      const q=safeGen(DOMAIN_GENS_T[pick(activeDomains)]);
-      if(q){
-        const qKey=`${q.topic}::${q.q?.slice(0,30)||''}`;
-        if(!usedQAll.has(qKey)){usedTopicsAll.add(q.topic);usedQAll.add(qKey);pool.push(q);}
-        else if(safety>20){usedQAll.add(qKey);pool.push(q);} // 최후 수단
-      }
+    const quotas=mockExamDomainCounts(levelKey,targets,targetCount),usedQ=new Set();
+    const addQuestion=(domain,allowDuplicate)=>{
+      const q=safeGen(DOMAIN_GENS_T[domain]);if(!q)return false;
+      const key=`${q.topic}::${q.q||''}`;
+      if(!allowDuplicate&&usedQ.has(key))return false;
+      usedQ.add(key);pool.push(q);return true;
+    };
+    Object.entries(quotas).forEach(([domain,count])=>{
+      let added=0,attempts=0;
+      while(added<count&&attempts<count*20){if(addQuestion(domain,false))added++;attempts++;}
+      while(added<count&&attempts<count*22){if(addQuestion(domain,true))added++;attempts++;}
+    });
+    // 취약점 문제지는 선정된 취약 영역 안에서만 부족 문항을 채운다.
+    const fallbackDomains=Object.keys(quotas);let safety=0;
+    while(pool.length<targetCount&&fallbackDomains.length&&safety++<targetCount*40){
+      addQuestion(pick(fallbackDomains),true);
     }
+    if(pool.length<targetCount){showToast(`문제 생성이 ${pool.length}문항에서 멈췄습니다. 다시 생성해 주세요.`);return;}
+    pool=shuffle(pool);
     const level=wsType==='mock_middle'?'중졸':'고졸';
     const t=title.trim()||`${level} 검정고시 모의고사 (${todayStr()})`;
-    const mode=examMode==='weak'&&targetStudent?`취약점 공략 - ${targetStudent} 학생`:'랜덤 혼합';
-    setExamSheet({title:t,mode,level,wsType,questions:pool.slice(0,10)});
+    const mode=examMode==='weak'?`취약점 공략 - ${targetStudent} 학생`:'랜덤 혼합';
+    setExamSheet({title:t,mode,level,wsType,questions:pool.slice(0,targetCount)});
     setExamSaved(false);
   };
 
@@ -151,7 +127,7 @@ function WorksheetTab(){
       @media print{body{padding:16px;} .q{margin-bottom:16px;page-break-inside:avoid;break-inside:avoid;}}
     </style></head><body>
     <h1>${examSheet.title}</h1>
-    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 10문항 · 검정고시 기출 변형</div>
+    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 ${examSheet.questions.length}문항 · 2026년 기출 분포 반영 변형</div>
     <div class="q-grid">`;
     examSheet.questions.forEach((q,i)=>{
       html+=`<div class="q">
@@ -313,15 +289,15 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       <button onClick={()=>setExamSheet(null)} className="text-gray-500 font-bold text-sm">← 뒤로</button>
       <div className="bg-indigo-600 text-white rounded-3xl p-5 shadow-lg">
         <div className="font-black text-lg mb-1">{examSheet.title}</div>
-        <div className="text-xs opacity-80">출제 방식: {examSheet.mode} · 총 10문항</div>
+        <div className="text-xs opacity-80">출제 방식: {examSheet.mode} · 총 {examSheet.questions.length}문항</div>
       </div>
       <div className="flex gap-2 mb-2">
         <span className="text-xs text-gray-500 font-bold self-center">인쇄 열:</span>
         {[1,2].map(n=><button key={n} onClick={()=>setExamPrintCols(n)} className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 ${examPrintCols===n?'border-indigo-500 bg-indigo-500 text-white':'border-gray-200 bg-white text-gray-600'}`}>{n}열</button>)}
       </div>
       <div className="flex gap-2">
-        <button onClick={()=>printExamSheet(false,examPrintCols)} className="flex-1 py-3 bg-white border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">🖨️ 문제지 인쇄</button>
-        <button onClick={()=>printExamSheet(true,examPrintCols)} className="flex-1 py-3 bg-indigo-100 border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">📋 답지 포함 인쇄</button>
+        <button onClick={()=>printExamSheet(false,examPrintCols)} className="flex-1 py-3 bg-white border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">📄 문제지 PDF 저장 / 인쇄</button>
+        <button onClick={()=>printExamSheet(true,examPrintCols)} className="flex-1 py-3 bg-indigo-100 border-2 border-indigo-300 text-indigo-700 rounded-2xl font-black text-sm active:scale-95 transition-transform">📋 답지 포함 PDF / 인쇄</button>
       </div>
       <button onClick={saveExamSheet} disabled={examSaved} className={`w-full py-3 rounded-2xl font-black text-sm transition-all ${examSaved?'bg-green-100 text-green-700 border-2 border-green-300 cursor-default':'bg-emerald-500 text-white active:scale-95'}`}>
         {examSaved?'✅ 저장 완료 (저장된 문제지에서 확인)':'💾 문제집 폴더에 저장하기'}
@@ -640,8 +616,8 @@ return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 
       </div>}
       {wsType.startsWith('mock_')&&<div className="space-y-3">
         <div className="flex gap-2">
-          <button onClick={()=>setExamMode('random')} className={`flex-1 py-2 rounded-xl font-bold text-sm ${examMode==='random'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>🎲 랜덤 혼합</button>
-          <button onClick={()=>setExamMode('weak')} className={`flex-1 py-2 rounded-xl font-bold text-sm ${examMode==='weak'?'bg-orange-500 text-white':'bg-gray-100 text-gray-600'}`}>🎯 취약점 집중</button>
+          <button onClick={()=>setExamMode('random')} className={`flex-1 py-2 rounded-xl font-bold text-sm ${examMode==='random'?'bg-indigo-500 text-white':'bg-gray-100 text-gray-600'}`}>🎲 실전 20문항</button>
+          <button onClick={()=>setExamMode('weak')} className={`flex-1 py-2 rounded-xl font-bold text-sm ${examMode==='weak'?'bg-orange-500 text-white':'bg-gray-100 text-gray-600'}`}>🎯 취약점 10문항</button>
         </div>
         {examMode==='weak'&&<select value={targetStudent} onChange={e=>setTargetStudent(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400">
           <option value="">학생 선택 (취약 영역 자동 분석)</option>
@@ -661,7 +637,7 @@ return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 
         </div>
         <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
         <button onClick={createExamSheet} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">
-          📝 {wsType==='mock_middle'?'중졸':'고졸'} 검정고시 문제지 생성 →
+          📝 {wsType==='mock_middle'?'중졸':'고졸'} {examMode==='weak'?'취약점 10문항':'실전 20문항'} 문제지 생성 →
         </button>
         {examSheet&&<div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-sm text-purple-800 font-bold">✅ {examSheet.questions.length}문항 생성됨 — 아래 [저장·인쇄] 버튼으로 출력하세요</div>}
       </div>}
