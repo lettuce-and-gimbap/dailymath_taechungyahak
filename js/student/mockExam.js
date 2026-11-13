@@ -80,7 +80,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
   </div>);
 }
 
-function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted}){
+function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
   const[questions,setQuestions]=useState([]);
@@ -92,9 +92,6 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const savedUpdRef=React.useRef(null);  // 소감을 고르면 이 기록에 덧붙인다
   const[startTime,setStartTime]=useState(null);
   const[mode,setMode]=useState('');
-  const[focusTopic,setFocusTopic]=useState(null);
-  const[focusIndex,setFocusIndex]=useState(0);
-  const[focusFeedback,setFocusFeedback]=useState(false);
   // ── 행동 추적 (신규) ──
   const[firstClickTimes,setFirstClickTimes]=useState({}); // {qIdx: ms from startTime to first click}
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
@@ -106,12 +103,6 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const CORE_DOMAINS=DOMAINS.filter(d=>d!=='내분점');
   const questionCount=questions.length;
 
-  useEffect(()=>{
-    if(!initialSetTopic)return;
-    setExamLevel('high');setSelectedDomains([initialSetTopic]);
-    startExam('domain',[initialSetTopic],initialSetTopic);
-    onInitialSetTopicStarted?.();
-  },[initialSetTopic]);
 
   const computeStats=(logs)=>{
     const s={};DOMAINS.forEach(d=>s[d]={c:0,t:0});
@@ -138,25 +129,21 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
     return s;
   };
 
-  const startExam=(examMode,domainList,focusTopic=null)=>{
+  const startExam=(examMode,domainList)=>{
     setMode(examMode);
-    setFocusTopic(focusTopic);
-    setFocusIndex(0);setFocusFeedback(false);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
     const levelKey=examLevel==='middle'?'middle':'high';
     const targetCount=examMode==='random'?20:10;
-    const focusedGen=focusTopic==='집합'?genMockSetOnly:focusTopic==='명제'?genMockPropositionOnly:null;
-    const domainGenerators=focusedGen?{[focusTopic]:focusedGen}:DOMAIN_GENS;
     let pool=[];
     let targets=CORE_DOMAINS;
     if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
     else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
-    const quotas=focusedGen?{[focusTopic]:targetCount}:mockExamDomainCounts(levelKey,targets,targetCount);
+    const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
     const usedQ=new Set();
     const addQuestion=(dom,allowDuplicate)=>{
-      const q=safeGen(domainGenerators[dom]);if(!q)return false;
+      const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
       const key=`${q.topic}::${q.q||''}`;
       if(!allowDuplicate&&usedQ.has(key))return false;
       usedQ.add(key);pool.push({...q,_mockDomain:dom});return true;
@@ -229,12 +216,6 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const ORD=['①','②','③','④'];
   const correctCount=questions.filter((q,i)=>sel[i]===q.answer).length;
   const answered=Object.keys(sel).length;
-  const sequential=!!focusTopic;
-  const advanceFocusedQuestion=()=>{
-    if(!focusFeedback){setFocusFeedback(true);return;}
-    if(focusIndex+1>=questions.length){setIsGraded(true);saveResult(null);return;}
-    setFocusIndex(i=>i+1);setFocusFeedback(false);
-  };
 
   if(screen==='start'){
     if(!examLevel)return(<div className="p-4 pb-36 space-y-4 fade-in">
@@ -316,11 +297,10 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
     return(<div className="p-4 pb-36 space-y-4 fade-in">
       <div className="sticky top-0 bg-white border-b py-3 flex items-center gap-3 z-10 -mx-4 px-4 shadow-sm">
         <button onClick={()=>setScreen('start')} className="text-gray-500 text-sm font-bold">← 나가기</button>
-        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({sequential?focusIndex+1:answered}/{questionCount})</span>
+        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({answered}/{questionCount})</span>
         {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/{questionCount}점</span>}
       </div>
-      {(sequential?[questions[focusIndex]].filter(Boolean):questions).map((q)=>{
-        const i=questions.indexOf(q);
+      {questions.map((q,i)=>{
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
         return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 min-w-0 overflow-visible">
           <div className="flex items-center gap-2 mb-3">
@@ -330,21 +310,18 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
 return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
-          <MockQBody q={q} sel={sel[i]} isGraded={isGraded||(sequential&&focusFeedback)} readOnly={sequential&&focusFeedback} onPick={j=>{
-            if(isGraded||(sequential&&focusFeedback))return;
+          <MockQBody q={q} sel={sel[i]} isGraded={isGraded} onPick={j=>{
+            if(isGraded)return;
             const now=Date.now()-startTime;
             if(firstClickTimes[i]===undefined) setFirstClickTimes(p=>({...p,[i]:now}));
             else if(sel[i]!==undefined&&sel[i]!==j) setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
             setSel(s=>({...s,[i]:j}));
           }}/>
-          {(isGraded||(sequential&&focusFeedback))&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
-          {(isGraded||(sequential&&focusFeedback))&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
+          {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
+          {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
         </div>);
       })}
-      {sequential&&!isGraded&&focusIndex<questionCount&&<button onClick={advanceFocusedQuestion} disabled={sel[focusIndex]===undefined} className={`w-full py-5 rounded-3xl font-black text-xl shadow-lg transition-all ${sel[focusIndex]===undefined?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white active:scale-95'}`}>
-        {!focusFeedback?'정답 확인 ✓':focusIndex+1>=questionCount?'결과 보기 📝':'다음 문제 →'}
-      </button>}
-      {!sequential&&answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
+      {answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
         <button onClick={()=>{setIsGraded(true);saveResult(null);}} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-lg active:scale-95 transition-transform">채점하기 📝</button>
       </div>)}
       {isGraded&&!feelingDone&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">

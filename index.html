@@ -5542,9 +5542,9 @@ function genMockSetFunc(){
     [gen_rational_asymptote,5],[gen_radical_translate,5]];
   return weightedGen(gens.map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));
 }
-// 학생 파일럿 연습용: 영역 버튼별로 집합·명제 생성기를 분리해 섞이지 않게 한다.
-function genMockSetOnly(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,3],[gen_set_equal_const,2],[gen_truth_set,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
-function genMockPropositionOnly(){return weightedGen([[gen_proposition,4],[gen_nec_suff,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}
+// 문제풀이 탭 전용 문항 생성 진입점. MockExamTab/영역 quota/모의고사 상태를 거치지 않는다.
+function genPracticeSetQuestion(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,3],[gen_set_equal_const,2],[gen_truth_set,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
+function genPracticePropositionQuestion(){return weightedGen([[gen_proposition,4],[gen_nec_suff,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}
 
 
 // ========== js\generators\high\probStat.js ==========
@@ -11207,7 +11207,7 @@ function buildPracticeRanges(userData){
 }
 function normalizePracticeVer(value){return Number(value)===4?3:[0,1,2,3].includes(Number(value))?Number(value):0;}
 
-function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed,unified=false,onSetTopic}){
+function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed,unified=false}){
   const[screen,setScreen]=useState('menu');
   const[unifiedLevel,setUnifiedLevel]=useState(null);
   const[unifiedSection,setUnifiedSection]=useState(null);
@@ -11259,8 +11259,9 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
 
   if(unified&&screen==='menu')return<UnifiedPracticeMenu userData={userData} section={unifiedSection} setSection={setUnifiedSection}
     savedData={savedData} onResume={resumeSession} onArithmetic={v=>{setVer(v);setVerTopic(null);setScreen('arithmetic');}}
-    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onSetTopic={topic=>onSetTopic&&onSetTopic(topic)}/>;
+    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onSetTopic={topic=>{setVerTopic(topic);setScreen('focused-set');}}/>;
   if(unified&&screen==='coordinate')return<CoordDailyTab userData={userData} onUpdate={onUpdate} initialLevel={unifiedLevel} onExit={()=>setScreen('menu')}/>;
+  if(unified&&screen==='focused-set')return<FocusedSetPractice topic={verTopic} userData={userData} onUpdate={onUpdate} onBack={()=>setScreen('menu')}/>;
   if(unified&&screen==='arithmetic')return<PracticeMenu ver={ver} setVer={setVer} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={null} onResume={resumeSession} selectedOnly onBack={()=>setScreen('menu')}/>;
   if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(normalizePracticeVer(v));setVerTopic(null);}} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
   if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={session.rangeMin} rangeMax={session.rangeMax} divMin={session.divMin} divMax={session.divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
@@ -11291,6 +11292,62 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
    {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
+}
+
+/* 집합·명제 연습은 모의고사 화면과 상태를 공유하지 않고 문제풀이 탭 안에서 진행한다. */
+function FocusedSetPractice({topic,userData,onUpdate,onBack}){
+  const TOTAL=10, ORD=['①','②','③','④'];
+  const makeQuestion=()=>topic==='집합'?genPracticeSetQuestion():genPracticePropositionQuestion();
+  const[q,setQ]=useState(makeQuestion);
+  const[index,setIndex]=useState(0);
+  const[selected,setSelected]=useState(null);
+  const[revealed,setRevealed]=useState(false);
+  const[records,setRecords]=useState([]);
+  const[phase,setPhase]=useState('question');
+  const[startAt]=useState(Date.now());
+  const[qStartAt,setQStartAt]=useState(Date.now());
+  const[saving,setSaving]=useState(false);
+  const savedRef=React.useRef(false);
+  const correct=records.filter(r=>r.isOk).length;
+  const answer=Number(q.answer);
+  const finish=async(finalRecords)=>{
+    if(savedRef.current)return;
+    savedRef.current=true;setSaving(true);
+    const correctCount=finalRecords.filter(r=>r.isOk).length,wrongCount=finalRecords.length-correctCount;
+    const today=todayStr(),type=`${topic} 문제풀이`;
+    const log={studentName:userData.name,date:today,time:timeStr(),type,score:`${correctCount} / ${finalRecords.length}`,questions:finalRecords,totalSec:Math.round((Date.now()-startAt)/1000),feeling:null};
+    const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,
+      todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,
+      lastDate:today,activeDates:[...new Set([...(userData.activeDates||[]),today])],logs:[log,...(userData.logs||[]).slice(0,49)]};
+    try{await saveUser(upd);await saveLog(log);onUpdate(upd);}catch(e){savedRef.current=false;alert('기록 저장에 실패했어요. 인터넷 연결을 확인해주세요.');}
+    setSaving(false);
+  };
+  const reveal=()=>{
+    if(selected===null||revealed)return;
+    setRevealed(true);
+  };
+  const next=()=>{
+    if(!revealed)return;
+    const finalRecords=[...records,{qTxt:q.q,qFull:q.q,topic:q.topic,choices:q.choices,answerIdx:answer,
+      uAns:q.choices[selected],cAns:q.choices[answer],isOk:selected===answer,
+      timeSec:Math.round((Date.now()-qStartAt)/1000),explanation:Array.isArray(q.sol)?q.sol.join('\n'):easyExplanation(q),meta:q.meta}];
+    if(index+1>=TOTAL){setRecords(finalRecords);setPhase('result');finish(finalRecords);return;}
+    setRecords(finalRecords);setQ(makeQuestion());setIndex(index+1);setSelected(null);setRevealed(false);setQStartAt(Date.now());
+  };
+  if(phase==='result')return <div className="p-4 pb-36 space-y-4"><div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-100 text-center"><div className="text-4xl mb-2">🎯</div><h2 className="text-2xl font-black text-gray-800">{topic} 연습 완료</h2><p className="text-lg font-bold text-indigo-600 mt-2">{correct}/{TOTAL} 정답</p><p className="text-sm text-gray-500 mt-1">{saving?'학습 기록을 저장하고 있어요.':'학습 기록이 저장되었습니다.'}</p></div><button onClick={onBack} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black">문제풀이 메뉴로</button></div>;
+  return <div className="p-4 pb-36 space-y-4">
+    <div className="flex items-center gap-3"><button onClick={onBack} className="w-11 h-11 rounded-2xl bg-white shadow-sm text-gray-500 font-black">←</button><div className="flex-1"><div className="text-lg font-black text-gray-800">{topic} 문제풀이</div><div className="text-sm font-bold text-gray-500">문제 {index+1}/{TOTAL}</div></div><div className="text-sm font-black text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl">{correct+(revealed&&selected===answer?1:0)}/{TOTAL}</div></div>
+    <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 rounded-full transition-all" style={{width:`${((index+(revealed?1:0))/TOTAL)*100}%`}}/></div>
+    <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+      <div className="flex items-center gap-2 mb-4"><span className="w-8 h-8 rounded-full bg-indigo-500 text-white text-sm font-black flex items-center justify-center">{index+1}</span><span className="text-sm font-black text-indigo-700">{topic} · {q.topic}</span></div>
+      <div className="text-lg font-bold text-gray-900 leading-loose mb-4" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>
+      <div className="grid gap-2">
+        {q.choices.map((choice,i)=>{const correctChoice=i===answer,isSelected=selected===i;let style='bg-white border-slate-200 text-gray-800';if(revealed&&correctChoice)style='bg-green-50 border-green-500 text-green-800';else if(revealed&&isSelected)style='bg-red-50 border-red-400 text-red-700';else if(isSelected)style='bg-indigo-50 border-indigo-400 text-indigo-800';return <button key={i} disabled={revealed} onClick={()=>setSelected(i)} className={`w-full text-left text-base font-bold px-4 py-3 rounded-2xl border-2 transition-all ${style}`}><span className="mr-2">{ORD[i]}</span><span dangerouslySetInnerHTML={{__html:examChoiceHtml(choice)}}/>{revealed&&correctChoice&&<span className="float-right">✅</span>}</button>;})}
+      </div>
+      {revealed&&<ExplanationBox q={q}/>}
+    </div>
+    {!revealed?<button disabled={selected===null} onClick={reveal} className={`w-full py-4 rounded-2xl font-black text-lg ${selected===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white active:scale-[0.98]'}`}>정답 확인 ✓</button>:<button onClick={next} className="w-full py-4 rounded-2xl bg-green-600 text-white font-black text-lg active:scale-[0.98]">{index+1===TOTAL?'결과 보기':'다음 문제 →'}</button>}
+  </div>;
 }
 
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeSettings,setRangeSettings,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
@@ -13211,7 +13268,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
   </div>);
 }
 
-function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted}){
+function MockExamTab({userData,onUpdate}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
   const[questions,setQuestions]=useState([]);
@@ -13223,9 +13280,6 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const savedUpdRef=React.useRef(null);  // 소감을 고르면 이 기록에 덧붙인다
   const[startTime,setStartTime]=useState(null);
   const[mode,setMode]=useState('');
-  const[focusTopic,setFocusTopic]=useState(null);
-  const[focusIndex,setFocusIndex]=useState(0);
-  const[focusFeedback,setFocusFeedback]=useState(false);
   // ── 행동 추적 (신규) ──
   const[firstClickTimes,setFirstClickTimes]=useState({}); // {qIdx: ms from startTime to first click}
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
@@ -13237,12 +13291,6 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const CORE_DOMAINS=DOMAINS.filter(d=>d!=='내분점');
   const questionCount=questions.length;
 
-  useEffect(()=>{
-    if(!initialSetTopic)return;
-    setExamLevel('high');setSelectedDomains([initialSetTopic]);
-    startExam('domain',[initialSetTopic],initialSetTopic);
-    onInitialSetTopicStarted?.();
-  },[initialSetTopic]);
 
   const computeStats=(logs)=>{
     const s={};DOMAINS.forEach(d=>s[d]={c:0,t:0});
@@ -13269,25 +13317,21 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
     return s;
   };
 
-  const startExam=(examMode,domainList,focusTopic=null)=>{
+  const startExam=(examMode,domainList)=>{
     setMode(examMode);
-    setFocusTopic(focusTopic);
-    setFocusIndex(0);setFocusFeedback(false);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
     const levelKey=examLevel==='middle'?'middle':'high';
     const targetCount=examMode==='random'?20:10;
-    const focusedGen=focusTopic==='집합'?genMockSetOnly:focusTopic==='명제'?genMockPropositionOnly:null;
-    const domainGenerators=focusedGen?{[focusTopic]:focusedGen}:DOMAIN_GENS;
     let pool=[];
     let targets=CORE_DOMAINS;
     if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
     else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
-    const quotas=focusedGen?{[focusTopic]:targetCount}:mockExamDomainCounts(levelKey,targets,targetCount);
+    const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
     const usedQ=new Set();
     const addQuestion=(dom,allowDuplicate)=>{
-      const q=safeGen(domainGenerators[dom]);if(!q)return false;
+      const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
       const key=`${q.topic}::${q.q||''}`;
       if(!allowDuplicate&&usedQ.has(key))return false;
       usedQ.add(key);pool.push({...q,_mockDomain:dom});return true;
@@ -13360,12 +13404,6 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const ORD=['①','②','③','④'];
   const correctCount=questions.filter((q,i)=>sel[i]===q.answer).length;
   const answered=Object.keys(sel).length;
-  const sequential=!!focusTopic;
-  const advanceFocusedQuestion=()=>{
-    if(!focusFeedback){setFocusFeedback(true);return;}
-    if(focusIndex+1>=questions.length){setIsGraded(true);saveResult(null);return;}
-    setFocusIndex(i=>i+1);setFocusFeedback(false);
-  };
 
   if(screen==='start'){
     if(!examLevel)return(<div className="p-4 pb-36 space-y-4 fade-in">
@@ -13447,11 +13485,10 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
     return(<div className="p-4 pb-36 space-y-4 fade-in">
       <div className="sticky top-0 bg-white border-b py-3 flex items-center gap-3 z-10 -mx-4 px-4 shadow-sm">
         <button onClick={()=>setScreen('start')} className="text-gray-500 text-sm font-bold">← 나가기</button>
-        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({sequential?focusIndex+1:answered}/{questionCount})</span>
+        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({answered}/{questionCount})</span>
         {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/{questionCount}점</span>}
       </div>
-      {(sequential?[questions[focusIndex]].filter(Boolean):questions).map((q)=>{
-        const i=questions.indexOf(q);
+      {questions.map((q,i)=>{
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
         return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 min-w-0 overflow-visible">
           <div className="flex items-center gap-2 mb-3">
@@ -13461,21 +13498,18 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
 return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
-          <MockQBody q={q} sel={sel[i]} isGraded={isGraded||(sequential&&focusFeedback)} readOnly={sequential&&focusFeedback} onPick={j=>{
-            if(isGraded||(sequential&&focusFeedback))return;
+          <MockQBody q={q} sel={sel[i]} isGraded={isGraded} onPick={j=>{
+            if(isGraded)return;
             const now=Date.now()-startTime;
             if(firstClickTimes[i]===undefined) setFirstClickTimes(p=>({...p,[i]:now}));
             else if(sel[i]!==undefined&&sel[i]!==j) setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
             setSel(s=>({...s,[i]:j}));
           }}/>
-          {(isGraded||(sequential&&focusFeedback))&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
-          {(isGraded||(sequential&&focusFeedback))&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
+          {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
+          {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
         </div>);
       })}
-      {sequential&&!isGraded&&focusIndex<questionCount&&<button onClick={advanceFocusedQuestion} disabled={sel[focusIndex]===undefined} className={`w-full py-5 rounded-3xl font-black text-xl shadow-lg transition-all ${sel[focusIndex]===undefined?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white active:scale-95'}`}>
-        {!focusFeedback?'정답 확인 ✓':focusIndex+1>=questionCount?'결과 보기 📝':'다음 문제 →'}
-      </button>}
-      {!sequential&&answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
+      {answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
         <button onClick={()=>{setIsGraded(true);saveResult(null);}} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-lg active:scale-95 transition-transform">채점하기 📝</button>
       </div>)}
       {isGraded&&!feelingDone&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">
@@ -13688,7 +13722,6 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
   const[activeHomework,setActiveHomework]=useState(null);
   const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
   const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
-  const[initialSetTopic,setInitialSetTopic]=useState(null);
   const[toast,setToast]=useState('');
   const[pendingSwitch,setPendingSwitch]=useState(false);   // 전환 단추를 눌렀는데 문제 풀이 중이라 확인 모달을 거치는 중
   const SAVE_KEY='yakHakSavedSession_'+userData.name;
@@ -13860,11 +13893,10 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} onResumeSaved={goResume} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
       {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}
-        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}
-        onSetTopic={topic=>{setInitialSetTopic(topic);setTab('exam');}}/>}
+        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}/>}
       {tab==='coord'&&(unifiedPractice?<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive} unified/>:<CoordDailyTab userData={userData} onUpdate={onUpdate}/>)}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
-      {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate} initialSetTopic={initialSetTopic} onInitialSetTopicStarted={()=>setInitialSetTopic(null)}/>}
+      {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks} onDeleteFeedback={deleteFeedback}/>}
     </div>

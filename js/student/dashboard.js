@@ -59,7 +59,6 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
   const[activeHomework,setActiveHomework]=useState(null);
   const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
   const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
-  const[initialSetTopic,setInitialSetTopic]=useState(null);
   const[toast,setToast]=useState('');
   const[pendingSwitch,setPendingSwitch]=useState(false);   // 전환 단추를 눌렀는데 문제 풀이 중이라 확인 모달을 거치는 중
   const SAVE_KEY='yakHakSavedSession_'+userData.name;
@@ -231,11 +230,10 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} onResumeSaved={goResume} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
       {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}
-        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}
-        onSetTopic={topic=>{setInitialSetTopic(topic);setTab('exam');}}/>}
+        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}/>}
       {tab==='coord'&&(unifiedPractice?<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive} unified/>:<CoordDailyTab userData={userData} onUpdate={onUpdate}/>)}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
-      {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate} initialSetTopic={initialSetTopic} onInitialSetTopicStarted={()=>setInitialSetTopic(null)}/>}
+      {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks} onDeleteFeedback={deleteFeedback}/>}
     </div>

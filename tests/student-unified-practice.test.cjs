@@ -29,9 +29,10 @@ assert(practiceSource.includes('곧 공개할 예정이에요'),'other students 
 assert(practiceSource.includes("title:'집합과 명제'")&&practiceSource.includes("['집합','명제'].map"));
 const home=fs.readFileSync('js/student/home.js','utf8');assert(home.includes('setShowMathForest')&&home.includes('aria-expanded={showMathForest}')&&!home.includes('정답 비율은 저장된 전체 풀이 기준'));
 const mock=fs.readFileSync('js/student/mockExam.js','utf8');assert(mock.includes('중졸 모의고사')&&mock.includes('bg-white rounded-3xl text-left shadow-sm border-2'));
-assert(mock.includes('const sequential=!!focusTopic;')&&mock.includes('정답 확인 ✓')&&mock.includes('다음 문제 →'),'focused set and proposition practice advances one question at a time');
 assert(mock.includes('grid grid-cols-2 gap-2 mb-3')&&mock.includes('aria-pressed={selectedDomains.includes(d)}'),'exam domain selection uses consistent accessible selection cards');
+assert(practiceSource.includes("if(unified&&screen==='focused-set')return<FocusedSetPractice")&&practiceSource.includes('genPracticeSetQuestion()')&&practiceSource.includes('genPracticePropositionQuestion()'),'focused set and proposition practice stays in the problem-solving tab');
 const dash=fs.readFileSync('js/student/dashboard.js','utf8');assert(dash.includes('const unifiedPractice=true;'));assert(!dash.includes("userData.name==='박소명_학생'"));assert(dash.includes("!unifiedPractice||t.k!=='coord'"));
+assert(!dash.includes('initialSetTopic')&&!dash.includes('onSetTopic={topic=>'),'set and proposition practice does not route to the mock exam tab');
 console.log('Unified routing for all students: PASS');
 const menuProps={setVer(){},setVerTopic(){},rangeSettings:{0:{min:10,max:99},1:{min:11,max:88},2:{min:12,max:77},3:{min:13,max:66}},setRangeSettings(){},goal:3,setGoal(){},todayLessons:0,onSave(){},onStart(){},selectedOnly:true,onBack(){}};
 const settings=walk(ctx.PracticeMenu({...menuProps,ver:0}));assert(settings.filter(x=>x.type==='input').length===2);assert(settings.some(x=>x.type==='button'&&JSON.stringify(x.children).includes('다시 고르기')));

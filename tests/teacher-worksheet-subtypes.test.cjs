@@ -43,7 +43,7 @@ for(const [level,groups] of [['중졸',ctx.MOCK_SUBTYPES_MIDDLE],['고졸',ctx.M
   }
   console.log(`${level}: ${count} selectable subtypes generated valid questions`);
 }
-for(const [label,gen] of [['집합',ctx.genMockSetOnly],['명제',ctx.genMockPropositionOnly]]){
+for(const [label,gen] of [['집합',ctx.genPracticeSetQuestion],['명제',ctx.genPracticePropositionQuestion]]){
   for(let i=0;i<30;i++){
     const q=gen();
     if(!q||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||!Number.isInteger(q.answer))

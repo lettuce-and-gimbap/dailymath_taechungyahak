@@ -10,7 +10,7 @@ function buildPracticeRanges(userData){
 }
 function normalizePracticeVer(value){return Number(value)===4?3:[0,1,2,3].includes(Number(value))?Number(value):0;}
 
-function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed,unified=false,onSetTopic}){
+function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed,unified=false}){
   const[screen,setScreen]=useState('menu');
   const[unifiedLevel,setUnifiedLevel]=useState(null);
   const[unifiedSection,setUnifiedSection]=useState(null);
@@ -62,8 +62,9 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
 
   if(unified&&screen==='menu')return<UnifiedPracticeMenu userData={userData} section={unifiedSection} setSection={setUnifiedSection}
     savedData={savedData} onResume={resumeSession} onArithmetic={v=>{setVer(v);setVerTopic(null);setScreen('arithmetic');}}
-    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onSetTopic={topic=>onSetTopic&&onSetTopic(topic)}/>;
+    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onSetTopic={topic=>{setVerTopic(topic);setScreen('focused-set');}}/>;
   if(unified&&screen==='coordinate')return<CoordDailyTab userData={userData} onUpdate={onUpdate} initialLevel={unifiedLevel} onExit={()=>setScreen('menu')}/>;
+  if(unified&&screen==='focused-set')return<FocusedSetPractice topic={verTopic} userData={userData} onUpdate={onUpdate} onBack={()=>setScreen('menu')}/>;
   if(unified&&screen==='arithmetic')return<PracticeMenu ver={ver} setVer={setVer} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={null} onResume={resumeSession} selectedOnly onBack={()=>setScreen('menu')}/>;
   if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(normalizePracticeVer(v));setVerTopic(null);}} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
   if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={session.rangeMin} rangeMax={session.rangeMax} divMin={session.divMin} divMax={session.divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
@@ -94,6 +95,62 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
    {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
+}
+
+/* 집합·명제 연습은 모의고사 화면과 상태를 공유하지 않고 문제풀이 탭 안에서 진행한다. */
+function FocusedSetPractice({topic,userData,onUpdate,onBack}){
+  const TOTAL=10, ORD=['①','②','③','④'];
+  const makeQuestion=()=>topic==='집합'?genPracticeSetQuestion():genPracticePropositionQuestion();
+  const[q,setQ]=useState(makeQuestion);
+  const[index,setIndex]=useState(0);
+  const[selected,setSelected]=useState(null);
+  const[revealed,setRevealed]=useState(false);
+  const[records,setRecords]=useState([]);
+  const[phase,setPhase]=useState('question');
+  const[startAt]=useState(Date.now());
+  const[qStartAt,setQStartAt]=useState(Date.now());
+  const[saving,setSaving]=useState(false);
+  const savedRef=React.useRef(false);
+  const correct=records.filter(r=>r.isOk).length;
+  const answer=Number(q.answer);
+  const finish=async(finalRecords)=>{
+    if(savedRef.current)return;
+    savedRef.current=true;setSaving(true);
+    const correctCount=finalRecords.filter(r=>r.isOk).length,wrongCount=finalRecords.length-correctCount;
+    const today=todayStr(),type=`${topic} 문제풀이`;
+    const log={studentName:userData.name,date:today,time:timeStr(),type,score:`${correctCount} / ${finalRecords.length}`,questions:finalRecords,totalSec:Math.round((Date.now()-startAt)/1000),feeling:null};
+    const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,
+      todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,
+      lastDate:today,activeDates:[...new Set([...(userData.activeDates||[]),today])],logs:[log,...(userData.logs||[]).slice(0,49)]};
+    try{await saveUser(upd);await saveLog(log);onUpdate(upd);}catch(e){savedRef.current=false;alert('기록 저장에 실패했어요. 인터넷 연결을 확인해주세요.');}
+    setSaving(false);
+  };
+  const reveal=()=>{
+    if(selected===null||revealed)return;
+    setRevealed(true);
+  };
+  const next=()=>{
+    if(!revealed)return;
+    const finalRecords=[...records,{qTxt:q.q,qFull:q.q,topic:q.topic,choices:q.choices,answerIdx:answer,
+      uAns:q.choices[selected],cAns:q.choices[answer],isOk:selected===answer,
+      timeSec:Math.round((Date.now()-qStartAt)/1000),explanation:Array.isArray(q.sol)?q.sol.join('\n'):easyExplanation(q),meta:q.meta}];
+    if(index+1>=TOTAL){setRecords(finalRecords);setPhase('result');finish(finalRecords);return;}
+    setRecords(finalRecords);setQ(makeQuestion());setIndex(index+1);setSelected(null);setRevealed(false);setQStartAt(Date.now());
+  };
+  if(phase==='result')return <div className="p-4 pb-36 space-y-4"><div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-100 text-center"><div className="text-4xl mb-2">🎯</div><h2 className="text-2xl font-black text-gray-800">{topic} 연습 완료</h2><p className="text-lg font-bold text-indigo-600 mt-2">{correct}/{TOTAL} 정답</p><p className="text-sm text-gray-500 mt-1">{saving?'학습 기록을 저장하고 있어요.':'학습 기록이 저장되었습니다.'}</p></div><button onClick={onBack} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black">문제풀이 메뉴로</button></div>;
+  return <div className="p-4 pb-36 space-y-4">
+    <div className="flex items-center gap-3"><button onClick={onBack} className="w-11 h-11 rounded-2xl bg-white shadow-sm text-gray-500 font-black">←</button><div className="flex-1"><div className="text-lg font-black text-gray-800">{topic} 문제풀이</div><div className="text-sm font-bold text-gray-500">문제 {index+1}/{TOTAL}</div></div><div className="text-sm font-black text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl">{correct+(revealed&&selected===answer?1:0)}/{TOTAL}</div></div>
+    <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 rounded-full transition-all" style={{width:`${((index+(revealed?1:0))/TOTAL)*100}%`}}/></div>
+    <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+      <div className="flex items-center gap-2 mb-4"><span className="w-8 h-8 rounded-full bg-indigo-500 text-white text-sm font-black flex items-center justify-center">{index+1}</span><span className="text-sm font-black text-indigo-700">{topic} · {q.topic}</span></div>
+      <div className="text-lg font-bold text-gray-900 leading-loose mb-4" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>
+      <div className="grid gap-2">
+        {q.choices.map((choice,i)=>{const correctChoice=i===answer,isSelected=selected===i;let style='bg-white border-slate-200 text-gray-800';if(revealed&&correctChoice)style='bg-green-50 border-green-500 text-green-800';else if(revealed&&isSelected)style='bg-red-50 border-red-400 text-red-700';else if(isSelected)style='bg-indigo-50 border-indigo-400 text-indigo-800';return <button key={i} disabled={revealed} onClick={()=>setSelected(i)} className={`w-full text-left text-base font-bold px-4 py-3 rounded-2xl border-2 transition-all ${style}`}><span className="mr-2">{ORD[i]}</span><span dangerouslySetInnerHTML={{__html:examChoiceHtml(choice)}}/>{revealed&&correctChoice&&<span className="float-right">✅</span>}</button>;})}
+      </div>
+      {revealed&&<ExplanationBox q={q}/>}
+    </div>
+    {!revealed?<button disabled={selected===null} onClick={reveal} className={`w-full py-4 rounded-2xl font-black text-lg ${selected===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white active:scale-[0.98]'}`}>정답 확인 ✓</button>:<button onClick={next} className="w-full py-4 rounded-2xl bg-green-600 text-white font-black text-lg active:scale-[0.98]">{index+1===TOTAL?'결과 보기':'다음 문제 →'}</button>}
+  </div>;
 }
 
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeSettings,setRangeSettings,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
