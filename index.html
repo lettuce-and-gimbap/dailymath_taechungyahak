@@ -2922,7 +2922,7 @@ function graphToSvgString(q){
    보기 만들기 · 정답 텍스트 · 쉬운 해설 · 가중치 추첨 · 수식 표기
    -------------------------------------------------------------------- */
 
-/* 2026년 제1·2회 실제 검정고시 문항 분포를 참고한 20문항 실전 출제 비율.
+/* 태청야학 보유 2021~2026년 제1·2회 기출 24회(중졸·고졸 각 12회)의 반복 영역을 참고한 20문항 실전 출제 비율.
    교사·학생 화면이 같은 기준을 사용하고, 선택 영역은 이 비율로 재배분한다. */
 var MOCK_EXAM_BLUEPRINTS={
   middle:{'수와 연산':5,'문자와 식':4,'함수':3,'기하':5,'확률과 통계':3},
@@ -13443,10 +13443,10 @@ function MockExamTab({userData,onUpdate}){
         <p className="text-sm opacity-90">먼저 응시할 학력을 골라 주세요.</p>
       </div>
       <button onClick={()=>setExamLevel('middle')} className="w-full p-6 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2026년 1·2회 문항 비율 반영 · 최근 기출 유형 변형</div>
+        <div className="text-2xl font-black">📘 중졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</div>
       </button>
       <button onClick={()=>setExamLevel('high')} className="w-full p-6 bg-gradient-to-r from-violet-500 to-indigo-700 text-white rounded-3xl text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2026년 1·2회 문항 비율 반영 · 최근 기출 유형 변형</div>
+        <div className="text-2xl font-black">📚 고졸 모의고사</div><div className="text-sm mt-2 opacity-90">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</div>
       </button>
     </div>);
     const stats=computeStats(userData.logs||[]);
@@ -13458,7 +13458,7 @@ function MockExamTab({userData,onUpdate}){
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
         <button onClick={()=>setExamLevel(null)} className="text-sm font-bold opacity-90 mb-3">← 학력 다시 선택</button>
         <h2 className="text-xl font-black mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
-        <p className="text-sm opacity-90">2026년 1·2회 출제 비율 반영 · 생활 맥락과 그림형 문항 변형</p>
+        <p className="text-sm opacity-90">2021~2026년 반복 출제 영역 반영 · 생활 맥락과 그림형 문항 변형</p>
       </div>
       {weakDomains.length>0&&(<div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
         <div className="text-sm font-black text-orange-700 mb-2">🎯 현재 취약 영역 (정답률 70% 미만)</div>
@@ -17261,7 +17261,7 @@ function WorksheetTab(){
   const[homeworkTargets,setHomeworkTargets]=useState([]);
   const[examPrintCols,setExamPrintCols]=useState(1);
 
-  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2026년 실제 기출 분포 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',mock_high:'2026년 실제 기출 분포 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
+  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2021~2026년 기출의 반복 출제 영역 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',mock_high:'2021~2026년 기출의 반복 출제 영역 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
   // 영역별 정답률 계산 (학생 로그 기반)
   const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
@@ -17351,7 +17351,7 @@ function WorksheetTab(){
       @media print{body{padding:16px;} .q{margin-bottom:16px;page-break-inside:avoid;break-inside:avoid;}}
     </style></head><body>
     <h1>${examSheet.title}</h1>
-    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 ${examSheet.questions.length}문항 · 2026년 기출 분포 반영 변형</div>
+    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 ${examSheet.questions.length}문항 · 2021~2026년 누적 기출 경향 반영 변형</div>
     <div class="q-grid">`;
     examSheet.questions.forEach((q,i)=>{
       html+=`<div class="q">

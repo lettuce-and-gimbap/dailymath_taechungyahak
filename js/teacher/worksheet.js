@@ -37,7 +37,7 @@ function WorksheetTab(){
   const[homeworkTargets,setHomeworkTargets]=useState([]);
   const[examPrintCols,setExamPrintCols]=useState(1);
 
-  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2026년 실제 기출 분포 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',mock_high:'2026년 실제 기출 분포 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
+  const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2021~2026년 기출의 반복 출제 영역 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',mock_high:'2021~2026년 기출의 반복 출제 영역 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
 
   // 영역별 정답률 계산 (학생 로그 기반)
   const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
@@ -127,7 +127,7 @@ function WorksheetTab(){
       @media print{body{padding:16px;} .q{margin-bottom:16px;page-break-inside:avoid;break-inside:avoid;}}
     </style></head><body>
     <h1>${examSheet.title}</h1>
-    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 ${examSheet.questions.length}문항 · 2026년 기출 분포 반영 변형</div>
+    <div class="meta">${examSheet.level||'고졸'} · 출제 방식: ${examSheet.mode} · 총 ${examSheet.questions.length}문항 · 2021~2026년 누적 기출 경향 반영 변형</div>
     <div class="q-grid">`;
     examSheet.questions.forEach((q,i)=>{
       html+=`<div class="q">
