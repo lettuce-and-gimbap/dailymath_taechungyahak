@@ -12,6 +12,34 @@ var MOCK_ORD=['①','②','③','④'];
 var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:keep-all}
 .extbl{border-collapse:collapse;margin:0 auto;font-size:1rem}.extbl th,.extbl td{border:1.5px solid #9aa1ad;padding:4px 12px;text-align:center}
 .extbl th{background:#eceef2;font-weight:700}.extbl tr.sum td{background:#eceef2;font-weight:700}`;
+function assignMockQuestionNumbers(pool,examLevel,examMode){
+  if(examMode==='random'&&pool.length===20){
+    if(examLevel==='high'){
+      // 최근 기출의 1~4 다항식, 5~9 방정식·부등식, 10~14 좌표·기하,
+      // 15~18 집합·함수, 19~20 경우의 수 흐름을 반영한다.
+      const slots={'다항식 계산':[1,2,3,4],'방정식과 부등식':[5,6,7,8,9],'도형과 기하':[10,11,12,13,14],'집합과 함수':[15,16,17,18],'확률과 통계':[19,20]};
+      Object.entries(slots).forEach(([domain,numbers])=>shuffle(pool.filter(q=>q._mockDomain===domain)).forEach((q,i)=>{q.examNo=numbers[i];}));
+    }else{
+      // 중졸은 회차마다 영역 순서가 조금 달라, 같은 유형의 실제 출제 번호 후보를 우선 배정한다.
+      const preferred={'수와 연산':[1,2,8,9,15],'문자와 식':[3,4,9,10,16,17],'함수':[5,11,17,18],'기하':[5,6,12,13,18,19],'확률과 통계':[7,14,20]};
+      const used=new Set();
+      const records=pool.map((q,i)=>({q,i,candidates:typeof getExamQuestionNumbers==='function'?getExamQuestionNumbers(q):[]}))
+        .sort((a,b)=>a.candidates.length-b.candidates.length||a.i-b.i);
+      records.forEach(({q,candidates})=>{
+        let no=candidates.find(n=>n>=1&&n<=20&&!used.has(n));
+        if(no==null){
+          const choices=(preferred[q._mockDomain]||[]).filter(n=>!used.has(n));
+          const anchor=candidates.length?candidates[0]:(choices[0]||1);
+          no=(choices.length?choices:Array.from({length:20},(_,i)=>i+1).filter(n=>!used.has(n)))
+            .sort((a,b)=>Math.abs(a-anchor)-Math.abs(b-anchor)||a-b)[0];
+        }
+        q.examNo=no;used.add(no);
+      });
+    }
+  }else pool.forEach((q,i)=>{q.examNo=i+1;});
+  pool.forEach(q=>delete q._mockDomain);
+  return pool.sort((a,b)=>a.examNo-b.examNo);
+}
 function MockQBody({q,sel,isGraded,onPick,readOnly}){
   const g=q.graph;
   const sys=g&&g.type==='system_eq';
@@ -117,7 +145,7 @@ function MockExamTab({userData,onUpdate}){
       const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
       const key=`${q.topic}::${q.q||''}`;
       if(!allowDuplicate&&usedQ.has(key))return false;
-      usedQ.add(key);pool.push(q);return true;
+      usedQ.add(key);pool.push({...q,_mockDomain:dom});return true;
     };
     Object.entries(quotas).forEach(([dom,count])=>{
       let added=0,attempts=0;
@@ -128,7 +156,7 @@ function MockExamTab({userData,onUpdate}){
     const fallbackDomains=Object.keys(quotas);
     let safety=0;
     while(pool.length<targetCount&&fallbackDomains.length&&safety++<targetCount*40){addQuestion(pick(fallbackDomains),true);}
-    pool=shuffle(pool);
+    pool=assignMockQuestionNumbers(shuffle(pool),examLevel,examMode);
     setQuestions(pool.slice(0,targetCount));setSel({});setIsGraded(false);setSaved(false);setFeelingDone(false);savingRef.current=false;savedUpdRef.current=null;setStartTime(Date.now());setScreen('exam');
     setFirstClickTimes({});setRevisionCounts({});
   };
@@ -153,6 +181,7 @@ function MockExamTab({userData,onUpdate}){
         firstClickMs:fms,
         revisionCount:revisionCounts[i]??0,
         qTopicHash:getTopicHash(q),
+        examNo:q.examNo||i+1,
         sol:Array.isArray(q.sol)&&q.sol.length?q.sol:null,
         graph:q.graph||null,   // 선생님 화면에서 문제 그림을 그대로 다시 그린다
         choicePic:q.choicePic||null,table:q.table||null,box:q.box||null,boxUnit:q.boxUnit||null,qTex:q.qTex||null,
@@ -222,7 +251,7 @@ function MockExamTab({userData,onUpdate}){
         </button>
         <button onClick={()=>startExam('random')} className="w-full p-5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-3xl font-black text-lg shadow-lg active:scale-95 transition-transform">
           🎲 실전 모의고사 20문제
-          <div className="text-xs font-normal opacity-80 mt-1">최근 검정고시 구성에 맞춘 5개 영역 실전형 문항</div>
+          <div className="text-xs font-normal opacity-80 mt-1">기출의 문항 번호별 유형 흐름을 반영한 1~20번 구성</div>
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -272,7 +301,7 @@ function MockExamTab({userData,onUpdate}){
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
         return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0">{i+1}</span>
+            <span className="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0">{q.examNo||i+1}</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{q.topic}</span>
             {(()=>{var src=(q._src===undefined?(q._src=getExamSource(q)):q._src);   // 문항마다 한 번만 고른다 (다시 그릴 때마다 회차가 바뀌지 않게)
 return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}

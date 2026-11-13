@@ -520,7 +520,8 @@ var MID_COUNT_STORIES=[
     return{q:`그림은 어느 카페에서 판매하는 빵 ${a}종류와 음료 ${b}종류를 나타낸 것이다. 빵과 음료를 각각 한 가지씩 주문하는 경우의 수는?`,ans:a*b,
       g:{type:'menu',groups:[['빵',P],['음료',D]]},sol:`${a}×${b} = ${a*b}`};},
   ()=>{const a=randInt(2,3),b=randInt(2,3);
-    return{q:`집에서 학교까지 가는 길은 ${a}가지, 학교에서 도서관까지 가는 길은 ${b}가지이다. 집에서 출발하여 학교를 거쳐 도서관까지 가는 경우의 수는? (단, 같은 지점은 두 번 이상 지나지 않는다.)`,ans:a*b,sol:`${a}×${b} = ${a*b}`};},
+    return{q:`집에서 학교까지 가는 길은 ${a}가지, 학교에서 도서관까지 가는 길은 ${b}가지이다. 집에서 출발하여 학교를 거쳐 도서관까지 가는 경우의 수는? (단, 같은 지점은 두 번 이상 지나지 않는다.)`,ans:a*b,
+      g:{type:'menu',groups:[['집→학교',Array.from({length:a},(_,i)=>`${i+1}번 길`)],['학교→도서관',Array.from({length:b},(_,i)=>`${i+1}번 길`)]]},sol:`${a}×${b} = ${a*b}`};},
   ()=>{const s=randInt(3,6);const c=[];for(let i=1;i<=6;i++)for(let j=1;j<=6;j++)if(i+j===s)c.push(`(${i}, ${j})`);
     return{q:`서로 다른 두 개의 주사위를 동시에 던질 때, 나오는 두 눈의 수의 합이 ${s}가 되는 경우의 수는?`,ans:c.length,g:{type:'dice',n:2},sol:`${c.join(', ')} → ${c.length}가지`};},
   ()=>{const N=pick([9,10,12]),m=pick([3,4,5]);const ns=[];for(let i=1;i<=N;i++)if(i%m===0)ns.push(i);

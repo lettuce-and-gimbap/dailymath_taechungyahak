@@ -8,11 +8,11 @@
    ⑤ 확률과 통계 영역 — 6가지 유형 균등 출제
    순열·조합·기본확률·여사건·곱의법칙·합의법칙
    ════════════════════════════════════════════════ */
-function genMockProbStat(){
+function genMockProbStat(requestedType){
   function gcd(a,b){return b===0?a:gcd(b,a%b);}
   function frac(n,d){const g=gcd(Math.abs(n),Math.abs(d));return g===d?String(n/g):`${n/g}/${d/g}`;}
 
-  const TYPE=Math.floor(Math.random()*6);
+  const TYPE=Number.isInteger(requestedType)&&requestedType>=0&&requestedType<6?requestedType:Math.floor(Math.random()*6);
 
   // ── 0 순열 ──
   if(TYPE===0){
@@ -39,7 +39,7 @@ function genMockProbStat(){
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
     const pSteps=[];for(let i=n;i>n-r;i--)pSteps.push(`${i}`);
-    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,`P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,`(순서가 다르면 다른 경우로 셉니다.)`]};
   }
 
@@ -70,7 +70,7 @@ function genMockProbStat(){
     const wrongs=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(cnr),wrongs);
     const cNum=[];const cDen=[];for(let i=0;i<r;i++){cNum.push(n-i);cDen.push(i+1);}
-    return{topic:'조합',q:pick(cCtxs)(n,r),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'조합',q:pick(cCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,`C(${n},${r}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cnr}`,`(순서가 달라도 같은 선택이므로, 순열값을 r!로 나눕니다.)`]};
   }
 
@@ -97,7 +97,7 @@ function genMockProbStat(){
       `상자 안에 ${c.wLabel} ${c.obj} ${c.w}개와 ${c.rLabel} ${c.obj} ${c.r}개가 있다. 임의로 한 개를 꺼낼 때 ${c.wLabel} ${c.obj}일 확률은?`,
       `야학 바자회 뽑기 상자에 ${c.wLabel} ${c.obj} ${c.w}개와 ${c.rLabel} ${c.obj} ${c.r}개가 들어 있다. 한 개를 뽑을 때 ${c.wLabel} ${c.obj}${ga} 나올 확률은?`,
     ];
-    return{topic:'확률',q:pick(qCtxs),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'확률',q:pick(qCtxs),choices,answer,graph:{type:'ballbag',colors:[c.w,c.r],box:true},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`확률 = (사건이 일어나는 경우의 수) ÷ (전체 경우의 수)`,`P(${c.wLabel} ${c.obj}) = ${c.w} ÷ ${c.total} = ${ans}`]};
   }
 
@@ -119,7 +119,7 @@ function genMockProbStat(){
       `${c.obj}, ${c.compLabel}가 나올 확률은?`,
       `${c.obj}, ${c.eventLabel}가 나오지 않을 확률은?`,
     ];
-    return{topic:'여사건',q:pick(qCtxs),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'여사건',q:pick(qCtxs),choices,answer,graph:/주사위/.test(c.obj)?{type:'dice',n:1}:{type:'ballbag',n:c.total,box:true},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`여사건의 확률: P(A가 아닌 경우) = 1 - P(A)`,`P(${c.eventLabel}) = ${c.favAns}`,`P(${c.compLabel}) = 1 - ${c.favAns} = ${c.ans}`]};
   }
 
@@ -150,7 +150,7 @@ function genMockProbStat(){
     const poolNums=shuffle([c.a+c.b,c.ans+1,c.ans-1,c.ans+2,c.ans+3,c.a*(c.b+1)]).filter(v=>v>0&&v!==c.ans);
     const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(c.ans),wrongs);
-    return{topic:'경우의 수(곱)',q:pick(multCtxs)(c),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'경우의 수(곱)',q:pick(multCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`곱의 법칙: 두 사건이 동시에 일어날 경우의 수 = (첫 번째 경우의 수) × (두 번째 경우의 수)`,`${c.a} × ${c.b} = ${c.ans}`]};
   }
 
@@ -175,6 +175,6 @@ function genMockProbStat(){
   const poolNums=shuffle([c.a*c.b,c.ans+1,c.ans-1,c.ans+2]).filter(v=>v>0&&v!==c.ans);
   const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(c.ans),wrongs);
-  return{topic:'경우의 수(합)',q:pick(sumCtxs)(c),choices,answer,meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+  return{topic:'경우의 수(합)',q:pick(sumCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
     sol:[`합의 법칙: 두 사건 중 하나가 일어나는 경우의 수 = (첫 번째 경우의 수) + (두 번째 경우의 수)`,`${c.a} + ${c.b} = ${c.ans}`]};
 }

@@ -232,3 +232,12 @@ var getExamSource=function(q){
   var level=isMid?'중졸':'고졸';
   return`${spec.y}년도 제${spec.s}회 ${level}검정고시 ${spec.q}번 변형`;
 };
+
+// 생성 문항을 실전 모의고사에 배치할 때 참고할 실제 문항 번호 후보.
+var getExamQuestionNumbers=function(q){
+  if(!q||!q.topic)return[];
+  var isMid=q.meta?.level==='middle'||q.meta?.diff==='중졸';
+  var specs=(isMid?MID_Q_SPECIFIC:HIGH_Q_SPECIFIC)[q.topic];
+  if(!specs)return[];
+  return[...new Set((Array.isArray(specs)?specs:[specs]).map(s=>s.q))].sort((a,b)=>a-b);
+};

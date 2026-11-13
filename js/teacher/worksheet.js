@@ -4,6 +4,41 @@
    연산·약수·배수·문장제 문제지와 검정고시 모의고사 문제지 생성
    -------------------------------------------------------------------- */
 
+var MOCK_SUBTYPES_MIDDLE={
+  '수와 연산':[
+    ['소인수분해',genMidPrime],['정수와 유리수 계산',genMidNumber],['순환소수',genMidRepeating],['지수법칙',genMidExponent]
+  ],
+  '문자와 식':[
+    ['문자식과 대입',genMidSubstitute],['일차방정식',genMidLinearEq],['연립방정식',genMidSystem],['일차부등식',genMidInequality],['제곱근',genMidRadical],['이차방정식',genMidQuadraticEq]
+  ],
+  '함수':[
+    ['좌표와 그래프 읽기',genMidQuadrant],['일차함수',genMidLinearFunc],['이차함수',genMidQuadraticDesc]
+  ],
+  '기하':[
+    ['평행선과 각',genMidParallel],['삼각형의 성질',genMidIsosceles],['닮음',genMidSimilarity],['삼각비',genMidTrig],['원과 원주각',genMidCircleAngle]
+  ],
+  '확률과 통계':[
+    ['도수분포와 그래프',genMidFrequency],['경우의 수',genMidCounting],['확률',genMidProbability],['대표값(평균·중앙값·최빈값)',genMidRepresentative],['산포도와 표준편차',genMidSpread]
+  ]
+};
+var MOCK_SUBTYPES_HIGH={
+  '다항식 계산':[
+    ['다항식의 사칙연산',gen_poly_arith],['항등식',gen_poly_identity],['나머지정리',gen_poly_remainder],['나누어떨어지는 조건',gen_poly_divisible],['인수분해',gen_poly_factor],['조립제법',gen_poly_synthetic]
+  ],
+  '방정식과 부등식':[
+    ['복소수의 계산',gen_complex_calc],['켤레복소수',gen_complex_conjugate],['중근 조건',gen_quad_double_root],['근과 계수의 관계',gen_quad_vieta],['근으로 이차방정식 만들기',gen_from_roots],['삼차·사차방정식의 근',gen_cubic_quartic_root],['이차함수의 최댓값·최솟값',gen_quad_extremum],['연립방정식',gen_system_eq],['이차부등식',gen_quad_ineq],['연립부등식',gen_system_ineq],['절댓값 부등식과 수직선',gen_abs_ineq]
+  ],
+  '도형과 기하':[
+    ['두 점 사이의 거리',gen_two_point_dist],['수직선의 내분점',gen_internal_1d],['좌표평면의 내분점',gen_internal_2d],['직선의 방정식',gen_line_eq],['평행·수직인 직선',gen_parallel_perp_line],['좌표의 평행이동',gen_translation],['원의 방정식',gen_circle_eq_mock],['원과 직선의 접함',gen_circle_line_rel],['대칭이동',gen_symmetry_pt],['두 점을 지름으로 하는 원',gen_circle_diameter_pts],['원과 점의 대칭이동',gen_circle_sym_move],['원점과 직선 사이의 거리',gen_origin_line_dist]
+  ],
+  '집합과 함수':[
+    ['집합의 원소',gen_set_elements],['집합의 연산과 원소 개수',gen_set_count],['합집합·교집합 개수',gen_set_union_inter_sum],['같은 집합이 되는 조건',gen_set_equal_const],['진리집합',gen_truth_set],['명제와 역·대우',gen_proposition],['필요조건·충분조건',gen_nec_suff],['합성함수',gen_composite_func],['역함수',gen_inverse_func],['유리함수의 점근선',gen_rational_asymptote],['무리함수의 평행이동',gen_radical_translate]
+  ],
+  '확률과 통계':[
+    ['순열',()=>genMockProbStat(0)],['조합',()=>genMockProbStat(1)],['기본 확률',()=>genMockProbStat(2)],['여사건의 확률',()=>genMockProbStat(3)],['곱의 법칙',()=>genMockProbStat(4)],['합의 법칙',()=>genMockProbStat(5)]
+  ]
+};
+
 function WorksheetTab(){
   const[wsType,setWsType]=useState('div');
   const[title,setTitle]=useState('');
@@ -24,7 +59,7 @@ function WorksheetTab(){
   const[targetStudent,setTargetStudent]=useState(''); // 취약점 분석 대상 학생
 
   // 출제 영역 선택 (모의고사 전용)
-  const[selectedDomains,setSelectedDomains]=useState([]);
+  const[selectedDomains,setSelectedDomains]=useState(null); // null=전체, 배열=선택한 세부 유형
 
   // 채점(Grading) 전용 상태
   const[gradeModal, setGradeModal] = useState(null);
@@ -33,8 +68,11 @@ function WorksheetTab(){
   const[grades, setGrades] = useState({});
   // 모의고사 문제지 저장 완료 여부
   const[examSaved,setExamSaved]=useState(false);
-  // 숙제 대상 학생 (빈 배열 = 전체/지정 안 함, 비어있지 않으면 해당 학생들만)
+  // 숙제 대상은 학생/폴더/전체를 명시적으로 골라야 한다.
   const[homeworkTargets,setHomeworkTargets]=useState([]);
+  const[homeworkAll,setHomeworkAll]=useState(false);
+  const[homeworkFolder,setHomeworkFolder]=useState('__all_students__');
+  const[folderList,setFolderList]=useState(()=>{try{return JSON.parse(localStorage.getItem('teacherFolders')||'[]')}catch{return[]}});
   const[examPrintCols,setExamPrintCols]=useState(1);
 
   const TYPE_DESC={div:'세 자리 수 ÷ 두 자리 수 (가로셈, 나머지 있음)',gcd:'두 수의 약수, 공약수, 최대공약수 구하기',lcm:'두 수의 배수 7개씩, 공배수, 최소공배수 구하기',story:'초3~초4 맞춤형 스토리텔링 문장제 문제',mock_middle:'2021~2026년 기출의 반복 출제 영역 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',mock_high:'2021~2026년 기출의 반복 출제 영역 반영: 20문항 실전형 / 취약 학생 10문항 집중형 (4지선다)',geo:'기하학 6파트 (무리/유리/이차함수·거리·원·대칭이동) 사지선다 문제'};
@@ -43,6 +81,9 @@ function WorksheetTab(){
   const HIGH_DOMAIN_GENS_T={'다항식 계산':genMockPoly,'방정식과 부등식':genMockEqInequal,'도형과 기하':genMockGeometry,'내분점':genMockInternalAny,'집합과 함수':genMockSetFunc,'확률과 통계':genMockProbStat};
   const DOMAIN_GENS_T=wsType==='mock_middle'?MID_DOMAIN_GENS:HIGH_DOMAIN_GENS_T;
   const DOMAINS_T=Object.keys(DOMAIN_GENS_T);
+  const SUBTYPE_GROUPS_T=wsType==='mock_middle'?MOCK_SUBTYPES_MIDDLE:MOCK_SUBTYPES_HIGH;
+  const ALL_SUBTYPES_T=Object.entries(SUBTYPE_GROUPS_T).flatMap(([domain,items])=>items.map(([label,gen])=>({id:`${domain}::${label}`,domain,label,gen})));
+  const ACTIVE_SUBTYPES_T=selectedDomains===null?ALL_SUBTYPES_T:ALL_SUBTYPES_T.filter(x=>selectedDomains.includes(x.id));
   const computeStatsT=(logs)=>{
     const s={};DOMAINS_T.forEach(d=>s[d]={c:0,t:0});
     (logs||[]).forEach(log=>{
@@ -72,7 +113,8 @@ function WorksheetTab(){
   const createExamSheet=()=>{
     if(examMode==='weak'&&!targetStudent){showToast('취약점을 분석할 학생을 먼저 선택해 주세요.');return;}
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
-    const activeDomains=selectedDomains.length>0?DOMAINS_T.filter(d=>selectedDomains.includes(d)):DOMAINS_T.filter(d=>d!=='내분점');   // 고르지 않으면 내분점(도형과 기하 안에 이미 있음)은 빼고 섞는다
+    if(!ACTIVE_SUBTYPES_T.length){showToast('출제할 세부 유형을 하나 이상 선택해 주세요.');return;}
+    const activeDomains=[...new Set(ACTIVE_SUBTYPES_T.map(x=>x.domain))];
     const levelKey=wsType==='mock_middle'?'middle':'high';
     const targetCount=examMode==='weak'?10:20;
     let pool=[],targets=activeDomains;
@@ -83,21 +125,25 @@ function WorksheetTab(){
       targets=weakDomains.length>0?weakDomains:activeDomains;
     }
     const quotas=mockExamDomainCounts(levelKey,targets,targetCount),usedQ=new Set();
-    const addQuestion=(domain,allowDuplicate)=>{
-      const q=safeGen(DOMAIN_GENS_T[domain]);if(!q)return false;
+    const addQuestion=(spec,allowDuplicate)=>{
+      const q=safeGen(spec.gen);if(!q)return false;
       const key=`${q.topic}::${q.q||''}`;
       if(!allowDuplicate&&usedQ.has(key))return false;
       usedQ.add(key);pool.push(q);return true;
     };
     Object.entries(quotas).forEach(([domain,count])=>{
-      let added=0,attempts=0;
-      while(added<count&&attempts<count*20){if(addQuestion(domain,false))added++;attempts++;}
-      while(added<count&&attempts<count*22){if(addQuestion(domain,true))added++;attempts++;}
+      const specs=shuffle(ACTIVE_SUBTYPES_T.filter(x=>x.domain===domain));
+      specs.forEach((spec,i)=>{
+        const quota=Math.floor(count/specs.length)+(i<count%specs.length?1:0);
+        let added=0,attempts=0;
+        while(added<quota&&attempts<quota*20){if(addQuestion(spec,false))added++;attempts++;}
+        while(added<quota&&attempts<quota*22){if(addQuestion(spec,true))added++;attempts++;}
+      });
     });
     // 취약점 문제지는 선정된 취약 영역 안에서만 부족 문항을 채운다.
-    const fallbackDomains=Object.keys(quotas);let safety=0;
-    while(pool.length<targetCount&&fallbackDomains.length&&safety++<targetCount*40){
-      addQuestion(pick(fallbackDomains),true);
+    const fallbackSpecs=ACTIVE_SUBTYPES_T.filter(x=>quotas[x.domain]>0);let safety=0;
+    while(pool.length<targetCount&&fallbackSpecs.length&&safety++<targetCount*40){
+      addQuestion(pick(fallbackSpecs),true);
     }
     if(pool.length<targetCount){showToast(`문제 생성이 ${pool.length}문항에서 멈췄습니다. 다시 생성해 주세요.`);return;}
     pool=shuffle(pool);
@@ -159,7 +205,8 @@ function WorksheetTab(){
   // 숙제로 내기
   const assignAsHomework=async()=>{
     if(!examSheet)return;
-    const targetLabel=homeworkTargets.length===0?'전체 학생':homeworkTargets.map(n=>n+' 학생').join(', ');
+    if(!homeworkAll&&!homeworkTargets.length){showToast('숙제 대상 학생을 선택하거나 ‘전체’를 선택해 주세요.');return;}
+    const targetLabel=homeworkAll?'전체 학생':homeworkTargets.map(n=>n+' 학생').join(', ');
     if(!window.confirm(`"${examSheet.title}"\n을 ${targetLabel}에게 숙제로 내시겠어요?\n(7일간 학생 화면에 표시됩니다)`))return;
     try{
       const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+7);
@@ -167,22 +214,43 @@ function WorksheetTab(){
         title:examSheet.title,level:examSheet.level||'고졸',
         questions:examSheet.questions,
         active:true,createdAt:now,expiresAt:exp,completedBy:[],
-        assignedTo:homeworkTargets.length===0?null:homeworkTargets
+        assignedTo:homeworkAll?null:homeworkTargets
       });
       showToast(`✅ ${targetLabel}에게 숙제로 등록되었습니다!`);
     }catch(e){showToast('❌ 숙제 등록 실패');}
   };
 
-  useEffect(()=>{setSelectedDomains([]);},[wsType]);
+  useEffect(()=>{setSelectedDomains(null);},[wsType]);
 
   useEffect(()=>{
     db.collection('users').where('role','==','student').get().then(snap => {
-       const arr = []; snap.forEach(d => arr.push(d.data())); setStudentList(arr);
+       const arr = []; snap.forEach(d => arr.push({id:d.id,...d.data()})); setStudentList(arr);
     });
+    db.collection('teacherSettings').doc('folders').get().then(snap=>{
+      if(snap.exists&&Array.isArray(snap.data().folders)){
+        const list=snap.data().folders;setFolderList(list);
+        try{localStorage.setItem('teacherFolders',JSON.stringify(list));}catch(e){}
+      }
+    }).catch(()=>{});
     loadWsList(); // 학습지 탭 첫 진입 시 문제집 폴더 자동 로딩(새로고침 불필요)
   },[]);
   
   const loadWsList=async()=>{try{const snap=await db.collection('worksheets').orderBy('createdAt','desc').limit(30).get();const arr=[];snap.forEach(d=>arr.push({id:d.id,...d.data()}));setWsList(arr)}catch(e){}};
+
+  const homeworkFolderStudents=studentList.filter(s=>{
+    const key=s.id||s.name;
+    if(homeworkFolder==='__all_students__')return true;
+    if(homeworkFolder==='all')return !folderList.some(f=>f.id!=='all'&&(f.ids||[]).includes(key));
+    const folder=folderList.find(f=>f.id===homeworkFolder);
+    return !!folder&&(folder.ids||[]).includes(key);
+  });
+  const toggleHomeworkStudent=name=>{setHomeworkAll(false);setHomeworkTargets(prev=>prev.includes(name)?prev.filter(n=>n!==name):[...prev,name]);};
+  const toggleHomeworkFolder=()=>{
+    const names=homeworkFolderStudents.map(s=>s.name).filter(Boolean);
+    if(!names.length)return;
+    setHomeworkAll(false);
+    setHomeworkTargets(prev=>names.every(n=>prev.includes(n))?prev.filter(n=>!names.includes(n)):[...new Set([...prev,...names])]);
+  };
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2500)};
 
   const handleRatioChange = (op, val) => {
@@ -304,19 +372,30 @@ var del=async(id)=>{if(!confirm('이 문제지를 삭제하시겠습니까?'))re
       </button>
       <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-3">
         <div className="text-sm font-black text-amber-800">📝 숙제 대상 학생 선택</div>
-        <div className="text-xs text-amber-600">아무도 선택 안 하면 전체 학생에게 표시됩니다. 여러 명 동시 선택 가능.</div>
+        <div className="text-xs text-amber-600">학생을 고르거나 ‘전체’를 선택해야 숙제로 등록됩니다. 폴더를 눌러 명단을 좁히고, 폴더 학생을 한 번에 선택할 수 있습니다.</div>
         <div className="flex gap-2 flex-wrap">
-          {studentList.map(s=>{
+          <button onClick={()=>{setHomeworkAll(v=>!v);setHomeworkTargets([]);}} className={`px-4 py-2 rounded-xl text-sm font-black border-2 ${homeworkAll?'border-amber-600 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>{homeworkAll?'✓ 전체':'전체'}</button>
+          <button onClick={()=>setHomeworkFolder('__all_students__')} className={`px-3 py-2 rounded-xl text-xs font-bold border ${homeworkFolder==='__all_students__'?'bg-amber-200 border-amber-400 text-amber-900':'bg-white border-amber-200 text-amber-700'}`}>명단 전체</button>
+          {folderList.filter(f=>f.id!=='all').map(f=><button key={f.id} onClick={()=>setHomeworkFolder(f.id)} className={`px-3 py-2 rounded-xl text-xs font-bold border ${homeworkFolder===f.id?'bg-amber-200 border-amber-400 text-amber-900':'bg-white border-amber-200 text-amber-700'}`}>📁 {f.name}</button>)}
+          <button onClick={()=>setHomeworkFolder('all')} className={`px-3 py-2 rounded-xl text-xs font-bold border ${homeworkFolder==='all'?'bg-amber-200 border-amber-400 text-amber-900':'bg-white border-amber-200 text-amber-700'}`}>폴더 미배정</button>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-bold text-amber-800">{homeworkFolder==='__all_students__'?'전체 학생':homeworkFolder==='all'?'폴더 미배정':folderList.find(f=>f.id===homeworkFolder)?.name||'학생'} · {homeworkFolderStudents.length}명</div>
+          {homeworkFolderStudents.length>0&&<button onClick={toggleHomeworkFolder} className="text-xs px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 font-bold">이 목록 {homeworkFolderStudents.every(s=>homeworkTargets.includes(s.name))?'선택 해제':'전체 선택'}</button>}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {homeworkFolderStudents.map(s=>{
             const on=homeworkTargets.includes(s.name);
-            return(<button key={s.name} onClick={()=>setHomeworkTargets(prev=>on?prev.filter(n=>n!==s.name):[...prev,s.name])}
+            return(<button key={s.id||s.name} onClick={()=>toggleHomeworkStudent(s.name)}
               className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center gap-1.5 ${on?'border-amber-500 bg-amber-500 text-white':'border-amber-200 bg-white text-amber-700'}`}>
               {on?'✓ ':''}{s.name}
             </button>);
           })}
+          {!homeworkFolderStudents.length&&<span className="text-xs text-amber-600">이 목록에 학생이 없습니다.</span>}
         </div>
-        {homeworkTargets.length>0&&<button onClick={()=>setHomeworkTargets([])} className="text-xs text-amber-600 font-bold underline">전체 해제 (전체 학생에게)</button>}
+        {(homeworkTargets.length>0||homeworkAll)&&<button onClick={()=>{setHomeworkTargets([]);setHomeworkAll(false);}} className="text-xs text-amber-600 font-bold underline">선택 해제</button>}
         <button onClick={assignAsHomework} className="w-full py-3 bg-amber-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">
-          📝 {homeworkTargets.length===0?'전체 학생':homeworkTargets.join(', ')+' 학생'}에게 숙제로 내기
+          📝 {homeworkAll?'전체 학생':homeworkTargets.length?homeworkTargets.join(', ')+' 학생':'대상 선택 후 숙제로 내기'}
         </button>
       </div>
       {examSheet.questions.map((q,i)=>(
@@ -623,17 +702,26 @@ return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 
           <option value="">학생 선택 (취약 영역 자동 분석)</option>
           {studentList.map(s=><option key={s.name} value={s.name}>{s.name} 학생</option>)}
         </select>}
-        <div className="border-2 border-indigo-50 rounded-2xl p-3 bg-gray-50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-700">📌 출제 영역 선택 <span className="text-gray-400 font-normal">(미선택 시 전 영역)</span></span>
-            {selectedDomains.length>0&&<button onClick={()=>setSelectedDomains([])} className="text-xs text-indigo-500 font-bold">전체 해제</button>}
+        <div className="border-2 border-indigo-50 rounded-2xl p-3 bg-gray-50 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div><div className="text-xs font-bold text-gray-700">📌 세부 출제 유형</div><div className="text-[11px] text-gray-500 mt-1">선택한 유형 안에서만 출제합니다 · {ACTIVE_SUBTYPES_T.length}/{ALL_SUBTYPES_T.length}개 선택</div></div>
+            <button onClick={()=>setSelectedDomains(selectedDomains===null?[]:null)} className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white border border-indigo-200 text-indigo-600 font-bold">{selectedDomains===null?'전체 해제':'전체 선택'}</button>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {DOMAINS_T.map(d=>(
-              <button key={d} onClick={()=>setSelectedDomains(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d])}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedDomains.includes(d)?'bg-indigo-500 text-white':'bg-white border border-gray-300 text-gray-600'}`}>{d}</button>
-            ))}
-          </div>
+          {Object.entries(SUBTYPE_GROUPS_T).map(([domain,items])=>{
+            const specs=ALL_SUBTYPES_T.filter(x=>x.domain===domain);
+            const count=specs.filter(x=>ACTIVE_SUBTYPES_T.some(a=>a.id===x.id)).length;
+            return <div key={domain} className="rounded-xl bg-white border border-gray-100 p-2.5">
+              <div className="text-xs font-black text-gray-700 mb-2">{domain} <span className="text-gray-400 font-normal">{count}/{specs.length}</span></div>
+              <div className="flex flex-wrap gap-1.5">{specs.map(spec=>{
+                const on=ACTIVE_SUBTYPES_T.some(x=>x.id===spec.id);
+                return <button key={spec.id} onClick={()=>{
+                  const current=selectedDomains===null?ALL_SUBTYPES_T.map(x=>x.id):selectedDomains;
+                  const next=on?current.filter(id=>id!==spec.id):[...current,spec.id];
+                  setSelectedDomains(next.length===ALL_SUBTYPES_T.length?null:next);
+                }} className={`px-2.5 py-1.5 rounded-full text-xs font-bold transition-all ${on?'bg-indigo-500 text-white':'bg-white border border-gray-300 text-gray-600'}`}>{on?'✓ ':''}{spec.label}</button>;
+              })}</div>
+            </div>;
+          })}
         </div>
         <input type="text" lang="ko" value={title} onChange={e=>setTitle(e.target.value)} placeholder="문제지 제목 (비우면 자동)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 font-bold text-sm outline-none focus:border-purple-400"/>
         <button onClick={createExamSheet} className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black text-base active:scale-95 transition-transform">

@@ -1,7 +1,7 @@
 // === js/student/explore.js ===
 /* --------------------------------------------------------------------
    기하학 탭 화면
-   개념 학습 · 그래프 탐험 · 확인 퀴즈
+   개념 학습 · 그래프 탐험
    -------------------------------------------------------------------- */
 
 function GeometryTab({userData, onUpdate}){
@@ -10,15 +10,13 @@ function GeometryTab({userData, onUpdate}){
   return(<div className="flex flex-col h-full">
     <div className="tab-scroll bg-white border-b shadow-sm flex-shrink-0">
       <div className="flex px-2 min-w-max">
-        {[{k:'learn',lbl:'🔭 그래프 탐험'},{k:'concept',lbl:'📖 개념 설명'},{k:'quiz',lbl:'📝 문제 풀기'}].map(t=>(
+        {[{k:'learn',lbl:'🔭 그래프 탐험'},{k:'concept',lbl:'📖 개념 설명'}].map(t=>(
           <button key={t.k} onClick={()=>setSubTab(t.k)} className={`px-4 py-3 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${subTab===t.k?'border-blue-500 text-blue-600':'border-transparent text-gray-500'}`}>{t.lbl}</button>
         ))}
       </div>
     </div>
     {subTab==='learn'&&<GeometryLearn sz={sz} userData={userData} onUpdate={onUpdate}/>}
     {subTab==='concept'&&<ConceptSection/>}
-    {/* 퀴즈 컴포넌트로 데이터 저장 함수를 넘겨줍니다 */}
-    {subTab==='quiz'&&<GeometryQuiz userData={userData} onUpdate={onUpdate}/>}
   </div>);
 }
 
@@ -195,147 +193,5 @@ function ConceptSection(){
           <div className={`text-base font-bold ${cl.hd} bg-white rounded-xl p-3 border ${cl.bd}`}>{c.mem}</div>
         </div>}
       </div>);})}
-  </div>);
-}
-
-function GeometryQuiz({userData, onUpdate}){
-  const GEO_SET=[{icon:'🌿',lbl:'무리함수',gen:genRadicalQ},{icon:'🔀',lbl:'유리함수',gen:genRationalQ},{icon:'🏹',lbl:'이차함수',gen:genQuadraticQ},{icon:'📏',lbl:'점↔직선',gen:genDistanceQ},{icon:'⭕',lbl:'원',gen:genCircleQ},{icon:'🪞',lbl:'대칭이동',gen:genSymmetryQ}];
-  const[concept,setConcept]=useState(null);const[problems,setProbs]=useState([]);const[sel,setSel]=useState({});
-  const[isGraded, setIsGraded]=useState(false);
-  const wsRef=useRef();
-  const[startTime, setStartTime] = useState(Date.now());
-  const[saved, setSaved] = useState(false);
-  // ── 행동 추적 (신규) ──
-  const[firstClickTimes,setFirstClickTimes]=useState({});
-  const[revisionCounts,setRevisionCounts]=useState({});
-
-  const gen=(cs)=>{
-    setProbs(Array.from({length:5},()=>cs.gen()));
-    setSel({});setIsGraded(false);setConcept(cs);setStartTime(Date.now());setSaved(false);
-    setFirstClickTimes({});setRevisionCounts({});
-  };
-  const ORD=['①','②','③','④'];
-  
-  if(!concept)return(<div className="p-4 pb-36">
-    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4 text-sm text-blue-700 font-semibold">📌 공부하고 싶은 개념을 선택하면 랜덤 문제 5개가 생성됩니다!</div>
-    <div className="grid grid-cols-2 gap-3">
-      {GEO_SET.map(cs=><button key={cs.lbl} onClick={()=>gen(cs)} className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl p-5 text-left shadow-lg active:scale-95 transition-transform">
-        <div className="text-3xl mb-2">{cs.icon}</div><div className="font-bold text-base">{cs.lbl}</div>
-        <div className="mt-2 text-xs bg-white/20 rounded-lg px-2 py-1 inline-block">문제 시작 →</div>
-      </button>)}
-    </div></div>);
-    
-  const correct=problems.filter((_,i)=>sel[i]===problems[i]?.answer).length;
-  const answered=Object.keys(sel).length;
-
-  const saveQuizLog = async (feeling) => {
-    if(saved || !userData) return;
-    const totalSec = Math.round((Date.now() - startTime) / 1000);
-    const qs = problems.map((p, i) => {
-      const fms = firstClickTimes[i] ?? null;
-      return{
-        qTxt: p.q,
-        uAns: sel[i] !== undefined ? p.choices[sel[i]] : '미입력',
-        cAns: p.choices[p.answer],
-        isOk: sel[i] === p.answer,
-        timeSec: fms!=null ? Math.round(fms/1000) : null,
-        firstClickMs: fms,
-        revisionCount: revisionCounts[i] ?? 0,
-        qTopicHash: getTopicHash(p),
-        explanation: easyExplanation(p),
-        graph: p.graph || null,
-        // 선생님 화면(teacher/logQView.js)이 학생 화면 그대로 다시 그릴 수 있게 식(TeX)·보기 순서도 남긴다
-        qTex: p.qTex || null, choices: p.choices, answerIdx: p.answer,
-        meta: { category: 'geometry', type: concept.lbl, diff: '기하' }
-      };
-    });
-    const log = {
-      date: todayStr(), time: timeStr(), type: `기하: ${concept.lbl}`,
-      score: `${correct} / 5`, questions: qs, totalSec, feeling
-    };
-    const upd = {...userData, logs: [log, ...(userData.logs||[])]};
-    try {
-      await db.collection('users').doc(upd.name).set(upd, {merge:true});
-      if(onUpdate) onUpdate(upd);
-      setSaved(true);
-      updateQStats(qs); // fire-and-forget
-    } catch(e) { alert('저장 실패. 인터넷 연결을 확인해주세요.'); }
-  };
-
-  return(<div className="flex flex-col flex-1 overflow-auto">
-    <div className="bg-white border-b px-3 py-2.5 flex items-center gap-2 flex-wrap sticky top-0 z-10">
-      <button onClick={()=>setConcept(null)} className="text-gray-500 text-sm font-bold">← 개념선택</button>
-      <span className="text-lg">{concept.icon}</span><span className="text-sm font-bold text-gray-800">{concept.lbl}</span>
-      {isGraded&&<span className="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 font-bold">결과: {correct}개 정답</span>}
-      <div className="ml-auto flex gap-1.5 flex-wrap justify-end">
-        <button onClick={()=>gen(concept)} className="text-xs px-2.5 py-1.5 rounded-xl bg-indigo-500 text-white font-bold">🔄 새문제</button>
-      </div>
-    </div>
-    <div className="p-3 pb-36" ref={wsRef}>
-      <div className="ws-print-area grid grid-cols-1 gap-4 max-w-xl mx-auto bg-white p-4 rounded-2xl shadow-sm">
-        {problems.map((prob,i)=>{
-          const isSel=sel[i]!==undefined;
-          const isCorrect=sel[i]===prob.answer;
-          return(
-          <div key={i} className="ws-problem border-2 border-gray-200 rounded-2xl p-4 bg-white">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-7 h-7 rounded-full bg-indigo-500 text-white text-sm font-black flex items-center justify-center flex-shrink-0">{i+1}</span>
-              <span className="text-sm font-bold text-indigo-600">{prob.topic}</span>
-              {/* 채점된 이후에만 정답(O/X) 이모지 표시 */}
-              {isGraded && isSel && <span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
-            </div>
-            <p className="text-base text-gray-800 leading-loose mb-3 font-medium break-keep">{prob.qTex?<TexHtml tex={prob.qTex}/>:<QText v={prob.q}/>}</p>
-            {prob.graph && <div className="flex justify-center mb-3"><GraphPreview q={prob}/></div>}
-            <div className="grid grid-cols-1 gap-2.5">
-                {prob.choices.map((ch,j)=>{
-                  let cls='bg-gray-50 border-gray-200 text-gray-700';
-                  // 채점 전/후에 따른 보기 색상 변경 로직
-                  if(isGraded) {
-                    if(sel[i]===j) cls = j===prob.answer ? 'bg-green-100 border-green-400 text-green-800 font-bold' : 'bg-red-100 border-red-400 text-red-700';
-                    else if(j===prob.answer) cls = 'bg-green-50 border-green-300 text-green-700 font-semibold';
-                  } else {
-                    if(sel[i]===j) cls = 'bg-blue-100 border-blue-400 text-blue-800 font-semibold';
-                  }
-                  // 채점 전(!isGraded)에만 클릭 가능하게 설정
-                  return <button key={j} onClick={()=>{
-                    if(isGraded)return;
-                    const now=Date.now()-startTime;
-                    if(firstClickTimes[i]===undefined)setFirstClickTimes(p=>({...p,[i]:now}));
-                    else if(sel[i]!==undefined&&sel[i]!==j)setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
-                    setSel(s=>({...s,[i]:j}));
-                  }} className={`text-left text-lg px-4 py-3 rounded-xl border transition-all ${cls}`}>{ORD[j]} <TexHtml tex={geoTex(ch)}/></button>
-                })}
-            </div>
-            {/* 채점 후에 틀렸을 경우 정답 텍스트 표시 */}
-            {isGraded && !isCorrect && <div className="mt-3 text-base font-bold rounded-xl px-3 py-2 text-center border bg-red-50 text-red-700 border-red-200">정답: {ORD[prob.answer]} <TexHtml tex={geoTex(prob.choices[prob.answer])}/></div>}
-            {isGraded&&<ExplanationBox q={Array.isArray(prob.sol)?{...prob,sol:prob.sol.map(inlineGeoTex)}:prob}/>}
-          </div>);})}
-      </div>
-      
-      {/* 모두 풀었을 때 나타나는 [채점하기] 버튼 */}
-      {answered === 5 && !isGraded && (
-        <div className="mt-6 text-center fade-in">
-          <button onClick={()=>{setIsGraded(true);saveQuizLog('auto');}} className="w-full max-w-sm py-4 bg-indigo-600 text-white font-black text-lg rounded-2xl shadow-lg active:scale-95 transition-all">채점하기 📝</button>
-        </div>
-      )}
-
-      {/* 채점 완료 후 나타나는 감정 기록 버튼 */}
-      {isGraded && !saved && (
-        <div className="mt-6 bg-white p-5 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">
-          <div className="text-xl font-black text-indigo-700 mb-2">🎯 총 {correct}문제 정답!</div>
-          <div className="font-bold text-gray-700 mb-4 text-base">이번 기하학 퀴즈는 어떠셨나요? 평가 후 기록이 저장됩니다.</div>
-          <div className="flex gap-3 justify-center">
-            <button onClick={()=>saveQuizLog('easy')} className="px-5 py-4 bg-green-100 text-green-700 rounded-2xl font-black text-lg active:scale-95 transition-transform">쉬웠어요 😊</button>
-            <button onClick={()=>saveQuizLog('normal')} className="px-5 py-4 bg-blue-100 text-blue-700 rounded-2xl font-black text-lg active:scale-95 transition-transform">적당했어요 😐</button>
-            <button onClick={()=>saveQuizLog('hard')} className="px-5 py-4 bg-red-100 text-red-700 rounded-2xl font-black text-lg active:scale-95 transition-transform">어려웠어요 😥</button>
-          </div>
-        </div>
-      )}
-      {isGraded && saved && (
-        <div className="mt-6 text-center">
-          <div className="inline-block bg-green-100 text-green-700 font-bold px-6 py-3 rounded-2xl">✅ 학습 기록에 저장되었습니다!</div>
-        </div>
-      )}
-    </div>
   </div>);
 }
