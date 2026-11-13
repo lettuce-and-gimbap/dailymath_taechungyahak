@@ -379,6 +379,8 @@ function GedWorksheetTab(){
     const params=(k==='kind'&&u.reroll)?u.reroll({...p.params,kind:v}):{...p.params,[k]:v};
     // 예전에 저장된 19·20번도 조건을 고치는 순간 그림이 있는 생성기로 전환한다.
     if((u.id==='u19'||u.id==='u20')&&!params.v)params.v=3;
+    // 기존 문항에서 새 상황 번호를 직접 고를 때에만 새 버전으로 전환한다.
+    if((u.id==='u19'||u.id==='u20')&&k==='seed'&&Number(v)>60&&params.v<5){params.v=5;params.drawSeed=newSeed();}
     return{...p,params,override:null,rev:p.rev+1};}));};
   /* reroll 이 있는 유형(p1)은 문제 종류·보기 설정을 지키고 숫자만 바꾼다 */
   const onRandom=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);

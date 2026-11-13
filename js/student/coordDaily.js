@@ -61,7 +61,7 @@ function coordChoicesPlain(X,Y){
    고졸 검정고시 그림처럼 모눈 없이 축만 두고, 답을 구하는 데 필요한 값만 표시한다.
    (점근선 x=p · y=q 와 그 값 / 무리함수의 시작점 / 제한된 범위의 양 끝)
    식은 KaTeX 로 그린다 — 분자가 음수면 '−' 를 분수 앞에 두고, 루트는 한 덩어리 기호로. */
-var TOP_LEVELS=['rat','irr','quad','div','circ','ineq','count','count2','count3','count4'];
+var TOP_LEVELS=['rat','irr','quad','div','circ','ineq','count','count2','count3','count4','count5'];
 var _tx=t=>`<span class="tx" data-tex="${t.replace(/"/g,'&quot;')}"></span>`;
 var _sgn=(v,first)=>v<0?`-${-v}`:(first?`${v}`:`+${v}`);                 // 3 → "+3", -2 → "-2"
 /* 식은 글 줄 사이에 끼우지 않고 가운데 한 줄로 크게 — 분수가 윗줄과 겹치거나 식이 줄바꿈으로 잘리지 않게 */
@@ -82,11 +82,11 @@ function genCountQ(version){
   const id=Math.random()<0.5?'u19':'u20';
   const unit=GED_UNITS.find(u=>u.id===id);
   const p=unit.rand({legacy:version===1,version:version<3?2:version}),r=unit.build({...p,studentGrid:true}),topic=unit.id==='u19'?'순열':'조합';
-  return{lv:version===1?'count':version===2?'count2':version===3?'count3':'count4',topic,q:r.q,svg:r.figure,svgAfter:r.figure,
+  return{lv:version===1?'count':version===2?'count2':version===3?'count3':version===4?'count4':'count5',topic,q:r.q,svg:r.figure,svgAfter:r.figure,
     choices:r.choices.map(String),ans:r.ans,answer:String(r.choices[r.ans]),sol:r.sol,cols:2};
 }
 function genTopQ(lv,options){
-  if(lv==='count'||lv==='count2'||lv==='count3'||lv==='count4')return genCountQ(lv==='count'?1:lv==='count2'?2:lv==='count3'?3:4);
+  if(lv==='count'||lv==='count2'||lv==='count3'||lv==='count4'||lv==='count5')return genCountQ(lv==='count'?1:lv==='count2'?2:lv==='count3'?3:lv==='count4'?4:5);
   if(lv==='div')return genDivQ();
   if(lv==='circ')return genCircQ(options);
   if(lv==='ineq')return genIneqQ();
@@ -649,7 +649,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
     if(coordLevelLocked(COORD_LEVELS.find(l=>l.k===k),userData.name)){setLockMsg(true);return;}
     if(k==='circ'&&gridChoice==null){setLevel(k);setPhase('circle-grid');return;}
     // 씨앗을 남겨 두면 선생님 화면에서 같은 문제(식·그림·보기 순서)를 그대로 다시 그릴 수 있다 (core/replay.js)
-    const genLevel=k==='count3'?'count4':k;
+    const genLevel=k==='count3'?'count5':k;
     const options=k==='circ'?{circleGrid:gridChoice}:undefined;
     const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(genLevel,options)),seed,genLv:genLevel});}
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
@@ -675,7 +675,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       timeSec:Math.round((Date.now()-qStartAt)/1000),
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
-      meta:{category:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')?'stat':'geometry',type:q.topic,diff:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')?'기초':q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
+      meta:{category:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4'||q.lv==='count5')?'stat':'geometry',type:q.topic,diff:(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4'||q.lv==='count5')?'기초':q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
       cSeed:q.seed,cLv:q.genLv,cGrid:q.circleGrid,choices:q.choices.map(String),answerIdx:q.ans};
     const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
     setRecs(newRecs);setCorrect(newCorrect);
@@ -835,8 +835,8 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
   }
 
   /* ── 문제 화면 ── */
-  const lvInfo=COORD_LEVELS.find(l=>l.k===((q.lv==='count'||q.lv==='count2'||q.lv==='count4')?'count3':q.lv))||COORD_LEVELS[0];
-  const isCount=['count','count2','count3','count4'].includes(q.lv);
+  const lvInfo=COORD_LEVELS.find(l=>l.k===((q.lv==='count'||q.lv==='count2'||q.lv==='count4'||q.lv==='count5')?'count3':q.lv))||COORD_LEVELS[0];
+  const isCount=['count','count2','count3','count4','count5'].includes(q.lv);
   return(<div ref={texRef} className="p-4 space-y-4 pb-36">
     <style>{`svg.plane{max-width:100%;height:auto}
       .student-count-figure .fig{width:100%;max-width:390px;margin:0 auto}
@@ -855,7 +855,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
     <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-black px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700">{lvInfo.badge}</span>
-        {!(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')&&<span className="text-xs font-bold text-gray-400">{q.topic}</span>}
+        {!(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4'||q.lv==='count5')&&<span className="text-xs font-bold text-gray-400">{q.topic}</span>}
       </div>
       {q.qHtml
         ?<div className="text-lg font-black text-gray-800 leading-loose break-keep mb-4" dangerouslySetInnerHTML={{__html:q.qHtml}}/>

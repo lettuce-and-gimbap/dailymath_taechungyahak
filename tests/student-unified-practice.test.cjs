@@ -57,7 +57,7 @@ assert.strictEqual(render('sets','테스트').filter(x=>x.type==='button'&&JSON.
 assert(coord.includes("phase==='circle-grid'")&&coord.includes("start('circ',false)")&&coord.includes('grid:gridMode,ticks:gridMode'));
 assert(coord.includes('if(initialLevel){'));
 assert(coord.includes('onClick={exitPick}'));
-assert(coord.includes("!(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')&&<span"));
+assert(coord.includes("!(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4'||q.lv==='count5')&&<span"));
 assert(coord.includes("isCount?'student-count-figure'"));
 assert(coord.includes('.student-count-figure .count-figure{display:block;width:100%;max-width:100%;height:auto}'));
 const units=fs.readFileSync('js/worksheet/gedUnits.js','utf8');assert(units.includes('class="count-figure" data-count="${n}"'));
