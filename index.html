@@ -7290,6 +7290,7 @@ function gedCountIcon(scene, label, i){
   '서예':'calligraphy','병원':'hospital','우체국':'postoffice','목공':'woodworking','합창':'singing',
   '국악':'korean_music','연주':'instrumental_performance','공':'sports_ball','안내':'guidance','정리':'organizing','체험':'experience','전시':'exhibit','체육':'physical_education','탐구':'inquiry_math',
   '데이지':'v4_daisy','탁구':'v4_pingpong','공기놀이':'v4_gonggi','꿀':'v4_honey','비파':'v4_pipa','커피':'v4_coffee','기부':'v4_donation','고래':'v4_whale','메뚜기':'v4_grasshopper','라디오':'v4_radio','야구공':'baseball','침낭':'v4_sleepingbag','정글짐':'v4_jungle_gym','무지개':'v4_rainbow',
+  '지구':'earth_detail','택시':'taxi_detail','농업':'farmer_detail','식탁':'dining_table_detail','형광펜':'highlighter_detail','깨':'sesame_detail','안개':'fog_detail','발레화':'ballet_shoes_detail','책 교환':'book_exchange_detail','인형극':'puppet_theater_detail',
   '과학':'science','구두':'dress_shoes','샌들':'sandals','등산화':'hiking_boots','요리':'cooking','도예':'pottery'};
  const isPhotography=label==='사진'&&['동아리','방과 후 프로그램','문화 센터 강좌','체험 부스','다양한 소재'].includes(kind);
  const isBoat=label==='배'&&scene.name==='이동 수단';
@@ -7340,7 +7341,17 @@ function gedCountFigure(scene,n,r,ordered,action){
    slots=`<text x="10" y="113" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>`<rect x="${55+i*53}" y="91" width="45" height="28" fill="white" stroke="#555"/><text x="${77+i*53}" y="110" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`).join('')}`;
  }else if(ordered){
    const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
-   const shapes={pot:'<path d="M8 18 H52 L48 48 H12 Z M6 13 H54 V19 H6 Z M15 48 H45"/>',vase:'<path d="M20 12 H40 M22 12 C24 25 11 29 15 43 Q30 53 45 43 C49 29 36 25 38 12"/>',flag:'<path d="M15 48 V8 M9 48 H23 M15 9 H48 L40 18 L48 27 H15"/>',tray:'<rect x="5" y="9" width="50" height="39" rx="6"/><path d="M8 21 H52"/>',jar:'<path d="M14 13 H46 V18 L43 20 V45 Q30 50 17 45 V20 L14 18 Z M14 13 V9 H46 V13"/>',person:'<circle cx="30" cy="14" r="7"/><path d="M17 37 Q17 24 30 24 Q43 24 43 37 M12 42 H48"/>',calendar:'<rect x="7" y="8" width="46" height="40" rx="3"/><path d="M7 18 H53 M17 5 V13 M43 5 V13"/>',board:'<rect x="6" y="8" width="48" height="39" rx="2"/><path d="M11 13 H49 V41 H11 Z M24 5 H36 M24 5 V8 M36 5 V8"/>',shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M2 29 H58"/>'};
+   const shapes={
+     pot:'<path d="M8 18 H52 L48 46 Q30 50 12 46 Z M6 13 H54 V19 H6 Z M12 46 Q30 51 48 46 M15 23 L18 42 M45 23 L42 42 M20 46 H40"/><path d="M17 27 Q30 30 43 27" stroke-dasharray="2 3"/>',
+     vase:'<path d="M19 11 H41 M21 11 C24 23 12 28 15 43 Q30 50 45 43 C48 28 36 23 39 11 M20 14 H40 M18 42 Q30 46 42 42 M19 31 Q17 36 19 40 M41 31 Q43 36 41 40"/>',
+     flag:'<path d="M15 48 V9 M9 48 H23 M12 45 H20 M15 10 H49 L41 18 L49 27 H15 M17 12 H45 M17 25 H45"/><circle cx="15" cy="7" r="2"/>',
+     tray:'<rect x="5" y="9" width="50" height="39" rx="6"/><rect x="8" y="12" width="44" height="33" rx="4"/><path d="M8 20 H52 M11 16 H16 M44 16 H49 M12 41 H48"/>',
+     jar:'<path d="M13 14 H47 V18 L44 21 V44 Q30 50 16 44 V21 L13 18 Z M13 14 V9 H47 V14 M17 11 V14 M22 11 V14 M27 11 V14 M32 11 V14 M37 11 V14 M42 11 V14 M19 24 V40 M41 24 V40 M19 44 Q30 47 41 44"/>',
+     person:'<circle cx="30" cy="13" r="7"/><path d="M23 13 Q30 8 37 13 M17 37 Q17 24 30 24 Q43 24 43 37 M24 25 L30 31 L36 25 M30 31 V37 M11 42 H49 M15 39 H45 M14 42 V46 M46 42 V46"/>',
+     calendar:'<rect x="7" y="8" width="46" height="40" rx="3"/><path d="M7 19 H53 M17 5 V13 M43 5 V13 M12 23 H48 M12 43 H48 M12 27 V39 M48 27 V39"/><circle cx="17" cy="10" r="1.5"/><circle cx="43" cy="10" r="1.5"/>',
+     board:'<rect x="6" y="8" width="48" height="39" rx="2"/><rect x="10" y="12" width="40" height="31" rx="1" stroke-dasharray="3 2"/><path d="M21 8 V5 H39 V8 M24 5 V3 H36 V5 M8 46 H52 M13 16 H17 M43 16 H47"/><circle cx="13" cy="10" r="1"/><circle cx="47" cy="10" r="1"/>',
+     shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>'
+   };
    const slotX=vertical?55:14,slotY=vertical?91:105,step=vertical?32:70;
    slots=`<text x="10" y="99" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
      const x=slotX+(vertical?0:i*step),y=slotY+(vertical?i*step:0);

@@ -13,4 +13,16 @@ console.log('Distinct mapped illustrations within each scenario: PASS');
 for(const [sceneIndex,expected] of [[15,'채소 모종'],[18,'잡곡']]){const s=c.GED_COUNT_SCENES_V3[sceneIndex];if(s.name!==expected)throw Error('Unexpected scene');for(let i=0;i<6;i++){const icon=c.gedCountIcon(s,s.items[i],i);if(!icon.includes('<circle cx="41" cy="9" r="9"'))throw Error(`Missing identification badge: ${s.name} ${s.items[i]}`)}}
 const weekday=c.gedCountIcon(c.GED_COUNT_SCENES_V3[34],'월요일',0);if(!weekday.includes('font-size="9"'))throw Error('Weekday text must fit its card');
 console.log('Seedling and grain visual badges; weekday card text: PASS');
+const seenPaths=new Set();
+for(const scenes of [c.GED_COUNT_SCENES_V4,c.GED_CHOICE_SCENES_V4])for(const scene of scenes)for(let i=0;i<scene.items.length;i++){
+ const icon=c.gedCountIcon(scene,scene.items[i],i);
+ for(const match of icon.matchAll(/<image href="([^"?]+)/g)){
+  const p=match[1];if(seenPaths.has(p))continue;seenPaths.add(p);
+  const bytes=fs.readFileSync(p);if(bytes.length<1000||bytes[0]!==0xff||bytes[1]!==0xd8||bytes[bytes.length-2]!==0xff||bytes[bytes.length-1]!==0xd9)throw Error('Invalid JPEG: '+p);
+ }
+}
+for(const [index,label,file] of [[50,'지구','earth_detail.jpg'],[40,'택시','taxi_detail.jpg'],[14,'농업','farmer_detail.jpg'],[48,'식탁','dining_table_detail.jpg'],[25,'형광펜','highlighter_detail.jpg'],[18,'깨','sesame_detail.jpg'],[43,'안개','fog_detail.jpg'],[53,'발레화','ballet_shoes_detail.jpg'],[32,'책 교환','book_exchange_detail.jpg'],[30,'인형극','puppet_theater_detail.jpg']]){
+ const scene=c.GED_COUNT_SCENES_V4[index];const icon=c.gedCountIcon(scene,label,scene.items.indexOf(label));if(!icon.includes(file))throw Error(`Wrong illustration: ${label}`);
+}
+console.log(`All ${seenPaths.size} referenced JPEG files and repaired illustrations: PASS`);
 
