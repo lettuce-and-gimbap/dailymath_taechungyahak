@@ -76,4 +76,6 @@ if(new Set(middleNumbers).size!==20||middleNumbers.some(n=>n<1||n>20))
   throw new Error('middle school full mock must have unique realistic question numbers');
 if(!mockExam.includes('q.examNo||i+1')||!mockExam.includes('getExamQuestionNumbers(q)'))
   throw new Error('student mock exam should use historical question positions');
+if(!worksheet.includes('const split=cols===2?Math.ceil(examSheet.questions.length/2)')||!worksheet.includes('indexedQuestions.slice(0,split),indexedQuestions.slice(split)'))
+  throw new Error('two-column GED print should fill the left column top-to-bottom before the right column');
 console.log('Homework recipient and folder selection checks: PASS');
