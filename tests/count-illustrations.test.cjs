@@ -10,4 +10,7 @@ if(!pot.includes('/rose_pot.jpg'))throw Error('A potted plant must use a potted 
 console.log('Flag and flowerpot contexts: PASS');
 for(const scene of c.GED_COUNT_SCENES_V3){const images=scene.items.map((label,i)=>(c.gedCountIcon(scene,label,i).match(/<image href="([^"]+)/)||[])[1]).filter(Boolean);if(new Set(images).size!==images.length)throw Error('Repeated illustration in '+scene.name)}
 console.log('Distinct mapped illustrations within each scenario: PASS');
+for(const [sceneIndex,expected] of [[15,'채소 모종'],[18,'잡곡']]){const s=c.GED_COUNT_SCENES_V3[sceneIndex];if(s.name!==expected)throw Error('Unexpected scene');for(let i=0;i<6;i++){const icon=c.gedCountIcon(s,s.items[i],i);if(!icon.includes('<circle cx="41" cy="9" r="9"'))throw Error(`Missing identification badge: ${s.name} ${s.items[i]}`)}}
+const weekday=c.gedCountIcon(c.GED_COUNT_SCENES_V3[34],'월요일',0);if(!weekday.includes('font-size="9"'))throw Error('Weekday text must fit its card');
+console.log('Seedling and grain visual badges; weekday card text: PASS');
 

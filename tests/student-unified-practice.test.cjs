@@ -29,6 +29,7 @@ assert(dash.includes("lbl:unifiedPractice?'문제풀이':'문제풀기'"));
 const coord=fs.readFileSync('js/student/coordDaily.js','utf8');
 assert(coord.includes('if(initialLevel){'));
 assert(coord.includes('onClick={exitPick}'));
+assert(coord.includes("!(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')&&<span"));
 console.log('Unified tab label and locked-level return: PASS');
 }
 main().catch(err=>{console.error(err);process.exitCode=1;});

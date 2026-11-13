@@ -76,6 +76,20 @@ var GED_COUNT_SCENES_V3=GED_COUNT_SCENES.map((x,i)=>{
   return alternatives[i]?{...x,items:alternatives[i]}:x;
 });
 var GED_CHOICE_SCENES_V3=GED_COUNT_SCENES_V3.map((x,i)=>({...x,name:i===47?'옷차림 물품':i===51?'캠핑 관련 그림':GED_CHOICE_NAMES[i],iconName:x.iconName||x.name}));
+var GED_COUNT_SEVENTH_V4=[
+ '도덕','요리','데이지','G','나무', '탁구','딸기','원예','옥수수','공기놀이',
+ '강','달','미술','수열','농업', '양배추','미술','꿀','깨','계산',
+ '비파','구름','바다','나무','검정', '형광펜','귤','커피','튤립','서예',
+ '인형극','야구공','책 교환','기부','일요일', '7','사','마름모','병원','과학',
+ '택시','나비','고래','안개','복숭아', '메뚜기','가위','운동화','식탁','라디오',
+ '지구','침낭','정글짐','발레화','학교', '곰','국자','풀','난초','무지개'
+];
+var GED_COUNT_SCENES_V4=GED_COUNT_SCENES_V3.map((scene,i)=>({...scene,items:[...scene.items,GED_COUNT_SEVENTH_V4[i]]}));
+var GED_CHOICE_SCENES_V4=GED_CHOICE_SCENES_V3.map((scene,i)=>({...scene,items:[...scene.items,GED_COUNT_SEVENTH_V4[i]]}));
+/* v4는 그림 선택용 씨앗을 문항에 저장해 편집·불러오기·오답 재생에서 같은 그림을 유지한다. */
+function gedCountRandom(seed){let a=(Number(seed)>>>0)||1;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+function gedCountShuffled(scene,seed){const entries=scene.items.map((label,index)=>({label,index})),rng=gedCountRandom(seed);for(let i=entries.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[entries[i],entries[j]]=[entries[j],entries[i]];}return {...scene,items:entries.map(e=>e.label),iconIndices:entries.map(e=>e.index)};}
+function gedCountStableChoices(make,seed){const previous=Math.random;Math.random=gedCountRandom((Number(seed)>>>0)^0x9e3779b9);try{return make();}finally{Math.random=previous;}}
 /* 60가지 실제 활동: 대상의 종류뿐 아니라 고르는 목적과 순서의 의미를 함께 제시한다.
    v2로 저장된 기존 문제는 그대로 두고 v3부터 이 문맥을 사용한다. */
 var GED_COUNT_CONTEXTS=[
@@ -219,7 +233,7 @@ function gedCountIcon(scene, label, i){
  const flag=`<path d="M11 44 V6 H38 L32 14 L38 22 H11 M6 44 H17"/><circle cx="23" cy="14" r="4"/>`;
  const fruit=`<path d="M25 14 C11 5 6 18 11 31 Q16 44 25 39 Q34 44 39 31 C44 18 39 5 25 14 Z M25 14 Q25 5 33 5 M26 12 Q31 5 38 9 Q34 15 26 12 Z"/>`;
  const cup=`<path d="M11 15 H35 L32 42 H14 Z M35 20 Q44 19 42 27 Q41 31 34 31 M10 10 H36 M20 5 Q17 8 20 11 M28 5 Q25 8 28 11"/>`;
- const card=`<rect x="7" y="6" width="36" height="38" rx="3"/><path d="M12 12 H38 M12 38 H38"/><text x="25" y="31" text-anchor="middle" fill="#222" stroke="none" font-size="17">${label.length<4?label:''}</text>`;
+ const card=`<rect x="7" y="6" width="36" height="38" rx="3"/><path d="M12 12 H38 M12 38 H38"/><text x="25" y="${label.length>2?28:31}" text-anchor="middle" fill="#222" stroke="none" font-size="${label.length>2?9:17}">${label.length<4?label:''}</text>`;
  const house=`<path d="M5 24 L25 7 L45 24 M10 21 V42 H40 V21 M21 42 V29 H30 V42 M14 25 H18 M33 25 H37"/>`;
  const pot=`<path d="M12 31 H38 L35 43 H15 Z M25 31 V15 M25 24 Q12 23 13 14 Q23 14 25 24 M25 21 Q36 19 37 10 Q28 11 25 21"/>`;
  const note=`<path d="M11 6 H35 L41 12 V44 H11 Z M34 6 V13 H41 M16 20 H35 M16 26 H35 M16 32 H30"/>`;
@@ -229,6 +243,22 @@ function gedCountIcon(scene, label, i){
  };
  /* 실물 모양을 구별할 수 있는 대상은 항목별 선화를 우선 사용한다. */
  const specific={
+'농업':`<path d="M11 17 Q25 7 39 17 H11 M15 17 L18 9 H32 L35 17 M19 19 V23 Q19 30 25 30 Q31 30 31 23 V19 M14 42 Q14 32 25 32 Q36 32 36 42 M39 44 V28 M39 32 Q32 32 33 27 Q38 27 39 32 M39 36 Q45 36 45 31 Q40 31 39 36"/>`,
+'마름모':`<path d="M25 6 L43 25 L25 44 L7 25 Z"/>`,
+'깨':`<path d="M11 30 Q25 37 39 30 L35 38 H15 Z"/><ellipse cx="18" cy="25" rx="2" ry="4" transform="rotate(-30 18 25)"/><ellipse cx="25" cy="23" rx="2" ry="4"/><ellipse cx="32" cy="25" rx="2" ry="4" transform="rotate(30 32 25)"/>`,
+'형광펜':`<path d="M13 35 L31 11 L38 16 L20 40 Z M31 11 L34 7 L41 12 L38 16 M13 35 L10 40 L20 40 M17 30 L24 35"/>`,
+'인형극':`<path d="M8 12 H42 V39 H8 Z M8 16 Q17 12 20 18 M42 16 Q33 12 30 18 M21 13 V5 M29 13 V5 M17 23 Q25 14 33 23 V34 H17 Z M21 26 H21.5 M29 26 H29.5 M22 30 Q25 33 28 30"/>`,
+'야구공':`<circle cx="25" cy="25" r="18"/><path d="M16 10 Q24 25 16 40 M34 10 Q26 25 34 40 M14 17 L19 19 M13 24 L19 25 M14 31 L19 30 M36 17 L31 19 M37 24 L31 25 M36 31 L31 30"/>`,
+'책 교환':`<path d="M8 14 Q17 10 25 15 Q33 10 42 14 V34 Q33 30 25 35 Q17 30 8 34 Z M25 15 V35 M12 20 H20 M30 20 H38 M15 7 H34 L30 4 M34 7 L30 10 M35 42 H16 L20 39 M16 42 L20 45"/>`,
+'택시':`<path d="M7 31 L10 23 L15 18 H35 L40 23 L43 31 V36 H7 Z M12 24 H38 M20 18 L22 12 H31 L33 18 M20 24 V31 M32 24 V31"/><circle cx="15" cy="36" r="4"/><circle cx="36" cy="36" r="4"/>`,
+'안개':`<path d="M11 22 Q12 14 20 17 Q25 9 32 17 Q40 15 41 22 M8 27 H42 M12 31 H39 M7 35 H43 M14 39 H36"/>`,
+'식탁':`<path d="M5 19 L12 15 H38 L45 19 L38 23 H12 Z M10 22 V39 M40 22 V39 M15 23 V35 M35 23 V35 M17 13 Q25 9 33 13 M21 11 V8 M29 11 V8"/>`,
+'지구':`<circle cx="25" cy="25" r="18"/><path d="M11 15 L18 14 L21 19 L17 22 L18 27 L13 29 M28 8 L25 14 L30 18 L35 17 L39 22 L35 27 L29 26 L27 33 L22 35 L23 41"/>`,
+'침낭':`<path d="M13 12 Q13 7 19 7 H32 Q37 7 37 13 V34 Q37 41 31 42 H19 Q13 41 13 34 Z M14 17 H36 M19 17 V35 M22 21 H32 M22 27 H32 M22 33 H32"/>`,
+'정글짐':`<path d="M7 40 V21 L25 10 L43 21 V40 M7 21 L25 31 L43 21 M25 10 V40 M16 15 V35 M34 15 V35 M7 30 L25 40 L43 30 M13 18 L31 28 M19 14 L37 24"/>`,
+'발레화':`<path d="M9 31 Q9 25 15 21 L21 17 Q24 16 27 21 L31 27 Q33 30 39 30 Q43 30 42 35 Q40 39 32 39 H16 Q9 38 9 31 Z M16 21 Q22 27 26 32 M22 18 L30 11 M25 21 L35 13"/>`,
+'무지개':`<path d="M8 34 A17 17 0 0 1 42 34 M12 34 A13 13 0 0 1 38 34 M16 34 A9 9 0 0 1 34 34 M5 35 Q6 30 11 32 Q15 29 18 34 Q21 34 21 38 H6 Q3 38 5 35 M29 35 Q31 30 35 32 Q39 29 42 34 Q46 34 45 38 H29 Z"/>`,
+
  '축구':`<circle cx="25" cy="25" r="18"/><path d="M25 15 L32 20 L29 28 H21 L18 20 Z M25 7 V15 M8 21 L18 20 M42 21 L32 20 M14 40 L21 28 M36 40 L29 28"/>`,
  '농구':ball,'배구':`<circle cx="25" cy="25" r="18"/><path d="M25 7 Q12 16 14 31 M25 7 Q25 21 40 28 M14 31 Q27 24 38 39 M8 22 Q19 24 25 35"/>`,
  '야구':`<circle cx="25" cy="25" r="18"/><path d="M14 10 Q25 25 14 40 M36 10 Q25 25 36 40 M14 17 L18 19 M14 24 L19 25 M14 31 L18 30 M36 17 L32 19 M36 24 L31 25 M36 31 L32 30"/>`,
@@ -479,6 +509,7 @@ function gedCountIcon(scene, label, i){
  const isSpecific=['운동 종목','과일','채소 모종','모양 카드'].includes(kind);
  const item=kind==='다양한 소재'?((scene.name==='이동 수단'&&label==='배')?symbols['배']:(specific[label]||flowerHead[label]||folk[label]||instruments[label]||tools[label]||landscapes[label])):['여행지','그림 작품','사진','그림엽서'].includes(kind)?landscapes[label]:(kind==='꽃'||kind==='화분')?flowerHead[label]:kind==='민속놀이'?folk[label]:kind==='악기'?instruments[label]:kind==='문구류'?tools[label]:isSpecific?specific[label]:null;
  let subject=symbols[label]||subjects[label];
+ if(kind==='수학 과목'&&label==='수열')subject=`<circle cx="10" cy="25" r="3"/><circle cx="20" cy="25" r="3"/><circle cx="30" cy="25" r="3"/><path d="M37 25 H44 M41 22 L44 25 L41 28"/>`;
  /* 깃발의 무늬는 서로 다른 그림으로, 색종이는 인쇄 가능한 질감으로 구분한다. */
  if(kind==='깃발'){
    const emblem=symbols[label]||subjects[label]||landscapes[label]||flower;
@@ -486,21 +517,25 @@ function gedCountIcon(scene, label, i){
  }
  if(kind==='색종이'){
    const patterns=[`<path d="M12 13 H38 M12 20 H38 M12 27 H38 M12 34 H38"/>`,`<path d="M13 10 V40 M21 10 V40 M29 10 V40 M37 10 V40"/>`,`<path d="M10 20 L20 10 M10 30 L30 10 M10 40 L40 10 M20 40 L40 20 M30 40 L40 30"/>`,`<path d="M10 10 L40 40 M20 10 L40 30 M30 10 L40 20 M10 20 L30 40 M10 30 L20 40"/>`,`<circle cx="16" cy="16" r="2"/><circle cx="27" cy="16" r="2"/><circle cx="36" cy="16" r="2"/><circle cx="16" cy="28" r="2"/><circle cx="27" cy="28" r="2"/><circle cx="36" cy="28" r="2"/>`,`<path d="M11 15 H39 M11 25 H39 M11 35 H39 M16 10 V40 M26 10 V40 M36 10 V40"/>`];
-   subject=`<rect x="9" y="9" width="32" height="32"/>${patterns[i%6]}`;
+   const seventh=`<path d="M12 14 H38 M12 20 H38 M12 26 H38 M12 32 H38 M12 38 H38" stroke-width="4"/>`;
+   subject=`<rect x="9" y="9" width="32" height="32"/>${i===6?seventh:patterns[i%6]}`;
  }
  if(kind==='후보'){
    const hair=[`M17 12 Q25 3 33 12`,`M17 11 Q25 5 33 11 M17 11 V16 M33 11 V16`,`M17 12 L20 6 L24 11 L28 6 L33 12`,`M17 11 Q25 3 33 11 M19 9 L31 9`,`M17 12 Q18 5 25 6 Q32 5 33 12 M19 16 H23 M27 16 H31 M23 16 H27`,`M17 12 Q25 4 33 12 M17 12 V20 M33 12 V20`];
-   subject=people+`<path d="${hair[i%6]}"/>`;
+   const clothes=[`<path d="M18 30 L25 36 L32 30 M25 36 V43"/>`,`<path d="M17 32 H33 M17 36 H33 M17 40 H33"/>`,`<path d="M18 30 L22 35 L25 32 L28 35 L32 30 M24 37 L25 40 L26 37 Z"/>`,`<path d="M19 31 V42 M25 31 V42 M31 31 V42"/>`,`<path d="M18 31 L32 41 M32 31 L18 41"/>`,`<circle cx="25" cy="35" r="3"/><path d="M25 38 V42"/>`];
+   subject=people+`<path d="${i===6?'M17 12 Q25 3 33 12 M18 11 Q25 15 32 11':hair[i%6]}"/>${i===6?'<path d="M18 31 H32 M18 36 H32 M18 41 H32 M25 31 V41"/>':clothes[i%6]}`;
  }
  if(['요일 카드','숫자 카드','글자 카드'].includes(kind)||/요일$/.test(label)) subject=card;
  /* 주제별 표지는 각 항목의 도구 또는 서로 다른 무늬를 사용한다. */
  let base=item||subject||icons[kind]||card;
  /* 교과와 책 소재는 표지 모양을 유지하고 안쪽 그림으로 구별한다. */
  if(['학습 자료','책'].includes(kind)){
-   const cover=symbols[label]||subjects[label]||landscapes[label]||book;
+   const cover=label==='도덕'?`<path d="M25 39 C4 27 10 12 18 15 Q23 16 25 21 Q27 16 32 15 C40 12 46 27 25 39 Z"/>`:symbols[label]||subjects[label]||landscapes[label]||book;
    base=`<path d="M9 5 H40 V44 H9 Z M13 5 V44 M16 9 H37 V40 H16 Z"/><g transform="translate(17,13) scale(.38)">${cover}</g>`;
  }
 
+ /* v4의 추가 소재는 장면별 기본 모양 대신 해당 사물을 그린다. */
+ if(i===6&&scene.items.length>=7&&specific[label]&&!['학습 자료','책','깃발','모양 카드'].includes(kind))base=specific[label];
  /* 시험지 축소 인쇄에서도 실루엣이 살아 있도록 세부 선을 덧그린다. */
  const detail={
  '장미':`<path d="M16 14 Q17 7 23 7 M30 10 Q35 15 31 21 M19 23 Q25 27 31 22 M15 30 L21 33 M17 31 L18 34 M24 37 L21 39"/>`,
@@ -568,17 +603,30 @@ function gedCountIcon(scene, label, i){
   '견과':'nuts','시리얼':'cereal','차':'tea','식혜':'sikhye','나물':'greens','투호':'tuho','요가':'yoga','소방서':'fire_station','약국':'pharmacy','빵집':'bakery','도서관':'library','원예':'gardening',
   '서예':'calligraphy','병원':'hospital','우체국':'postoffice','목공':'woodworking','합창':'singing',
   '국악':'korean_music','연주':'instrumental_performance','공':'sports_ball','안내':'guidance','정리':'organizing','체험':'experience','전시':'exhibit','체육':'physical_education','탐구':'inquiry_math',
+  '데이지':'v4_daisy','탁구':'v4_pingpong','공기놀이':'v4_gonggi','꿀':'v4_honey','비파':'v4_pipa','커피':'v4_coffee','기부':'v4_donation','고래':'v4_whale','메뚜기':'v4_grasshopper','라디오':'v4_radio','야구공':'baseball','침낭':'v4_sleepingbag','정글짐':'v4_jungle_gym','무지개':'v4_rainbow',
   '과학':'science','구두':'dress_shoes','샌들':'sandals','등산화':'hiking_boots','요리':'cooking','도예':'pottery'};
  const isPhotography=label==='사진'&&['동아리','방과 후 프로그램','문화 센터 강좌','체험 부스','다양한 소재'].includes(kind);
  const isBoat=label==='배'&&scene.name==='이동 수단';
- const seedling={'상추':'lettuce_young','고추':'pepper_young','토마토':'tomato_young','가지':'eggplant_young','오이':'cucumber_young','호박':'pumpkin_young'};
- const potted={'장미':'rose_pot','국화':'chrysanthemum_pot','백합':'lily_pot'};
+ const seedling={'상추':'lettuce_young','고추':'pepper_young','토마토':'tomato_young','가지':'eggplant_young','오이':'cucumber_young','호박':'pumpkin_young','양배추':'v4_cabbage_seedling'};
+ const potted={'장미':'rose_pot','국화':'chrysanthemum_pot','백합':'lily_pot','튤립':'v4_tulip_pot'};
  const imageName=kind==='반찬'&&label==='콩'?'beans':kind==='채소 모종'?seedling[label]:kind==='화분'&&potted[label]?potted[label]:isBoat?'boat':engraved[label];
  const matching=!['깃발','모양 카드','학습 자료','책','수학 과목'].includes(kind)&&(label==='사진'?isPhotography:!!imageName);
  let drawing='';
  if(matching){const path=`assets/count-illustrations/${imageName}.jpg?v=1`;
    const url=typeof document!=='undefined'?new URL(path,document.baseURI).href:path;
    drawing=`<image href="${url}" x="-6" y="-2" width="62" height="58" preserveAspectRatio="xMidYMid meet"/>`;
+   /* 모종은 서로 비슷한 어린 잎을 가지므로 완전히 자란 채소의 작은 표지를 별도로 붙인다. */
+   if(kind==='채소 모종'&&specific[label])drawing+=`<circle cx="41" cy="9" r="9" fill="white" stroke="#333" stroke-width="1"/><g transform="translate(35.5,3.5) scale(.22)" fill="none" stroke="#111" stroke-width="3">${specific[label]}</g>`;
+   /* 비슷한 낱알은 해당 작물의 이삭이나 꼬투리를 작은 안내 그림으로 덧붙인다. */
+   const grainBadge={
+     '보리':'<path d="M25 43 V8 M25 15 L14 6 M25 21 L12 13 M25 27 L12 20 M25 15 L36 6 M25 21 L38 13 M25 27 L38 20"/>',
+     '현미':'<path d="M25 43 Q26 22 18 8 M23 20 Q14 14 11 10 M24 25 Q34 19 38 13 M25 30 Q15 25 12 21 M25 34 Q35 29 39 23"/><circle cx="10" cy="9" r="2"/><circle cx="39" cy="12" r="2"/>',
+     '수수':'<path d="M25 43 V25 M25 25 Q15 21 13 14 M25 25 Q35 21 37 14 M25 25 V9"/><circle cx="13" cy="12" r="4"/><circle cx="25" cy="8" r="4"/><circle cx="37" cy="12" r="4"/><circle cx="20" cy="19" r="4"/><circle cx="30" cy="19" r="4"/>',
+     '기장':'<path d="M25 43 Q26 23 15 8 M22 22 L13 17 M24 26 L33 20 M20 17 L14 12 M23 22 L29 15"/><circle cx="12" cy="17" r="2"/><circle cx="33" cy="20" r="2"/><circle cx="29" cy="15" r="2"/>',
+     '조':'<path d="M25 43 V25 M25 26 Q15 20 20 6 Q25 1 30 6 Q35 20 25 26 Z M21 9 H29 M20 14 H30 M21 19 H29"/>',
+     '콩':'<path d="M25 43 V19 M25 26 Q13 26 12 16 Q22 15 25 26 M25 22 Q36 21 37 11 Q27 11 25 22 M18 31 Q11 31 12 38 Q18 42 22 35 Z M30 29 Q38 28 38 36 Q33 40 29 35 Z"/>'
+   };
+   if(kind==='잡곡'&&grainBadge[label])drawing+=`<circle cx="41" cy="9" r="9" fill="white" stroke="#333" stroke-width="1"/><g transform="translate(35.5,3.5) scale(.22)" fill="none" stroke="#111" stroke-width="3">${grainBadge[label]}</g>`;
  }
 
  return `<g ${line}>${base}${item||subject?'':marks[i%6]}</g>${drawing}`;
@@ -598,11 +646,22 @@ function gedCountSlotInfo(action,r){
 }
 function gedCountFigure(scene,n,r,ordered,action){
  const cellW=82, width=n*cellW+12;
- const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+i*cellW},5)"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
+ const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+i*cellW},5)"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
  const info=action?gedCountSlotInfo(action,r):{title:'순서',labels:Array.from({length:r},(_,i)=>String(i+1))};
  const vertical=ordered&&!!info.vertical;
- const slots=ordered?`<text x="10" y="113" font-family="sans-serif" font-size="${action?11:14}">${info.title}</text>${info.labels.map((label,i)=>{const x=55+(vertical?0:i*53),y=91+(vertical?i*32:0);return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="${action?11:12}">${label}</text>`;}).join('')}`:'';
- const height=vertical?99+r*32:ordered?128:90;
+ let slots='',height=ordered?128:90;
+ if(ordered&&!action){
+   slots=`<text x="10" y="113" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>`<rect x="${55+i*53}" y="91" width="45" height="28" fill="white" stroke="#555"/><text x="${77+i*53}" y="110" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`).join('')}`;
+ }else if(ordered){
+   const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
+   const shapes={pot:'<path d="M8 18 H52 L48 48 H12 Z M6 13 H54 V19 H6 Z M15 48 H45"/>',vase:'<path d="M20 12 H40 M22 12 C24 25 11 29 15 43 Q30 53 45 43 C49 29 36 25 38 12"/>',flag:'<path d="M15 48 V8 M9 48 H23 M15 9 H48 L40 18 L48 27 H15"/>',tray:'<rect x="5" y="9" width="50" height="39" rx="6"/><path d="M8 21 H52"/>',jar:'<path d="M14 13 H46 V18 L43 20 V45 Q30 50 17 45 V20 L14 18 Z M14 13 V9 H46 V13"/>',person:'<circle cx="30" cy="14" r="7"/><path d="M17 37 Q17 24 30 24 Q43 24 43 37 M12 42 H48"/>',calendar:'<rect x="7" y="8" width="46" height="40" rx="3"/><path d="M7 18 H53 M17 5 V13 M43 5 V13"/>',board:'<rect x="6" y="8" width="48" height="39" rx="2"/><path d="M11 13 H49 V41 H11 Z M24 5 H36 M24 5 V8 M36 5 V8"/>',shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M2 29 H58"/>'};
+   const slotX=vertical?55:14,slotY=vertical?91:105,step=vertical?32:70;
+   slots=`<text x="10" y="99" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
+     const x=slotX+(vertical?0:i*step),y=slotY+(vertical?i*step:0);
+     return `<g class="count-placement" data-placement="${kind}" transform="translate(${x},${y})" fill="white" stroke="#444" stroke-width="1.4" stroke-linejoin="round">${shapes[kind]}</g><text x="${x+30}" y="${y+(vertical?20:65)}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#111">${label}</text>`;
+   }).join('');
+   height=vertical?99+r*32:180;
+ }
  return `<div class="fig"><svg class="count-figure" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
 }
 
@@ -1721,12 +1780,12 @@ var GED_UNITS=(function(){
      ================================================================ */
   { id:'u19', tag:'19번', area:'E', title:'순열', src:'기출 참고 · 순열 연습',
     fields:[{k:'c',label:'문제 종류 (경우)',sel:['4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','4개 중 4개','5개 중 3개','6개 중 2개','6개 중 3개']},{k:'seed',label:'상황 번호',min:1,max:60}],
-    def:{c:'4개 중 3개',seed:1,v:3},
+    def:{c:'4개 중 3개',seed:1,v:4,drawSeed:1},
     // 기출에 반복해서 나온 3종(4P2 · 4P3 · 5P2)에 가중치를 두되, 연습용 확장 유형도 섞는다
-    rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:3};},
+    rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:opts&&opts.version===3?3:4,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
-      if(p.v===2||p.v===3){const e=(p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const ch=stepChoices(ans,2);return {q:p.v===3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v===3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
+      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_COUNT_SCENES_V4:p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v>=3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
       const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
@@ -1737,12 +1796,12 @@ var GED_UNITS=(function(){
   },
   { id:'u20', tag:'20번', area:'E', title:'조합', src:'기출 참고 · 조합 연습',
     fields:[{k:'c',label:'문제 종류 (경우)',sel:['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','6개 중 2개','6개 중 3개','5개 중 4개','6개 중 4개']},{k:'seed',label:'상황 번호',min:1,max:60}],
-    def:{c:'5개 중 3개',seed:1,v:3},
+    def:{c:'5개 중 3개',seed:1,v:4,drawSeed:1},
     // 기출 4종에 가중치를 두되, 연습용 확장 유형도 섞는다
-    rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:3};},
+    rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:opts&&opts.version===3?3:4,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
-      if(p.v===2||p.v===3){const e=(p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const ch=stepChoices(ans,2);return {q:p.v===3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
+      if(p.v===2||p.v===3||p.v===4){const base=(p.v===4?GED_CHOICE_SCENES_V4:p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const e=p.v===4?gedCountShuffled(base,p.drawSeed):base;const ch=p.v===4?gedCountStableChoices(()=>stepChoices(ans,2),p.drawSeed):stepChoices(ans,2);return {q:p.v>=3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
       const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
