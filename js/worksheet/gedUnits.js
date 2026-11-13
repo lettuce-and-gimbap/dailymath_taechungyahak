@@ -71,9 +71,11 @@ var GED_CHOICE_SCENES=GED_COUNT_SCENES.map((x,i)=>({...x,name:GED_CHOICE_NAMES[i
 var GED_COUNT_SCENES_V3=GED_COUNT_SCENES.map((x,i)=>{
   const alternatives={3:['A','B','C','D','E','F'],12:['독서','과학','요가','서예','국악','체육'],
     23:['태양','달','별','꽃','나비','바다'],57:['칠판','시계','책상','의자','지우개','공책']};
+  if(i===47)return {...x,name:'옷차림 물품',unit:'개'};
+  if(i===51)return {...x,name:'캠핑 관련 그림',unit:'장'};
   return alternatives[i]?{...x,items:alternatives[i]}:x;
 });
-var GED_CHOICE_SCENES_V3=GED_COUNT_SCENES_V3.map((x,i)=>({...x,name:GED_CHOICE_NAMES[i],iconName:x.iconName||x.name}));
+var GED_CHOICE_SCENES_V3=GED_COUNT_SCENES_V3.map((x,i)=>({...x,name:i===47?'옷차림 물품':i===51?'캠핑 관련 그림':GED_CHOICE_NAMES[i],iconName:x.iconName||x.name}));
 /* 60가지 실제 활동: 대상의 종류뿐 아니라 고르는 목적과 순서의 의미를 함께 제시한다.
    v2로 저장된 기존 문제는 그대로 두고 v3부터 이 문맥을 사용한다. */
 var GED_COUNT_CONTEXTS=[
@@ -124,11 +126,11 @@ var GED_COUNT_CONTEXTS=[
 ['과일 가게에서 판매하는','진열대에 나란히 놓는','주스로 만들 과일로 고르는'],
 ['곤충 도감에 실린','소개할 순서를 정하는','관찰할 곤충으로 고르는'],
 ['부엌에 준비된','선반에 왼쪽부터 차례대로 놓는','요리에 사용할 도구로 고르는'],
-['옷장에 걸린','옷걸이에 차례대로 거는','기부할 옷으로 고르는'],
+['옷장에 보관된','정리할 순서를 정하는','기부할 물품으로 고르는'],
 ['가구점에 진열된','카탈로그에 실을 순서를 정하는','집에 들일 가구로 고르는'],
 ['매장에 진열된','광고에 소개할 순서를 정하는','구입할 제품으로 고르는'],
 ['우주 그림책에 실린','소개할 순서를 정하는','발표 자료에 넣을 대상으로 고르는'],
-['캠핑을 위해 준비한','짐가방에 넣을 순서를 정하는','캠핑에 가져갈 준비물로 고르는'],
+['캠핑 안내 자료에 실린','그림을 붙일 순서를 정하는','안내 자료에 넣을 그림으로 고르는'],
 ['공원에 설치된','둘러볼 순서를 정하는','이용할 시설로 고르는'],
 ['신발장에 놓인','왼쪽부터 차례대로 놓는','여행에 가져갈 신발로 고르는'],
 ['마을 지도에 표시된','방문할 순서를 정하는','견학할 시설로 고르는'],
@@ -137,6 +139,69 @@ var GED_COUNT_CONTEXTS=[
 ['교실에 준비된','정리함에 차례대로 넣는','수업에 사용할 물건으로 고르는'],
 ['정원에서 키울 수 있는','화분에 왼쪽부터 차례대로 놓는','정원에 들일 식물로 고르는'],
 ['하늘 관찰 자료에 그려진','그림을 왼쪽부터 차례대로 붙이는','발표 자료에 넣을 대상으로 고르는']
+];
+/* 날짜, 자리, 순위는 각각 구별되며 각 대상은 한 번만 쓴다. */
+var GED_COUNT_ORDER_ACTIONS=[
+r=>`${r}일 동안 하루에 한 권씩 공부할 자료를 정하는`
+,r=>`위에서부터 ${r}개의 칸에 한 권씩 꽂는`
+,r=>`왼쪽부터 ${r}개의 화병에 한 송이씩 꽂는`
+,r=>`첫째부터 ${r}번째까지 발표 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 깃대에 하나씩 다는`
+,r=>`${r}일 동안 하루에 한 종목씩 체험할 계획을 정하는`
+,r=>`위에서부터 ${r}개의 선반에 하나씩 진열하는`
+,r=>`첫째부터 ${r}번째까지 동아리 소개 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 반찬 칸에 한 가지씩 담는`
+,r=>`${r}일 동안 하루에 한 놀이씩 체험할 계획을 정하는`
+,r=>`첫째부터 ${r}번째까지 방문 순서를 정하는`
+,r=>`위에서부터 ${r}개의 전시 칸에 한 점씩 배치하는`
+,r=>`${r}주 동안 매주 한 프로그램씩 운영할 순서를 정하는`
+,r=>`첫째부터 ${r}번째까지 공부할 과목의 순서를 정하는`
+,r=>`${r}일 동안 하루에 한 체험씩 진행할 계획을 정하는`
+,r=>`왼쪽부터 ${r}개의 화분에 하나씩 심는`
+,r=>`${r}주 동안 매주 한 강좌씩 소개할 순서를 정하는`
+,r=>`아래에서부터 ${r}층에 한 가지씩 올리는`
+,r=>`왼쪽부터 ${r}개의 통에 한 가지씩 담는`
+,r=>`첫째부터 ${r}번째까지 수행할 과제의 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 자리에 하나씩 놓는`
+,r=>`첫 곡부터 ${r}번째 곡까지 공연 순서를 정하는`
+,r=>`위에서부터 ${r}개의 전시 칸에 한 장씩 붙이는`
+,r=>`${r}명의 친구에게 각각 한 장씩 서로 다르게 보내는`
+,r=>`위에서부터 ${r}개의 칸에 한 장씩 넣는`
+,r=>`왼쪽부터 ${r}개의 정리 칸에 하나씩 놓는`
+,r=>`${r}명의 손님에게 각각 한 개씩 서로 다르게 나누어 주는`
+,r=>`위에서부터 ${r}개의 선반에 하나씩 놓는`
+,r=>`왼쪽부터 ${r}개의 받침대에 하나씩 놓는`
+,r=>`첫째부터 ${r}번째까지 방문할 부스의 순서를 정하는`
+,r=>`첫 공연부터 ${r}번째 공연까지 무대 순서를 정하는`
+,r=>`위에서부터 ${r}개의 선반에 하나씩 놓는`
+,r=>`${r}일 동안 하루에 한 행사씩 진행할 순서를 정하는`
+,r=>`첫째부터 ${r}번째까지 봉사 활동을 실천할 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 자리에 한 장씩 놓는`
+,r=>`위에서부터 ${r}개의 칸에 한 장씩 놓는`
+,r=>`왼쪽부터 ${r}개의 칸에 한 장씩 붙이는`
+,r=>`위에서부터 ${r}개의 칸에 한 장씩 붙이는`
+,r=>`첫째부터 ${r}번째까지 전시 장소를 방문할 순서를 정하는`
+,r=>`${r}교시 동안 한 교시에 한 활동씩 진행할 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 칸에 사진을 한 장씩 붙이는`
+,r=>`위에서부터 ${r}개의 칸에 그림을 한 장씩 붙이는`
+,r=>`첫째부터 ${r}번째까지 소개할 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 자리에 카드를 한 장씩 놓는`
+,r=>`위에서부터 ${r}개의 선반에 한 가지씩 진열하는`
+,r=>`${r}쪽의 도감에 한 쪽마다 한 마리씩 서로 다르게 싣는`
+,r=>`왼쪽부터 ${r}개의 칸에 하나씩 정리하는`
+,r=>`위에서부터 ${r}개의 정리 칸에 하나씩 넣는`
+,r=>`첫째부터 ${r}번째까지 카탈로그에 소개할 순서를 정하는`
+,r=>`${r}일 동안 하루에 한 제품씩 광고할 순서를 정하는`
+,r=>`첫째부터 ${r}번째까지 발표할 순서를 정하는`
+,r=>`위에서부터 ${r}개의 칸에 한 장씩 붙이는`
+,r=>`첫째부터 ${r}번째까지 둘러볼 순서를 정하는`
+,r=>`왼쪽부터 ${r}개의 신발 칸에 한 켤레씩 놓는`
+,r=>`${r}일 동안 하루에 한 시설씩 방문할 계획을 정하는`
+,r=>`위에서부터 ${r}개의 칸에 한 마리씩 그림을 붙이는`
+,r=>`왼쪽부터 ${r}개의 칸에 하나씩 놓는`
+,r=>`위에서부터 ${r}개의 정리 칸에 하나씩 넣는`
+,r=>`왼쪽부터 ${r}개의 자리에 한 화분씩 놓는`
+,r=>`첫째부터 ${r}번째까지 발표 자료에 실을 순서를 정하는`
 ];
 /* 학습지에 들어가는 그림은 SVG 선화로 직접 그린다. 각 항목의 이름은
    그림 아래에 함께 써서 흑백 인쇄에서도 서로 다른 대상을 구별한다. */
@@ -495,12 +560,20 @@ function gedCountIcon(scene, label, i){
   '줄넘기':'leap_rope','훌라후프':'hula','매트':'exercise_mat','고깔':'traffic_cone',
   '미끄럼틀':'slide','그네':'swing','시소':'seesaw','철봉':'horizontal_bar','모래상자':'sandbox','회전목마':'carousel',
   '젓가락':'chopsticks','포크':'fork','숟가락':'spoon','나이프':'knife','운동화':'sneakers','장화':'rubber_boots','슬리퍼':'slippers',
-  '음악':'music_activity','독서':'reading','읽기':'reading','낭독':'reading','미술':'painting','과학':'science','구두':'dress_shoes','샌들':'sandals','등산화':'hiking_boots','요리':'cooking','도예':'pottery'};
+  '음악':'music_activity','독서':'reading','읽기':'reading','낭독':'reading','미술':'painting','제빵':'baking','배달':'delivery','청소':'cleaning','돌봄':'care','강연':'lecture','토론':'discussion','칠판':'blackboard','비':'rain','눈':'snow','바람':'wind','번개':'lightning',
+  '조사':'research','보고서':'report','퀴즈':'quiz','미술관':'art_gallery','박물관':'museum','쓰기':'writing','계산':'calculator','발표':'presentation','만들기':'craft','제작':'craft',
+  '봄':'spring','여름':'summer','가을':'autumn','겨울':'winter','학교':'school','공원':'park','회관':'community_hall',
+  '집':'house','꽃':'flower','강':'river','보리':'barley_grains','현미':'brownrice','기장':'proso_millet_grains','조':'foxtail_millet_grains','콩':'soybeans','수수':'sorghum_grains',
+  '연극':'theater','무용':'dance','마술':'magic','소방':'firefighter','의료':'medicine','건축':'architecture','방송':'broadcast',
+  '견과':'nuts','시리얼':'cereal','차':'tea','식혜':'sikhye','나물':'greens','투호':'tuho','요가':'yoga','소방서':'fire_station','약국':'pharmacy','빵집':'bakery','도서관':'library','원예':'gardening',
+  '서예':'calligraphy','병원':'hospital','우체국':'postoffice','목공':'woodworking','합창':'singing',
+  '국악':'korean_music','연주':'instrumental_performance','공':'sports_ball','안내':'guidance','정리':'organizing','체험':'experience','전시':'exhibit','체육':'physical_education','탐구':'inquiry_math',
+  '과학':'science','구두':'dress_shoes','샌들':'sandals','등산화':'hiking_boots','요리':'cooking','도예':'pottery'};
  const isPhotography=label==='사진'&&['동아리','방과 후 프로그램','문화 센터 강좌','체험 부스','다양한 소재'].includes(kind);
  const isBoat=label==='배'&&scene.name==='이동 수단';
- const seedling={'상추':'lettuce_seedling','고추':'pepper_seedling','토마토':'tomato_seedling','가지':'eggplant_seedling','오이':'cucumber_seedling','호박':'pumpkin_seedling'};
+ const seedling={'상추':'lettuce_young','고추':'pepper_young','토마토':'tomato_young','가지':'eggplant_young','오이':'cucumber_young','호박':'pumpkin_young'};
  const potted={'장미':'rose_pot','국화':'chrysanthemum_pot','백합':'lily_pot'};
- const imageName=kind==='채소 모종'?seedling[label]:kind==='화분'&&potted[label]?potted[label]:isBoat?'boat':engraved[label];
+ const imageName=kind==='반찬'&&label==='콩'?'beans':kind==='채소 모종'?seedling[label]:kind==='화분'&&potted[label]?potted[label]:isBoat?'boat':engraved[label];
  const matching=!['깃발','모양 카드','학습 자료','책','수학 과목'].includes(kind)&&(label==='사진'?isPhotography:!!imageName);
  let drawing='';
  if(matching){const path=`assets/count-illustrations/${imageName}.jpg?v=1`;
@@ -510,11 +583,27 @@ function gedCountIcon(scene, label, i){
 
  return `<g ${line}>${base}${item||subject?'':marks[i%6]}</g>${drawing}`;
 }
-function gedCountFigure(scene,n,r,ordered){
+/* 문항에서 구별한 날짜·사람·자리의 의미를 그림에도 표시한다. */
+function gedCountSlotInfo(action,r){
+ let title='차례',label=i=>String(i+1);
+ if(action.includes('일 동안')){title='날짜';label=i=>`${i+1}일째`;}
+ else if(action.includes('주 동안')){title='주차';label=i=>`${i+1}주째`;}
+ else if(action.includes('교시 동안')){title='교시';label=i=>`${i+1}교시`;}
+ else if(action.includes('친구에게')){title='받는 사람';label=i=>`친구${i+1}`;}
+ else if(action.includes('손님에게')){title='받는 사람';label=i=>`손님${i+1}`;}
+ else if(action.includes('아래에서부터')){title='아래→위';label=i=>`${i+1}층`;}
+ else if(action.includes('위에서부터'))title='위→아래';
+ else if(action.includes('왼쪽부터'))title='왼쪽→';
+ return {title,vertical:title==='위→아래'||title==='아래→위',labels:Array.from({length:r},(_,i)=>label(title==='아래→위'?r-1-i:i))};
+}
+function gedCountFigure(scene,n,r,ordered,action){
  const cellW=82, width=n*cellW+12;
  const cells=scene.items.slice(0,n).map((label,i)=>`<g transform="translate(${10+i*cellW},5)"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="translate(12,3)">${gedCountIcon(scene,label,i)}</g><text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text></g>`).join('');
- const slots=ordered?`<text x="10" y="113" font-family="sans-serif" font-size="14">순서</text>${Array.from({length:r},(_,i)=>`<rect x="${55+i*53}" y="91" width="45" height="28" fill="white" stroke="#555"/><text x="${77+i*53}" y="110" text-anchor="middle" font-family="sans-serif" font-size="12">${i+1}</text>`).join('')}`:'';
- return `<div class="fig"><svg class="count-figure" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${ordered?128:90}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', 순서 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
+ const info=action?gedCountSlotInfo(action,r):{title:'순서',labels:Array.from({length:r},(_,i)=>String(i+1))};
+ const vertical=ordered&&!!info.vertical;
+ const slots=ordered?`<text x="10" y="113" font-family="sans-serif" font-size="${action?11:14}">${info.title}</text>${info.labels.map((label,i)=>{const x=55+(vertical?0:i*53),y=91+(vertical?i*32:0);return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="${action?11:12}">${label}</text>`;}).join('')}`:'';
+ const height=vertical?99+r*32:ordered?128:90;
+ return `<div class="fig"><svg class="count-figure" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
 }
 
 var GED_UNITS=(function(){
@@ -1637,7 +1726,7 @@ var GED_UNITS=(function(){
     rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:3};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let ans=1;for(let i=0;i<r;i++)ans*=(n-i);
-      if(p.v===2||p.v===3){const e=(p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const ch=stepChoices(ans,2);return {q:p.v===3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][1]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
+      if(p.v===2||p.v===3){const e=(p.v===3?GED_COUNT_SCENES_V3:GED_COUNT_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const ch=stepChoices(ans,2);return {q:p.v===3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 ${GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r)} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 골라 순서대로 나열하는 경우의 수는?`,figure:gedCountFigure(e,n,r,true,p.v===3?GED_COUNT_ORDER_ACTIONS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1](r):null),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서가 있으므로 순열입니다.`, tex(Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'='+nf(ans))]};}
       const ctx=[{a:'과목별 학습 자료',u:'개',v:'택하여 순서대로 학습하는'},{a:'서로 다른 책',u:'권',v:'택하여 책꽂이에 나란히 꽂는'},{a:'서로 다른 꽃',u:'송이',v:'골라 화단에 순서대로 심는'},{a:'후보',u:'명',v:'뽑아 1등, 2등'+(r===3?', 3등':'')+'을 정하는'},{a:'서로 다른 색의 깃발',u:'개',v:'골라 순서대로 세우는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;
@@ -1653,7 +1742,7 @@ var GED_UNITS=(function(){
     rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:60),v:opts&&opts.version===2?2:3};},
     build(p){
       const[n,r]=p.c.match(/\d+/g).map(Number);let num=1,den=1;for(let i=0;i<r;i++){num*=(n-i);den*=(i+1);}const ans=num/den;
-      if(p.v===2||p.v===3){const e=(p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const ch=stepChoices(ans,2);return {q:p.v===3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
+      if(p.v===2||p.v===3){const e=(p.v===3?GED_CHOICE_SCENES_V3:GED_CHOICE_SCENES)[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1];const ch=stepChoices(ans,2);return {q:p.v===3?`그림과 같이 ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][0]} ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 그중에서 서로 다른 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} ${GED_COUNT_CONTEXTS[Math.max(1,Math.min(60,Math.floor(Number(p.seed)||1)))-1][2]} 경우의 수는?`:`그림과 같이 서로 다른 ${e.name} ${nf(n)}${e.unit}${josa(e.unit,'이','가')} 있다. 이 중에서 ${nf(r)}${e.unit}${josa(e.unit,'을','를')} 선택하는 경우의 수는?`,figure:gedCountFigure(e,n,r,false),choices:ch.list,ans:ch.ans,answerTex:nf(ans),sol:[`순서를 따지지 않으므로 조합입니다.`, tex('\\dfrac{'+Array.from({length:r},(_,i)=>nf(n-i)).join('\\times ')+'}{'+Array.from({length:r},(_,i)=>nf(r-i)).join('\\times ')+'}='+nf(ans))]};}
       const ctx=[{a:'스포츠 클럽 활동에서 운영하는 종목',u:'개',v:'선택하는'},{a:'서로 다른 과일',u:'개',v:'고르는'},{a:'학생',u:'명',v:'대표로 뽑는'},{a:'서로 다른 동아리',u:'개',v:'가입하는'},{a:'서로 다른 반찬',u:'가지',v:'고르는'}];
       const e=ctx[(p.seed-1)%ctx.length];const ch=stepChoices(ans,2);
       const q=`어느 학교의 ${e.a} ${nf(n)}${e.u}${josa(e.u,'이','가')} 있다. 이 중에서 서로 다른 ${nf(r)}${e.u}${josa(e.u,'을','를')} ${e.v} 경우의 수는?`;

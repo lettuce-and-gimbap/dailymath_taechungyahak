@@ -619,7 +619,7 @@ function FeelingPicker({title,onPick}){
   </div>);
 }
 
-function CoordDailyTab({userData,onUpdate}){
+function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
   const TOTAL=10;
   const ORD=['①','②','③','④'];
   const[level,setLevel]=useState(null);
@@ -653,6 +653,8 @@ function CoordDailyTab({userData,onUpdate}){
     savingRef.current=false;savedRef.current=null;
   };
 
+  React.useEffect(()=>{if(initialLevel)start(initialLevel);},[]);
+  const exitPick=()=>{if(onExit)onExit();else setPhase('pick');};
   const q=qs[idx];
 
   const choose=(i)=>{
@@ -714,6 +716,16 @@ function CoordDailyTab({userData,onUpdate}){
 
   /* ── 난이도 고르기 ── */
   if(phase==='pick'){
+    if(initialLevel){
+      if(!lockMsg)return null;
+      return <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-5" onClick={exitPick}>
+        <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center fade-in" onClick={e=>e.stopPropagation()}>
+          <div className="text-5xl mb-3">🛠️</div>
+          <div className="text-xl font-black text-gray-800 leading-relaxed break-keep">앗, 선생님이 아직 학생분들을 위해 작업중이에요!<br/>얼른 보여드릴게요!</div>
+          <button onClick={exitPick} className="mt-5 w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-all">확인</button>
+        </div>
+      </div>;
+    }
     return(<div className="p-4 space-y-4 pb-36">
       <style>{`svg.plane{max-width:100%;height:auto}`}</style>
       <div>
@@ -796,7 +808,7 @@ function CoordDailyTab({userData,onUpdate}){
           </div>
         ))}
       </div>
-      <button onClick={()=>setPhase('pick')} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
+      <button onClick={exitPick} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg active:scale-95 transition-transform">
         한 번 더 풀기
       </button>
     </div>);
@@ -808,7 +820,7 @@ function CoordDailyTab({userData,onUpdate}){
     <style>{`svg.plane{max-width:100%;height:auto}`}</style>
 
     <div className="flex items-center gap-3">
-      <button onClick={()=>setPhase('pick')} className="text-sm font-bold text-gray-400 px-3 py-2 bg-gray-100 rounded-xl">← 그만</button>
+      <button onClick={exitPick} className="text-sm font-bold text-gray-400 px-3 py-2 bg-gray-100 rounded-xl">← 그만</button>
       <div className="flex-1">
         <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
           <div className="h-full bg-indigo-500 rounded-full transition-all" style={{width:`${(idx+(phase==='feedback'?1:0))/TOTAL*100}%`}}></div>

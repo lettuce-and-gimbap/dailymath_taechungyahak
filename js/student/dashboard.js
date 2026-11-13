@@ -80,7 +80,8 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     }
     onUpdateRaw(upd);
   };
-  const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}];
+  const unifiedPractice=userData.name==='박소명_학생';
+  const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:unifiedPractice?'문제풀이':'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}].filter(t=>!unifiedPractice||t.k!=='coord');
 
   const handleSessionActive=(active)=>{
     setSessionActive(active);
@@ -229,8 +230,8 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} onResumeSaved={goResume} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
       {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}
-        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)}/>}
-      {tab==='coord'&&<CoordDailyTab userData={userData} onUpdate={onUpdate}/>}
+        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}/>}
+      {tab==='coord'&&(unifiedPractice?<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive} unified/>:<CoordDailyTab userData={userData} onUpdate={onUpdate}/>)}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
       {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
