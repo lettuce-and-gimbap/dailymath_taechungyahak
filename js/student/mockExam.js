@@ -92,6 +92,9 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const savedUpdRef=React.useRef(null);  // 소감을 고르면 이 기록에 덧붙인다
   const[startTime,setStartTime]=useState(null);
   const[mode,setMode]=useState('');
+  const[focusTopic,setFocusTopic]=useState(null);
+  const[focusIndex,setFocusIndex]=useState(0);
+  const[focusFeedback,setFocusFeedback]=useState(false);
   // ── 행동 추적 (신규) ──
   const[firstClickTimes,setFirstClickTimes]=useState({}); // {qIdx: ms from startTime to first click}
   const[revisionCounts,setRevisionCounts]=useState({});   // {qIdx: number of answer changes after first}
@@ -137,6 +140,8 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
 
   const startExam=(examMode,domainList,focusTopic=null)=>{
     setMode(examMode);
+    setFocusTopic(focusTopic);
+    setFocusIndex(0);setFocusFeedback(false);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
@@ -224,19 +229,22 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
   const ORD=['①','②','③','④'];
   const correctCount=questions.filter((q,i)=>sel[i]===q.answer).length;
   const answered=Object.keys(sel).length;
+  const sequential=!!focusTopic;
+  const advanceFocusedQuestion=()=>{
+    if(!focusFeedback){setFocusFeedback(true);return;}
+    if(focusIndex+1>=questions.length){setIsGraded(true);saveResult(null);return;}
+    setFocusIndex(i=>i+1);setFocusFeedback(false);
+  };
 
   if(screen==='start'){
     if(!examLevel)return(<div className="p-4 pb-36 space-y-4 fade-in">
-      <div className="mb-1">
-        <h2 className="text-2xl font-black text-gray-800">📝 검정고시 모의고사</h2>
-        <p className="text-sm font-bold text-gray-500 mt-1">응시할 학력을 선택해 주세요.</p>
-      </div>
-      <button onClick={()=>setExamLevel('middle')} className="w-full p-5 bg-white rounded-3xl text-left shadow-md border-2 border-slate-200 flex items-center gap-4 active:scale-[0.98] transition-transform">
+      <div><h2 className="text-2xl font-black text-gray-800">📝 검정고시 모의고사</h2><p className="text-sm font-bold text-gray-500 mt-1">응시할 학력을 선택해 주세요.</p></div>
+      <button onClick={()=>setExamLevel('middle')} className="w-full p-4 bg-white rounded-3xl text-left shadow-sm border-2 border-slate-200 flex items-center gap-3 active:scale-[0.98] transition-transform">
         <span className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-3xl shrink-0">📘</span>
         <span className="flex-1"><span className="block text-lg font-black text-gray-800">중졸 모의고사</span><span className="block text-sm mt-1 font-bold text-gray-500">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</span></span>
         <span className="text-2xl text-gray-300">›</span>
       </button>
-      <button onClick={()=>setExamLevel('high')} className="w-full p-5 bg-white rounded-3xl text-left shadow-md border-2 border-slate-200 flex items-center gap-4 active:scale-[0.98] transition-transform">
+      <button onClick={()=>setExamLevel('high')} className="w-full p-4 bg-white rounded-3xl text-left shadow-sm border-2 border-slate-200 flex items-center gap-3 active:scale-[0.98] transition-transform">
         <span className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center text-3xl shrink-0">📚</span>
         <span className="flex-1"><span className="block text-lg font-black text-gray-800">고졸 모의고사</span><span className="block text-sm mt-1 font-bold text-gray-500">2021~2026년 기출 반복 영역 반영 · 최근 유형 변형</span></span>
         <span className="text-2xl text-gray-300">›</span>
@@ -248,10 +256,10 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
     const getGrade=(st)=>{if(st.t===0)return 0;const r=st.c/st.t;return r<0.4?1:r<0.7?2:r<0.9?3:4;};
     const ICONS=['🌱','🌱','🌿','🌳','🍎'];
     return(<div className="p-4 pb-36 space-y-4 fade-in min-w-0">
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
-        <button onClick={()=>setExamLevel(null)} className="text-sm font-bold opacity-90 mb-3">← 학력 다시 선택</button>
-        <h2 className="text-xl font-black mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
-        <p className="text-sm opacity-90">2021~2026년 반복 출제 영역 반영 · 생활 맥락과 그림형 문항 변형</p>
+      <div className="bg-white rounded-3xl p-5 shadow-sm border-2 border-slate-200">
+        <button onClick={()=>setExamLevel(null)} className="text-sm font-bold text-indigo-600 px-3 py-2 bg-indigo-50 rounded-xl mb-3">← 학력 다시 선택</button>
+        <h2 className="text-xl font-black text-gray-800 mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
+        <p className="text-sm font-bold text-gray-500">2021~2026년 반복 출제 영역 반영 · 생활 맥락과 그림형 문항 변형</p>
       </div>
       {weakDomains.length>0&&(<div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
         <div className="text-sm font-black text-orange-700 mb-2">🎯 현재 취약 영역 (정답률 70% 미만)</div>
@@ -267,19 +275,20 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
           <div className="text-xs font-normal opacity-80 mt-1">기출의 문항 번호별 유형 흐름을 반영한 1~20번 구성</div>
         </button>
       </div>
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <div className="text-sm font-black text-gray-700 mb-2">📌 영역 선택 집중 풀기</div>
-        <div className="text-xs text-gray-400 mb-3">원하는 영역만 체크하고 그 영역에서만 문제를 풀어요</div>
-        <div className="flex flex-wrap gap-2 mb-3">
+      <div className="bg-white rounded-3xl p-5 shadow-sm border-2 border-slate-200">
+        <div className="text-lg font-black text-gray-800 mb-1">📌 영역 선택 집중 풀기</div>
+        <div className="text-sm font-bold text-gray-500 mb-3">원하는 영역을 골라 그 영역의 문제를 풀어요.</div>
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {DOMAINS.map(d=>(
             <button key={d} onClick={()=>setSelectedDomains(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d])}
-              className={`px-3 py-2 rounded-full text-xs font-bold border-2 transition-all active:scale-95 ${selectedDomains.includes(d)?'bg-teal-500 text-white border-teal-500':'bg-white text-gray-600 border-gray-200'}`}>
-              {selectedDomains.includes(d)?'✓ ':''}{d}
+              aria-pressed={selectedDomains.includes(d)}
+              className={`min-h-12 px-3 py-3 rounded-2xl text-sm font-black text-left border-2 transition-all active:scale-[0.98] ${selectedDomains.includes(d)?'bg-indigo-50 text-indigo-800 border-indigo-400':'bg-white text-gray-600 border-slate-200'}`}>
+              <span className="mr-2">{selectedDomains.includes(d)?'☑':'□'}</span>{d}
             </button>
           ))}
         </div>
         <button onClick={()=>{if(selectedDomains.length>0)startExam('domain',selectedDomains);}}
-          className={`w-full py-4 rounded-2xl font-black text-base transition-all active:scale-95 ${selectedDomains.length>0?'bg-gradient-to-r from-teal-500 to-green-600 text-white shadow-md':'bg-gray-100 text-gray-400 cursor-default'}`}>
+          className={`w-full py-4 rounded-2xl font-black text-base transition-all active:scale-95 ${selectedDomains.length>0?'bg-indigo-600 text-white shadow-md':'bg-gray-100 text-gray-400 cursor-default'}`}>
           {selectedDomains.length>0?`📌 선택 영역 10문제 시작 →`:'영역을 먼저 선택하세요'}
           {selectedDomains.length>0&&<div className="text-xs font-normal opacity-80 mt-1">{selectedDomains.join(' · ')}</div>}
         </button>
@@ -307,10 +316,11 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
     return(<div className="p-4 pb-36 space-y-4 fade-in">
       <div className="sticky top-0 bg-white border-b py-3 flex items-center gap-3 z-10 -mx-4 px-4 shadow-sm">
         <button onClick={()=>setScreen('start')} className="text-gray-500 text-sm font-bold">← 나가기</button>
-        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({answered}/{questionCount})</span>
+        <span className="flex-1 text-sm font-black text-gray-700">{examLevel==='middle'?'중졸':'고졸'} · {mode==='weak'?'🎯 약점 집중':mode==='domain'?`📌 ${selectedDomains.join('+')}` :'🎲 실전 모의고사'} ({sequential?focusIndex+1:answered}/{questionCount})</span>
         {isGraded&&<span className="text-sm font-black text-indigo-600">{correctCount}/{questionCount}점</span>}
       </div>
-      {questions.map((q,i)=>{
+      {(sequential?[questions[focusIndex]].filter(Boolean):questions).map((q)=>{
+        const i=questions.indexOf(q);
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
         return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 min-w-0 overflow-visible">
           <div className="flex items-center gap-2 mb-3">
@@ -320,18 +330,21 @@ function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted
 return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {src}</span>:null;})()}
             {isGraded&&isSel&&<span className="ml-auto text-base">{isCorrect?'✅':'❌'}</span>}
           </div>
-          <MockQBody q={q} sel={sel[i]} isGraded={isGraded} onPick={j=>{
-            if(isGraded)return;
+          <MockQBody q={q} sel={sel[i]} isGraded={isGraded||(sequential&&focusFeedback)} readOnly={sequential&&focusFeedback} onPick={j=>{
+            if(isGraded||(sequential&&focusFeedback))return;
             const now=Date.now()-startTime;
             if(firstClickTimes[i]===undefined) setFirstClickTimes(p=>({...p,[i]:now}));
             else if(sel[i]!==undefined&&sel[i]!==j) setRevisionCounts(p=>({...p,[i]:(p[i]||0)+1}));
             setSel(s=>({...s,[i]:j}));
           }}/>
-          {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
-          {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
+          {(isGraded||(sequential&&focusFeedback))&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
+          {(isGraded||(sequential&&focusFeedback))&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
         </div>);
       })}
-      {answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
+      {sequential&&!isGraded&&focusIndex<questionCount&&<button onClick={advanceFocusedQuestion} disabled={sel[focusIndex]===undefined} className={`w-full py-5 rounded-3xl font-black text-xl shadow-lg transition-all ${sel[focusIndex]===undefined?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white active:scale-95'}`}>
+        {!focusFeedback?'정답 확인 ✓':focusIndex+1>=questionCount?'결과 보기 📝':'다음 문제 →'}
+      </button>}
+      {!sequential&&answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
         <button onClick={()=>{setIsGraded(true);saveResult(null);}} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-lg active:scale-95 transition-transform">채점하기 📝</button>
       </div>)}
       {isGraded&&!feelingDone&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">

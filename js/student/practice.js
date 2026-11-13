@@ -186,7 +186,7 @@ function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeSettings,setRangeSet
 
 function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=null,domain=null){
   let qType=ver;if(qType===2)qType=Math.random()<0.5?0:1;
-  const isMC=Math.random()<0.25;
+  const isMC=true;
   if(qType===3){
     const{target,divisors}=genDivisors(divMin,divMax,false);
     const divQType=pick(['notDiv','allDiv','count']);
@@ -489,18 +489,17 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
   useEffect(()=>{buildMCOpts()},[q]);
   const buildMCOpts=()=>{
     if(!q.isMC){setMcOpts([]);return}
-    var _twoMode=questions.length>=15;
     // exam5: 이미 choices 배열이 있는 모의고사 포맷
     if(q.category==='exam5'&&q.choices){
       var opts5=q.choices.map((c,i)=>({text:c,isC:i===q.answer}));
-      if(_twoMode&&opts5.length>2){var c5=opts5.find(o=>o.isC);var w5=opts5.find(o=>!o.isC);opts5=[c5,w5].filter(Boolean);if(Math.random()<0.5)opts5=[opts5[1],opts5[0]];}
       setMcOpts(opts5);return;
     }
     let opts=[];
     if(q.category==='math'){
       const ansStr=q.hasR?`몫: ${q.ansC}, 나머지: ${q.ansR}`:`${q.ansC}`;
       opts.push({text:ansStr,isC:true});
-      while(opts.length<4){const wQ=Math.max(1,q.ansC+randInt(-2,2)||1);const wR=q.hasR?Math.max(0,(q.ansR+randInt(-1,2))%q.b):0;const wStr=q.hasR?`몫: ${wQ}, 나머지: ${wR}`:`${wQ}`;if(!opts.some(o=>o.text===wStr))opts.push({text:wStr,isC:false})}
+      if(q.hasR){for(let wQ=1;opts.length<4&&wQ<=q.ansC+8;wQ++)for(let wR=0;opts.length<4&&wR<q.b;wR++){const wStr=`몫: ${wQ}, 나머지: ${wR}`;if(!opts.some(o=>o.text===wStr))opts.push({text:wStr,isC:false});}}
+      else{for(let d=1;opts.length<4;d++){const wQ=q.ansC+d;if(!opts.some(o=>o.text===String(wQ)))opts.push({text:String(wQ),isC:false});}}
     }else{
       if(q.divQType==='count'||q.isCount){
         // 약수 개수 — ±1·±2 제외, ±3 이상 차이나는 오답만
@@ -541,7 +540,15 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
         if(opts.length<4){let ins2=ins+1;while(divSet.has(ins2)||ins2===ins||Math.abs(ins2-q.target)<=1)ins2++;const f4=[...q.divisors,ins2].sort((a,b)=>a-b);const s4=f4.join(', ');if(!usedFakes.has(s4)){usedFakes.add(s4);opts.push({text:s4,isC:false})}}
       }
     }
-    if(_twoMode&&opts.length>2){var cO=opts.find(o=>o.isC);var wO=opts.find(o=>!o.isC);opts=[cO,wO].filter(Boolean);}
+    let fallback=1;
+    while(opts.length<4){
+      const text=q.divQType==='count'||q.isCount?`${q.divisors.length+fallback}개`
+        :q.divQType==='notDiv'?String(q.target+fallback)
+        :[...q.divisors,q.target+fallback].join(', ');
+      if(!opts.some(o=>o.text===text))opts.push({text,isC:false});
+      fallback++;
+    }
+    opts=opts.slice(0,4);
     setMcOpts(shuffle(opts));
   };
 
@@ -683,7 +690,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
           return src?<div className="text-xs text-gray-400">📌 출처: {src}</div>:null;})()}
       </div>
       <MockQBody q={practiceViewQ(q,mcOpts)} sel={selMC} isGraded={phase==='feedback'} readOnly={phase!=='question'}
-        onPick={i=>{if(phase==='question')setSelMC(i);}}/>
+        onPick={i=>{if(phase==='question'){handleFirstAction();setSelMC(i);}}}/>
     </div>
     {fb&&<div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 fade-in ${fb.ok?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>{fb.msg}</div>}
     {fb&&<SolutionBox q={q.category==='exam5'&&Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식 */}
