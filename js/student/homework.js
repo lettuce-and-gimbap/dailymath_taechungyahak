@@ -16,6 +16,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
   const q=homework.questions[idx];
   const total=homework.questions.length;
   const finishingRef=React.useRef(false);   // 정답 확인 연타로 마지막 문항이 여러 번 제출되는 것을 막는다
+  const savedLogRef=React.useRef(null);
 
   const check=()=>{
     if(selected===null)return;
@@ -28,7 +29,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
     if(idx+1>=total){
       finishingRef.current=true;
       finishHomework(newRes,newCorrect);
-      setPhase('done');
+      setPhase('saving');
     } else {
       setPhase('feedback');
     }
@@ -44,12 +45,20 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
       const log={studentName:userData.name,date:todayStr(),time:timeStr(),
         type:`숙제: ${homework.title}`,score:`${correct}/${total}`,
         questions:res,totalSec:Math.round((Date.now()-startTime)/1000),feeling:null};
-      await saveLog(log);
+      const id=await saveLog(log);
       const upd={...userData,logs:[log,...(userData.logs||[]).slice(0,49)]};
-      await saveUser(upd);onUpdate(upd);
+      await saveUser(upd);onUpdate(upd);savedLogRef.current={id,upd};
     }catch(e){}
+    setPhase('reflection');
   };
 
+  const chooseFeeling=async feeling=>{
+    setPhase('done');
+    if(savedLogRef.current){const upd=await patchLogFeeling(savedLogRef.current.id,savedLogRef.current.upd,feeling);onUpdate(upd);}
+  };
+
+  if(phase==='saving')return <div className="flex min-h-screen items-center justify-center p-6 bg-gray-50 font-black text-gray-600">학습 기록을 저장하고 있어요…</div>;
+  if(phase==='reflection')return <FeelingPicker title={`숙제 완료 · ${correctCount}/${total} 정답`} onPick={chooseFeeling}/>;
   if(phase==='done'){
     const pct=Math.round(correctCount/total*100);
     return(

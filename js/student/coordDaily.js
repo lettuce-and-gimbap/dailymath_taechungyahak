@@ -599,7 +599,8 @@ function genCoordQ(level,options){
 }
 
 /* ── 탭 본체 ─────────────────────────────────────────────────── */
-/* 다 풀고 나서 고르는 자기보고식 소감 — 좌표10 · 문제풀기 공용. 한 번에 누를 수 있게 크게 그린다. */
+/* 모든 학생 풀이 세션의 공통 마무리 화면: 난이도 체감(easy/normal/hard)을 기록한다.
+   새 문제풀이 유형은 종료 전에 반드시 이 컴포넌트를 거친다. */
 function FeelingPicker({title,onPick}){
   const OPTS=[['easy','😊','쉬웠어요','bg-green-50 border-green-300 text-green-700'],
               ['normal','😐','적당했어요','bg-blue-50 border-blue-300 text-blue-700'],
@@ -607,7 +608,7 @@ function FeelingPicker({title,onPick}){
   return(<div className="p-4 pb-36 flex flex-col items-center text-center fade-in">
     <div className="text-6xl mt-4 mb-3">🧠</div>
     <div className="text-2xl font-black text-gray-800">{title}</div>
-    <div className="text-lg font-bold text-gray-500 mt-2 mb-6">오늘 푼 문제, 어떠셨나요?</div>
+    <div className="text-lg font-bold text-gray-500 mt-2 mb-6">오늘 푼 문제는 얼마나 어려웠나요?</div>
     <div className="w-full max-w-sm flex flex-col gap-4">
       {OPTS.map(([k,e,l,c])=>(
         <button key={k} onClick={()=>onPick(k)}

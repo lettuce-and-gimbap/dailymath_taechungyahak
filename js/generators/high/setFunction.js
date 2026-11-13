@@ -124,6 +124,93 @@ function gen_truth_set(){
     ]};
 }
 
+// 문제풀이 전용 확장 유형 1: 전체집합에서 여집합 찾기
+function genPracticeSetComplement(){
+  const U=Array.from({length:8},(_,i)=>i+1),A=shuffle([...U]).slice(0,randInt(3,5)).sort((a,b)=>a-b),C=U.filter(x=>!A.includes(x));
+  const correct=`{${C.join(', ')}}`,wrong=[`{${A.join(', ')}}`,`{${U.join(', ')}}`,`{${C.slice(1).join(', ')}}`];
+  const{choices,answer}=makeChoices(correct,wrong);
+  return{topic:'여집합',q:`전체집합 U={${U.join(', ')}}, A={${A.join(', ')}}일 때, A의 여집합 Aᶜ은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `여집합 Aᶜ은 전체집합 U에 속하지만 A에는 속하지 않는 원소입니다.`,
+    `U에서 A의 원소 ${A.join(', ')}를 제외합니다.`,
+    `따라서 Aᶜ={${C.join(', ')}}입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 2: 세 집합에 대한 연산
+function genPracticeSetThreeWay(){
+  const base=Array.from({length:10},(_,i)=>i+1),A=shuffle([...base]).slice(0,5).sort((a,b)=>a-b),B=shuffle([...base]).slice(0,5).sort((a,b)=>a-b),C=shuffle([...base]).slice(0,5).sort((a,b)=>a-b);
+  const op=pick(['(A∪B)∩C','A∩(B∪C)','A−(B∩C)']);
+  const ab=op==='(A∪B)∩C'?[...new Set([...A,...B])].filter(x=>C.includes(x)):op==='A∩(B∪C)'?A.filter(x=>B.includes(x)||C.includes(x)):A.filter(x=>!(B.includes(x)&&C.includes(x)));
+  if(!ab.length)return genPracticeSetThreeWay();
+  const result=`{${ab.join(', ')}}`,wrongs=[`{${A.filter(x=>B.includes(x)&&C.includes(x)).join(', ')}}`,`{${[...new Set([...A,...B,...C])].join(', ')}}`,`{${ab.slice(0,-1).join(', ')}}`];
+  const{choices,answer}=makeChoices(result,wrongs);
+  return{topic:'세 집합의 연산',q:`A={${A.join(', ')}}, B={${B.join(', ')}}, C={${C.join(', ')}}일 때, ${op}은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
+    `괄호 안의 합집합 또는 교집합을 먼저 구한 뒤 바깥 연산을 합니다.`,
+    `${op}의 결과에 해당하는 원소를 순서대로 확인합니다.`,
+    `따라서 ${op}=${result}입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 3: 원소 수 정보로 합집합·차집합의 원소 수 계산
+function genPracticeSetCardinality(){
+  const nA=randInt(5,9),nB=randInt(4,8),both=randInt(1,Math.min(nA,nB)-1),ask=pick(['union','onlyA']);
+  const union=nA+nB-both,ans=ask==='union'?union:nA-both,expr=ask==='union'?'n(A∪B)':'n(A−B)';
+  const{choices,answer}=makeChoices(String(ans),[ans+1,Math.max(0,ans-1),ans+2].map(String));
+  return{topic:'집합의 원소 개수',q:`n(A)=${nA}, n(B)=${nB}, n(A∩B)=${both}일 때, ${expr}의 값은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `두 집합의 합집합 원소 수는 n(A)+n(B)−n(A∩B)입니다.`,
+    ask==='union'?`n(A∪B)=${nA}+${nB}−${both}=${union}입니다.`:`A에만 속하는 원소 수는 n(A)−n(A∩B)=${nA}−${both}=${ans}입니다.`,
+    `따라서 ${expr}=${ans}입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 4: 차집합의 원소 판별
+function genPracticeSetDifferenceMember(){
+  const common=randInt(1,8),aOnly=common+randInt(1,4);let bOnly=common+randInt(1,4);while(bOnly===aOnly)bOnly=common+randInt(1,4);const outside=common+randInt(5,9);
+  const A=[common,aOnly].sort((a,b)=>a-b),B=[common,bOnly].sort((a,b)=>a-b);
+  const vals=shuffle([aOnly,bOnly,common,outside]),choices=vals.map(String),answer=choices.indexOf(String(aOnly));
+  return{topic:'차집합의 원소',q:`A={${A.join(', ')}}, B={${B.join(', ')}}일 때, 다음 중 A−B의 원소인 것은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `A−B는 A에 속하면서 B에는 속하지 않는 원소로 이루어집니다.`,
+    `${common}은 두 집합에 모두 있으므로 제외하고, ${aOnly}은 A에만 속합니다.`,
+    `따라서 정답은 ${aOnly}입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 5: 설문 맥락의 두 집합 원소 수
+function genPracticeSetSurvey(){
+  const both=randInt(8,20),onlyA=randInt(10,25),onlyB=randInt(9,24),total=both+onlyA+onlyB+randInt(2,8),ask=pick(['onlyB','union']);
+  const ans=ask==='onlyB'?onlyB:onlyA+onlyB+both;
+  const{choices,answer}=makeChoices(String(ans),[ans+both,ans-onlyA,ans+1].filter(n=>n>=0).map(String));
+  return{topic:'집합과 설문',q:`학생 ${total}명을 조사했더니 A를 좋아하는 학생은 ${onlyA+both}명, B를 좋아하는 학생은 ${onlyB+both}명, 둘 다 좋아하는 학생은 ${both}명이었다. ${ask==='onlyB'?'B만 좋아하는':'A 또는 B를 좋아하는'} 학생은 몇 명인가?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
+    `두 집합의 겹치는 학생 ${both}명은 두 번 세지 않도록 한 번만 계산합니다.`,
+    ask==='onlyB'?`B만 좋아하는 학생은 ${onlyB+both}−${both}=${onlyB}명입니다.`:`합집합은 A만 ${onlyA}명, 둘 다 ${both}명, B만 ${onlyB}명을 더합니다.`,
+    `따라서 정답은 ${ans}명입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 6: 조건의 진리집합(부등식)
+function genPracticeTruthInequality(){
+  const n=randInt(7,12),k=randInt(3,n-2),U=Array.from({length:n},(_,i)=>i+1),op=pick(['<','≤','>','≥']);
+  const C=U.filter(x=>op==='<'?x<k:op==='≤'?x<=k:op==='>'?x>k:x>=k),correct=`{${C.join(', ')}}`;
+  const near=`{${U.filter(x=>op==='<'?x<=k:op==='≤'?x<k:op==='>'?x>=k:x>k).join(', ')}}`,rev=`{${U.filter(x=>op==='<'?x>k:op==='≤'?x>=k:op==='>'?x<k:x<=k).join(', ')}}`;
+  const{choices,answer}=makeChoices(correct,[near,rev,`{${U.filter(x=>x%2===0).join(', ')}}`]);
+  return{topic:'부등식의 진리집합',q:`전체집합 U={1, 2, …, ${n}}일 때, 조건 “x ${op} ${k}”의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `진리집합은 주어진 조건을 참으로 만드는 U의 원소를 모은 집합입니다.`,
+    `1부터 ${n}까지 중 x ${op} ${k}를 만족하는 수를 고릅니다: ${C.join(', ')||'없음'}.`,
+    `따라서 진리집합은 ${correct}입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 7: 부분집합 관계 판별
+function genPracticeSubsetRelation(){
+  const a=randInt(1,5),A=[a,a+1],B=[a,a+1,a+2,a+3],correct='A⊂B',opts=['B⊂A','A∩B=∅',`A∪B={${a}, ${a+1}, ${a+2}}`];
+  const{choices,answer}=makeChoices(correct,opts);
+  return{topic:'부분집합 관계',q:`A={${A.join(', ')}}, B={${B.join(', ')}}일 때, 다음 중 옳은 것은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `A의 모든 원소 1, 2가 B에도 있으므로 A는 B의 부분집합입니다.`,
+    `B에는 A에 없는 원소 3, 4도 있으므로 B⊂A는 아닙니다.`,
+    `따라서 옳은 설명은 A⊂B입니다.`
+  ]};
+}
+
 // 4-6. 명제의 역/대우  (기출 Q16 패턴)
 // ※ 고졸 검정고시에서 '역'과 '대우'만 출제됨 ('이'는 미출제)
 function gen_proposition(){
@@ -202,6 +289,71 @@ function gen_nec_suff(){
       `두 범위가 완전히 일치하려면 a = ${hi}이어야 합니다.`,
       `따라서 a = ${ans}입니다.`
     ]};
+}
+
+// 문제풀이 전용 확장 유형 8: 조건의 해집합으로 필요·충분조건 판별
+function genPracticeConditionSets(){
+  const pairs=pick([
+    {P:[1,2],Q:[1,2,3],label:'충분조건',why:'p의 해집합이 q의 해집합에 포함됩니다.'},
+    {P:[1,2,3],Q:[1,2],label:'필요조건',why:'q의 해집합이 p의 해집합에 포함됩니다.'},
+    {P:[1,2],Q:[1,2],label:'필요충분조건',why:'두 조건의 해집합이 같습니다.'},
+    {P:[1,2],Q:[2,3],label:'필요조건도 충분조건도 아님',why:'어느 해집합도 다른 해집합에 포함되지 않습니다.'}
+  ]);
+  const names=['충분조건','필요조건','필요충분조건','필요조건도 충분조건도 아님'];
+  const{choices,answer}=makeChoices(pairs.label,names.filter(x=>x!==pairs.label));
+  return{topic:'해집합과 조건',q:`조건 p의 해집합이 {${pairs.P.join(', ')}}, 조건 q의 해집합이 {${pairs.Q.join(', ')}}일 때, p는 q의 어떤 조건인가?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
+    `p가 q의 충분조건이면 p의 해집합이 q의 해집합에 포함됩니다.`,
+    `해집합을 비교하면 ${pairs.why}`,
+    `따라서 p는 q의 ${pairs.label}입니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 9: 명제의 대우 만들기(기출에서 반복되는 역·대우 표현)
+function genPracticeContrapositive(){
+  const item=pick([
+    {p:'자연수 n은 6의 배수이다',q:'자연수 n은 3의 배수이다',np:'자연수 n은 6의 배수가 아니다',nq:'자연수 n은 3의 배수가 아니다'},
+    {p:'정수 n은 짝수이다',q:'정수 n²은 짝수이다',np:'정수 n은 홀수이다',nq:'정수 n²은 홀수이다'},
+    {p:'실수 x는 5보다 크다',q:'실수 x는 2보다 크다',np:'실수 x는 5 이하이다',nq:'실수 x는 2 이하이다'}
+  ]);
+  const original=`${item.p}이면 ${item.q}.`,correct=`${item.nq}이면 ${item.np}.`,reverse=`${item.q}이면 ${item.p}.`,inverse=`${item.np}이면 ${item.nq}.`;
+  const{choices,answer}=makeChoices(correct,[original,reverse,inverse]);
+  return{topic:'명제의 대우',q:`명제 “${original}”의 대우는?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `대우는 두 조건의 순서를 바꾸고 각각을 부정합니다.`,
+    `q가 아니면 p가 아니다의 형태로 바꾸면 “${correct}”입니다.`,
+    `따라서 정답은 ${correct}`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 10: 참·거짓 판단과 반례
+function genPracticePropositionTruth(){
+  const falseItems=[
+    '자연수 n이 3의 배수이면 n은 6의 배수이다.',
+    '정수 n이 홀수이면 n²은 짝수이다.',
+    '자연수 n이 5의 배수이면 n은 10의 배수이다.'
+  ];
+  const trueItems=[
+    '자연수 n이 6의 배수이면 n은 3의 배수이다.',
+    '정수 n²이 짝수이면 n은 짝수이다.',
+    '자연수 n이 4의 배수이면 n은 짝수이다.',
+    '실수 x가 7보다 크면 x는 2보다 크다.'
+  ];
+  const correct=pick(falseItems),wrongs=shuffle([...trueItems]).slice(0,3),{choices,answer}=makeChoices(correct,wrongs);
+  return{topic:'명제의 참·거짓',q:'다음 중 거짓인 명제는? (n은 자연수, 정수 조건은 정수 전체에서 판단한다.)',choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
+    `명제가 거짓임을 보이려면 조건을 만족하지만 결론은 만족하지 않는 반례를 찾습니다.`,
+    `정답 문장에서 조건에 맞는 간단한 수를 대입하면 결론이 성립하지 않음을 확인할 수 있습니다.`,
+    `나머지 명제는 조건이 결론을 보장합니다.`
+  ]};
+}
+
+// 문제풀이 전용 확장 유형 11: 부등식 조건으로 필요·충분조건 판별
+function genPracticeIntervalCondition(){
+  const a=randInt(2,8),d=randInt(-2,2),b=a+d,kind=d===0?'필요충분조건':d>0?'충분조건':'필요조건';
+  const choices=['충분조건','필요조건','필요충분조건','어느 것도 아님'],{choices:ordered,answer}=makeChoices(kind,choices.filter(x=>x!==kind));
+  return{topic:'부등식과 조건',q:`실수 x에 대하여 p: x<${a}, q: x<${b}일 때, p는 q의 어떤 조건인가?`,choices:ordered,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
+    `p가 q의 충분조건인지 보려면 p의 해가 q의 해를 항상 만족하는지 확인합니다.`,
+    d>0?`x<${a}이면 x<${b}이므로 p이면 q입니다.`:d<0?`x<${b}이면 x<${a}이므로 q이면 p입니다.`:`두 조건의 해가 모두 x<${a}로 같습니다.`,
+    `따라서 p는 q의 ${kind}입니다.`
+  ]};
 }
 
 // 4-8. 합성함수 (g∘f)(a)  (기출 Q17 패턴A)
@@ -364,5 +516,5 @@ function genMockSetFunc(){
   return weightedGen(gens.map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));
 }
 // 문제풀이 탭 전용 문항 생성 진입점. MockExamTab/영역 quota/모의고사 상태를 거치지 않는다.
-function genPracticeSetQuestion(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,3],[gen_set_equal_const,2],[gen_truth_set,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
-function genPracticePropositionQuestion(){return weightedGen([[gen_proposition,4],[gen_nec_suff,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}
+function genPracticeSetQuestion(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,2],[gen_set_equal_const,2],[gen_truth_set,2],[genPracticeSetComplement,3],[genPracticeSetThreeWay,2],[genPracticeSetCardinality,3],[genPracticeSetDifferenceMember,3],[genPracticeSetSurvey,2],[genPracticeTruthInequality,2],[genPracticeSubsetRelation,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
+function genPracticePropositionQuestion(){return weightedGen([[gen_proposition,3],[gen_nec_suff,2],[genPracticeConditionSets,3],[genPracticeContrapositive,3],[genPracticePropositionTruth,2],[genPracticeIntervalCondition,3]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}

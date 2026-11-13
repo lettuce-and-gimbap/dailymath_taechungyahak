@@ -92,7 +92,7 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
  return <div className="p-4 space-y-4 pb-36"><div><div className="text-2xl font-black text-gray-800">✏️ 오늘의 문제풀이</div><div className="text-sm font-bold text-gray-500 mt-1">풀고 싶은 유형을 골라 10문제에 도전해 보세요.</div></div>
   {savedData&&<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 font-black text-amber-800">📚 하던 공부 이어서 풀기 ({savedData.correctCount||0}/10) →</button>}
   {groups.map(g=><section key={g.id} className="bg-white rounded-3xl shadow-md overflow-hidden"><button onClick={()=>setSection(section===g.id?null:g.id)} aria-expanded={section===g.id} className="w-full p-5 text-left flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span className="flex-1"><span className="block text-lg font-black text-gray-800">{g.title}</span><span className="block text-sm font-bold text-gray-500">{g.desc}</span></span><span className="font-black text-indigo-500">{section===g.id?'−':'+'}</span></button>
-   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
+   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?((PREVIEW_USERS||[]).includes(userData.name)?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
 }
@@ -100,7 +100,16 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
 /* 집합·명제 연습은 모의고사 화면과 상태를 공유하지 않고 문제풀이 탭 안에서 진행한다. */
 function FocusedSetPractice({topic,userData,onUpdate,onBack}){
   const TOTAL=10, ORD=['①','②','③','④'];
-  const makeQuestion=()=>topic==='집합'?genPracticeSetQuestion():genPracticePropositionQuestion();
+  const seenQuestionsRef=React.useRef(new Set()),lastTopicRef=React.useRef(null);
+  const makeQuestion=()=>{
+    let candidate=null;
+    for(let i=0;i<24;i++){
+      candidate=topic==='집합'?genPracticeSetQuestion():genPracticePropositionQuestion();
+      if(!seenQuestionsRef.current.has(candidate.q)&&candidate.topic!==lastTopicRef.current)break;
+    }
+    if(candidate){seenQuestionsRef.current.add(candidate.q);lastTopicRef.current=candidate.topic;}
+    return candidate;
+  };
   const[q,setQ]=useState(makeQuestion);
   const[index,setIndex]=useState(0);
   const[selected,setSelected]=useState(null);
@@ -110,20 +119,22 @@ function FocusedSetPractice({topic,userData,onUpdate,onBack}){
   const[startAt]=useState(Date.now());
   const[qStartAt,setQStartAt]=useState(Date.now());
   const[saving,setSaving]=useState(false);
-  const savedRef=React.useRef(false);
+  const savedRef=React.useRef(null);
+  const finishingRef=React.useRef(false);
   const correct=records.filter(r=>r.isOk).length;
   const answer=Number(q.answer);
   const finish=async(finalRecords)=>{
-    if(savedRef.current)return;
-    savedRef.current=true;setSaving(true);
+    if(finishingRef.current)return;
+    finishingRef.current=true;setSaving(true);
     const correctCount=finalRecords.filter(r=>r.isOk).length,wrongCount=finalRecords.length-correctCount;
     const today=todayStr(),type=`${topic} 문제풀이`;
     const log={studentName:userData.name,date:today,time:timeStr(),type,score:`${correctCount} / ${finalRecords.length}`,questions:finalRecords,totalSec:Math.round((Date.now()-startAt)/1000),feeling:null};
     const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,
       todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,
       lastDate:today,activeDates:[...new Set([...(userData.activeDates||[]),today])],logs:[log,...(userData.logs||[]).slice(0,49)]};
-    try{await saveUser(upd);await saveLog(log);onUpdate(upd);}catch(e){savedRef.current=false;alert('기록 저장에 실패했어요. 인터넷 연결을 확인해주세요.');}
-    setSaving(false);
+    try{await saveUser(upd);const id=await saveLog(log);savedRef.current={id,upd};onUpdate(upd);}
+    catch(e){finishingRef.current=false;alert('기록 저장에 실패했어요. 인터넷 연결을 확인해주세요.');}
+    setSaving(false);setPhase('reflection');
   };
   const reveal=()=>{
     if(selected===null||revealed)return;
@@ -134,10 +145,12 @@ function FocusedSetPractice({topic,userData,onUpdate,onBack}){
     const finalRecords=[...records,{qTxt:q.q,qFull:q.q,topic:q.topic,choices:q.choices,answerIdx:answer,
       uAns:q.choices[selected],cAns:q.choices[answer],isOk:selected===answer,
       timeSec:Math.round((Date.now()-qStartAt)/1000),explanation:Array.isArray(q.sol)?q.sol.join('\n'):easyExplanation(q),meta:q.meta}];
-    if(index+1>=TOTAL){setRecords(finalRecords);setPhase('result');finish(finalRecords);return;}
+    if(index+1>=TOTAL){setRecords(finalRecords);setPhase('saving');finish(finalRecords);return;}
     setRecords(finalRecords);setQ(makeQuestion());setIndex(index+1);setSelected(null);setRevealed(false);setQStartAt(Date.now());
   };
-  if(phase==='result')return <div className="p-4 pb-36 space-y-4"><div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-100 text-center"><div className="text-4xl mb-2">🎯</div><h2 className="text-2xl font-black text-gray-800">{topic} 연습 완료</h2><p className="text-lg font-bold text-indigo-600 mt-2">{correct}/{TOTAL} 정답</p><p className="text-sm text-gray-500 mt-1">{saving?'학습 기록을 저장하고 있어요.':'학습 기록이 저장되었습니다.'}</p></div><button onClick={onBack} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black">문제풀이 메뉴로</button></div>;
+  if(phase==='saving')return <div className="p-4 pb-36"><div className="bg-white rounded-3xl p-6 shadow-sm text-center font-black text-gray-600">학습 기록을 저장하고 있어요…</div></div>;
+  if(phase==='reflection')return <FeelingPicker title={`${topic} 연습 완료 · ${correct}/${TOTAL} 정답`} onPick={async feeling=>{setPhase('result');if(savedRef.current){const upd=await patchLogFeeling(savedRef.current.id,savedRef.current.upd,feeling);onUpdate(upd);}}}/>;
+  if(phase==='result')return <div className="p-4 pb-36 space-y-4"><div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-100 text-center"><div className="text-4xl mb-2">🎯</div><h2 className="text-2xl font-black text-gray-800">{topic} 연습 완료</h2><p className="text-lg font-bold text-indigo-600 mt-2">{correct}/{TOTAL} 정답</p><p className="text-sm text-gray-500 mt-1">학습 기록이 저장되었습니다.</p></div><button onClick={onBack} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black">문제풀이 메뉴로</button></div>;
   return <div className="p-4 pb-36 space-y-4">
     <div className="flex items-center gap-3"><button onClick={onBack} className="w-11 h-11 rounded-2xl bg-white shadow-sm text-gray-500 font-black">←</button><div className="flex-1"><div className="text-lg font-black text-gray-800">{topic} 문제풀이</div><div className="text-sm font-bold text-gray-500">문제 {index+1}/{TOTAL}</div></div><div className="text-sm font-black text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl">{correct+(revealed&&selected===answer?1:0)}/{TOTAL}</div></div>
     <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 rounded-full transition-all" style={{width:`${((index+(revealed?1:0))/TOTAL)*100}%`}}/></div>

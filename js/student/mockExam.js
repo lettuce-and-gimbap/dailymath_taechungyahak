@@ -326,7 +326,7 @@ return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {sr
       </div>)}
       {isGraded&&!feelingDone&&(<div className="bg-white p-6 rounded-3xl shadow-sm text-center border-2 border-indigo-100 fade-in">
         <div className="text-2xl font-black text-indigo-700 mb-1">🎯 {correctCount}/{questionCount} 정답!</div>
-        <div className="text-sm text-gray-500 mb-4">이번 모의고사는 어떠셨나요? 기록은 저장됐어요.</div>
+        <div className="text-sm text-gray-500 mb-4">이번 모의고사는 얼마나 어려웠나요? 기록은 저장됐어요.</div>
         <div className="flex gap-2 justify-center">
           <button onClick={()=>chooseFeeling('easy')} className="flex-1 py-4 bg-green-100 text-green-700 rounded-2xl font-black active:scale-95 transition-transform">쉬웠어요 😊</button>
           <button onClick={()=>chooseFeeling('normal')} className="flex-1 py-4 bg-blue-100 text-blue-700 rounded-2xl font-black active:scale-95 transition-transform">적당해요 😐</button>

@@ -10,16 +10,16 @@ var ADMIN_NAMES=['박소명','이은희','최시은','윤새별','신현섭','�
 
 var DAY_KO=['월','화','수','목','금','토','일'];
 
-/* 같은 사람이 선생님 계정과 학생 계정을 둘 다 가진 경우, 로그아웃 없이 바로 오갈 수 있게 하는 짝.
-   [선생님 이름, 학생 이름] 순서로 등록한다. 두 이름 모두 Firestore users 에 실제 계정이 있어야 한다.
-   quickSwitchTarget(name) 은 그 이름의 짝(반대쪽)을 돌려주고, 등록되지 않은 이름이면 null. */
-var QUICK_SWITCH_PAIRS=[['박소명','박소명_학생']];
+/* 같은 운영자가 교사·파일럿·테스트 학생 화면을 빠르게 확인하는 계정 그룹.
+   그룹 순서대로 전환하며, 계정은 Firestore users 에 미리 만들어져 있어야 한다. */
+var QUICK_SWITCH_GROUPS=[['박소명','박소명_학생','테스트']];
+var QUICK_SWITCH_PAIRS=QUICK_SWITCH_GROUPS; // 기존 툴팁/대시보드 참조 호환
 /* 새 유형을 공개 전에 먼저 풀어 볼 수 있는 계정 (선생님의 학생 확인용 계정). 좌표 탭 openAt 참고 */
-var PREVIEW_USERS=['박소명_학생'];
+var PREVIEW_USERS=['박소명_학생','테스트'];
 function quickSwitchTarget(name){
-  for(const[teacher,student]of QUICK_SWITCH_PAIRS){
-    if(name===teacher)return student;
-    if(name===student)return teacher;
+  for(const group of QUICK_SWITCH_GROUPS){
+    const i=group.indexOf(name);
+    if(i>=0)return group[(i+1)%group.length];
   }
   return null;
 }
