@@ -10,6 +10,13 @@
 function _sv(W,H,body){return`<svg class="exfig" viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto"><rect width="${W}" height="${H}" fill="#fff"/>${body}</svg>`;}
 function _fsT(x,y,s,o){o=o||{};const fs=o.size||20;
   return`<text x="${x}" y="${y}" font-size="${fs}" text-anchor="${o.anchor||'middle'}" font-family="${o.sans?EXF_SANS:EXF_SERIF}" ${o.bold?'font-weight="700"':''} ${o.italic?'font-style="italic"':''} ${o.fill?`fill="${o.fill}"`:''}>${o.math?exfMath(s,fs):s}</text>`;}
+function _fsWrap(x,y,value,maxChars,o){
+  const words=String(value).split(/\s+/),lines=[];let line='';
+  words.forEach(word=>{if(line&&line.length+word.length+1>maxChars){lines.push(line);line=word;}else line+=(line?' ':'')+word;});
+  if(line)lines.push(line);
+  const fs=(o&&o.size)||17,step=fs+5,top=y-(lines.length-1)*step/2;
+  return`<text x="${x}" y="${top}" font-size="${fs}" text-anchor="middle" font-family="${o&&o.sans?EXF_SANS:EXF_SERIF}" ${o&&o.bold?'font-weight="700"':''}>${lines.map((t,i)=>`<tspan x="${x}" dy="${i?step:0}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</tspan>`).join('')}</text>`;
+}
 function _ln(x1,y1,x2,y2,o){o=o||{};return`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o.c||'#111'}" stroke-width="${o.w||2.2}" ${o.dash?`stroke-dasharray="${o.dash}"`:''}/>`;}
 /* 길이 이름표 : 두 점 사이 바깥쪽에 점선 호와 글자 (기출 그림 방식) */
 function _dimArc(x1,y1,x2,y2,label,side){
@@ -219,12 +226,16 @@ Object.assign(EXAM_FIG,{
   },
   /* 메뉴판 · 채소와 과일 · 옷 : 묶음 이름과 항목 */
   menu(g){
-    const gw=150,W=g.groups.length*(gw+14)+10;let s='',x=10;
-    const H=60+Math.max(...g.groups.map(([,it])=>it.length))*28;
-    g.groups.forEach(([name,items])=>{s+=`<rect x="${x}" y="20" width="${gw}" height="${H-30}" rx="8" fill="#fff" stroke="#555" stroke-width="1.6"/>`;
-      s+=`<rect x="${x+gw/2-36}" y="8" width="72" height="26" rx="6" fill="#d9dce2" stroke="#555"/>`+_fsT(x+gw/2,27,name,{sans:true,bold:true,size:16});
-      items.forEach((it,i)=>{s+=_fsT(x+gw/2,62+i*28,it,{sans:true,size:17});});x+=gw+14;});
-    return _sv(W,H,s);
+    const groups=g.groups||[],widths=groups.map(([name,items])=>Math.max(120,Math.min(220,Math.max(String(name).length,...items.map(v=>String(v).length))*10+28)));
+    const gap=14,W=widths.reduce((a,b)=>a+b,0)+Math.max(0,groups.length-1)*gap+20;let s='',x=10;
+    const lineCount=(v,n)=>Math.max(1,Math.ceil(String(v).length/n));
+    const rowHeights=groups.map(([,items],j)=>items.reduce((sum,it)=>sum+Math.max(1,lineCount(it,Math.floor((widths[j]-20)/9)))*25,0));
+    const H=66+Math.max(0,...rowHeights);
+    groups.forEach(([name,items],j)=>{const gw=widths[j],cx=x+gw/2,maxChars=Math.max(8,Math.floor((gw-20)/9));
+      s+=`<rect x="${x}" y="20" width="${gw}" height="${H-30}" rx="8" fill="#fff" stroke="#555" stroke-width="1.6"/>`;
+      s+=`<rect x="${x+8}" y="8" width="${gw-16}" height="30" rx="6" fill="#d9dce2" stroke="#555"/>`+_fsWrap(cx,27,name,maxChars,{sans:true,bold:true,size:15});
+      let yy=62;items.forEach(it=>{const lines=lineCount(it,maxChars);s+=_fsWrap(cx,yy,it,maxChars,{sans:true,size:16});yy+=lines*25;});x+=gw+gap;});
+    return _sv(W,H,s).replace('style="max-width:100%;height:auto"','style="max-width:none;height:auto"');
   },
   /* 주사위 */
   dice(g){

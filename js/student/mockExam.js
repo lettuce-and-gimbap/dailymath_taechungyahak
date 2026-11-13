@@ -9,7 +9,7 @@
    q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) · q.bigTex(가운데 큰 식, 나눗셈 연습) 를 읽는다.
    선생님 화면(teacher/logQView.js)도 이 컴포넌트를 그대로 쓴다 — 학생이 본 화면과 같게. */
 var MOCK_ORD=['①','②','③','④'];
-var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:keep-all}
+var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:normal;overflow-wrap:anywhere;min-width:0}.exq svg,.exq img{max-width:100%;height:auto}.mock-fig-menu{max-width:100%;overflow-x:auto;overflow-y:hidden}.exq .mock-fig-menu svg{max-width:none}
 .extbl{border-collapse:collapse;margin:0 auto;font-size:1rem}.extbl th,.extbl td{border:1.5px solid #9aa1ad;padding:4px 12px;text-align:center}
 .extbl th{background:#eceef2;font-weight:700}.extbl tr.sum td{background:#eceef2;font-weight:700}`;
 function assignMockQuestionNumbers(pool,examLevel,examMode){
@@ -62,7 +62,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
     {q.table&&<div className="overflow-x-auto mb-3"><table className="extbl">
       <tbody>{q.table.head&&<tr>{q.table.head.map((h,i)=><th key={i} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(h))}}/>)}</tr>}
       {q.table.rows.map((r,i)=><tr key={i} className={q.table.sumRow&&i===q.table.rows.length-1?'sum':''}>{r.map((c,j)=><td key={j} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(c))}}/>)}</tr>)}</tbody></table></div>}
-    {fig?<div className="flex justify-center mb-3" dangerouslySetInnerHTML={{__html:fig}}/>
+    {fig?<div className={`flex justify-center mb-3 ${g&&g.type==='menu'?'mock-fig-menu':''}`} dangerouslySetInnerHTML={{__html:fig}}/>
       :(g&&!sys&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>)}
     {q.choices.length>0&&<div className={`grid gap-2 ${cols}`}>
       {q.choices.map((ch,j)=>{
@@ -234,7 +234,7 @@ function MockExamTab({userData,onUpdate}){
     const GRADE_COLOR={0:'bg-gray-200',1:'bg-orange-400',2:'bg-lime-400',3:'bg-green-500',4:'bg-emerald-500'};
     const getGrade=(st)=>{if(st.t===0)return 0;const r=st.c/st.t;return r<0.4?1:r<0.7?2:r<0.9?3:4;};
     const ICONS=['🌱','🌱','🌿','🌳','🍎'];
-    return(<div className="p-4 pb-36 space-y-4 fade-in">
+    return(<div className="p-4 pb-36 space-y-4 fade-in min-w-0">
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
         <button onClick={()=>setExamLevel(null)} className="text-sm font-bold opacity-90 mb-3">← 학력 다시 선택</button>
         <h2 className="text-xl font-black mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
@@ -299,7 +299,7 @@ function MockExamTab({userData,onUpdate}){
       </div>
       {questions.map((q,i)=>{
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
-        return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+        return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 min-w-0 overflow-visible">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0">{q.examNo||i+1}</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{q.topic}</span>

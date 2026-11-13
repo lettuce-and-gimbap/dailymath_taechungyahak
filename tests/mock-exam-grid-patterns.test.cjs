@@ -28,6 +28,10 @@ assert(highCircle&&!hasGrid(highCircle),'high school circle equation must not sh
 assert(highCircleTangent&&!hasGrid(highCircleTangent),'high school circle tangent must not show a unit grid');
 assert(middlePoint&&hasGrid(middlePoint),'middle school coordinate reading must show its unit grid');
 assert(middleSegment&&hasGrid(middleSegment),'middle school coordinate-plane division must show its unit grid');
+const longMenu=ctx.examFigSVG({graph:{type:'menu',groups:[['선택 가능한 항목',['첫 번째 선택 항목','두 번째 선택 항목','세 번째 선택 항목']],['이동 경로',['학교 정문에서 도서관으로 가는 길','학교 정문에서 운동장으로 가는 길']]]}});
+assert(longMenu&&longMenu.includes('<tspan'),'long counting labels should wrap into readable SVG lines');
+const menuWidth=Number(longMenu.match(/viewBox="0 0 (\d+(?:\.\d+)?) /)[1]);
+assert(menuWidth>300,'counting menu should allocate enough width for long labels instead of clipping them');
 
 const orientations=new Set();
 for(let i=0;i<200;i++){
@@ -40,6 +44,8 @@ assert(orientations.has('h')&&orientations.has('v'),'circle tangent bank should 
 
 const student=fs.readFileSync('js/student/mockExam.js','utf8');
 const teacher=fs.readFileSync('js/teacher/worksheet.js','utf8');
+assert(student.includes('overflow-wrap:anywhere')&&student.includes('min-w-0 overflow-visible'),'student mock question cards should allow long question content to wrap');
+assert(teacher.includes('grid-template-columns:repeat(${cols},minmax(0,1fr))')&&teacher.includes('.q svg{display:block;max-width:100%'),'teacher mock print should constrain figures to each question column');
 assert(student.includes("examMode==='random'?20:10"),'student full/weak counts');
 assert(teacher.includes("examMode==='weak'?10:20"),'teacher full/weak counts');
 assert(teacher.includes('문제지 PDF 저장 / 인쇄')&&teacher.includes('답지 포함 PDF / 인쇄'),'teacher PDF and answer print actions');

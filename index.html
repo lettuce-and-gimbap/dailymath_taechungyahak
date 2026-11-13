@@ -9783,6 +9783,13 @@ function examChoiceItems(q){return(q.choicePic==='ineq'&&exfIneqChoices(q.choice
 function _sv(W,H,body){return`<svg class="exfig" viewBox="0 0 ${W} ${H}" width="${W}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto"><rect width="${W}" height="${H}" fill="#fff"/>${body}</svg>`;}
 function _fsT(x,y,s,o){o=o||{};const fs=o.size||20;
   return`<text x="${x}" y="${y}" font-size="${fs}" text-anchor="${o.anchor||'middle'}" font-family="${o.sans?EXF_SANS:EXF_SERIF}" ${o.bold?'font-weight="700"':''} ${o.italic?'font-style="italic"':''} ${o.fill?`fill="${o.fill}"`:''}>${o.math?exfMath(s,fs):s}</text>`;}
+function _fsWrap(x,y,value,maxChars,o){
+  const words=String(value).split(/\s+/),lines=[];let line='';
+  words.forEach(word=>{if(line&&line.length+word.length+1>maxChars){lines.push(line);line=word;}else line+=(line?' ':'')+word;});
+  if(line)lines.push(line);
+  const fs=(o&&o.size)||17,step=fs+5,top=y-(lines.length-1)*step/2;
+  return`<text x="${x}" y="${top}" font-size="${fs}" text-anchor="middle" font-family="${o&&o.sans?EXF_SANS:EXF_SERIF}" ${o&&o.bold?'font-weight="700"':''}>${lines.map((t,i)=>`<tspan x="${x}" dy="${i?step:0}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</tspan>`).join('')}</text>`;
+}
 function _ln(x1,y1,x2,y2,o){o=o||{};return`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o.c||'#111'}" stroke-width="${o.w||2.2}" ${o.dash?`stroke-dasharray="${o.dash}"`:''}/>`;}
 /* 길이 이름표 : 두 점 사이 바깥쪽에 점선 호와 글자 (기출 그림 방식) */
 function _dimArc(x1,y1,x2,y2,label,side){
@@ -9992,12 +9999,16 @@ Object.assign(EXAM_FIG,{
   },
   /* 메뉴판 · 채소와 과일 · 옷 : 묶음 이름과 항목 */
   menu(g){
-    const gw=150,W=g.groups.length*(gw+14)+10;let s='',x=10;
-    const H=60+Math.max(...g.groups.map(([,it])=>it.length))*28;
-    g.groups.forEach(([name,items])=>{s+=`<rect x="${x}" y="20" width="${gw}" height="${H-30}" rx="8" fill="#fff" stroke="#555" stroke-width="1.6"/>`;
-      s+=`<rect x="${x+gw/2-36}" y="8" width="72" height="26" rx="6" fill="#d9dce2" stroke="#555"/>`+_fsT(x+gw/2,27,name,{sans:true,bold:true,size:16});
-      items.forEach((it,i)=>{s+=_fsT(x+gw/2,62+i*28,it,{sans:true,size:17});});x+=gw+14;});
-    return _sv(W,H,s);
+    const groups=g.groups||[],widths=groups.map(([name,items])=>Math.max(120,Math.min(220,Math.max(String(name).length,...items.map(v=>String(v).length))*10+28)));
+    const gap=14,W=widths.reduce((a,b)=>a+b,0)+Math.max(0,groups.length-1)*gap+20;let s='',x=10;
+    const lineCount=(v,n)=>Math.max(1,Math.ceil(String(v).length/n));
+    const rowHeights=groups.map(([,items],j)=>items.reduce((sum,it)=>sum+Math.max(1,lineCount(it,Math.floor((widths[j]-20)/9)))*25,0));
+    const H=66+Math.max(0,...rowHeights);
+    groups.forEach(([name,items],j)=>{const gw=widths[j],cx=x+gw/2,maxChars=Math.max(8,Math.floor((gw-20)/9));
+      s+=`<rect x="${x}" y="20" width="${gw}" height="${H-30}" rx="8" fill="#fff" stroke="#555" stroke-width="1.6"/>`;
+      s+=`<rect x="${x+8}" y="8" width="${gw-16}" height="30" rx="6" fill="#d9dce2" stroke="#555"/>`+_fsWrap(cx,27,name,maxChars,{sans:true,bold:true,size:15});
+      let yy=62;items.forEach(it=>{const lines=lineCount(it,maxChars);s+=_fsWrap(cx,yy,it,maxChars,{sans:true,size:16});yy+=lines*25;});x+=gw+gap;});
+    return _sv(W,H,s).replace('style="max-width:100%;height:auto"','style="max-width:none;height:auto"');
   },
   /* 주사위 */
   dice(g){
@@ -10923,91 +10934,42 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
   const praise=todayLessons===0?'시작이 반이에요! 도전해봐요 💪':todayLessons<goal?`정말 잘하고 있어요! 조금만 더! 🌟`:'🎊 오늘 목표 달성! 대단해요!';
   const[showArchive,setShowArchive]=useState(false);
 
-  // 2. 🌳 나의 수학 나무 숲 데이터 집계 (검정고시 5대 영역)
-  const treeStats = {
-  '기초 연산': { c: 0, t: 0, desc: '덧셈, 뺄셈, 곱셈, 나눗셈' },
-  '약수와 배수': { c: 0, t: 0, desc: '약수, 배수, 최대공약수, 최소공배수' },
-  '문장제 문제': { c: 0, t: 0, desc: '실생활 문제 읽고 풀기' },
-  '도형과 좌표': { c: 0, t: 0, desc: '도형, 좌표, 대칭이동' },
-  '검정고시 수학': { c: 0, t: 0, desc: '방정식, 함수, 확률, 통계' }
-};
-
-  // 학습 로그를 순회하며 각 문항별로 카테고리에 맞게 정답(c)과 전체(t) 누적
-  logs.forEach(log => {
-    if(log.questions) {
-      log.questions.forEach(q => {
-        const type = (q.meta?.type || log.type || '').toLowerCase();
-        const cat = (q.meta?.category || '').toLowerCase();
-
-        // 영역 매핑 분류
-	if(type.includes('나눗셈') || cat === 'div' || cat === 'math') {
-  treeStats['기초 연산'].t++;
-  if(q.isOk) treeStats['기초 연산'].c++;
-}
-else if(type.includes('약수') || type.includes('배수') || type.includes('gcd') || type.includes('lcm')) {
-  treeStats['약수와 배수'].t++;
-  if(q.isOk) treeStats['약수와 배수'].c++;
-}
-else if(type.includes('스토리') || type.includes('문장제') || type.includes('학습지')) {
-  treeStats['문장제 문제'].t++;
-  if(q.isOk) treeStats['문장제 문제'].c++;
-}
-else if(type.includes('기하') || type.includes('도형') || cat === 'geometry' || type.includes('대칭') || type.includes('거리') || type.includes('원')) {
-  treeStats['도형과 좌표'].t++;
-  if(q.isOk) treeStats['도형과 좌표'].c++;
-}
-else if(type.includes('다항식') || type.includes('방정식') || type.includes('함수') || type.includes('집합') || type.includes('확률') || type.includes('통계') || type.includes('모의고사') || type.includes('검정고시') || cat === 'exam5' || cat === 'poly' || cat === 'eq' || cat === 'ineq' || cat === 'set' || cat === 'func' || cat === 'stat') {
-  treeStats['검정고시 수학'].t++;
-  if(q.isOk) treeStats['검정고시 수학'].c++;
-}
-
-      });
-    }
+  // 토픽 기준의 3단 영역 지도. 알 수 없는 유형은 기타에 남겨 분모에서 누락시키지 않는다.
+  const treeDomains=[
+    {key:'calculation',label:'계산의 힘',emoji:'🧮',color:'indigo',match:(t,c)=>c==='div'||c==='math'||/연산|나눗셈|계산/.test(t)},
+    {key:'number',label:'수와 식',emoji:'🔢',color:'blue',match:(t,c)=>/약수|배수|소인수|정수|유리수|다항식|인수분해|복소수/.test(t)||['poly','number'].includes(c)},
+    {key:'equation',label:'방정식과 부등식',emoji:'⚖️',color:'violet',match:(t,c)=>/방정식|부등식/.test(t)||['eq','ineq','equation'].includes(c)},
+    {key:'function',label:'함수와 그래프',emoji:'📈',color:'cyan',match:(t,c)=>/함수|그래프/.test(t)||['func','function'].includes(c)},
+    {key:'geometry',label:'도형과 좌표',emoji:'📐',color:'emerald',match:(t,c)=>/기하|도형|좌표|대칭|거리|원|직선/.test(t)||c==='geometry'},
+    {key:'set',label:'집합과 명제',emoji:'🧩',color:'amber',match:(t,c)=>/집합|명제/.test(t)||c==='set'},
+    {key:'statistics',label:'확률과 통계',emoji:'🎲',color:'rose',match:(t,c)=>/확률|통계|순열|조합/.test(t)||c==='stat'},
+    {key:'word',label:'문장제',emoji:'📖',color:'orange',match:(t)=>/문장제|스토리|실생활/.test(t)},
+    {key:'other',label:'탐험 중인 유형',emoji:'🌿',color:'slate',match:()=>true}
+  ];
+  const treeStats=Object.fromEntries(treeDomains.map(d=>[d.key,{total:0,correct:0,byDate:{}}]));
+  const treeQuestions=[];
+  logs.forEach(log=>(log.questions||[]).forEach(q=>{
+    const topic=String(q.meta?.type||q.topic||log.type||'기타'),cat=String(q.meta?.category||'').toLowerCase();
+    const domain=treeDomains.find(d=>d.match(topic.toLowerCase(),cat))||treeDomains[treeDomains.length-1];
+    const date=String(log.date||'').slice(0,10);const stat=treeStats[domain.key];
+    stat.total++;if(q.isOk)stat.correct++;
+    if(date){if(!stat.byDate[date])stat.byDate[date]={total:0,correct:0};stat.byDate[date].total++;if(q.isOk)stat.byDate[date].correct++;}
+    treeQuestions.push({q,topic,domain,date});
+  }));
+  // 같은 문항/토픽에서 오답 후 정답으로 전환된 건만 '되찾음'으로 센다.
+  const attempts=new Map();let recovered=0,recoveredThisWeek=0;
+  const ordered=[...treeQuestions].reverse();
+  const mondayKey=getKSTMonday();
+  ordered.forEach(({q,topic,date})=>{
+    const key=String(q.qTxt||q.qFull||q.topic||topic).trim().toLowerCase();
+    if(!key)return;
+    const prev=attempts.get(key)||false;
+    if(q.isOk&&prev){recovered++;if(date&&date>=mondayKey)recoveredThisWeek++;attempts.set(key,false);}
+    else if(!q.isOk)attempts.set(key,true);
   });
-
-  // 3. 개별 나무 렌더링 컴포넌트
-  const renderTree = (title, stat) => {
-    const rate = stat.t === 0 ? 0 : Math.round((stat.c / stat.t) * 100);
-    let icon, message, bgColor, borderColor;
-
-    // 성장 4단계 로직 및 따뜻한 동기부여 메시지
-    if (stat.t === 0) {
-       icon = "🌱"; 
-       message = "아직 시작하지 않은 영역이에요. 첫 씨앗을 심어볼까요?"; 
-       bgColor = "bg-gray-50"; borderColor = "border-gray-200";
-    } else if (rate < 40) {
-       icon = "🌱"; 
-       message = "따뜻한 햇살과 물이 조금 더 필요해요! 오답은 나무의 거름이 된답니다."; 
-       bgColor = "bg-amber-50"; borderColor = "border-amber-200";
-    } else if (rate < 75) {
-       icon = "🌿"; 
-       message = "뿌리를 내리고 줄기가 쑥쑥 자라고 있어요! 정말 훌륭한 발전입니다."; 
-       bgColor = "bg-lime-50"; borderColor = "border-lime-200";
-    } else if (rate < 90) {
-       icon = "🌳"; 
-       message = "잎이 무성해졌어요! 개념을 거의 완벽하게 이해하셨네요. 화이팅!"; 
-       bgColor = "bg-green-50"; borderColor = "border-green-300";
-    } else {
-       icon = "🍎"; 
-       message = "와! 꾸준히 노력하신 덕분에 탐스러운 열매가 맺혔어요! 완벽합니다."; 
-       bgColor = "bg-emerald-50"; borderColor = "border-emerald-400";
-    }
-
-    return (
-      <div key={title} className={`flex items-center gap-4 p-4 rounded-2xl border-2 shadow-sm mb-3 ${bgColor} ${borderColor} transition-all hover:scale-[1.02]`}>
-         <div className="text-5xl drop-shadow-md">{icon}</div>
-         <div className="flex-1">
-            <div className="text-sm font-black text-gray-800">{title} <span className="text-xs font-bold text-gray-500 ml-1">({stat.desc})</span></div>
-            <div className="text-xs font-bold text-gray-600 mt-1 leading-snug break-keep">{message}</div>
-            {stat.t > 0 && (
-              <div className="mt-2.5 w-full bg-white/60 rounded-full h-2.5 overflow-hidden border border-black/10">
-                <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" style={{width: `${rate}%`}}></div>
-              </div>
-            )}
-         </div>
-      </div>
-    );
-  };
+  const activeTotal=new Set([...(activeDates||[]),...logs.map(l=>String(l.date||'').slice(0,10)).filter(Boolean)]).size;
+  const domainStage=stat=>stat.total===0?{icon:'🌱',label:'첫 씨앗'}:stat.correct/stat.total>=.9?{icon:'🍎',label:'열매'}:stat.correct/stat.total>=.75?{icon:'🌳',label:'자라는 나무'}:stat.correct/stat.total>=.4?{icon:'🌿',label:'새싹'}:{icon:'🌱',label:'씨앗'};
+  const colorClasses={indigo:'from-indigo-400 to-indigo-600',blue:'from-blue-400 to-blue-600',violet:'from-violet-400 to-violet-600',cyan:'from-cyan-400 to-cyan-600',emerald:'from-emerald-400 to-emerald-600',amber:'from-amber-400 to-amber-600',rose:'from-rose-400 to-rose-600',orange:'from-orange-400 to-orange-600',slate:'from-slate-400 to-slate-600'};
 
   const[feedbackMsg,setFeedbackMsg]=React.useState('');const[fbSent,setFbSent]=React.useState(false);
   const[sentFbRefresh,setSentFbRefresh]=React.useState(0);
@@ -11147,20 +11109,37 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
       </div>
     )}
 
-    {/* 🌟 나의 수학 나무 숲 (접었다 펼치기) 🌟 */}
-    {(()=>{const[treeOpen,setTreeOpen]=React.useState(false);return(
+    {/* 나의 수학 나무 숲: 누적 성장 배지와 세분 영역 지도 */}
     <div className="bg-white rounded-3xl shadow-md border-t-4 border-t-green-400 overflow-hidden">
-      <button onClick={()=>setTreeOpen(o=>!o)} className="w-full flex items-center justify-between px-5 py-4">
-        <div className="text-sm font-black text-green-700 uppercase tracking-wide">🌳 나의 수학 나무 숲</div>
-        <span className="text-green-500 font-bold text-lg">{treeOpen?'▲':'▼'}</span>
-      </button>
-      {treeOpen&&<div className="px-5 pb-5">
-        <p className="text-xs text-gray-500 font-bold mb-4">매일 꾸준히 문제를 풀며 검정고시 5대 영역의 나무를 예쁘게 키워보세요!</p>
-        <div className="flex flex-col">
-          {Object.entries(treeStats).map(([title, stat]) => renderTree(title, stat))}
+      <div className="px-5 pt-5 pb-3 bg-gradient-to-br from-green-50 via-white to-emerald-50">
+        <div className="flex items-start gap-3">
+          <div className="text-4xl">🌳</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-base font-black text-green-800">나의 수학나무 숲</div>
+            <div className="text-xs text-green-700 mt-1">오늘까지 {treeQuestions.length}문제를 만나고 {activeTotal}일 함께했어요.</div>
+          </div>
+          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-white text-green-700 border border-green-100">성장 중</span>
         </div>
-      </div>}
-    </div>)})()}
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {[["🌱",treeQuestions.length,"만난 문제"],["🔁",recovered,"되찾은 문제"],["⭐",activeTotal,"함께한 날"]].map(([ico,val,label])=><div key={label} className="rounded-2xl bg-white/90 border border-green-100 p-2.5 text-center shadow-sm"><div className="text-[10px] text-gray-500 font-bold">{ico} {label}</div><div className="text-xl text-green-800 font-black mt-0.5">{val}<span className="text-xs ml-0.5">개</span></div>{label==='되찾은 문제'&&<div className="text-[9px] text-green-600 font-bold">이번 주 +{recoveredThisWeek}</div>}</div>)}
+        </div>
+      </div>
+      <div className="px-5 pb-5 pt-3">
+        <div className="flex items-center justify-between mb-2"><div className="text-xs font-black text-gray-700">배움의 영역 지도</div><div className="text-[10px] text-gray-400">색 막대 = 지금까지 정답 비율</div></div>
+        <div className="space-y-2">
+          {treeDomains.map(d=>{
+            const st=treeStats[d.key],rate=st.total?Math.round(st.correct/st.total*100):0,stage=domainStage(st);
+            return <div key={d.key} className="rounded-2xl border border-gray-100 bg-white px-3 py-2.5">
+              <div className="flex items-center gap-2"><span className="text-lg">{d.emoji}</span><span className="text-xs font-black text-gray-800 flex-1">{d.label}</span><span className="text-[10px] text-gray-500">{stage.icon} {stage.label}</span></div>
+              <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full rounded-full bg-gradient-to-r ${colorClasses[d.color]}`} style={{width:`${rate}%`}}/></div><span className="w-16 text-right text-[10px] font-bold text-gray-500">{st.total?`${st.correct}/${st.total} · ${rate}%`:'아직 기록 없음'}</span></div>
+              {st.total>0&&<div className="mt-1 text-[9px] text-gray-400">{st.total<5?'기록이 더 쌓이면 변화가 또렷해져요':`최근 기록 ${Math.min(5,st.total)}회 중 ${(()=>{const recent=treeQuestions.filter(x=>x.domain.key===d.key).slice(0,5);return recent.filter(x=>x.q.isOk).length;})()}회 정답`}</div>}
+            </div>;
+          })}
+        </div>
+        <div className="mt-3 rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-[10px] text-amber-800 leading-relaxed"><b>🌟 다음 성장 미션</b><br/>{treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length?`기록이 적은 ${treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length}개 영역에서 문제를 더 만나봐요.`:treeQuestions.length===0?'첫 문제를 풀어 나무에 씨앗을 심어봐요!':'가장 많이 자란 영역의 다음 유형에도 도전해봐요!'} 오답은 성장 과정의 일부이고, 되찾은 문제는 실력이 된 순간이에요.</div>
+        <div className="mt-2 text-[9px] text-gray-400 leading-relaxed">정답 비율은 저장된 전체 풀이 기준의 참고값이에요. 영역 분류는 문항 토픽 이름과 범주에 따르며, ‘되찾은 문제’는 같은 문항 기록에서 오답 뒤 정답으로 바뀐 경우만 셉니다.</div>
+      </div>
+    </div>
 
     {/* 학생 의견 보내기 */}
     <div className="bg-white rounded-3xl p-5 shadow-md">
@@ -13135,7 +13114,7 @@ function HistoryTab({userData, feedbacks}){
    q.table(표) · q.box(자료 상자) · q.choicePic('ineq' = 보기를 수직선 그림으로) · q.bigTex(가운데 큰 식, 나눗셈 연습) 를 읽는다.
    선생님 화면(teacher/logQView.js)도 이 컴포넌트를 그대로 쓴다 — 학생이 본 화면과 같게. */
 var MOCK_ORD=['①','②','③','④'];
-var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:keep-all}
+var MOCK_CSS=`.exq .katex{font-size:1.13em}.exc .katex{font-size:1.1em}.exq{word-break:normal;overflow-wrap:anywhere;min-width:0}.exq svg,.exq img{max-width:100%;height:auto}.mock-fig-menu{max-width:100%;overflow-x:auto;overflow-y:hidden}.exq .mock-fig-menu svg{max-width:none}
 .extbl{border-collapse:collapse;margin:0 auto;font-size:1rem}.extbl th,.extbl td{border:1.5px solid #9aa1ad;padding:4px 12px;text-align:center}
 .extbl th{background:#eceef2;font-weight:700}.extbl tr.sum td{background:#eceef2;font-weight:700}`;
 function assignMockQuestionNumbers(pool,examLevel,examMode){
@@ -13188,7 +13167,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
     {q.table&&<div className="overflow-x-auto mb-3"><table className="extbl">
       <tbody>{q.table.head&&<tr>{q.table.head.map((h,i)=><th key={i} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(h))}}/>)}</tr>}
       {q.table.rows.map((r,i)=><tr key={i} className={q.table.sumRow&&i===q.table.rows.length-1?'sum':''}>{r.map((c,j)=><td key={j} dangerouslySetInnerHTML={{__html:examHtml(toExamTex(c))}}/>)}</tr>)}</tbody></table></div>}
-    {fig?<div className="flex justify-center mb-3" dangerouslySetInnerHTML={{__html:fig}}/>
+    {fig?<div className={`flex justify-center mb-3 ${g&&g.type==='menu'?'mock-fig-menu':''}`} dangerouslySetInnerHTML={{__html:fig}}/>
       :(g&&!sys&&<div className="flex justify-center mb-3"><GraphPreview q={q}/></div>)}
     {q.choices.length>0&&<div className={`grid gap-2 ${cols}`}>
       {q.choices.map((ch,j)=>{
@@ -13360,7 +13339,7 @@ function MockExamTab({userData,onUpdate}){
     const GRADE_COLOR={0:'bg-gray-200',1:'bg-orange-400',2:'bg-lime-400',3:'bg-green-500',4:'bg-emerald-500'};
     const getGrade=(st)=>{if(st.t===0)return 0;const r=st.c/st.t;return r<0.4?1:r<0.7?2:r<0.9?3:4;};
     const ICONS=['🌱','🌱','🌿','🌳','🍎'];
-    return(<div className="p-4 pb-36 space-y-4 fade-in">
+    return(<div className="p-4 pb-36 space-y-4 fade-in min-w-0">
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-lg">
         <button onClick={()=>setExamLevel(null)} className="text-sm font-bold opacity-90 mb-3">← 학력 다시 선택</button>
         <h2 className="text-xl font-black mb-1">📝 {examLevel==='middle'?'중졸':'고졸'} 기출 혼합 모의고사</h2>
@@ -13425,7 +13404,7 @@ function MockExamTab({userData,onUpdate}){
       </div>
       {questions.map((q,i)=>{
         const isSel=sel[i]!==undefined,isCorrect=sel[i]===q.answer;
-        return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+        return(<div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 min-w-0 overflow-visible">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs font-black flex items-center justify-center flex-shrink-0">{q.examNo||i+1}</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{q.topic}</span>
@@ -13944,6 +13923,43 @@ function calcRawAccuracy(questions){
   if(!questions||questions.length===0)return null;
   const c=questions.filter(q=>q.isOk).length;
   return Math.round((c/questions.length)*100);
+}
+
+// 학생 나무숲용 토픽 분류와 영역별 학습 지표. 원본 로그를 바꾸지 않고 계산한다.
+var TREE_DOMAINS=[
+  {key:'calculation',label:'계산의 힘',match:(t,c)=>c==='div'||c==='math'||/연산|나눗셈|계산/.test(t)},
+  {key:'number',label:'수와 식',match:(t,c)=>/약수|배수|소인수|정수|유리수|다항식|인수분해|복소수/.test(t)||['poly','number'].includes(c)},
+  {key:'equation',label:'방정식과 부등식',match:(t,c)=>/방정식|부등식/.test(t)||['eq','ineq','equation'].includes(c)},
+  {key:'function',label:'함수와 그래프',match:(t,c)=>/함수|그래프/.test(t)||['func','function'].includes(c)},
+  {key:'geometry',label:'도형과 좌표',match:(t,c)=>/기하|도형|좌표|대칭|거리|원|직선/.test(t)||c==='geometry'},
+  {key:'set',label:'집합과 명제',match:(t,c)=>/집합|명제/.test(t)||c==='set'},
+  {key:'statistics',label:'확률과 통계',match:(t,c)=>/확률|통계|순열|조합/.test(t)||c==='stat'},
+  {key:'word',label:'문장제',match:t=>/문장제|스토리|실생활/.test(t)},
+  {key:'other',label:'기타 토픽',match:()=>true}
+];
+function buildMathForest(logs){
+  const domains=Object.fromEntries(TREE_DOMAINS.map(d=>[d.key,{...d,total:0,correct:0,dates:{}}]));
+  const questions=[];
+  (logs||[]).forEach(log=>(log.questions||[]).forEach(q=>{
+    const topic=String(q.meta?.type||q.topic||log.type||'기타'),cat=String(q.meta?.category||'').toLowerCase();
+    const cfg=TREE_DOMAINS.find(d=>d.match(topic.toLowerCase(),cat))||TREE_DOMAINS[TREE_DOMAINS.length-1];
+    const stat=domains[cfg.key],date=String(log.date||'').slice(0,10);stat.total++;if(q.isOk)stat.correct++;
+    if(date){if(!stat.dates[date])stat.dates[date]={total:0,correct:0};stat.dates[date].total++;if(q.isOk)stat.dates[date].correct++;}
+    questions.push({q,topic,date,key:cfg.key});
+  }));
+  const attempts=new Map();let recovered=0;
+  [...questions].reverse().forEach(({q,topic})=>{
+    const id=String(q.qTxt||q.qFull||q.topic||topic).trim().toLowerCase();if(!id)return;
+    if(q.isOk&&attempts.get(id)){recovered++;attempts.set(id,false);}else if(!q.isOk)attempts.set(id,true);
+  });
+  const results=Object.values(domains).map(d=>{
+    const days=Object.keys(d.dates).sort();const first=days.slice(0,Math.ceil(days.length/2)),last=days.slice(Math.ceil(days.length/2));
+    const avg=arr=>{const qs=questions.filter(x=>x.key===d.key&&arr.includes(x.date));const n=qs.length;return n?Math.round(qs.filter(x=>x.q.isOk).length/n*100):null;};
+    const delta=first.length&&last.length?avg(last)-avg(first):null;
+    return{key:d.key,label:d.label,total:d.total,correct:d.correct,rate:d.total?Math.round(d.correct/d.total*100):null,days:days.length,delta};
+  }).filter(d=>d.total>0).sort((a,b)=>(a.rate??0)-(b.rate??0));
+  const n=questions.length,rate=n?Math.round(questions.filter(x=>x.q.isOk).length/n*100):null;
+  return{domains:results,total:n,rate,recovered};
 }
 
 // ── 시계열 모멘텀 (순수 정답률 기반 - 객관적) ──
@@ -15770,6 +15786,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
   const activeTime=useMemo(()=>buildActiveTimeSummary(logs),[logs]);
   const explore=useMemo(()=>buildExploreSummary(student),[student]);
   const relativeMastery=useMemo(()=>buildRelativeMastery(logs,qStats),[logs,qStats]);
+  const mathForest=useMemo(()=>buildMathForest(logs),[logs]);
 
   // 오답 수정 데이터 로드
   useEffect(()=>{
@@ -16089,6 +16106,13 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
 
       <!-- ③ 영역별 성취도 -->
       ${sectionHead('📈','영역별 성취도')}
+      <div style="border:1px solid #a7f3d0;background:#ecfdf5;border-radius:8px;padding:10px 13px;margin-bottom:12px;page-break-inside:avoid;">
+        <div style="font-size:12px;font-weight:900;color:#065f46;margin-bottom:5px;">🌳 수학나무 숲 · 성장 지표</div>
+        <div style="font-size:10px;color:#334155;margin-bottom:7px;">전체 ${mathForest.total}문항 · 정답률 ${mathForest.rate==null?'자료 없음':`${mathForest.rate}%`} · 오답 후 정답 전환 ${mathForest.recovered}건(문항 텍스트 기준 추정)</div>
+        ${mathForest.domains.length?`<table style="width:100%;border-collapse:collapse;font-size:9.5px;"><tr style="background:#d1fae5;"><th style="padding:4px;text-align:left;">영역</th><th style="padding:4px;text-align:center;">정답/풀이</th><th style="padding:4px;text-align:center;">정답률</th><th style="padding:4px;text-align:center;">전반기→후반기 변화</th></tr>${mathForest.domains.map(d=>`<tr><td style="padding:4px;border-bottom:1px solid #d1fae5;">${d.label}</td><td style="padding:4px;text-align:center;border-bottom:1px solid #d1fae5;">${d.correct}/${d.total}</td><td style="padding:4px;text-align:center;border-bottom:1px solid #d1fae5;">${d.rate}%</td><td style="padding:4px;text-align:center;border-bottom:1px solid #d1fae5;">${d.delta==null?'산출 대기':`${d.delta>0?'+':''}${d.delta}%p`}</td></tr>`).join('')}</table>`:'<div style="font-size:10px;color:#64748b;">분류 가능한 풀이 기록이 없습니다.</div>'}
+        <div style="font-size:8.5px;color:#64748b;line-height:1.5;margin-top:6px;">해석: 영역은 로그의 문항 토픽/범주로 분류했습니다. 정답률은 풀이량을 보정하지 않은 기술통계이며, 추세는 기록일 기준 전·후반 두 구간의 차이입니다. 인과적 효과나 숙달 판정으로 해석하지 말고 표본 수와 수업 관찰을 함께 검토하십시오.</div>
+        <div style="font-size:8.5px;color:#4338ca;line-height:1.5;margin-top:4px;">학습분석 관점: 세분 토픽별 성취도와 학습 궤적을 진단 보조 자료로 활용합니다. 영역 간 문항 수·난이도·기회가 다르므로 단순 순위 비교는 적절하지 않습니다.</div>
+      </div>
       ${relativeMastery.length === 0
         ? `<div style="padding:16px;text-align:center;color:#94a3b8;border:1px solid #e2e8f0;border-radius:8px;font-size:11px;margin-bottom:18px;">
             아직 비교 가능한 누적 학습 데이터가 충분하지 않습니다.<br/>
@@ -16827,6 +16851,19 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
       {/* ── 탭 1: 종합 ── */}
       {tab==='overview'&&(
         <div className="space-y-3">
+          {/* 수학나무 숲: 토픽 기반 상태와 시계열을 함께 제시 */}
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4">
+            <div className="flex items-center gap-2"><span className="text-2xl">🌳</span><div className="flex-1"><div className="text-sm font-black text-emerald-900">수학나무 숲 현황</div><div className="text-[10px] text-emerald-700">전체 {mathForest.total}문항 · 정답 {mathForest.rate==null?'자료 없음':`${mathForest.rate}%`} · 되찾은 기록 {mathForest.recovered}건</div></div></div>
+            {mathForest.domains.length===0?<div className="mt-3 text-xs text-gray-500 bg-white rounded-xl p-3">분류할 풀이 기록이 아직 없습니다.</div>:<div className="mt-3 space-y-2">
+              {mathForest.domains.map(d=><div key={d.key} className="bg-white border border-emerald-100 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2"><span className="text-xs font-black text-gray-800 flex-1">{d.label}</span><span className="text-[10px] font-bold text-emerald-800">{d.correct}/{d.total} · {d.rate}%</span></div>
+                <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{width:`${d.rate}%`}}/></div>
+                <div className="text-[9px] text-gray-400 mt-1">{d.days}일 기록{d.delta==null?' · 추세 산출 대기':` · 전반기 대비 후반기 ${d.delta>0?'+':''}${d.delta}%p`}</div>
+              </div>)}
+            </div>}
+            <div className="mt-3 pt-2 border-t border-emerald-100 text-[9px] leading-relaxed text-gray-500">지표 해석: 전체 정답률은 각 유형의 풀이량 차이를 반영하지 않는 원점수 비율입니다. 추세는 기록일을 반으로 나눈 두 구간의 정답률 차이이며, 인과나 숙달 판정이 아닙니다. 표본이 적거나 날짜가 한 구간뿐이면 추세를 제시하지 않습니다. 되찾은 기록은 동일 문항 텍스트에서 오답 이후 정답으로 바뀐 횟수의 추정치입니다.</div>
+            <div className="mt-2 text-[9px] text-indigo-700 bg-indigo-50 rounded-xl p-2 leading-relaxed"><b>학습분석학적 활용:</b> 영역별 성취와 시간에 따른 변화(learning trajectory)를 함께 살펴볼 수 있습니다. 낮은 비율 하나만으로 개입을 결정하지 말고 표본 수, 최근 세션, 풀이 난이도와 교사 관찰을 함께 확인하세요.</div>
+          </div>
           {/* 자기평가 분포 */}
           <div className="bg-gray-50 p-3 rounded-2xl">
             <div className="text-xs font-bold text-gray-500 mb-2">🗣️ 자기평가 감정 분포 (주관적 참고용)</div>
@@ -17292,11 +17329,12 @@ function WorksheetTab(){
       body{font-family:'Noto Sans KR',sans-serif;padding:32px;color:#111;}
       h1{text-align:center;font-size:22px;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:6px;}
       .meta{text-align:center;font-size:12px;color:#666;margin-bottom:24px;}
-      .q-grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:20px;}
-      .q{margin-bottom:22px;page-break-inside:avoid;break-inside:avoid;}
+      .q-grid{display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:20px;align-items:start;}
+      .q{min-width:0;overflow:visible;margin-bottom:22px;page-break-inside:avoid;break-inside:avoid;}
+      .q svg{display:block;max-width:100%!important;height:auto;margin:0 auto;}
       .qnum{font-weight:900;color:#4338ca;margin-right:6px;}
       .qtag{font-size:11px;background:#eef2ff;color:#4338ca;padding:2px 8px;border-radius:20px;margin-left:6px;font-weight:700;}
-      .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;margin-left:16px;}
+      .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;margin-left:16px;}
       .choice{font-size:13px;padding:4px 0;}
       .ans{margin-top:6px;margin-left:16px;font-size:12px;color:#dc2626;font-weight:700;display:${showAns?'block':'none'};}
       .exp{margin-top:6px;margin-left:16px;padding:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:11px;line-height:1.55;color:#78350f;display:${showAns?'block':'none'};}
@@ -17605,10 +17643,11 @@ return src?<span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 
           body{font-family:'Noto Sans KR',sans-serif;padding:32px;color:#111;}
           h1{text-align:center;font-size:22px;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:6px;}
           .meta{text-align:center;font-size:12px;color:#666;margin-bottom:24px;}
-          .q{margin-bottom:22px;page-break-inside:avoid;}
+          .q{min-width:0;overflow:visible;margin-bottom:22px;page-break-inside:avoid;break-inside:avoid;}
+          .q svg{display:block;max-width:100%!important;height:auto;margin:0 auto;}
           .qnum{font-weight:900;color:#4338ca;margin-right:6px;}
           .qtag{font-size:11px;background:#eef2ff;color:#4338ca;padding:2px 8px;border-radius:20px;margin-left:6px;font-weight:700;}
-          .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;margin-left:16px;}
+          .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;margin-left:16px;}
           .choice{font-size:13px;padding:4px 0;}
           .ans{margin-top:6px;margin-left:16px;font-size:12px;color:#dc2626;font-weight:700;display:${isAns?'block':'none'};}
           .exp{margin-top:6px;margin-left:16px;padding:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:11px;line-height:1.55;color:#78350f;display:${isAns?'block':'none'};}
