@@ -80,7 +80,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
   </div>);
 }
 
-function MockExamTab({userData,onUpdate}){
+function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
   const[questions,setQuestions]=useState([]);
@@ -102,6 +102,13 @@ function MockExamTab({userData,onUpdate}){
   const DOMAINS=Object.keys(DOMAIN_GENS);
   const CORE_DOMAINS=DOMAINS.filter(d=>d!=='내분점');
   const questionCount=questions.length;
+
+  useEffect(()=>{
+    if(!initialSetTopic)return;
+    setExamLevel('high');setSelectedDomains([initialSetTopic]);
+    startExam('domain',[initialSetTopic],initialSetTopic);
+    onInitialSetTopicStarted?.();
+  },[initialSetTopic]);
 
   const computeStats=(logs)=>{
     const s={};DOMAINS.forEach(d=>s[d]={c:0,t:0});
@@ -128,21 +135,23 @@ function MockExamTab({userData,onUpdate}){
     return s;
   };
 
-  const startExam=(examMode,domainList)=>{
+  const startExam=(examMode,domainList,focusTopic=null)=>{
     setMode(examMode);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
     const levelKey=examLevel==='middle'?'middle':'high';
     const targetCount=examMode==='random'?20:10;
+    const focusedGen=focusTopic==='집합'?genMockSetOnly:focusTopic==='명제'?genMockPropositionOnly:null;
+    const domainGenerators=focusedGen?{[focusTopic]:focusedGen}:DOMAIN_GENS;
     let pool=[];
     let targets=CORE_DOMAINS;
     if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
     else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
-    const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
+    const quotas=focusedGen?{[focusTopic]:targetCount}:mockExamDomainCounts(levelKey,targets,targetCount);
     const usedQ=new Set();
     const addQuestion=(dom,allowDuplicate)=>{
-      const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
+      const q=safeGen(domainGenerators[dom]);if(!q)return false;
       const key=`${q.topic}::${q.q||''}`;
       if(!allowDuplicate&&usedQ.has(key))return false;
       usedQ.add(key);pool.push({...q,_mockDomain:dom});return true;

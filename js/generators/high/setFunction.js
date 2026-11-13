@@ -363,3 +363,6 @@ function genMockSetFunc(){
     [gen_rational_asymptote,5],[gen_radical_translate,5]];
   return weightedGen(gens.map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));
 }
+// 학생 파일럿 연습용: 영역 버튼별로 집합·명제 생성기를 분리해 섞이지 않게 한다.
+function genMockSetOnly(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,3],[gen_set_equal_const,2],[gen_truth_set,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
+function genMockPropositionOnly(){return weightedGen([[gen_proposition,4],[gen_nec_suff,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}

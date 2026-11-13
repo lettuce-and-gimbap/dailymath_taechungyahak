@@ -5542,6 +5542,9 @@ function genMockSetFunc(){
     [gen_rational_asymptote,5],[gen_radical_translate,5]];
   return weightedGen(gens.map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));
 }
+// 학생 파일럿 연습용: 영역 버튼별로 집합·명제 생성기를 분리해 섞이지 않게 한다.
+function genMockSetOnly(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,3],[gen_set_equal_const,2],[gen_truth_set,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
+function genMockPropositionOnly(){return weightedGen([[gen_proposition,4],[gen_nec_suff,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}
 
 
 // ========== js\generators\high\probStat.js ==========
@@ -11198,50 +11201,49 @@ function StudentReceivedFeedback({name}){
    메뉴 · 문항 만들기 · 풀이 과정 · 숫자 키패드 · 세션 진행
    -------------------------------------------------------------------- */
 
-function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed,unified=false}){
+function buildPracticeRanges(userData){
+  const saved=userData.practiceRanges||{},rMin=userData.rangeMin||10,rMax=userData.rangeMax||99,dMin=userData.divRangeMin||10,dMax=userData.divRangeMax||99;
+  return{0:saved[0]||{min:rMin,max:rMax},1:saved[1]||{min:rMin,max:rMax},2:saved[2]||{min:rMin,max:rMax},3:saved[3]||{min:dMin,max:dMax}};
+}
+function normalizePracticeVer(value){return Number(value)===4?3:[0,1,2,3].includes(Number(value))?Number(value):0;}
+
+function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoResumed,unified=false,onSetTopic}){
   const[screen,setScreen]=useState('menu');
   const[unifiedLevel,setUnifiedLevel]=useState(null);
   const[unifiedSection,setUnifiedSection]=useState(null);
   const[session,setSession]=useState(null);
-  const[ver,setVer]=useState(userData.ver||0);
+  const[ver,setVer]=useState(()=>normalizePracticeVer(userData.ver||0));
   const[verTopic,setVerTopic]=useState(null);
-  const[rangeMin,setRangeMin]=useState(userData.rangeMin||10);
-  const[rangeMax,setRangeMax]=useState(userData.rangeMax||99);
-  const[divMin,setDivMin]=useState(userData.divRangeMin||10);
-  const[divMax,setDivMax]=useState(userData.divRangeMax||99);
+  const[practiceRanges,setPracticeRanges]=useState(()=>buildPracticeRanges(userData));
   const[goal,setGoal]=useState(userData.goal||3);
 
   const savedRaw=(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}})();
   const[savedData,setSavedData]=useState(savedRaw);
 
   const saveSettings=()=>{
-  const upd={...userData,ver,
-    rangeMin: rangeMin===''?1:Math.max(1,Number(rangeMin)),
-    rangeMax: rangeMax===''?2:Math.max(2,Number(rangeMax)),
-    divRangeMin: divMin===''?1:Math.max(1,Number(divMin)),
-    divRangeMax: divMax===''?2:Math.max(2,Number(divMax)),
-    goal};
+  const normalized=Object.fromEntries(Object.entries(practiceRanges).map(([k,r])=>{const min=r.min===''?1:Math.max(1,Number(r.min)||1),max=r.max===''?min+1:Math.max(min+1,Number(r.max)||min+1);return[k,{min,max}];}));
+  const upd={...userData,ver,practiceRanges:normalized,
+    rangeMin:normalized[0].min,rangeMax:normalized[0].max,
+    divRangeMin:normalized[3].min,divRangeMax:normalized[3].max,goal};
   saveUser(upd);onUpdate(upd);
 };
   const startSession=()=>{
-  const effRMin = rangeMin===''||Number(rangeMin)<1 ? 1 : Math.floor(Number(rangeMin));
-  const effRMax = rangeMax===''||Number(rangeMax)<=effRMin ? effRMin+1 : Math.floor(Number(rangeMax));
-  const effDMin = divMin===''||Number(divMin)<1 ? 1 : Math.floor(Number(divMin));
-  const effDMax = divMax===''||Number(divMax)<=effDMin ? effDMin+1 : Math.floor(Number(divMax));
-  setRangeMin(effRMin); setRangeMax(effRMax);
-  setDivMin(effDMin);   setDivMax(effDMax);
+  const active=practiceRanges[ver]||{min:10,max:99};
+  const min=active.min===''||Number(active.min)<1?1:Math.floor(Number(active.min));
+  const max=active.max===''||Number(active.max)<=min?min+1:Math.floor(Number(active.max));
+  setPracticeRanges(prev=>({...prev,[ver]:{min,max}}));
   const divCountIdxs=[];while(divCountIdxs.length<2){const r=randInt(1,10);if(!divCountIdxs.includes(r))divCountIdxs.push(r)}
-  setSession({qNum:1,correct:0,wrong:0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs,currentQ:null,selectedMC:null,fb:null,phase:'question',verTopic:verTopic||null});
+  setSession({qNum:1,correct:0,wrong:0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs,currentQ:null,selectedMC:null,fb:null,phase:'question',verTopic:verTopic||null,rangeMin:min,rangeMax:max,divMin:min,divMax:max});
   setScreen('session');
   onSessionActive?.(true);
 };
 
   const resumeSession=()=>{
   if(!savedData)return;
-  setVer(savedData.ver);
-  setRangeMin(savedData.rangeMin); setRangeMax(savedData.rangeMax);
-  setDivMin(savedData.divMin);     setDivMax(savedData.divMax);
-  setSession({qNum:savedData.qNum||1,correct:savedData.correctCount||0,wrong:savedData.wrongCount||0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs:savedData.divCountIdxs||[3,7],currentQ:null,selectedMC:null,fb:null,phase:'question',verTopic:null});
+  const savedVer=normalizePracticeVer(savedData.ver),r=buildPracticeRanges(userData)[savedVer];
+  const rangeMin=savedData.rangeMin??savedData.divMin??r.min,rangeMax=savedData.rangeMax??savedData.divMax??r.max;
+  setVer(savedVer);
+  setSession({qNum:savedData.qNum||1,correct:savedData.correctCount||0,wrong:savedData.wrongCount||0,startTime:Date.now(),qStartTime:Date.now(),questions:[],divCountIdxs:savedData.divCountIdxs||[3,7],currentQ:null,selectedMC:null,fb:null,phase:'question',verTopic:null,rangeMin,rangeMax,divMin:rangeMin,divMax:rangeMax});
   setScreen('session');
   onSessionActive?.(true);
 };
@@ -11257,23 +11259,22 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
 
   if(unified&&screen==='menu')return<UnifiedPracticeMenu userData={userData} section={unifiedSection} setSection={setUnifiedSection}
     savedData={savedData} onResume={resumeSession} onArithmetic={v=>{setVer(v);setVerTopic(null);setScreen('arithmetic');}}
-    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}}/>;
+    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onSetTopic={topic=>onSetTopic&&onSetTopic(topic)}/>;
   if(unified&&screen==='coordinate')return<CoordDailyTab userData={userData} onUpdate={onUpdate} initialLevel={unifiedLevel} onExit={()=>setScreen('menu')}/>;
-  if(unified&&screen==='arithmetic')return<PracticeMenu ver={ver} setVer={setVer} verTopic={verTopic} setVerTopic={setVerTopic} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={null} onResume={resumeSession} selectedOnly onBack={()=>setScreen('menu')}/>;
-  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(v);setVerTopic(null);}} verTopic={verTopic} setVerTopic={setVerTopic} rangeMin={rangeMin} setRangeMin={setRangeMin} rangeMax={rangeMax} setRangeMax={setRangeMax} divMin={divMin} setDivMin={setDivMin} divMax={divMax} setDivMax={setDivMax} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
-  if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={rangeMin} rangeMax={rangeMax} divMin={divMin} divMax={divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
+  if(unified&&screen==='arithmetic')return<PracticeMenu ver={ver} setVer={setVer} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={null} onResume={resumeSession} selectedOnly onBack={()=>setScreen('menu')}/>;
+  if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(normalizePracticeVer(v));setVerTopic(null);}} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
+  if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={session.rangeMin} rangeMax={session.rangeMax} divMin={session.divMin} divMax={session.divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
   if(screen==='done')return<PracticeDone userData={userData} onAgain={startSession} onHome={()=>{setScreen('menu');onSessionActive?.(false);}}/>;
   return null;
 }
 
 /* 기존 두 문제 메뉴를 한곳에 모은다. */
-function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onArithmetic,onCoordinate}){
+function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onArithmetic,onCoordinate,onSetTopic}){
  const items=[
   {v:0,lbl:'기본 나눗셈',desc:'설정한 범위에서 몫을 구합니다'},
   {v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 구합니다'},
   {v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 문제와 없는 문제를 함께 풉니다'},
   {v:3,lbl:'약수 구하기',desc:'약수를 모두 찾거나 개수를 구합니다'},
-  {v:4,lbl:'약수 (하드모드)',desc:'더 큰 수의 약수를 구합니다'}
  ];
  const groups=[{id:'arithmetic',title:'사칙연산',icon:'✏️',desc:'나눗셈 · 약수'},
   {id:'coordinate',title:'좌표',icon:'📍',desc:'좌표 읽기부터 함수와 방정식까지'},
@@ -11287,13 +11288,15 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
  return <div className="p-4 space-y-4 pb-36"><div><div className="text-2xl font-black text-gray-800">✏️ 오늘의 문제풀이</div><div className="text-sm font-bold text-gray-500 mt-1">풀고 싶은 유형을 골라 10문제에 도전해 보세요.</div></div>
   {savedData&&<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 font-black text-amber-800">📚 하던 공부 이어서 풀기 ({savedData.correctCount||0}/10) →</button>}
   {groups.map(g=><section key={g.id} className="bg-white rounded-3xl shadow-md overflow-hidden"><button onClick={()=>setSection(section===g.id?null:g.id)} aria-expanded={section===g.id} className="w-full p-5 text-left flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span className="flex-1"><span className="block text-lg font-black text-gray-800">{g.title}</span><span className="block text-sm font-bold text-gray-500">{g.desc}</span></span><span className="font-black text-indigo-500">{section===g.id?'−':'+'}</span></button>
-   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><div key={topic} className="w-full text-left bg-slate-50 rounded-3xl p-4 border-2 border-slate-200 flex items-center gap-3 opacity-80"><span className="w-14 h-14 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center text-2xl shrink-0">🔒</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">선생님이 준비 중이에요</span></span></div>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
+   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
 }
 
-function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rangeMax,setRangeMax,divMin,setDivMin,divMax,setDivMax,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
-  const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'},{v:4,lbl:'약수 (하드모드) 🔥',desc:'10~200 사이의 큰 수가 출제돼요'}];
+function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeSettings,setRangeSettings,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
+  const VER_OPTS=[{v:0,lbl:'기본 나눗셈',desc:'설정된 범위 내의 나눗셈 연산'},{v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 모두 구해야 해요'},{v:2,lbl:'혼합 나눗셈',desc:'나머지 있는 것과 없는 것이 섞여요'},{v:3,lbl:'약수 구하기',desc:'개수 구하기(2문제) 및 모두 구하기'}];
+  const range=rangeSettings[ver]||{min:10,max:99};
+  const setBound=(field,value)=>setRangeSettings(prev=>({...prev,[ver]:{...(prev[ver]||{min:10,max:99}),[field]:value}}));
   const MID_DOMAINS=['전체(혼합)','수와 연산','문자와 식','함수','기하','확률과 통계'];
   const HIGH_DOMAINS=['전체(혼합)','다항식 계산','방정식과 부등식','도형과 기하','내분점','집합과 함수','확률과 통계'];
   const domainList=ver===5?MID_DOMAINS:HIGH_DOMAINS;
@@ -11324,31 +11327,31 @@ function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rang
       </div>
     </div>}
   {/* Settings */}
-    {ver<5&&<div className="bg-white rounded-3xl p-5 shadow-md">
+    <div className="bg-white rounded-3xl p-5 shadow-md">
       <div className="text-sm font-bold text-gray-400 uppercase mb-3">⚙️ 범위 설정</div>
       <div className="space-y-3">
-        <div><div className="text-sm font-bold text-gray-600 mb-2">나눗셈 범위</div>
+        {ver<3&&<div><div className="text-sm font-bold text-gray-600 mb-2">나눗셈 범위</div>
           <div className="flex items-center gap-3">
-            <input type="number" min="1" step="1" value={rangeMin} placeholder="1"
-              onChange={e=>{const raw=e.target.value;if(raw===''){setRangeMin('');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setRangeMin(v);}}
+            <input type="number" min="1" step="1" value={range.min} placeholder="1"
+              onChange={e=>{const raw=e.target.value;if(raw===''){setBound('min','');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setBound('min',v);}}
               className="w-20 border-2 border-gray-200 rounded-xl px-3 py-3 text-lg font-bold text-center focus:border-indigo-400 outline-none"/>
             <span className="text-xl font-bold text-gray-400">~</span>
-            <input type="number" min="1" step="1" value={rangeMax} placeholder="2"
-              onChange={e=>{const raw=e.target.value;if(raw===''){setRangeMax('');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setRangeMax(v);}}
+            <input type="number" min="1" step="1" value={range.max} placeholder="2"
+              onChange={e=>{const raw=e.target.value;if(raw===''){setBound('max','');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setBound('max',v);}}
               className="w-20 border-2 border-gray-200 rounded-xl px-3 py-3 text-lg font-bold text-center focus:border-indigo-400 outline-none"/>
           </div>
-        </div>
-        <div><div className="text-sm font-bold text-gray-600 mb-2">약수 구하기 숫자 범위</div>
+        </div>}
+        {ver===3&&<div><div className="text-sm font-bold text-gray-600 mb-2">약수 구하기 숫자 범위</div>
           <div className="flex items-center gap-3">
-            <input type="number" min="1" step="1" value={divMin} placeholder="1"
-              onChange={e=>{const raw=e.target.value;if(raw===''){setDivMin('');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setDivMin(v);}}
+            <input type="number" min="1" step="1" value={range.min} placeholder="1"
+              onChange={e=>{const raw=e.target.value;if(raw===''){setBound('min','');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setBound('min',v);}}
               className="w-20 border-2 border-gray-200 rounded-xl px-3 py-3 text-lg font-bold text-center focus:border-indigo-400 outline-none"/>
             <span className="text-xl font-bold text-gray-400">~</span>
-            <input type="number" min="1" step="1" value={divMax} placeholder="2"
-              onChange={e=>{const raw=e.target.value;if(raw===''){setDivMax('');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setDivMax(v);}}
+            <input type="number" min="1" step="1" value={range.max} placeholder="2"
+              onChange={e=>{const raw=e.target.value;if(raw===''){setBound('max','');return;}const v=parseInt(raw,10);if(!isNaN(v)&&v>=1)setBound('max',v);}}
               className="w-20 border-2 border-gray-200 rounded-xl px-3 py-3 text-lg font-bold text-center focus:border-indigo-400 outline-none"/>
           </div>
-        </div>
+        </div>}
         <div><div className="text-sm font-bold text-gray-600 mb-2">하루 목표 레슨 수</div>
           <div className="flex items-center gap-4 bg-indigo-50 rounded-2xl p-3">
             <button onClick={()=>setGoal(v=>Math.max(1,v-1))} className="w-10 h-10 rounded-full bg-indigo-500 text-white font-black text-xl flex items-center justify-center">−</button>
@@ -11358,7 +11361,7 @@ function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rang
         </div>
       </div>
       <button onClick={onSave} className="w-full mt-3 py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold text-sm">설정 저장</button>
-    </div>}
+    </div>
     {ver>=5&&<div className="bg-indigo-50 rounded-3xl p-5 shadow-sm border-2 border-indigo-100">
       <div className="text-base font-black text-indigo-700 mb-3">🗂️ {ver===5?'중졸':'고졸'} 검정고시 — 영역 선택</div>
       <div className="grid grid-cols-2 gap-2">
@@ -11381,8 +11384,8 @@ function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeMin,setRangeMin,rang
 function makeQ(ver,qNum,divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenSet=null,domain=null){
   let qType=ver;if(qType===2)qType=Math.random()<0.5?0:1;
   const isMC=Math.random()<0.25;
-  if(qType===3||qType===4){
-    const{target,divisors}=genDivisors(divMin,divMax,qType===4);
+  if(qType===3){
+    const{target,divisors}=genDivisors(divMin,divMax,false);
     const divQType=pick(['notDiv','allDiv','count']);
     return{category:'div',target,divisors,divQType,isMC:true,
       qLogTxt:divQType==='count'?`${target}의 약수 개수`:divQType==='notDiv'?`${target}의 약수 아닌 것 고르기`:`${target}의 모든 약수`};
@@ -11810,10 +11813,10 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
     const feeling=null;
     const totalSec=Math.round((Date.now()-startTime)/1000);
     const today=todayStr();const newActiveDates=[...new Set([...(userData.activeDates||[]),today])];
-    const typeMap=['기본 나눗셈','심화 나눗셈','혼합 나눗셈','약수 구하기','약수(하드)','중졸 검정고시 연습','고졸 검정고시 연습'];
+    const typeMap=['기본 나눗셈','심화 나눗셈','혼합 나눗셈','약수 구하기'];
     
     // feeling(난이도 체감) 데이터 포함 저장
-    const score=ver>=5?`${correctCount} / ${questions.length}`:`10 / ${questions.length}`;
+    const score=`10 / ${questions.length}`;
     const log={studentName:userData.name,date:today,time:timeStr(),type:typeMap[ver]||'나눗셈',score,questions:questions,totalSec, feeling};
     const upd={...userData,totalLessons:(userData.totalLessons||0)+1,todayLessons:(userData.todayLessons||0)+1,todayCorrect:(userData.todayCorrect||0)+correctCount,todayWrong:(userData.todayWrong||0)+wrongCount,lastDate:today,activeDates:newActiveDates,logs:[log,...(userData.logs||[]).slice(0,49)]};
     
@@ -12022,7 +12025,7 @@ var COORD_LEVELS=[
     border:'border-rose-300',chip:'bg-rose-100 text-rose-700'},
 ];
 /* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
-var coordLevelLocked=(L,name)=>!!(L&&(L.locked||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
+var coordLevelLocked=(L,name)=>!!(L&&((L.locked&&!(PREVIEW_USERS||[]).includes(name))||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
 
 /* 좌표 보기 만들기 — GS.coordChoices는 학습지(KaTeX)용이라 "(1,\ -2)" 처럼
    수식 표기가 섞여 있다. 학생 화면에서는 그대로 읽히는 글자여야 하므로 따로 만든다.
@@ -13201,7 +13204,7 @@ function MockQBody({q,sel,isGraded,onPick,readOnly}){
   </div>);
 }
 
-function MockExamTab({userData,onUpdate}){
+function MockExamTab({userData,onUpdate,initialSetTopic,onInitialSetTopicStarted}){
   const[screen,setScreen]=useState('start');
   const[examLevel,setExamLevel]=useState(null);
   const[questions,setQuestions]=useState([]);
@@ -13223,6 +13226,13 @@ function MockExamTab({userData,onUpdate}){
   const DOMAINS=Object.keys(DOMAIN_GENS);
   const CORE_DOMAINS=DOMAINS.filter(d=>d!=='내분점');
   const questionCount=questions.length;
+
+  useEffect(()=>{
+    if(!initialSetTopic)return;
+    setExamLevel('high');setSelectedDomains([initialSetTopic]);
+    startExam('domain',[initialSetTopic],initialSetTopic);
+    onInitialSetTopicStarted?.();
+  },[initialSetTopic]);
 
   const computeStats=(logs)=>{
     const s={};DOMAINS.forEach(d=>s[d]={c:0,t:0});
@@ -13249,21 +13259,23 @@ function MockExamTab({userData,onUpdate}){
     return s;
   };
 
-  const startExam=(examMode,domainList)=>{
+  const startExam=(examMode,domainList,focusTopic=null)=>{
     setMode(examMode);
     const stats=computeStats(userData.logs||[]);
     const weakDomains=DOMAINS.filter(d=>stats[d].t===0||(stats[d].c/stats[d].t)<0.7);
     const safeGen=(gen)=>{try{const q=gen();return q||null;}catch(e){return null;}};
     const levelKey=examLevel==='middle'?'middle':'high';
     const targetCount=examMode==='random'?20:10;
+    const focusedGen=focusTopic==='집합'?genMockSetOnly:focusTopic==='명제'?genMockPropositionOnly:null;
+    const domainGenerators=focusedGen?{[focusTopic]:focusedGen}:DOMAIN_GENS;
     let pool=[];
     let targets=CORE_DOMAINS;
     if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
     else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
-    const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
+    const quotas=focusedGen?{[focusTopic]:targetCount}:mockExamDomainCounts(levelKey,targets,targetCount);
     const usedQ=new Set();
     const addQuestion=(dom,allowDuplicate)=>{
-      const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
+      const q=safeGen(domainGenerators[dom]);if(!q)return false;
       const key=`${q.topic}::${q.q||''}`;
       if(!allowDuplicate&&usedQ.has(key))return false;
       usedQ.add(key);pool.push({...q,_mockDomain:dom});return true;
@@ -13656,6 +13668,7 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
   const[activeHomework,setActiveHomework]=useState(null);
   const[barCollapsed,setBarCollapsed]=useState(false);   // 하던 공부 알림을 작은 단추로 접었는지
   const[resumeReq,setResumeReq]=useState(false);         // 문제풀기 탭에 가자마자 저장된 문제부터 이어 풀기
+  const[initialSetTopic,setInitialSetTopic]=useState(null);
   const[toast,setToast]=useState('');
   const[pendingSwitch,setPendingSwitch]=useState(false);   // 전환 단추를 눌렀는데 문제 풀이 중이라 확인 모달을 거치는 중
   const SAVE_KEY='yakHakSavedSession_'+userData.name;
@@ -13827,10 +13840,11 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='home'&&<HomeTab userData={userData} onUpdate={onUpdate} onGoPractice={()=>setTab('practice')} onResumeSaved={goResume} hasSavedSession={hasSavedSession} onStartHomework={setActiveHomework}/>}
       {tab==='practice'&&<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive}
-        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}/>}
+        autoResume={resumeReq} onAutoResumed={()=>setResumeReq(false)} unified={unifiedPractice}
+        onSetTopic={topic=>{setInitialSetTopic(topic);setTab('exam');}}/>}
       {tab==='coord'&&(unifiedPractice?<DailyPracticeTab userData={userData} onUpdate={onUpdate} onSessionActive={handleSessionActive} unified/>:<CoordDailyTab userData={userData} onUpdate={onUpdate}/>)}
       {tab==='geometry'&&<GeometryTab userData={userData} onUpdate={onUpdate}/>}
-      {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate}/>}
+      {tab==='exam'&&<MockExamTab userData={userData} onUpdate={onUpdate} initialSetTopic={initialSetTopic} onInitialSetTopicStarted={()=>setInitialSetTopic(null)}/>}
       {/* 기록 탭으로 가져온 피드백 데이터를 넘겨줌 */}
       {tab==='history'&&<HistoryTab userData={userData} feedbacks={feedbacks} onDeleteFeedback={deleteFeedback}/>}
     </div>

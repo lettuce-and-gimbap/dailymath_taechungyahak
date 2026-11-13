@@ -43,6 +43,17 @@ for(const [level,groups] of [['중졸',ctx.MOCK_SUBTYPES_MIDDLE],['고졸',ctx.M
   }
   console.log(`${level}: ${count} selectable subtypes generated valid questions`);
 }
+for(const [label,gen] of [['집합',ctx.genMockSetOnly],['명제',ctx.genMockPropositionOnly]]){
+  for(let i=0;i<30;i++){
+    const q=gen();
+    if(!q||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||!Number.isInteger(q.answer))
+      throw new Error(`${label} focused practice generated an invalid question`);
+    const topic=String(q.topic||'');
+    const matches=label==='집합'?topic.includes('집합')||topic==='진리집합':['명제의 역','명제의 대우','충분조건','필요조건','필요충분조건'].includes(topic);
+    if(!matches)throw new Error(`${label} focused practice leaked another question type: ${topic}`);
+  }
+  console.log(`${label}: focused practice generated 30 valid questions`);
+}
 
 if(!worksheet.includes('if(!homeworkAll&&!homeworkTargets.length)'))
   throw new Error('unselected homework recipient must be blocked');

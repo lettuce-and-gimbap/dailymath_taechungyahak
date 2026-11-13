@@ -40,7 +40,7 @@ var COORD_LEVELS=[
     border:'border-rose-300',chip:'bg-rose-100 text-rose-700'},
 ];
 /* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
-var coordLevelLocked=(L,name)=>!!(L&&(L.locked||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
+var coordLevelLocked=(L,name)=>!!(L&&((L.locked&&!(PREVIEW_USERS||[]).includes(name))||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
 
 /* 좌표 보기 만들기 — GS.coordChoices는 학습지(KaTeX)용이라 "(1,\ -2)" 처럼
    수식 표기가 섞여 있다. 학생 화면에서는 그대로 읽히는 글자여야 하므로 따로 만든다.
