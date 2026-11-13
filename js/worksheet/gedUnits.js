@@ -662,7 +662,7 @@ function gedCountFigure(scene,n,r,ordered,action){
    }).join('');
    height=vertical?99+r*32:180;
  }
- return `<div class="fig"><svg class="count-figure" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
+ return `<div class="fig"><svg class="count-figure" data-count="${n}" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
 }
 
 var GED_UNITS=(function(){

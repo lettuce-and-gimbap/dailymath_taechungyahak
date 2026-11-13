@@ -7348,7 +7348,7 @@ function gedCountFigure(scene,n,r,ordered,action){
    }).join('');
    height=vertical?99+r*32:180;
  }
- return `<div class="fig"><svg class="count-figure" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
+ return `<div class="fig"><svg class="count-figure" data-count="${n}" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
 }
 
 var GED_UNITS=(function(){
@@ -12939,8 +12939,15 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
 
   /* ── 문제 화면 ── */
   const lvInfo=COORD_LEVELS.find(l=>l.k===((q.lv==='count'||q.lv==='count2'||q.lv==='count4')?'count3':q.lv))||COORD_LEVELS[0];
+  const isCount=['count','count2','count3','count4'].includes(q.lv);
   return(<div ref={texRef} className="p-4 space-y-4 pb-36">
-    <style>{`svg.plane{max-width:100%;height:auto}`}</style>
+    <style>{`svg.plane{max-width:100%;height:auto}
+      .student-count-figure .fig{width:max-content;margin:0 auto}
+      .student-count-figure .count-figure{display:block;max-width:none!important;height:auto}
+      .student-count-figure .count-figure[data-count="3"]{width:330px}
+      .student-count-figure .count-figure[data-count="4"]{width:440px}
+      .student-count-figure .count-figure[data-count="5"]{width:550px}
+      .student-count-figure .count-figure[data-count="6"]{width:660px}`}</style>
 
     <div className="flex items-center gap-3">
       <button onClick={exitPick} className="text-sm font-bold text-gray-400 px-3 py-2 bg-gray-100 rounded-xl">← 그만</button>
@@ -12960,7 +12967,9 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       {q.qHtml
         ?<div className="text-lg font-black text-gray-800 leading-loose break-keep mb-4" dangerouslySetInnerHTML={{__html:q.qHtml}}/>
         :<div className="text-lg font-black text-gray-800 leading-relaxed break-keep mb-4">{q.q}</div>}
-      <div className="flex justify-center overflow-x-auto"
+      {isCount&&<div className="text-xs font-bold text-gray-500 mb-2">그림이 화면보다 넓으면 옆으로 밀어 보세요.</div>}
+      <div className={isCount?'student-count-figure overflow-x-auto':'flex justify-center overflow-x-auto'}
+        role={isCount?'region':undefined} aria-label={isCount?'경우의 수 그림, 가로로 스크롤 가능':undefined} tabIndex={isCount?0:undefined}
         dangerouslySetInnerHTML={{__html:phase==='feedback'?q.svgAfter:q.svg}}/>
     </div>
 

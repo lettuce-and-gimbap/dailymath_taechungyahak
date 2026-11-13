@@ -30,6 +30,11 @@ const coord=fs.readFileSync('js/student/coordDaily.js','utf8');
 assert(coord.includes('if(initialLevel){'));
 assert(coord.includes('onClick={exitPick}'));
 assert(coord.includes("!(q.lv==='count'||q.lv==='count2'||q.lv==='count3'||q.lv==='count4')&&<span"));
+assert(coord.includes("isCount?'student-count-figure overflow-x-auto'"));
+assert(coord.includes('.student-count-figure .count-figure{display:block;max-width:none!important;height:auto}'));
+for(const n of [3,4,5,6])assert(coord.includes(`.student-count-figure .count-figure[data-count="${n}"]{width:${n*110}px}`));
+const units=fs.readFileSync('js/worksheet/gedUnits.js','utf8');assert(units.includes('class="count-figure" data-count="${n}"'));
 console.log('Unified tab label and locked-level return: PASS');
+console.log('Larger counting diagrams retain horizontal scrolling for 3–6 items: PASS');
 }
 main().catch(err=>{console.error(err);process.exitCode=1;});
