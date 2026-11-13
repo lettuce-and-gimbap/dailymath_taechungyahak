@@ -128,91 +128,42 @@ function HomeTab({userData,onUpdate,onGoPractice,onResumeSaved,hasSavedSession,o
   const praise=todayLessons===0?'시작이 반이에요! 도전해봐요 💪':todayLessons<goal?`정말 잘하고 있어요! 조금만 더! 🌟`:'🎊 오늘 목표 달성! 대단해요!';
   const[showArchive,setShowArchive]=useState(false);
 
-  // 2. 🌳 나의 수학 나무 숲 데이터 집계 (검정고시 5대 영역)
-  const treeStats = {
-  '기초 연산': { c: 0, t: 0, desc: '덧셈, 뺄셈, 곱셈, 나눗셈' },
-  '약수와 배수': { c: 0, t: 0, desc: '약수, 배수, 최대공약수, 최소공배수' },
-  '문장제 문제': { c: 0, t: 0, desc: '실생활 문제 읽고 풀기' },
-  '도형과 좌표': { c: 0, t: 0, desc: '도형, 좌표, 대칭이동' },
-  '검정고시 수학': { c: 0, t: 0, desc: '방정식, 함수, 확률, 통계' }
-};
-
-  // 학습 로그를 순회하며 각 문항별로 카테고리에 맞게 정답(c)과 전체(t) 누적
-  logs.forEach(log => {
-    if(log.questions) {
-      log.questions.forEach(q => {
-        const type = (q.meta?.type || log.type || '').toLowerCase();
-        const cat = (q.meta?.category || '').toLowerCase();
-
-        // 영역 매핑 분류
-	if(type.includes('나눗셈') || cat === 'div' || cat === 'math') {
-  treeStats['기초 연산'].t++;
-  if(q.isOk) treeStats['기초 연산'].c++;
-}
-else if(type.includes('약수') || type.includes('배수') || type.includes('gcd') || type.includes('lcm')) {
-  treeStats['약수와 배수'].t++;
-  if(q.isOk) treeStats['약수와 배수'].c++;
-}
-else if(type.includes('스토리') || type.includes('문장제') || type.includes('학습지')) {
-  treeStats['문장제 문제'].t++;
-  if(q.isOk) treeStats['문장제 문제'].c++;
-}
-else if(type.includes('기하') || type.includes('도형') || cat === 'geometry' || type.includes('대칭') || type.includes('거리') || type.includes('원')) {
-  treeStats['도형과 좌표'].t++;
-  if(q.isOk) treeStats['도형과 좌표'].c++;
-}
-else if(type.includes('다항식') || type.includes('방정식') || type.includes('함수') || type.includes('집합') || type.includes('확률') || type.includes('통계') || type.includes('모의고사') || type.includes('검정고시') || cat === 'exam5' || cat === 'poly' || cat === 'eq' || cat === 'ineq' || cat === 'set' || cat === 'func' || cat === 'stat') {
-  treeStats['검정고시 수학'].t++;
-  if(q.isOk) treeStats['검정고시 수학'].c++;
-}
-
-      });
-    }
+  // 토픽 기준의 3단 영역 지도. 알 수 없는 유형은 기타에 남겨 분모에서 누락시키지 않는다.
+  const treeDomains=[
+    {key:'calculation',label:'계산의 힘',emoji:'🧮',color:'indigo',match:(t,c)=>c==='div'||c==='math'||/연산|나눗셈|계산/.test(t)},
+    {key:'number',label:'수와 식',emoji:'🔢',color:'blue',match:(t,c)=>/약수|배수|소인수|정수|유리수|다항식|인수분해|복소수/.test(t)||['poly','number'].includes(c)},
+    {key:'equation',label:'방정식과 부등식',emoji:'⚖️',color:'violet',match:(t,c)=>/방정식|부등식/.test(t)||['eq','ineq','equation'].includes(c)},
+    {key:'function',label:'함수와 그래프',emoji:'📈',color:'cyan',match:(t,c)=>/함수|그래프/.test(t)||['func','function'].includes(c)},
+    {key:'geometry',label:'도형과 좌표',emoji:'📐',color:'emerald',match:(t,c)=>/기하|도형|좌표|대칭|거리|원|직선/.test(t)||c==='geometry'},
+    {key:'set',label:'집합과 명제',emoji:'🧩',color:'amber',match:(t,c)=>/집합|명제/.test(t)||c==='set'},
+    {key:'statistics',label:'확률과 통계',emoji:'🎲',color:'rose',match:(t,c)=>/확률|통계|순열|조합/.test(t)||c==='stat'},
+    {key:'word',label:'문장제',emoji:'📖',color:'orange',match:(t)=>/문장제|스토리|실생활/.test(t)},
+    {key:'other',label:'탐험 중인 유형',emoji:'🌿',color:'slate',match:()=>true}
+  ];
+  const treeStats=Object.fromEntries(treeDomains.map(d=>[d.key,{total:0,correct:0,byDate:{}}]));
+  const treeQuestions=[];
+  logs.forEach(log=>(log.questions||[]).forEach(q=>{
+    const topic=String(q.meta?.type||q.topic||log.type||'기타'),cat=String(q.meta?.category||'').toLowerCase();
+    const domain=treeDomains.find(d=>d.match(topic.toLowerCase(),cat))||treeDomains[treeDomains.length-1];
+    const date=String(log.date||'').slice(0,10);const stat=treeStats[domain.key];
+    stat.total++;if(q.isOk)stat.correct++;
+    if(date){if(!stat.byDate[date])stat.byDate[date]={total:0,correct:0};stat.byDate[date].total++;if(q.isOk)stat.byDate[date].correct++;}
+    treeQuestions.push({q,topic,domain,date});
+  }));
+  // 같은 문항/토픽에서 오답 후 정답으로 전환된 건만 '되찾음'으로 센다.
+  const attempts=new Map();let recovered=0,recoveredThisWeek=0;
+  const ordered=[...treeQuestions].reverse();
+  const mondayKey=getKSTMonday();
+  ordered.forEach(({q,topic,date})=>{
+    const key=String(q.qTxt||q.qFull||q.topic||topic).trim().toLowerCase();
+    if(!key)return;
+    const prev=attempts.get(key)||false;
+    if(q.isOk&&prev){recovered++;if(date&&date>=mondayKey)recoveredThisWeek++;attempts.set(key,false);}
+    else if(!q.isOk)attempts.set(key,true);
   });
-
-  // 3. 개별 나무 렌더링 컴포넌트
-  const renderTree = (title, stat) => {
-    const rate = stat.t === 0 ? 0 : Math.round((stat.c / stat.t) * 100);
-    let icon, message, bgColor, borderColor;
-
-    // 성장 4단계 로직 및 따뜻한 동기부여 메시지
-    if (stat.t === 0) {
-       icon = "🌱"; 
-       message = "아직 시작하지 않은 영역이에요. 첫 씨앗을 심어볼까요?"; 
-       bgColor = "bg-gray-50"; borderColor = "border-gray-200";
-    } else if (rate < 40) {
-       icon = "🌱"; 
-       message = "따뜻한 햇살과 물이 조금 더 필요해요! 오답은 나무의 거름이 된답니다."; 
-       bgColor = "bg-amber-50"; borderColor = "border-amber-200";
-    } else if (rate < 75) {
-       icon = "🌿"; 
-       message = "뿌리를 내리고 줄기가 쑥쑥 자라고 있어요! 정말 훌륭한 발전입니다."; 
-       bgColor = "bg-lime-50"; borderColor = "border-lime-200";
-    } else if (rate < 90) {
-       icon = "🌳"; 
-       message = "잎이 무성해졌어요! 개념을 거의 완벽하게 이해하셨네요. 화이팅!"; 
-       bgColor = "bg-green-50"; borderColor = "border-green-300";
-    } else {
-       icon = "🍎"; 
-       message = "와! 꾸준히 노력하신 덕분에 탐스러운 열매가 맺혔어요! 완벽합니다."; 
-       bgColor = "bg-emerald-50"; borderColor = "border-emerald-400";
-    }
-
-    return (
-      <div key={title} className={`flex items-center gap-4 p-4 rounded-2xl border-2 shadow-sm mb-3 ${bgColor} ${borderColor} transition-all hover:scale-[1.02]`}>
-         <div className="text-5xl drop-shadow-md">{icon}</div>
-         <div className="flex-1">
-            <div className="text-sm font-black text-gray-800">{title} <span className="text-xs font-bold text-gray-500 ml-1">({stat.desc})</span></div>
-            <div className="text-xs font-bold text-gray-600 mt-1 leading-snug break-keep">{message}</div>
-            {stat.t > 0 && (
-              <div className="mt-2.5 w-full bg-white/60 rounded-full h-2.5 overflow-hidden border border-black/10">
-                <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" style={{width: `${rate}%`}}></div>
-              </div>
-            )}
-         </div>
-      </div>
-    );
-  };
+  const activeTotal=new Set([...(activeDates||[]),...logs.map(l=>String(l.date||'').slice(0,10)).filter(Boolean)]).size;
+  const domainStage=stat=>stat.total===0?{icon:'🌱',label:'첫 씨앗'}:stat.correct/stat.total>=.9?{icon:'🍎',label:'열매'}:stat.correct/stat.total>=.75?{icon:'🌳',label:'자라는 나무'}:stat.correct/stat.total>=.4?{icon:'🌿',label:'새싹'}:{icon:'🌱',label:'씨앗'};
+  const colorClasses={indigo:'from-indigo-400 to-indigo-600',blue:'from-blue-400 to-blue-600',violet:'from-violet-400 to-violet-600',cyan:'from-cyan-400 to-cyan-600',emerald:'from-emerald-400 to-emerald-600',amber:'from-amber-400 to-amber-600',rose:'from-rose-400 to-rose-600',orange:'from-orange-400 to-orange-600',slate:'from-slate-400 to-slate-600'};
 
   const[feedbackMsg,setFeedbackMsg]=React.useState('');const[fbSent,setFbSent]=React.useState(false);
   const[sentFbRefresh,setSentFbRefresh]=React.useState(0);
@@ -352,20 +303,37 @@ else if(type.includes('다항식') || type.includes('방정식') || type.include
       </div>
     )}
 
-    {/* 🌟 나의 수학 나무 숲 (접었다 펼치기) 🌟 */}
-    {(()=>{const[treeOpen,setTreeOpen]=React.useState(false);return(
+    {/* 나의 수학 나무 숲: 누적 성장 배지와 세분 영역 지도 */}
     <div className="bg-white rounded-3xl shadow-md border-t-4 border-t-green-400 overflow-hidden">
-      <button onClick={()=>setTreeOpen(o=>!o)} className="w-full flex items-center justify-between px-5 py-4">
-        <div className="text-sm font-black text-green-700 uppercase tracking-wide">🌳 나의 수학 나무 숲</div>
-        <span className="text-green-500 font-bold text-lg">{treeOpen?'▲':'▼'}</span>
-      </button>
-      {treeOpen&&<div className="px-5 pb-5">
-        <p className="text-xs text-gray-500 font-bold mb-4">매일 꾸준히 문제를 풀며 검정고시 5대 영역의 나무를 예쁘게 키워보세요!</p>
-        <div className="flex flex-col">
-          {Object.entries(treeStats).map(([title, stat]) => renderTree(title, stat))}
+      <div className="px-5 pt-5 pb-3 bg-gradient-to-br from-green-50 via-white to-emerald-50">
+        <div className="flex items-start gap-3">
+          <div className="text-4xl">🌳</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-base font-black text-green-800">나의 수학나무 숲</div>
+            <div className="text-xs text-green-700 mt-1">오늘까지 {treeQuestions.length}문제를 만나고 {activeTotal}일 함께했어요.</div>
+          </div>
+          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-white text-green-700 border border-green-100">성장 중</span>
         </div>
-      </div>}
-    </div>)})()}
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {[["🌱",treeQuestions.length,"만난 문제"],["🔁",recovered,"되찾은 문제"],["⭐",activeTotal,"함께한 날"]].map(([ico,val,label])=><div key={label} className="rounded-2xl bg-white/90 border border-green-100 p-2.5 text-center shadow-sm"><div className="text-[10px] text-gray-500 font-bold">{ico} {label}</div><div className="text-xl text-green-800 font-black mt-0.5">{val}<span className="text-xs ml-0.5">개</span></div>{label==='되찾은 문제'&&<div className="text-[9px] text-green-600 font-bold">이번 주 +{recoveredThisWeek}</div>}</div>)}
+        </div>
+      </div>
+      <div className="px-5 pb-5 pt-3">
+        <div className="flex items-center justify-between mb-2"><div className="text-xs font-black text-gray-700">배움의 영역 지도</div><div className="text-[10px] text-gray-400">색 막대 = 지금까지 정답 비율</div></div>
+        <div className="space-y-2">
+          {treeDomains.map(d=>{
+            const st=treeStats[d.key],rate=st.total?Math.round(st.correct/st.total*100):0,stage=domainStage(st);
+            return <div key={d.key} className="rounded-2xl border border-gray-100 bg-white px-3 py-2.5">
+              <div className="flex items-center gap-2"><span className="text-lg">{d.emoji}</span><span className="text-xs font-black text-gray-800 flex-1">{d.label}</span><span className="text-[10px] text-gray-500">{stage.icon} {stage.label}</span></div>
+              <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full rounded-full bg-gradient-to-r ${colorClasses[d.color]}`} style={{width:`${rate}%`}}/></div><span className="w-16 text-right text-[10px] font-bold text-gray-500">{st.total?`${st.correct}/${st.total} · ${rate}%`:'아직 기록 없음'}</span></div>
+              {st.total>0&&<div className="mt-1 text-[9px] text-gray-400">{st.total<5?'기록이 더 쌓이면 변화가 또렷해져요':`최근 기록 ${Math.min(5,st.total)}회 중 ${(()=>{const recent=treeQuestions.filter(x=>x.domain.key===d.key).slice(0,5);return recent.filter(x=>x.q.isOk).length;})()}회 정답`}</div>}
+            </div>;
+          })}
+        </div>
+        <div className="mt-3 rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-[10px] text-amber-800 leading-relaxed"><b>🌟 다음 성장 미션</b><br/>{treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length?`기록이 적은 ${treeDomains.filter(d=>treeStats[d.key].total>0&&treeStats[d.key].total<5).length}개 영역에서 문제를 더 만나봐요.`:treeQuestions.length===0?'첫 문제를 풀어 나무에 씨앗을 심어봐요!':'가장 많이 자란 영역의 다음 유형에도 도전해봐요!'} 오답은 성장 과정의 일부이고, 되찾은 문제는 실력이 된 순간이에요.</div>
+        <div className="mt-2 text-[9px] text-gray-400 leading-relaxed">정답 비율은 저장된 전체 풀이 기준의 참고값이에요. 영역 분류는 문항 토픽 이름과 범주에 따르며, ‘되찾은 문제’는 같은 문항 기록에서 오답 뒤 정답으로 바뀐 경우만 셉니다.</div>
+      </div>
+    </div>
 
     {/* 학생 의견 보내기 */}
     <div className="bg-white rounded-3xl p-5 shadow-md">

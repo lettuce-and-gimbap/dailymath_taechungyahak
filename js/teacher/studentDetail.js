@@ -92,6 +92,7 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
   const activeTime=useMemo(()=>buildActiveTimeSummary(logs),[logs]);
   const explore=useMemo(()=>buildExploreSummary(student),[student]);
   const relativeMastery=useMemo(()=>buildRelativeMastery(logs,qStats),[logs,qStats]);
+  const mathForest=useMemo(()=>buildMathForest(logs),[logs]);
 
   // 오답 수정 데이터 로드
   useEffect(()=>{
@@ -411,6 +412,13 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
 
       <!-- ③ 영역별 성취도 -->
       ${sectionHead('📈','영역별 성취도')}
+      <div style="border:1px solid #a7f3d0;background:#ecfdf5;border-radius:8px;padding:10px 13px;margin-bottom:12px;page-break-inside:avoid;">
+        <div style="font-size:12px;font-weight:900;color:#065f46;margin-bottom:5px;">🌳 수학나무 숲 · 성장 지표</div>
+        <div style="font-size:10px;color:#334155;margin-bottom:7px;">전체 ${mathForest.total}문항 · 정답률 ${mathForest.rate==null?'자료 없음':`${mathForest.rate}%`} · 오답 후 정답 전환 ${mathForest.recovered}건(문항 텍스트 기준 추정)</div>
+        ${mathForest.domains.length?`<table style="width:100%;border-collapse:collapse;font-size:9.5px;"><tr style="background:#d1fae5;"><th style="padding:4px;text-align:left;">영역</th><th style="padding:4px;text-align:center;">정답/풀이</th><th style="padding:4px;text-align:center;">정답률</th><th style="padding:4px;text-align:center;">전반기→후반기 변화</th></tr>${mathForest.domains.map(d=>`<tr><td style="padding:4px;border-bottom:1px solid #d1fae5;">${d.label}</td><td style="padding:4px;text-align:center;border-bottom:1px solid #d1fae5;">${d.correct}/${d.total}</td><td style="padding:4px;text-align:center;border-bottom:1px solid #d1fae5;">${d.rate}%</td><td style="padding:4px;text-align:center;border-bottom:1px solid #d1fae5;">${d.delta==null?'산출 대기':`${d.delta>0?'+':''}${d.delta}%p`}</td></tr>`).join('')}</table>`:'<div style="font-size:10px;color:#64748b;">분류 가능한 풀이 기록이 없습니다.</div>'}
+        <div style="font-size:8.5px;color:#64748b;line-height:1.5;margin-top:6px;">해석: 영역은 로그의 문항 토픽/범주로 분류했습니다. 정답률은 풀이량을 보정하지 않은 기술통계이며, 추세는 기록일 기준 전·후반 두 구간의 차이입니다. 인과적 효과나 숙달 판정으로 해석하지 말고 표본 수와 수업 관찰을 함께 검토하십시오.</div>
+        <div style="font-size:8.5px;color:#4338ca;line-height:1.5;margin-top:4px;">학습분석 관점: 세분 토픽별 성취도와 학습 궤적을 진단 보조 자료로 활용합니다. 영역 간 문항 수·난이도·기회가 다르므로 단순 순위 비교는 적절하지 않습니다.</div>
+      </div>
       ${relativeMastery.length === 0
         ? `<div style="padding:16px;text-align:center;color:#94a3b8;border:1px solid #e2e8f0;border-radius:8px;font-size:11px;margin-bottom:18px;">
             아직 비교 가능한 누적 학습 데이터가 충분하지 않습니다.<br/>
@@ -1149,6 +1157,19 @@ function StudentDetail({student,onBack,folders,customFolders,onAssignFolder,onCl
       {/* ── 탭 1: 종합 ── */}
       {tab==='overview'&&(
         <div className="space-y-3">
+          {/* 수학나무 숲: 토픽 기반 상태와 시계열을 함께 제시 */}
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4">
+            <div className="flex items-center gap-2"><span className="text-2xl">🌳</span><div className="flex-1"><div className="text-sm font-black text-emerald-900">수학나무 숲 현황</div><div className="text-[10px] text-emerald-700">전체 {mathForest.total}문항 · 정답 {mathForest.rate==null?'자료 없음':`${mathForest.rate}%`} · 되찾은 기록 {mathForest.recovered}건</div></div></div>
+            {mathForest.domains.length===0?<div className="mt-3 text-xs text-gray-500 bg-white rounded-xl p-3">분류할 풀이 기록이 아직 없습니다.</div>:<div className="mt-3 space-y-2">
+              {mathForest.domains.map(d=><div key={d.key} className="bg-white border border-emerald-100 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2"><span className="text-xs font-black text-gray-800 flex-1">{d.label}</span><span className="text-[10px] font-bold text-emerald-800">{d.correct}/{d.total} · {d.rate}%</span></div>
+                <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{width:`${d.rate}%`}}/></div>
+                <div className="text-[9px] text-gray-400 mt-1">{d.days}일 기록{d.delta==null?' · 추세 산출 대기':` · 전반기 대비 후반기 ${d.delta>0?'+':''}${d.delta}%p`}</div>
+              </div>)}
+            </div>}
+            <div className="mt-3 pt-2 border-t border-emerald-100 text-[9px] leading-relaxed text-gray-500">지표 해석: 전체 정답률은 각 유형의 풀이량 차이를 반영하지 않는 원점수 비율입니다. 추세는 기록일을 반으로 나눈 두 구간의 정답률 차이이며, 인과나 숙달 판정이 아닙니다. 표본이 적거나 날짜가 한 구간뿐이면 추세를 제시하지 않습니다. 되찾은 기록은 동일 문항 텍스트에서 오답 이후 정답으로 바뀐 횟수의 추정치입니다.</div>
+            <div className="mt-2 text-[9px] text-indigo-700 bg-indigo-50 rounded-xl p-2 leading-relaxed"><b>학습분석학적 활용:</b> 영역별 성취와 시간에 따른 변화(learning trajectory)를 함께 살펴볼 수 있습니다. 낮은 비율 하나만으로 개입을 결정하지 말고 표본 수, 최근 세션, 풀이 난이도와 교사 관찰을 함께 확인하세요.</div>
+          </div>
           {/* 자기평가 분포 */}
           <div className="bg-gray-50 p-3 rounded-2xl">
             <div className="text-xs font-bold text-gray-500 mb-2">🗣️ 자기평가 감정 분포 (주관적 참고용)</div>

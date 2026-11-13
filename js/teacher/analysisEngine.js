@@ -29,6 +29,43 @@ function calcRawAccuracy(questions){
   return Math.round((c/questions.length)*100);
 }
 
+// 학생 나무숲용 토픽 분류와 영역별 학습 지표. 원본 로그를 바꾸지 않고 계산한다.
+var TREE_DOMAINS=[
+  {key:'calculation',label:'계산의 힘',match:(t,c)=>c==='div'||c==='math'||/연산|나눗셈|계산/.test(t)},
+  {key:'number',label:'수와 식',match:(t,c)=>/약수|배수|소인수|정수|유리수|다항식|인수분해|복소수/.test(t)||['poly','number'].includes(c)},
+  {key:'equation',label:'방정식과 부등식',match:(t,c)=>/방정식|부등식/.test(t)||['eq','ineq','equation'].includes(c)},
+  {key:'function',label:'함수와 그래프',match:(t,c)=>/함수|그래프/.test(t)||['func','function'].includes(c)},
+  {key:'geometry',label:'도형과 좌표',match:(t,c)=>/기하|도형|좌표|대칭|거리|원|직선/.test(t)||c==='geometry'},
+  {key:'set',label:'집합과 명제',match:(t,c)=>/집합|명제/.test(t)||c==='set'},
+  {key:'statistics',label:'확률과 통계',match:(t,c)=>/확률|통계|순열|조합/.test(t)||c==='stat'},
+  {key:'word',label:'문장제',match:t=>/문장제|스토리|실생활/.test(t)},
+  {key:'other',label:'기타 토픽',match:()=>true}
+];
+function buildMathForest(logs){
+  const domains=Object.fromEntries(TREE_DOMAINS.map(d=>[d.key,{...d,total:0,correct:0,dates:{}}]));
+  const questions=[];
+  (logs||[]).forEach(log=>(log.questions||[]).forEach(q=>{
+    const topic=String(q.meta?.type||q.topic||log.type||'기타'),cat=String(q.meta?.category||'').toLowerCase();
+    const cfg=TREE_DOMAINS.find(d=>d.match(topic.toLowerCase(),cat))||TREE_DOMAINS[TREE_DOMAINS.length-1];
+    const stat=domains[cfg.key],date=String(log.date||'').slice(0,10);stat.total++;if(q.isOk)stat.correct++;
+    if(date){if(!stat.dates[date])stat.dates[date]={total:0,correct:0};stat.dates[date].total++;if(q.isOk)stat.dates[date].correct++;}
+    questions.push({q,topic,date,key:cfg.key});
+  }));
+  const attempts=new Map();let recovered=0;
+  [...questions].reverse().forEach(({q,topic})=>{
+    const id=String(q.qTxt||q.qFull||q.topic||topic).trim().toLowerCase();if(!id)return;
+    if(q.isOk&&attempts.get(id)){recovered++;attempts.set(id,false);}else if(!q.isOk)attempts.set(id,true);
+  });
+  const results=Object.values(domains).map(d=>{
+    const days=Object.keys(d.dates).sort();const first=days.slice(0,Math.ceil(days.length/2)),last=days.slice(Math.ceil(days.length/2));
+    const avg=arr=>{const qs=questions.filter(x=>x.key===d.key&&arr.includes(x.date));const n=qs.length;return n?Math.round(qs.filter(x=>x.q.isOk).length/n*100):null;};
+    const delta=first.length&&last.length?avg(last)-avg(first):null;
+    return{key:d.key,label:d.label,total:d.total,correct:d.correct,rate:d.total?Math.round(d.correct/d.total*100):null,days:days.length,delta};
+  }).filter(d=>d.total>0).sort((a,b)=>(a.rate??0)-(b.rate??0));
+  const n=questions.length,rate=n?Math.round(questions.filter(x=>x.q.isOk).length/n*100):null;
+  return{domains:results,total:n,rate,recovered};
+}
+
 // ── 시계열 모멘텀 (순수 정답률 기반 - 객관적) ──
 function detectMomentum(logs){
   const sessions=logs.slice(0,10)
