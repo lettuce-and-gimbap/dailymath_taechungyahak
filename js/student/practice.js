@@ -72,7 +72,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
   return null;
 }
 
-/* 미리 보기 계정에서 기존 두 문제 메뉴를 한곳에 모은다. */
+/* 기존 두 문제 메뉴를 한곳에 모은다. */
 function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onArithmetic,onCoordinate}){
  const items=[
   {v:0,lbl:'기본 나눗셈',desc:'설정한 범위에서 몫을 구합니다'},

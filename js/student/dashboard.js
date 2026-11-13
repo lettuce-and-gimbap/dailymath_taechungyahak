@@ -80,7 +80,7 @@ function StudentDashboard({userData,onLogout,onUpdate:onUpdateRaw,onSwitchUser})
     }
     onUpdateRaw(upd);
   };
-  const unifiedPractice=userData.name==='박소명_학생';
+  const unifiedPractice=true;
   const TABS=[{k:'home',icon:'🏠',lbl:'홈'},{k:'practice',icon:'✏️',lbl:unifiedPractice?'문제풀이':'문제풀기'},{k:'coord',icon:'📍',lbl:'좌표'},{k:'geometry',icon:'📐',lbl:'기하학'},{k:'exam',icon:'📝',lbl:'모의고사'},{k:'history',icon:'📅',lbl:'기록'}].filter(t=>!unifiedPractice||t.k!=='coord');
 
   const handleSessionActive=(active)=>{
