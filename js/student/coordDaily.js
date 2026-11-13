@@ -36,7 +36,7 @@ var COORD_LEVELS=[
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-30T00:00:00+09:00', openLbl:'10/30(금)'},
   {k:'ineq',badge:'응용 6', logName:'최상 이차부등식', lbl:'이차부등식의 해', desc:'해의 범위를 수직선에 나타냅니다 (● 이상·이하 / ○ 초과·미만)',
     border:'border-rose-300', chip:'bg-rose-100 text-rose-700', openAt:'2026-10-08T00:00:00+09:00', openLbl:'10/8(목)'},
-  {k:'count2',badge:'응용 7',logName:'경우의 수',lbl:'경우의 수 · 순열과 조합',desc:'그림을 보고 순서대로 배열하거나 순서 없이 고릅니다',
+  {k:'count3',badge:'응용 7',logName:'경우의 수',lbl:'경우의 수 · 순열과 조합',desc:'그림을 보고 순서대로 배열하거나 순서 없이 고릅니다',
     border:'border-rose-300',chip:'bg-rose-100 text-rose-700'},
 ];
 /* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
@@ -61,7 +61,7 @@ function coordChoicesPlain(X,Y){
    고졸 검정고시 그림처럼 모눈 없이 축만 두고, 답을 구하는 데 필요한 값만 표시한다.
    (점근선 x=p · y=q 와 그 값 / 무리함수의 시작점 / 제한된 범위의 양 끝)
    식은 KaTeX 로 그린다 — 분자가 음수면 '−' 를 분수 앞에 두고, 루트는 한 덩어리 기호로. */
-var TOP_LEVELS=['rat','irr','quad','div','circ','ineq','count','count2'];
+var TOP_LEVELS=['rat','irr','quad','div','circ','ineq','count','count2','count3'];
 var _tx=t=>`<span class="tx" data-tex="${t.replace(/"/g,'&quot;')}"></span>`;
 var _sgn=(v,first)=>v<0?`-${-v}`:(first?`${v}`:`+${v}`);                 // 3 → "+3", -2 → "-2"
 /* 식은 글 줄 사이에 끼우지 않고 가운데 한 줄로 크게 — 분수가 윗줄과 겹치거나 식이 줄바꿈으로 잘리지 않게 */
@@ -78,15 +78,15 @@ function topShiftChoices(p,q){
   return{list,ans:list.indexOf(right)};
 }
 /* 만능학습지와 같은 문항·그림을 사용하고, 씨앗으로 교사 기록에서 재현한다. */
-function genCountQ(legacy){
+function genCountQ(version){
   const id=Math.random()<0.5?'u19':'u20';
   const unit=GED_UNITS.find(u=>u.id===id);
-  const p=unit.rand({legacy}),r=unit.build(p),topic=unit.id==='u19'?'순열':'조합';
-  return{lv:legacy?'count':'count2',topic,q:r.q,svg:r.figure,svgAfter:r.figure,
+  const p=unit.rand({legacy:version===1,version:version<3?2:3}),r=unit.build(p),topic=unit.id==='u19'?'순열':'조합';
+  return{lv:version===1?'count':version===2?'count2':'count3',topic,q:r.q,svg:r.figure,svgAfter:r.figure,
     choices:r.choices.map(String),ans:r.ans,answer:String(r.choices[r.ans]),sol:r.sol,cols:2};
 }
 function genTopQ(lv){
-  if(lv==='count'||lv==='count2')return genCountQ(lv==='count');
+  if(lv==='count'||lv==='count2'||lv==='count3')return genCountQ(lv==='count'?1:lv==='count2'?2:3);
   if(lv==='div')return genDivQ();
   if(lv==='circ')return genCircQ();
   if(lv==='ineq')return genIneqQ();
@@ -669,7 +669,7 @@ function CoordDailyTab({userData,onUpdate}){
       timeSec:Math.round((Date.now()-qStartAt)/1000),
       firstClickMs:firstClick,revisionCount:null,
       qTopicHash:getTopicHash({meta:{type:q.topic}}),
-      meta:{category:(q.lv==='count'||q.lv==='count2')?'stat':'geometry',type:q.topic,diff:(q.lv==='count'||q.lv==='count2')?'기초':q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
+      meta:{category:(q.lv==='count'||q.lv==='count2'||q.lv==='count3')?'stat':'geometry',type:q.topic,diff:(q.lv==='count'||q.lv==='count2'||q.lv==='count3')?'기초':q.lv==='low'?'기초':q.lv==='mid'?'기초':'기하'},
       cSeed:q.seed,cLv:q.genLv,choices:q.choices.map(String),answerIdx:q.ans};
     const newRecs=[...recs,rec];const newCorrect=correct+(isOk?1:0);
     setRecs(newRecs);setCorrect(newCorrect);
@@ -803,7 +803,7 @@ function CoordDailyTab({userData,onUpdate}){
   }
 
   /* ── 문제 화면 ── */
-  const lvInfo=COORD_LEVELS.find(l=>l.k===(q.lv==='count'?'count2':q.lv))||COORD_LEVELS[0];
+  const lvInfo=COORD_LEVELS.find(l=>l.k===((q.lv==='count'||q.lv==='count2')?'count3':q.lv))||COORD_LEVELS[0];
   return(<div ref={texRef} className="p-4 space-y-4 pb-36">
     <style>{`svg.plane{max-width:100%;height:auto}`}</style>
 

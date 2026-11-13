@@ -9,6 +9,17 @@ self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.a
 self.addEventListener('fetch',e=>{
   const u=new URL(e.request.url);
   if(e.request.method!=='GET'||u.origin!==location.origin)return;
+  /* 문제 삽화는 버전이 붙은 파일을 우선 재사용해 다음 문제의 대기 시간을 줄인다. */
+  if(u.pathname.includes('/assets/count-illustrations/') && /\.jpg$/.test(u.pathname)){
+    e.respondWith(caches.open(CACHE).then(async cache=>{
+      const saved=await cache.match(e.request);
+      if(saved)return saved;
+      const response=await fetch(e.request);
+      if(response.ok)await cache.put(e.request,response.clone()).catch(()=>{});
+      return response;
+    }).catch(()=>fetch(e.request)));
+    return;
+  }
   /* 인터넷이 약할 때 fetch 가 끝없이 기다리면 앱이 하얀 화면으로 멈춘다(2026-10-02).
      NET_WAIT 가 지나도 응답이 없으면 받아 둔 사본으로 먼저 띄우고, 늦게 온 새 파일은 다음 실행을 위해 저장만 한다. */
   const net=fetch(e.request).then(r=>{
