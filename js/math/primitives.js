@@ -145,37 +145,3 @@ function usePinch(svgRef,sz){
 }
 
 var SVG_PROPS={style:{touchAction:'none',display:'block',fontFamily:"'Jua','Noto Sans KR',sans-serif"},className:'border-2 border-gray-100 rounded-2xl bg-slate-50 shadow-sm mx-auto'};
-
-/* ===== MINI GRAPH (for quiz) ===== */
-var MINI_S=80,MINI_SC=6;
-
-/* ⚠️ MiniGrid / MiniGraph 는 현재 어디에서도 호출하지 않는다 (2026-09-11 확인).
-   퀴즈용 축소 그래프였는데, 지금은 GraphPreview 가 그 역할을 한다. */
-function MiniGrid({S,SC}){
-  const cx=S/2,cy=S/2;
-  // 🌟 수정 1: 눈금을 -3~3에서 -6~6으로 확장하여, 모든 영역의 그래프가 화면에 잘리지 않도록 합니다.
-  return(<g>{Array.from({length:13},(_,i)=>i-6).map(n=>(<g key={n}>
-    <line x1={cx+n*SC} y1={0} x2={cx+n*SC} y2={S} stroke={n===0?'#555':'#f0f0f0'} strokeWidth={n===0?1.5:0.6}/>
-    <line x1={0} y1={cy+n*SC} x2={S} y2={cy+n*SC} stroke={n===0?'#555':'#f0f0f0'} strokeWidth={n===0?1.5:0.6}/>
-    </g>))}
-  <polygon points={`${S-1},${cy} ${S-7},${cy-3} ${S-7},${cy+3}`} fill="#555"/>
-  <polygon points={`${cx},1 ${cx-3},7 ${cx+3},7`} fill="#555"/></g>)
-}
-
-function MiniGraph({data}){
-  const S=MINI_S,SC=MINI_SC,cx=S/2,cy=S/2;let content=null;
-  if(data){const{type}=data;
-    // 🌟 수정 1 (연장): 모든 그래프들의 절단 임계값(Math.abs(y) > 5)을 6으로 넉넉하게 변경했습니다.
-    if(type==='radical'){const{p,q,a}=data;const pts=[];for(let sx=0;sx<=S;sx++){const mx=(sx-cx)/SC,inn=mx-p;if(inn<0)continue;const my=a*Math.sqrt(inn)+q;if(Math.abs(my)>6)continue;pts.push(`${sx},${(cy-my*SC).toFixed(1)}`)}content=pts.length>1?<path d={`M ${pts.join(' L ')}`} fill="none" stroke="#3b82f6" strokeWidth={1.8}/>:null}
-    else if(type==='rational'){const{p,q,k}=data;const br=left=>{const pts=[];for(let mx=left?-6:p+0.1;left?mx<p-0.1:mx<=6;mx+=0.08){const my=k/(mx-p)+q;if(Math.abs(my)>6)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?<path d={`M ${pts.join(' L ')}`} fill="none" stroke="#9333ea" strokeWidth={1.8}/>:null};content=<>{br(true)}{br(false)}</>}
-    else if(type==='quadratic'){const{p,q,a,ds=-6,de=6}=data;const pts=[];for(let mx=Math.max(-6,ds);mx<=Math.min(6,de);mx+=0.08){const my=a*(mx-p)**2+q;if(Math.abs(my)>6)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}content=pts.length>1?<path d={`M ${pts.join(' L ')}`} fill="none" stroke="#16a34a" strokeWidth={1.8}/>:null}
-    else if(type==='distance'){const{ptX,ptY,la,lb,lc}=data;const le=[];if(Math.abs(lb)>0.001){[-6,6].forEach(mx=>{const my=-(la*mx+lc)/lb;le.push([cx+mx*SC,cy-my*SC])})}const nV=la*ptX+lb*ptY+lc,d2=la**2+lb**2;const fX=d2>0?ptX-la*nV/d2:ptX,fY=d2>0?ptY-lb*nV/d2:ptY;content=<>{le.length>=2&&<line x1={le[0][0]} y1={le[0][1]} x2={le[1][0]} y2={le[1][1]} stroke="#ea580c" strokeWidth={1.8}/>}<line x1={cx+ptX*SC} y1={cy-ptY*SC} x2={cx+fX*SC} y2={cy-fY*SC} stroke="#fb923c" strokeWidth={1.2} strokeDasharray="3,2"/><circle cx={cx+ptX*SC} cy={cy-ptY*SC} r={4} fill="#dc2626"/></>}
-    else if(type==='circle'){const{h,k,r}=data;content=<circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="rgba(20,184,166,0.15)" stroke="#0d9488" strokeWidth={1.8}/>}
-    else if(type==='symmetry'){
-      // 🌟 수정 2: 대칭이동 시 축(주황 점선)과 정답 점(파란 점)을 지우고 오직 원본(빨간 점) 1개만 표시합니다.
-      const{px,py}=data;
-      content=<circle cx={cx+px*SC} cy={cy-py*SC} r={4} fill="#dc2626"/>;
-    }
-  }
-  return(<svg width={S} height={S} style={{flexShrink:0}}><MiniGrid S={S} SC={MINI_SC}/>{content}</svg>);
-}
