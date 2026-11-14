@@ -886,6 +886,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       })}
     </div>
 
+    {phase==='feedback'&&<QuestionDifficultyBookmark userData={userData} source={`좌표 · ${q.topic||level}`} question={{qFull:q.q,choices:q.choices,answerIdx:q.ans,meta:{type:q.topic},cSeed:q.seed,cLv:q.genLv,cGrid:q.circleGrid}}/>}
     {phase==='feedback'&&(
       <div className={`rounded-3xl p-5 border-2 ${sel===q.ans?'bg-emerald-50 border-emerald-300':'bg-amber-50 border-amber-300'}`}>
         <div className="font-black text-lg mb-2 text-gray-800">

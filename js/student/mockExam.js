@@ -319,6 +319,7 @@ return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {sr
           }}/>
           {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
           {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
+          {isGraded&&<QuestionDifficultyBookmark userData={userData} source={`${examLevel==='middle'?'중졸':'고졸'} 모의고사 ${q.examNo||i+1}번`} question={{qFull:q.q,choices:q.choices,answerIdx:q.answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):q.sol,meta:{type:q.topic},graph:q.graph}}/>}
         </div>);
       })}
       {answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">

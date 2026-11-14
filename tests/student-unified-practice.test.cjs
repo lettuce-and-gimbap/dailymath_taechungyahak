@@ -23,14 +23,16 @@ assert(render('coordinate').some(x=>x.type==='button'&&JSON.stringify(x.children
 assert(render('count').some(x=>x.type==='button'&&JSON.stringify(x.children).includes('순열과 조합')));
 console.log('Unified menu: four arithmetic options, coordinate and counting sections: PASS');
 const practiceSource=fs.readFileSync('js/student/practice.js','utf8');
-assert(practiceSource.includes("userData.name==='박소명_학생'?['집합','명제'].map")&&practiceSource.includes('onSetTopic&&onSetTopic(topic)'),'only the named student can launch set and proposition practice');
+assert(practiceSource.includes("(PREVIEW_USERS||[]).includes(userData.name)?['집합','명제'].map")&&practiceSource.includes('onSetTopic&&onSetTopic(topic)'),'preview users can launch set and proposition practice');
 assert(practiceSource.includes('const isMC=true;'),'every arithmetic question is four-choice multiple choice');
 assert(practiceSource.includes('곧 공개할 예정이에요'),'other students see the locked work-in-progress notice');
 assert(practiceSource.includes("title:'집합과 명제'")&&practiceSource.includes("['집합','명제'].map"));
 const home=fs.readFileSync('js/student/home.js','utf8');assert(home.includes('setShowMathForest')&&home.includes('aria-expanded={showMathForest}')&&!home.includes('정답 비율은 저장된 전체 풀이 기준'));
 const mock=fs.readFileSync('js/student/mockExam.js','utf8');assert(mock.includes('중졸 모의고사')&&mock.includes('bg-white rounded-3xl text-left shadow-sm border-2'));
 assert(mock.includes('grid grid-cols-2 gap-2 mb-3')&&mock.includes('aria-pressed={selectedDomains.includes(d)}'),'exam domain selection uses consistent accessible selection cards');
-assert(practiceSource.includes("if(unified&&screen==='focused-set'&&userData.name==='박소명_학생')return<FocusedSetPractice")&&practiceSource.includes('genPracticeSetQuestion()')&&practiceSource.includes('genPracticePropositionQuestion()'),'focused set and proposition practice stays in the problem-solving tab');
+assert(practiceSource.includes("if(unified&&screen==='focused-set'&&(PREVIEW_USERS||[]).includes(userData.name))return<FocusedSetPractice")&&practiceSource.includes('genPracticeSetQuestion()')&&practiceSource.includes('genPracticePropositionQuestion()'),'focused set and proposition practice stays in the problem-solving tab for preview users');
+assert(practiceSource.includes('function GEDPracticeMarkup')&&practiceSource.includes("el.style.whiteSpace='nowrap'")&&practiceSource.includes("el.style.overflowX='auto'")&&practiceSource.includes('q.practiceMarkup?<GEDPracticeMarkup'),'GED formulas stay together and long expressions remain accessible');
+assert(practiceSource.includes('q.figure&&<GEDPracticeMarkup')&&practiceSource.includes('GEDPracticeSolutions'),'exam figures and formula solutions render in focused practice');
 assert(practiceSource.includes("if(phase==='reflection')return")&&practiceSource.includes('FeelingPicker title={`${topic} 연습 완료')&&practiceSource.includes("setPhase('reflection')"),'set and proposition sessions finish with the student difficulty/feeling check');
 const homework=fs.readFileSync('js/student/homework.js','utf8');assert(homework.includes("if(phase==='reflection')return <FeelingPicker")&&homework.includes('patchLogFeeling'),'homework sessions also ask and save the difficulty/feeling check');
 assert(fs.readFileSync('js/student/coordDaily.js','utf8').includes('모든 학생 풀이 세션의 공통 마무리 화면'));
@@ -57,8 +59,8 @@ assert.strictEqual(coordCtx.coordLevelLocked({k:'another',locked:true},'테스�
 const constantsCtx={React:{}};vm.createContext(constantsCtx);vm.runInContext(fs.readFileSync('js/core/constants.js','utf8'),constantsCtx);
 assert.strictEqual(constantsCtx.quickSwitchTarget('박소명'),'박소명_학생');assert.strictEqual(constantsCtx.quickSwitchTarget('박소명_학생'),'테스트');assert.strictEqual(constantsCtx.quickSwitchTarget('테스트'),'박소명');
 assert(constantsCtx.PREVIEW_USERS.includes('테스트'),'test account can preview student-only work');
-for(const name of ['테스트','박소명','다른 학생','']){const rendered=render('sets',name);assert.strictEqual(rendered.filter(x=>x.type==='button'&&JSON.stringify(x).includes('10문제 연습')).length,0,`${name}: 집합·명제 잠금`);assert(rendered.some(x=>x.props.role==='status'&&JSON.stringify(x.children).includes('아직 작업 중')));}
-assert.strictEqual(render('sets','박소명_학생').filter(x=>x.type==='button'&&JSON.stringify(x).includes('10문제 연습')).length,2,'박소명_학생 집합·명제 허용');
+for(const name of ['박소명','다른 학생','']){const rendered=render('sets',name);assert.strictEqual(rendered.filter(x=>x.type==='button'&&JSON.stringify(x).includes('10문제 연습')).length,0,`${name}: 집합·명제 잠금`);assert(rendered.some(x=>x.props.role==='status'&&JSON.stringify(x.children).includes('아직 작업 중')));}
+for(const name of ['박소명_학생','테스트'])assert.strictEqual(render('sets',name).filter(x=>x.type==='button'&&JSON.stringify(x).includes('10문제 연습')).length,2,`${name} 집합·명제 허용`);
 assert(coord.includes("phase==='circle-grid'")&&coord.includes("start('circ',false)")&&coord.includes('grid:gridMode,ticks:gridMode'));
 assert(coord.includes('if(initialLevel){'));
 assert(coord.includes('onClick={exitPick}'));

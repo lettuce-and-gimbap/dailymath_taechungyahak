@@ -190,8 +190,9 @@ function GraphPreview({q}){
         </g>}
         {/* 꼭짓점이 구간 내이고 극값이 아닌 경우 */}
         {vxInRange&&extremePt.x!==p&&<circle cx={toQx(p)} cy={toQy(vq)} r={3.5} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>}
-        {/* ★ 극값점: 수선의 발 + 축 좌표 강조 (강조 원 없음) */}
+        {/* ★ 구간 안 실제 극값: 축 좌표와 좌표점 강조 */}
         {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor,extremePt.x,Math.round(extremePt.y*100)/100)}
+        <g pointerEvents="none"><circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={7} fill="white" stroke={extremeColor} strokeWidth={2.5}/><circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={2.8} fill={extremeColor}/><text x={toQx(extremePt.x)+(extremePt.x>=0?9:-9)} y={toQy(extremePt.y)-9} textAnchor={extremePt.x>=0?'start':'end'} fontSize={10} fill={extremeColor} fontWeight="900" stroke="white" strokeWidth={2.5} paintOrder="stroke">({extremePt.x}, {Math.round(extremePt.y*100)/100})</text></g>
       </svg>
     );
   }
@@ -261,7 +262,9 @@ function GraphPreview({q}){
   if(g.type==='rational'){
     const{k,p,q:vq}=g;  // p=dx, q=dy, k=분자
     const eps=0.18;
-    const ptsL=[], ptsR=[];
+    const ptsL=[], ptsR=[],refL=[],refR=[];
+    for(let xi=-6;xi< -eps;xi+=0.12){const yi=k/xi;if(Math.abs(yi)<=5)refL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`)}
+    for(let xi=eps;xi<=6;xi+=0.12){const yi=k/xi;if(Math.abs(yi)<=5)refR.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`)}
     for(let xi=p-6;xi<p-eps;xi+=0.12){
       const yi=k/(xi-p)+vq;
       if(Math.abs(yi-vq)<=5&&toSx(xi)>=4&&toSx(xi)<=W-4) ptsL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
@@ -280,6 +283,8 @@ function GraphPreview({q}){
         {/* 점근선 레이블 */}
         <text x={toSx(p)+4} y={14} fontSize={8} fill="#d97706" fontWeight="bold">x={p}</text>
         <text x={W-28} y={toSy(vq)-4} fontSize={8} fill="#d97706" fontWeight="bold">y={vq}</text>
+        {refL.length>1&&<polyline points={refL.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={1.8} strokeDasharray="5,4" opacity={0.58}/>}
+        {refR.length>1&&<polyline points={refR.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={1.8} strokeDasharray="5,4" opacity={0.58}/>}
         {ptsL.length>1&&<polyline points={ptsL.join(' ')} fill="none" stroke={color} strokeWidth={2.8} strokeLinecap="round"/>}
         {ptsR.length>1&&<polyline points={ptsR.join(' ')} fill="none" stroke={color} strokeWidth={2.8} strokeLinecap="round"/>}
       </svg>
@@ -386,7 +391,7 @@ function GraphPreview({q}){
         {/* 대칭축 (y=x, y=-x) */}
         {symLinePoints.length===2&&<line x1={symLinePoints[0][0]} y1={symLinePoints[0][1]} x2={symLinePoints[1][0]} y2={symLinePoints[1][1]} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5,3"/>}
         {/* 원점 대칭: 원점 강조 표시 */}
-        {sym==='원점'&&<circle cx={toSx(0)} cy={toSy(0)} r={5} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3,2"/>}
+        {sym==='원점'&&<g><circle cx={toSx(0)} cy={toSy(0)} r={8} fill="white" fillOpacity={0.86} stroke="#f59e0b" strokeWidth={2}/><line x1={toSx(0)-5} y1={toSy(0)} x2={toSx(0)+5} y2={toSy(0)} stroke="#f59e0b" strokeWidth={1.7}/><line x1={toSx(0)} y1={toSy(0)-5} x2={toSx(0)} y2={toSy(0)+5} stroke="#f59e0b" strokeWidth={1.7}/><text x={toSx(0)+9} y={toSy(0)-7} fontSize={9} fill="#b45309" fontWeight="900" stroke="white" strokeWidth={2.5} paintOrder="stroke">O</text></g>}
         {/* 원래 점만 표시 — 대칭이동된 정답 점은 표시하지 않음 */}
         <circle cx={toSx(px)} cy={toSy(py)} r={5} fill="#6b7280" stroke="white" strokeWidth={2}/>
         <text x={toSx(px)+7} y={toSy(py)-5} fontSize={9} fill="#6b7280" fontWeight="bold">({px},{py})</text>
@@ -821,6 +826,7 @@ function GraphPreview({q}){
         <text x={tx(px)+(px>=0?7:-7)} y={ty(py)-6} textAnchor={px>=0?'start':'end'} fontSize={10} fill="#6b7280" fontWeight="900">P({px},{py})</text>
         <circle cx={tx(rx)} cy={ty(ry)} r={5} fill="#6366f1" stroke="white" strokeWidth={2}/>
         <text x={tx(rx)+(rx>=0?7:-7)} y={ty(ry)-6} textAnchor={rx>=0?'start':'end'} fontSize={10} fill="#6366f1" fontWeight="900">Q({rx},{ry})</text>
+        {sym==='원점'&&<g pointerEvents="none"><circle cx={CX} cy={CY} r={10} fill="white" fillOpacity={0.88} stroke="#f59e0b" strokeWidth={2}/><line x1={CX-6} y1={CY} x2={CX+6} y2={CY} stroke="#f59e0b" strokeWidth={1.8}/><line x1={CX} y1={CY-6} x2={CX} y2={CY+6} stroke="#f59e0b" strokeWidth={1.8}/><text x={CX+11} y={CY-7} fontSize={9} fill="#b45309" fontWeight="900" stroke="white" strokeWidth={2.5} paintOrder="stroke">O</text></g>}
       </svg>
     );
   }

@@ -5,9 +5,25 @@
    -------------------------------------------------------------------- */
 
 /* ===== GEOMETRY MODULES ===== */
+function GraphPointMode({mode,onChange,color='indigo'}){
+  const active=mode==='tap';
+  const palettes={blue:['bg-blue-600 text-white border-blue-600','bg-white text-blue-700 border-blue-200'],purple:['bg-purple-600 text-white border-purple-600','bg-white text-purple-700 border-purple-200'],emerald:['bg-emerald-600 text-white border-emerald-600','bg-white text-emerald-700 border-emerald-200'],orange:['bg-orange-600 text-white border-orange-600','bg-white text-orange-700 border-orange-200'],teal:['bg-teal-600 text-white border-teal-600','bg-white text-teal-700 border-teal-200'],amber:['bg-amber-600 text-white border-amber-600','bg-white text-amber-700 border-amber-200'],indigo:['bg-indigo-600 text-white border-indigo-600','bg-white text-indigo-700 border-indigo-200']};
+  const[selected,idle]=palettes[color]||palettes.indigo;
+  return <div className="flex flex-wrap items-center gap-2" role="group" aria-label="그래프 점 조작 방식">
+    <button type="button" aria-pressed={!active} onClick={()=>onChange('drag')} className={`px-3 py-2 rounded-xl border-2 text-sm font-bold ${!active?selected:idle}`}>● 점 끌기</button>
+    <button type="button" aria-pressed={active} onClick={()=>onChange('tap')} className={`px-3 py-2 rounded-xl border-2 text-sm font-bold ${active?selected:idle}`}>⌖ 좌표 눌러 이동</button>
+    {active&&<span className="text-xs font-semibold text-gray-500">그래프를 누르면 가장 가까운 정수 좌표로 점이 이동해요.</span>}
+  </div>;
+}
+function graphPointAtEvent(e,sz){
+  const r=e.currentTarget.getBoundingClientRect(),{SC,W,H,panX=0,panY=0}=sz;
+  const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));
+  return[cl((e.clientX-r.left-W/2)/SC+panX),cl((H/2-(e.clientY-r.top))/SC+panY)];
+}
 function RadicalModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[p,setP]=useState(0),[q,setQ]=useState(0),[a,setA]=useState(1);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -16,7 +32,7 @@ function RadicalModule({sz}){
   const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
-  const pts=[];for(let sx=0;sx<=W;sx+=2){const mx=(sx-cx)/SC,inn=mx-p;if(inn<0)continue;const my=a*Math.sqrt(inn)+q;if(Math.abs(my)>13)continue;pts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}
+  const pts=[],refPts=[];for(let sx=0;sx<=W;sx+=2){const mx=(sx-cx)/SC,inn=mx-p;if(inn>=0){const my=a*Math.sqrt(inn)+q;if(Math.abs(my)<=13)pts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}if(mx>=0){const my=a*Math.sqrt(mx);if(Math.abs(my)<=13)refPts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}}
   const aStr=a===1?'':a===-1?'−':String(a);const innerStr=p===0?'x':`x${eqSh(p)}`;
   return(<div className="space-y-3">
     <div className="flex flex-wrap gap-3 items-center">
@@ -25,7 +41,7 @@ function RadicalModule({sz}){
           {[-3,-2,-1,1,2,3].map(v=><option key={v} value={v}>{v}</option>)}
         </select>
       </label>
-      <span className="text-sm bg-blue-50 border border-blue-200 rounded-full px-3 py-1.5 text-blue-700 font-semibold">🔴 점 드래그 · 배경 길게 누르면 이동</span>
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="blue"/><span className="text-sm bg-blue-50 border border-blue-200 rounded-full px-3 py-1.5 text-blue-700 font-semibold">배경 길게 누르면 화면 이동</span>
     </div>
     <div className="text-center text-sm text-blue-600 bg-white rounded-xl py-2 px-3 border border-blue-100">
       원점에서 x축 방향으로 <strong>{p}</strong>만큼, y축 방향으로 <strong>{q}</strong>만큼 <strong>평행이동</strong>했어요!
@@ -35,11 +51,13 @@ function RadicalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 시작점: ({p}, {q})
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
-      {pts.length>1&&<path d={`M ${pts.join(' L ')}`} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
-      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#3b82f6" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
+      {refPts.length>1&&<polyline points={refPts.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/>}
+      {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
+      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#3b82f6" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[p,q]}/>
     </svg>
   </div>);
 }
@@ -47,6 +65,7 @@ function RadicalModule({sz}){
 function RationalModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[p,setP]=useState(0),[q,setQ]=useState(0),[k,setK]=useState(1);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -55,7 +74,7 @@ function RationalModule({sz}){
   const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
-  const branch=left=>{const pts=[];for(let mx=left?-13:p+0.04;left?mx<p-0.04:mx<=13;mx+=0.04){const my=k/(mx-p)+q;if(Math.abs(my)>13)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?`M ${pts.join(' L ')}`:''};
+  const branch=(left,translated=true)=>{const pts=[],asym=translated?p:0,dy=translated?q:0;for(let mx=left?-13:asym+0.04;left?mx<asym-0.04:mx<=13;mx+=0.04){const my=k/(mx-asym)+dy;if(Math.abs(my)>13)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?`M ${pts.join(' L ')}`:''};
   return(<div className="space-y-3">
     <div className="flex flex-wrap gap-3 items-center">
       <label className="flex items-center gap-2 text-base font-bold text-gray-700">상수 k:
@@ -63,7 +82,7 @@ function RationalModule({sz}){
           {[-4,-3,-2,-1,1,2,3,4].map(v=><option key={v} value={v}>{v}</option>)}
         </select>
       </label>
-      <span className="text-sm bg-purple-50 border border-purple-200 rounded-full px-3 py-1.5 text-purple-700 font-semibold">🟣 점 드래그 · 배경 길게 누르면 이동</span>
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="purple"/><span className="text-sm bg-purple-50 border border-purple-200 rounded-full px-3 py-1.5 text-purple-700 font-semibold">배경 길게 누르면 화면 이동</span>
     </div>
     <div className="text-center text-sm text-purple-600 bg-white rounded-xl py-2 px-3 border border-purple-100">
       원점에서 x축 방향으로 <strong>{p}</strong>만큼, y축 방향으로 <strong>{q}</strong>만큼 <strong>평행이동</strong>했어요!
@@ -73,14 +92,16 @@ function RationalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 점근선: x={p}, y={q}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       <line x1={cx+p*SC} y1={0} x2={cx+p*SC} y2={H} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
       <line x1={0} y1={cy-q*SC} x2={W} y2={cy-q*SC} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
+      <path d={branch(true,false)} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/><path d={branch(false,false)} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/>
       <path d={branch(true)} fill="none" stroke="#9333ea" strokeWidth={3} strokeLinecap="round"/>
       <path d={branch(false)} fill="none" stroke="#9333ea" strokeWidth={3} strokeLinecap="round"/>
-      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#9333ea" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
+      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#9333ea" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[p,q]}/>
     </svg>
   </div>);
 }
@@ -88,6 +109,7 @@ function RationalModule({sz}){
 function QuadraticModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[p,setP]=useState(0),[q,setQ]=useState(0),[a,setA]=useState(1),[ds,setDs]=useState(-7),[de,setDe]=useState(7);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -106,12 +128,13 @@ function QuadraticModule({sz}){
   const validY = [a * (ds - p)**2 + q, a * (de - p)**2 + q];
   if (p >= ds && p <= de) validY.push(q);
   const extreme = a > 0 ? Math.min(...validY) : Math.max(...validY);
-  const extremeXg = extreme===a*(ds-p)**2+q ? ds : de;   // 극점 밖 최대·최소의 x (굵은 색 숫자가 대신 쓰이는 눈금)
+  const extremeXg=p>=ds&&p<=de&&Math.abs(extreme-q)<1e-9?p:Math.abs(extreme-validY[0])<1e-9?ds:de;
   
   const aStr=a===-1?'−':a===1?'':String(a);
   
   return(<div className="space-y-3">
     <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center justify-center">
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="emerald"/>
       <label className="flex items-center gap-2 text-sm font-bold text-gray-700">a:
         <select value={a} onChange={e=>setA(+e.target.value)} className="border-2 border-emerald-300 rounded-xl px-2 py-2 bg-white font-bold">
           {[-2,-1,1,2].map(v=><option key={v} value={v}>{v}</option>)}
@@ -136,10 +159,11 @@ function QuadraticModule({sz}){
     
     <div className="text-center font-bold text-emerald-700 bg-emerald-50 rounded-2xl py-3 text-sm border border-emerald-200">
       <KF tex={`y=${a===-1?'-':a===1?'':a}(x${p===0?'':p>0?`-${p}`:`+${-p}`})^{2}${q===0?'':q>0?`+${q}`:String(q)}`}/>
-      <span className="text-gray-300 mx-2">|</span> {a>0?'최솟값':'최댓값'}: {Math.round(extreme)} (x∈[{ds},{de}])
+      <span className="text-gray-300 mx-2">|</span> {a>0?'최솟값':'최댓값'}: ({extremeXg}, {Math.round(extreme)}) (x∈[{ds},{de}])
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p,extremeXg]} skipY={[q,Math.round(extreme)]}/>
@@ -147,23 +171,12 @@ function QuadraticModule({sz}){
       <line x1={cx+ds*SC} y1={0} x2={cx+ds*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       <line x1={cx+de*SC} y1={0} x2={cx+de*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       {dom.length>1&&<path d={`M ${dom.join(' L ')}`} fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round"/>}
-      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#16a34a" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
-      {/* 극점 이외에서 최대/최솟값이 발생하는 경우: 축 수선의 발 + 좌표 라벨 */}
-      {(()=>{
-        const extremeX=a>0?(extreme===a*(ds-p)**2+q?ds:de):(extreme===a*(ds-p)**2+q?ds:de);
-        const isVertex=p>=ds&&p<=de&&extreme===q;
-        if(isVertex)return null;
-        const esx=cx+extremeX*SC,esy=cy-extreme*SC;
-        const col='#ef4444';
-        return(<>
-          <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
-          <line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
-          <line x1={esx} y1={cy-8} x2={esx} y2={cy+8} stroke={col} strokeWidth={3.5}/>
-          <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{extremeX}</text>
-          <line x1={cx-8} y1={esy} x2={cx+8} y2={esy} stroke={col} strokeWidth={3.5}/>
-          <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{Math.round(extreme)}</text>
-        </>);
-      })()}
+      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#16a34a" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[p,q]}/>
+      {(()=>{const esx=cx+extremeXg*SC,esy=cy-extreme*SC,col='#dc2626';return <g pointerEvents="none">
+        <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2.2} strokeDasharray="6,4" opacity={0.85}/><line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2.2} strokeDasharray="6,4" opacity={0.85}/>
+        <circle cx={esx} cy={esy} r={9} fill="white" stroke={col} strokeWidth={3}/><circle cx={esx} cy={esy} r={3.5} fill={col}/>
+        <text x={esx+(extremeXg>=0?10:-10)} y={esy-11} textAnchor={extremeXg>=0?'start':'end'} fontSize={16} fill={col} fontWeight="900" stroke="white" strokeWidth={3} paintOrder="stroke">{a>0?'최솟값':'최댓값'} ({extremeXg}, {Math.round(extreme)})</text>
+      </g>})()}
     </svg>
   </div>);
 }
@@ -171,6 +184,7 @@ function QuadraticModule({sz}){
 function DistanceModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[ptX,setPX]=useState(2),[ptY,setPY]=useState(3),[la,setLA]=useState(3),[lb,setLB]=useState(-4),[lc,setLC]=useState(5);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -206,6 +220,7 @@ function DistanceModule({sz}){
   const formulaTex=`d=\\dfrac{|${laS}\\times${ptX}+${lbS}\\times${ptY}+${lcS}|}{\\sqrt{${laS}^{2}+${lbS}^{2}}}=\\dfrac{${nCalc}}{${denTex}}${showFinal?`=${distToLatex(distStr)}`:''}`;
 
   return(<div className="space-y-3">
+    <GraphPointMode mode={pointMode} onChange={setPointMode} color="orange"/>
     <div className="grid grid-cols-3 gap-2">
       <Stepper label="a" val={la} onMinus={()=>setLA(v=>Math.max(-10,v-1))} onPlus={()=>setLA(v=>Math.min(10,v+1))}/>
       <Stepper label="b" val={lb} onMinus={()=>setLB(v=>Math.max(-10,v-1))} onPlus={()=>setLB(v=>Math.min(10,v+1))}/>
@@ -225,13 +240,14 @@ function DistanceModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[ptX]} skipY={[ptY]}/>
       {le.length>=2&&<line x1={le[0][0]} y1={le[0][1]} x2={le[1][0]} y2={le[1][1]} stroke="#ea580c" strokeWidth={2.5}/>}
       <line x1={cx+ptX*SC} y1={cy-ptY*SC} x2={cx+fX*SC} y2={cy-fY*SC} stroke="#fb923c" strokeWidth={1.8} strokeDasharray="4,3"/>
       <circle cx={cx+fX*SC} cy={cy-fY*SC} r={6} fill="#fb923c" stroke="white" strokeWidth={2}/>
-      <Dot sx={cx+ptX*SC} sy={cy-ptY*SC} color="#dc2626" onDown={dn} cx={cx} cy={cy} label={[ptX,ptY]}/>
+      <Dot sx={cx+ptX*SC} sy={cy-ptY*SC} color="#dc2626" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[ptX,ptY]}/>
       <text x={8} y={H-8} fontSize={11} fill="#64748b">거리 = {distStr}</text>
     </svg>
   </div>);
@@ -240,6 +256,7 @@ function DistanceModule({sz}){
 function CircleModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[h,setH]=useState(0),[k,setK]=useState(0),[r,setR]=useState(3);
+  const[pointMode,setPointMode]=useState('drag');
   const[lineEnabled,setLineEnabled]=useState(false);
   const[lineDir,setLineDir]=useState('h'); // 'h'=수평(y=n), 'v'=수직(x=n)
   const[linePos,setLinePos]=useState(0);
@@ -264,7 +281,7 @@ function CircleModule({sz}){
         <input type="range" min={1} max={6} value={r} onChange={e=>setR(+e.target.value)} className="w-24 accent-teal-500"/>
         <span className="font-bold text-teal-600 w-5">{r}</span>
       </label>
-      <span className="text-xs bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">🟢 중심 드래그 · 배경 길게 누르면 이동</span>
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="teal"/><span className="text-xs bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">배경 길게 누르면 화면 이동</span>
     </div>
 
     {/* 직선 추가 UI */}
@@ -292,6 +309,7 @@ function CircleModule({sz}){
       <KF tex={circleTex}/> <span className="text-gray-300 mx-2">|</span> 중심: ({h},{k}), r={r}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setH(x);setK(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>
@@ -306,7 +324,7 @@ function CircleModule({sz}){
       <circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="rgba(20,184,166,0.1)" stroke="#0d9488" strokeWidth={2.5}/>
       <line x1={cx+h*SC} y1={cy-k*SC} x2={cx+(h+r)*SC} y2={cy-k*SC} stroke="#0d9488" strokeWidth={1.5} strokeDasharray="5,3"/>
       <text x={(cx+h*SC+cx+(h+r)*SC)/2} y={cy-k*SC-7} textAnchor="middle" fontSize={11} fill="#0d9488" fontWeight="bold">r={r}</text>
-      <Dot sx={cx+h*SC} sy={cy-k*SC} color="#0d9488" onDown={dn} cx={cx} cy={cy} label={[h,k]}/>
+      <Dot sx={cx+h*SC} sy={cy-k*SC} color="#0d9488" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[h,k]}/>
     </svg>
   </div>);
 }
@@ -314,6 +332,7 @@ function CircleModule({sz}){
 function SymmetryModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[px,setPX]=useState(3),[py,setPY]=useState(2),[type,setType]=useState(null);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -333,6 +352,7 @@ function SymmetryModule({sz}){
     : null;
 
   return(<div className="space-y-3">
+    <GraphPointMode mode={pointMode} onChange={setPointMode} color="amber"/>
     <div className="flex flex-wrap gap-2 justify-center">
       {SYM_LIST.map(s=>(
         <button 
@@ -351,6 +371,7 @@ function SymmetryModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[px]} skipY={[py]}/>
@@ -364,11 +385,12 @@ function SymmetryModule({sz}){
           
           <circle cx={cx+sx*SC} cy={cy-sy*SC} r={10} fill="#2563eb" stroke="white" strokeWidth={2.5}/>
           <text x={cx+sx*SC+14} y={cy-sy*SC+4} fontSize={16} fill="#2563eb" fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">({sx},{sy})</text>
+          {type==='원점'&&<g pointerEvents="none"><circle cx={cx} cy={cy} r={12} fill="white" fillOpacity={0.9} stroke="#f59e0b" strokeWidth={2.5}/><line x1={cx-7} y1={cy} x2={cx+7} y2={cy} stroke="#f59e0b" strokeWidth={2}/><line x1={cx} y1={cy-7} x2={cx} y2={cy+7} stroke="#f59e0b" strokeWidth={2}/><text x={cx+14} y={cy-9} fontSize={12} fill="#b45309" fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">중심 O</text></g>}
         </>
       )}
       
       {/* 이동 전 원본 점 (항상 표시) */}
-      <Dot sx={cx+px*SC} sy={cy-py*SC} color="#dc2626" onDown={dn} cx={cx} cy={cy} label={[px,py]}/>
+      <Dot sx={cx+px*SC} sy={cy-py*SC} color="#dc2626" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[px,py]}/>
     </svg>
   </div>);
 }

@@ -99,7 +99,7 @@ var autoMathHtml=(text)=>{
   if(!text)return'';
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const K=(expr,display)=>{
-    try{return window.katex?window.katex.renderToString(expr,{displayMode:display,throwOnError:false,strict:false,output:'mathml'})
+    try{return window.katex?window.katex.renderToString(expr,{displayMode:display,throwOnError:false,strict:false,output:'htmlAndMathml'})
       :(display?`<div style="font-style:italic;text-align:center">${esc(expr)}</div>`:`<em>${esc(expr)}</em>`);}
     catch(e){return`<em>${esc(expr)}</em>`;}
   };

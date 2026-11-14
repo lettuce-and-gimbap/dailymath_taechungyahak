@@ -28,7 +28,7 @@ function Grid({W,H,SC,cx,cy,skipX=[],skipY=[]}){   // skipX·skipY : 굵은 색 
 
 function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
   const showProj = cx!==undefined && cy!==undefined && label!==undefined;
-  return(<g style={{cursor:'grab',userSelect:'none'}} onMouseDown={e=>{e.preventDefault();onDown(e)}} onTouchStart={e=>{e.preventDefault();onDown(e)}}>
+  return(<g style={{cursor:onDown?'grab':'crosshair',userSelect:'none'}} onMouseDown={e=>{if(onDown){e.preventDefault();onDown(e)}}} onTouchStart={e=>{if(onDown){e.preventDefault();onDown(e)}}}>
     {showProj&&<>
       {/* ── 수선 (점 → x축 / 점 → y축) : 굵고 뚜렷하게 ── */}
       {/* x축 방향 수직 수선 */}

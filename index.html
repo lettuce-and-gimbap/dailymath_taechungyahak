@@ -70,8 +70,8 @@ svg text[fill="#9ca3af"][font-size="10"]{font-size:clamp(10px,calc(var(--ms,1)*1
 svg text[fill="#475569"][font-size="17"]{font-size:clamp(17px,calc(var(--ms,1)*17px),26px)!important}
 /* MathML <msqrt> 등 기호 렌더링: 브라우저 내장 수학 폰트 지정 (KaTeX_Main엔 MATH 테이블 없음) */
 math{font-family:math,'Cambria Math','Latin Modern Math','STIX Two Math',serif}
-.katex{line-height:1.2}
-.katex-display{display:block;text-align:center;margin:.5em 0}
+.katex{line-height:1.25;color:inherit}
+.katex-display{display:block;text-align:center;margin:.35em 0}
 /* 세로 스크롤바만 얇게, 가로 스크롤바는 완전 숨김 */
 ::-webkit-scrollbar{width:5px;height:0px}
 ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
@@ -349,7 +349,7 @@ var autoMathHtml=(text)=>{
   if(!text)return'';
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const K=(expr,display)=>{
-    try{return window.katex?window.katex.renderToString(expr,{displayMode:display,throwOnError:false,strict:false,output:'mathml'})
+    try{return window.katex?window.katex.renderToString(expr,{displayMode:display,throwOnError:false,strict:false,output:'htmlAndMathml'})
       :(display?`<div style="font-style:italic;text-align:center">${esc(expr)}</div>`:`<em>${esc(expr)}</em>`);}
     catch(e){return`<em>${esc(expr)}</em>`;}
   };
@@ -963,7 +963,7 @@ function Grid({W,H,SC,cx,cy,skipX=[],skipY=[]}){   // skipX·skipY : 굵은 색 
 
 function Dot({sx,sy,color='#ef4444',onDown,cx,cy,label}){
   const showProj = cx!==undefined && cy!==undefined && label!==undefined;
-  return(<g style={{cursor:'grab',userSelect:'none'}} onMouseDown={e=>{e.preventDefault();onDown(e)}} onTouchStart={e=>{e.preventDefault();onDown(e)}}>
+  return(<g style={{cursor:onDown?'grab':'crosshair',userSelect:'none'}} onMouseDown={e=>{if(onDown){e.preventDefault();onDown(e)}}} onTouchStart={e=>{if(onDown){e.preventDefault();onDown(e)}}}>
     {showProj&&<>
       {/* ── 수선 (점 → x축 / 점 → y축) : 굵고 뚜렷하게 ── */}
       {/* x축 방향 수직 수선 */}
@@ -1542,8 +1542,9 @@ function GraphPreview({q}){
         </g>}
         {/* 꼭짓점이 구간 내이고 극값이 아닌 경우 */}
         {vxInRange&&extremePt.x!==p&&<circle cx={toQx(p)} cy={toQy(vq)} r={3.5} fill="none" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="2,2"/>}
-        {/* ★ 극값점: 수선의 발 + 축 좌표 강조 (강조 원 없음) */}
+        {/* ★ 구간 안 실제 극값: 축 좌표와 좌표점 강조 */}
         {drawDropLines(toQx(extremePt.x),toQy(extremePt.y),extremeColor,extremePt.x,Math.round(extremePt.y*100)/100)}
+        <g pointerEvents="none"><circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={7} fill="white" stroke={extremeColor} strokeWidth={2.5}/><circle cx={toQx(extremePt.x)} cy={toQy(extremePt.y)} r={2.8} fill={extremeColor}/><text x={toQx(extremePt.x)+(extremePt.x>=0?9:-9)} y={toQy(extremePt.y)-9} textAnchor={extremePt.x>=0?'start':'end'} fontSize={10} fill={extremeColor} fontWeight="900" stroke="white" strokeWidth={2.5} paintOrder="stroke">({extremePt.x}, {Math.round(extremePt.y*100)/100})</text></g>
       </svg>
     );
   }
@@ -1613,7 +1614,9 @@ function GraphPreview({q}){
   if(g.type==='rational'){
     const{k,p,q:vq}=g;  // p=dx, q=dy, k=분자
     const eps=0.18;
-    const ptsL=[], ptsR=[];
+    const ptsL=[], ptsR=[],refL=[],refR=[];
+    for(let xi=-6;xi< -eps;xi+=0.12){const yi=k/xi;if(Math.abs(yi)<=5)refL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`)}
+    for(let xi=eps;xi<=6;xi+=0.12){const yi=k/xi;if(Math.abs(yi)<=5)refR.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`)}
     for(let xi=p-6;xi<p-eps;xi+=0.12){
       const yi=k/(xi-p)+vq;
       if(Math.abs(yi-vq)<=5&&toSx(xi)>=4&&toSx(xi)<=W-4) ptsL.push(`${toSx(xi).toFixed(1)},${toSy(yi).toFixed(1)}`);
@@ -1632,6 +1635,8 @@ function GraphPreview({q}){
         {/* 점근선 레이블 */}
         <text x={toSx(p)+4} y={14} fontSize={8} fill="#d97706" fontWeight="bold">x={p}</text>
         <text x={W-28} y={toSy(vq)-4} fontSize={8} fill="#d97706" fontWeight="bold">y={vq}</text>
+        {refL.length>1&&<polyline points={refL.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={1.8} strokeDasharray="5,4" opacity={0.58}/>}
+        {refR.length>1&&<polyline points={refR.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={1.8} strokeDasharray="5,4" opacity={0.58}/>}
         {ptsL.length>1&&<polyline points={ptsL.join(' ')} fill="none" stroke={color} strokeWidth={2.8} strokeLinecap="round"/>}
         {ptsR.length>1&&<polyline points={ptsR.join(' ')} fill="none" stroke={color} strokeWidth={2.8} strokeLinecap="round"/>}
       </svg>
@@ -1738,7 +1743,7 @@ function GraphPreview({q}){
         {/* 대칭축 (y=x, y=-x) */}
         {symLinePoints.length===2&&<line x1={symLinePoints[0][0]} y1={symLinePoints[0][1]} x2={symLinePoints[1][0]} y2={symLinePoints[1][1]} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5,3"/>}
         {/* 원점 대칭: 원점 강조 표시 */}
-        {sym==='원점'&&<circle cx={toSx(0)} cy={toSy(0)} r={5} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3,2"/>}
+        {sym==='원점'&&<g><circle cx={toSx(0)} cy={toSy(0)} r={8} fill="white" fillOpacity={0.86} stroke="#f59e0b" strokeWidth={2}/><line x1={toSx(0)-5} y1={toSy(0)} x2={toSx(0)+5} y2={toSy(0)} stroke="#f59e0b" strokeWidth={1.7}/><line x1={toSx(0)} y1={toSy(0)-5} x2={toSx(0)} y2={toSy(0)+5} stroke="#f59e0b" strokeWidth={1.7}/><text x={toSx(0)+9} y={toSy(0)-7} fontSize={9} fill="#b45309" fontWeight="900" stroke="white" strokeWidth={2.5} paintOrder="stroke">O</text></g>}
         {/* 원래 점만 표시 — 대칭이동된 정답 점은 표시하지 않음 */}
         <circle cx={toSx(px)} cy={toSy(py)} r={5} fill="#6b7280" stroke="white" strokeWidth={2}/>
         <text x={toSx(px)+7} y={toSy(py)-5} fontSize={9} fill="#6b7280" fontWeight="bold">({px},{py})</text>
@@ -2173,6 +2178,7 @@ function GraphPreview({q}){
         <text x={tx(px)+(px>=0?7:-7)} y={ty(py)-6} textAnchor={px>=0?'start':'end'} fontSize={10} fill="#6b7280" fontWeight="900">P({px},{py})</text>
         <circle cx={tx(rx)} cy={ty(ry)} r={5} fill="#6366f1" stroke="white" strokeWidth={2}/>
         <text x={tx(rx)+(rx>=0?7:-7)} y={ty(ry)-6} textAnchor={rx>=0?'start':'end'} fontSize={10} fill="#6366f1" fontWeight="900">Q({rx},{ry})</text>
+        {sym==='원점'&&<g pointerEvents="none"><circle cx={CX} cy={CY} r={10} fill="white" fillOpacity={0.88} stroke="#f59e0b" strokeWidth={2}/><line x1={CX-6} y1={CY} x2={CX+6} y2={CY} stroke="#f59e0b" strokeWidth={1.8}/><line x1={CX} y1={CY-6} x2={CX} y2={CY+6} stroke="#f59e0b" strokeWidth={1.8}/><text x={CX+11} y={CY-7} fontSize={9} fill="#b45309" fontWeight="900" stroke="white" strokeWidth={2.5} paintOrder="stroke">O</text></g>}
       </svg>
     );
   }
@@ -5695,8 +5701,18 @@ function genMockSetFunc(){
   return weightedGen(gens.map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));
 }
 // 문제풀이 탭 전용 문항 생성 진입점. MockExamTab/영역 quota/모의고사 상태를 거치지 않는다.
-function genPracticeSetQuestion(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,2],[gen_set_equal_const,2],[gen_truth_set,2],[genPracticeSetComplement,3],[genPracticeSetThreeWay,2],[genPracticeSetCardinality,3],[genPracticeSetDifferenceMember,3],[genPracticeSetSurvey,2],[genPracticeTruthInequality,2],[genPracticeSubsetRelation,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
-function genPracticePropositionQuestion(){return weightedGen([[gen_proposition,3],[gen_nec_suff,2],[genPracticeConditionSets,3],[genPracticeContrapositive,3],[genPracticePropositionTruth,2],[genPracticeIntervalCondition,3]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}
+function genPracticeGEDUnitQuestion(unitId,topic){
+  const unit=typeof GED_UNITS!=='undefined'&&GED_UNITS.find(u=>u.id===unitId);
+  if(!unit)throw new Error(`검정고시 ${topic} 문항 생성기(${unitId})를 찾을 수 없습니다.`);
+  for(let i=0;i<30;i++){
+    const params=unit.rand(),q=unit.build(params);
+    if(!q||q.err||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||!Number.isInteger(q.ans))continue;
+    return{...q,topic:params.kind||topic,answer:q.ans,practiceMarkup:true,meta:{category:'set',type:'집합과 명제',diff:'기초'}};
+  }
+  throw new Error(`검정고시 ${topic} 문항을 만들지 못했습니다.`);
+}
+function genPracticeSetQuestion(){return genPracticeGEDUnitQuestion('u15','집합');}
+function genPracticePropositionQuestion(){return genPracticeGEDUnitQuestion('u16','명제');}
 
 
 // ========== js\generators\high\probStat.js ==========
@@ -7027,9 +7043,9 @@ const GED_COUNT_EXTRA_SVG_1_30={
 // v5 35번은 기존 v4를 유지하면서 월 카드 1월~10월로 교체해야 한다.
 const GED_COUNT_EXTRA_31_60 = {
 31:[['그림자극','shadow'],['버블쇼','bubble'],['곡예','acrobat']],
-32:[['아령','dumbbell'],['운동 밴드','band'],['셔틀콕','@shuttlecock.jpg']],
+32:[['아령','@v5_dumbbell.jpg'],['운동 밴드','@v5_exercise_band.jpg'],['셔틀콕','@shuttlecock.jpg']],
 33:[['작가와의 만남','author'],['독서 마라톤','marathon'],['책 만들기','@craft.jpg']],
-34:[['급식 봉사','serving'],['헌혈','blood'],['환경 교육','education']],
+34:[['급식 봉사','@v5_meal_service.jpg'],['헌혈','@v5_blood_donation.jpg'],['환경 교육','@v5_environment_education.jpg']],
 35:[['8월','card'],['9월','card'],['10월','card']],
 36:[['8','card'],['9','card'],['10','card']],
 37:[['아','card'],['자','card'],['차','card']],
@@ -7037,17 +7053,17 @@ const GED_COUNT_EXTRA_31_60 = {
 39:[['카페','cafe'],['문화센터','culture'],['서점','bookstore']],
 40:[['관찰','@inquiry_math.jpg'],['실험','@science.jpg'],['조사','@research.jpg']],
 41:[['오토바이','motorcycle'],['헬리콥터','helicopter'],['지하철','subway']],
-42:[['벌','@bee.jpg'],['개구리','frog'],['거북이','@turtle.jpg']],
-43:[['해파리','jellyfish'],['새우','shrimp'],['해마','seahorse']],
+42:[['벌','@bee.jpg'],['개구리','@v5_frog.jpg'],['거북이','@turtle.jpg']],
+43:[['해파리','@v5_jellyfish.jpg'],['새우','@v5_shrimp.jpg'],['해마','@v5_seahorse.jpg']],
 44:[['우박','hail'],['태풍','typhoon'],['황사','dust']],
 45:[['사과','@apple.jpg'],['귤','@mandarin.jpg'],['배','@pear.jpg']],
-46:[['딱정벌레','beetle'],['사마귀','mantis'],['매미','cicada']],
+46:[['딱정벌레','@v5_beetle.jpg'],['사마귀','@v5_mantis.jpg'],['매미','@v5_cicada.jpg']],
 47:[['숟가락','@spoon.jpg'],['도마','cuttingboard'],['거품기','whisk']],
 48:[['모자','hat'],['목도리','scarf'],['넥타이','tie']],
 49:[['식탁','@dining_table_detail.jpg'],['옷장','wardrobe'],['화장대','vanity']],
-50:[['전자레인지','microwave'],['청소기','vacuum'],['에어컨','aircon']],
+50:[['전자레인지','@v5_microwave.jpg'],['청소기','@v5_vacuum.jpg'],['에어컨','@v5_air_conditioner.jpg']],
 51:[['혜성','comet'],['소행성','asteroid'],['우주정거장','station']],
-52:[['돗자리','@exercise_mat.jpg'],['코펠','@pot.jpg'],['손전등','flashlight']],
+52:[['돗자리','@exercise_mat.jpg'],['코펠','@pot.jpg'],['손전등','@v5_flashlight.jpg']],
 53:[['트램펄린','trampoline'],['흔들말','rockinghorse'],['터널 놀이대','tunnel']],
 54:[['축구화','cleats'],['덧신','overshoes'],['스케이트화','skates']],
 55:[['은행','bank'],['경찰서','police'],['시장','market']],
@@ -7128,10 +7144,13 @@ GED_COUNT_EXTRA_SVG_1_30['당근']='<path d="M14 32 H36 L33 43 H17 Z M25 32 V19 
 GED_COUNT_EXTRA_SVG_1_30['귀리']='<path d="M9 31 Q25 37 41 31 Q38 42 25 42 Q12 42 9 31 Z"/><ellipse cx="16" cy="26" rx="2" ry="5" transform="rotate(-35 16 26)"/><ellipse cx="25" cy="24" rx="2" ry="5"/><ellipse cx="34" cy="26" rx="2" ry="5" transform="rotate(35 34 26)"/>';
 GED_COUNT_EXTRA_1_30[2][0]=['수국','v5_hydrangea'];
 GED_COUNT_EXTRA_1_30[2][1]=['수선화','v5_daffodil'];
+GED_COUNT_EXTRA_1_30[2][2]=['카네이션','v5_carnation'];
 GED_COUNT_EXTRA_1_30[15]=[['배추','v5_cabbage_young'],['무','v5_radish_young'],['당근','v5_carrot_young']];
 GED_COUNT_EXTRA_1_30[5][1]=['태권도','v5_taekwondo'];
 GED_COUNT_EXTRA_1_30[5][2]=['수영','v5_swimming'];
 GED_COUNT_EXTRA_1_30[8]=[['멸치볶음','v5_anchovy'],['오이무침','v5_cucumber_salad'],['감자조림','v5_braised_potato']];
+GED_COUNT_EXTRA_1_30[9][0]=['딱지치기','v5_ddakji'];
+GED_COUNT_EXTRA_1_30[9][2]=['실뜨기','v5_cat_cradle'];
 GED_COUNT_EXTRA_31_60[49][0]=['협탁','side_table'];
 GED_COUNT_EXTRA_PATHS_31_60.side_table='<path d="M8 22 H42 V28 H8 Z M11 28 V43 M39 28 V43 M15 31 H35 V36 H15 Z M22 33 H28 M9 22 L13 16 H37 L41 22"/>';
 GED_COUNT_EXTRA_31_60[40][1]=['듣기','listening'];
@@ -7152,6 +7171,26 @@ function gedV5Scene(scene,i,choice){
 }
 var GED_COUNT_SCENES_V5=[...GED_COUNT_SCENES_V4.map((s,i)=>gedV5Scene(s,i,false)),...GED_COUNT_FUTURE_SCENES.map(s=>({...s,v5:true}))];
 var GED_CHOICE_SCENES_V5=[...GED_CHOICE_SCENES_V4.map((s,i)=>gedV5Scene(s,i,true)),...GED_COUNT_FUTURE_SCENES.map(s=>({...s,v5:true}))];
+/* 실생활 소재는 상세 원화를 쓰고 숫자·문자·도형 카드는 선화를 유지한다. */
+var GED_COUNT_RICH_ASSETS={
+ '비석치기':'v5_rich_biseok_play','체리':'v5_rich_cherries','블루베리':'v5_rich_blueberries','마시멜로':'v5_rich_marshmallows',
+ '귀리':'v5_rich_oat_grains','흑미':'v5_rich_black_rice','팥':'v5_rich_red_beans','그래프':'v5_rich_graph_chart',
+ '하프':'v5_rich_harp','트라이앵글':'v5_rich_triangle_instrument','장구':'v5_rich_janggu',
+ '색연필':'v5_rich_colored_pencil','볼펜':'v5_rich_ballpoint_pen','스테이플러':'v5_rich_stapler',
+ '요구르트':'v5_rich_yogurt','코코아':'v5_rich_cocoa','레모네이드':'v5_rich_lemonade',
+ '해바라기 화분':'v5_rich_sunflower_pot_extra','알로에':'v5_rich_aloe_pot','대나무':'v5_rich_bamboo_pot',
+ '그림자극':'v5_rich_shadow_theater','버블쇼':'v5_rich_bubble_show','곡예':'v5_rich_acrobat',
+ '작가와의 만남':'v5_rich_author_event','독서 마라톤':'v5_rich_reading_marathon',
+ '카페':'v5_rich_cafe_exhibit','문화센터':'v5_rich_culture_center','서점':'v5_rich_bookstore','듣기':'v5_rich_listening',
+ '오토바이':'v5_rich_motorcycle','헬리콥터':'v5_rich_helicopter','지하철':'v5_rich_subway_train',
+ '우박':'v5_rich_hail','태풍':'v5_rich_typhoon','황사':'v5_rich_yellow_dust','도마':'v5_rich_cutting_board','거품기':'v5_rich_whisk',
+ '모자':'v5_rich_hat','목도리':'v5_rich_scarf','넥타이':'v5_rich_tie','협탁':'v5_rich_side_table','옷장':'v5_rich_wardrobe','화장대':'v5_rich_vanity',
+ '혜성':'v5_rich_comet','소행성':'v5_rich_asteroid','우주정거장':'v5_rich_space_station',
+ '트램펄린':'v5_rich_trampoline','흔들말':'v5_rich_rocking_horse','터널 놀이대':'v5_rich_play_tunnel',
+ '축구화':'v5_rich_soccer_cleats','덧신':'v5_rich_shoe_cover','스케이트화':'v5_rich_ice_skates',
+ '은행':'v5_rich_bank_building','경찰서':'v5_rich_police_station','시장':'v5_rich_market','밥그릇':'v5_rich_rice_bowl','쟁반':'v5_rich_serving_tray',
+ '소프트웨어 개발':'v5_rich_software_developer','번역 모델':'v5_rich_ai_translation','코딩 모델':'v5_rich_ai_coding','학습 모델':'v5_rich_ai_learning'
+};
 
 /* v4는 그림 선택용 씨앗을 문항에 저장해 편집·불러오기·오답 재생에서 같은 그림을 유지한다. */
 function gedCountRandom(seed){let a=(Number(seed)>>>0)||1;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
@@ -7296,11 +7335,12 @@ var GED_COUNT_ORDER_ACTIONS_V5=[...GED_COUNT_ORDER_ACTIONS,
 /* 학습지에 들어가는 그림은 SVG 선화로 직접 그린다. 각 항목의 이름은
    그림 아래에 함께 써서 흑백 인쇄에서도 서로 다른 대상을 구별한다. */
 function gedCountIcon(scene, label, i){
- const extra=scene.v5Icons&&scene.v5Icons[label];
+ const rich=scene.v5&&GED_COUNT_RICH_ASSETS[label];
+ const extra=rich?{file:rich}:scene.v5Icons&&scene.v5Icons[label];
  const cropBadge={'배추':'<path d="M10 15 Q25 5 40 15 Q37 37 25 40 Q13 37 10 15 M25 12 V40 M14 20 L25 28 L36 20"/>','무':'<path d="M16 20 Q25 16 34 20 Q34 31 25 40 Q16 31 16 20 Z M25 20 V9 M25 16 L17 10 M25 16 L33 10"/>','당근':'<path d="M15 20 Q25 17 35 20 L25 42 Z M25 19 V7 M25 15 L17 9 M25 15 L33 9 M20 26 H25 M27 31 H31"/>'};
  const badge=(scene.iconName||scene.name)==='채소 모종'&&cropBadge[label]?`<circle cx="41" cy="9" r="9" fill="white" stroke="#333" stroke-width="1"/><g transform="translate(35.5,3.5) scale(.22)" fill="none" stroke="#111" stroke-width="3">${cropBadge[label]}</g>`:'';
  if(extra&&extra.svg)return `<g fill="none" stroke="#222" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${extra.svg}</g>${badge}`;
- if(extra&&extra.file){const path=`assets/count-illustrations/${extra.file}.jpg?v=1`;const url=typeof document!=='undefined'?new URL(path,document.baseURI).href:path;return `<image href="${url}" x="-6" y="-2" width="62" height="58" preserveAspectRatio="xMidYMid meet"/>${badge}`;}
+ if(extra&&extra.file){const path=`assets/count-illustrations/${extra.file}.jpg?v=1`;const url=typeof document!=='undefined'?new URL(path,document.baseURI).href:path;return `<image href="${url}" x="-6" y="0" width="62" height="52" preserveAspectRatio="xMidYMid meet"/>${badge}`;}
  const line='fill="white" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
  const book=`<path d="M12 7 L38 7 L38 43 L12 43 Z M16 7 V43 M20 15 H34 M20 21 H32 M20 27 H30"/>`;
  const people=`<circle cx="25" cy="14" r="7"/><path d="M11 42 Q11 26 25 26 Q39 26 39 42 Z M18 38 V42 M32 38 V42"/>`;
@@ -7737,7 +7777,7 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
  const cellW=82, columns=studentGrid?(n===4?2:Math.min(n,3)):n, width=columns*cellW+12;
  const extraY=studentGrid&&n>columns?86:0;
  const cells=scene.items.slice(0,n).map((label,i)=>{
-  let caption=`<text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text>`;
+  let caption=`<text x="37" y="${scene.v5?73:69}" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text>`;
   if(scene.v5&&label.length>=7){let cut=label.lastIndexOf(' ',Math.ceil(label.length/2));if(cut<2)cut=Math.ceil(label.length/2);const a=label.slice(0,cut).trim(),b=label.slice(cut).trim();caption=`<text x="37" y="62" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#111">${a}</text><text x="37" y="74" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#111">${b}</text>`;}
   const iconTransform=scene.v5&&label.length>=7?'translate(15,2) scale(.88)':'translate(12,3)';
   return `<g transform="translate(${10+(i%columns)*cellW},${5+Math.floor(i/columns)*86})"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="${iconTransform}">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g>${caption}</g>`;
@@ -7750,7 +7790,7 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
    slots=`<text x="10" y="${113+extraY}" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>{const x=55+(i%slotCols)*53,y=91+extraY+Math.floor(i/slotCols)*32;return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`;}).join('')}`;
    if(studentGrid&&r>slotCols)height+=32;
  }else if(ordered){
-   const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
+   const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':action.includes('받침대')?'stand':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
    const shapes={
      pot:'<path d="M8 18 H52 L48 46 Q30 50 12 46 Z M6 13 H54 V19 H6 Z M12 46 Q30 51 48 46 M15 23 L18 42 M45 23 L42 42 M20 46 H40"/><path d="M17 27 Q30 30 43 27" stroke-dasharray="2 3"/>',
      vase:'<path d="M19 11 H41 M21 11 C24 23 12 28 15 43 Q30 50 45 43 C48 28 36 23 39 11 M20 14 H40 M18 42 Q30 46 42 42 M19 31 Q17 36 19 40 M41 31 Q43 36 41 40"/>',
@@ -7760,7 +7800,8 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
      person:'<circle cx="30" cy="13" r="7"/><path d="M23 13 Q30 8 37 13 M17 37 Q17 24 30 24 Q43 24 43 37 M24 25 L30 31 L36 25 M30 31 V37 M11 42 H49 M15 39 H45 M14 42 V46 M46 42 V46"/>',
      calendar:'<rect x="7" y="8" width="46" height="40" rx="3"/><path d="M7 19 H53 M17 5 V13 M43 5 V13 M12 23 H48 M12 43 H48 M12 27 V39 M48 27 V39"/><circle cx="17" cy="10" r="1.5"/><circle cx="43" cy="10" r="1.5"/>',
      board:'<rect x="6" y="8" width="48" height="39" rx="2"/><rect x="10" y="12" width="40" height="31" rx="1" stroke-dasharray="3 2"/><path d="M21 8 V5 H39 V8 M24 5 V3 H36 V5 M8 46 H52 M13 16 H17 M43 16 H47"/><circle cx="13" cy="10" r="1"/><circle cx="47" cy="10" r="1"/>',
-     shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>'
+     shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>',
+     stand:'<path d="M7 22 H53 V28 H7 Z M10 28 L7 46 M50 28 L53 46 M14 31 H46 M13 37 H47 M6 46 H13 M47 46 H54 M12 19 H48"/>'
    };
    const boards=[shapes.board,
      '<path d="M6 10 H54 V46 H6 Z M10 14 H50 V42 H10 Z M10 46 L7 50 M50 46 L53 50"/><circle cx="10" cy="10" r="2"/><circle cx="50" cy="10" r="2"/>',
@@ -8622,14 +8663,14 @@ var GED_UNITS=(function(){
      영역 D. 집합 · 명제 · 함수
      ================================================================ */
   { id:'u15', tag:'15번', area:'D', title:'집합', src:'2023~2026 매회 15번',
-    fields:[{k:'kind',label:'문제 종류',sel:['n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']},
+    fields:[{k:'kind',label:'문제 종류',sel:['n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']},
       {k:'nA',label:'n(A)',min:2,max:5},{k:'nB',label:'n(B)',min:2,max:5},{k:'k',label:'겹치는 개수',min:1,max:4},
       {k:'num',label:'원소 종류',sel:['글자 (a, b, c)','숫자 (1, 2, 3)']}],
     def:{kind:'n(A∪B) 개수',nA:2,nB:3,k:1,num:'글자 (a, b, c)'},
     rand(){const nA=rnd(2,4),nB=rnd(2,4);
       /* 차집합이 빈 집합이 되지 않도록 겹치는 개수를 n(A) 보다 작게 잡는다 */
       const k=rnd(1,Math.max(1,Math.min(nA-1,nB)));
-      return{kind:pick(['n(A∪B) 개수','n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']),
+      return{kind:pick(['n(A∪B) 개수','n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']),
         nA,nB,k,num:pick(['글자 (a, b, c)','숫자 (1, 2, 3)'])};},
     build(p){
       if(p.k>Math.min(p.nA,p.nB))return{err:'겹치는 개수는 두 집합 원소 개수보다 클 수 없습니다.'};
@@ -8659,12 +8700,12 @@ var GED_UNITS=(function(){
             `따라서 ${tex(symbol+'='+correct)}`]};
       }
       /* ── 원소의 개수만 묻는 형태 (2026-2회 15번 · 2025-1회 14번 계열) ── */
-      if(kind==='n(A) 개수'){
-        const ans0=A.length,ch0=numChoices(ans0);
-        return{q:head+`${tex('n(A)')}의 값은?`,choices:ch0.list,ans:ch0.ans,answerTex:nf(ans0),
-          sol:[`${tex('n(A)')}는 집합 A 안에 들어 있는 <b>원소의 개수</b>를 뜻합니다.`,
-            `${tex('A='+st(A))}의 원소를 하나씩 세어 봅니다.`,
-            `따라서 ${tex('n(A)='+nf(ans0))}`]};
+      if(kind==='n(A) 개수'||kind==='n(B) 개수'){
+        const name=kind==='n(A) 개수'?'A':'B',S=name==='A'?A:B,ans0=S.length,ch0=numChoices(ans0);
+        return{q:head+`${tex(`n(${name})`)}의 값은?`,choices:ch0.list,ans:ch0.ans,answerTex:nf(ans0),
+          sol:[`${tex(`n(${name})`)}는 집합 ${name} 안에 들어 있는 <b>원소의 개수</b>를 뜻합니다.`,
+            `${tex(name+'='+st(S))}의 원소를 하나씩 세어 봅니다.`,
+            `따라서 ${tex(`n(${name})=${nf(ans0)}`)}`]};
       }
       if(kind==='n(A−B) 개수'){
         if(diff.length===0)return{err:'A의 원소가 모두 B에도 있어 차집합이 공집합이 됩니다. 겹치는 개수를 줄여 주세요.'};
@@ -8928,6 +8969,7 @@ var GED_UNITS=(function(){
 
 /* 자주 쓰는 묶음(프리셋) */
 var GED_PRESETS=[
+  {k:'set-prop',icon:'🧩',lbl:'집합 · 명제',desc:'15~16번 실제 검정고시 유형만 모아 연습',ids:['u15','u16']},
   {k:'coord',icon:'★',lbl:'좌표 완전정복',desc:'좌표 기초 3 + 좌표평면 유형 (7·10·11·12·13·14·18번)',ids:['c1','c2','c3','u7','u10','u11','u12','u13','u14','u18a','u18b']},
   {k:'kpoint',icon:'⭕',lbl:'핵심 점 찍기',desc:'원점 O 와 무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점에 ○ (1쪽 개념 + 섞어 연습)',ids:['p1']},
   {k:'warm',icon:'🌱',lbl:'좌표 워밍업',desc:'좌표 읽기·사분면·직선 + 대칭이동·거리',ids:['c1','c2','c3','u14','u10']},
@@ -10618,6 +10660,33 @@ function FeelSummary({sessions}){
 }
 
 
+// ========== js\ui\questionBookmark.js ==========
+// 학생이 문제별로 직접 표시한 어려움 기록
+async function saveQuestionBookmark(studentName, question, source){
+  if(!db||!studentName||!question)return false;
+  const record={studentName,source:source||'문제풀이',date:todayStr(),time:timeStr(),
+    topic:question.topic||question.meta?.type||question.meta?.category||source||'분류 없음',
+    qFull:String(question.qFull||question.qTxt||question.q||''),
+    choices:Array.isArray(question.choices)?question.choices.map(String):[],
+    answerIdx:Number.isFinite(Number(question.answerIdx))?Number(question.answerIdx):null,
+    explanation:String(question.explanation||question.sol||''),meta:question.meta||null,
+    graph:question.graph||null,cSeed:question.cSeed||null,cLv:question.cLv||null,cGrid:question.cGrid??null,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{await db.collection('questionDifficultyBookmarks').add(record);return true;}
+  catch(e){console.error('문제 어려움 표시 저장 실패',e);return false;}
+}
+
+function QuestionDifficultyBookmark({userData,question,source='문제풀이'}){
+  const[status,setStatus]=useState('idle');
+  const save=async()=>{if(status==='saving'||status==='saved')return;setStatus('saving');
+    setStatus(await saveQuestionBookmark(userData?.name,question,source)?'saved':'error');};
+  return <div className="mt-3"><button type="button" onClick={save} disabled={status==='saving'||status==='saved'}
+    className={`px-3 py-2 rounded-xl border-2 text-sm font-black ${status==='saved'?'bg-emerald-50 border-emerald-300 text-emerald-800':'bg-amber-50 border-amber-300 text-amber-900'}`}>
+    {status==='saved'?'✅ 선생님께 어려운 문제로 저장했어요':status==='saving'?'저장 중…':'🔖 선생님 이 문제 어려워요!'}</button>
+    {status==='error'&&<span role="alert" className="ml-2 text-xs text-red-600 font-bold">저장하지 못했어요. 다시 눌러 주세요.</span>}</div>;
+}
+
+
 // ========== js\student\exploreModules.js ==========
 // === js/student/exploreModules.js ===
 /* --------------------------------------------------------------------
@@ -10626,9 +10695,25 @@ function FeelSummary({sessions}){
    -------------------------------------------------------------------- */
 
 /* ===== GEOMETRY MODULES ===== */
+function GraphPointMode({mode,onChange,color='indigo'}){
+  const active=mode==='tap';
+  const palettes={blue:['bg-blue-600 text-white border-blue-600','bg-white text-blue-700 border-blue-200'],purple:['bg-purple-600 text-white border-purple-600','bg-white text-purple-700 border-purple-200'],emerald:['bg-emerald-600 text-white border-emerald-600','bg-white text-emerald-700 border-emerald-200'],orange:['bg-orange-600 text-white border-orange-600','bg-white text-orange-700 border-orange-200'],teal:['bg-teal-600 text-white border-teal-600','bg-white text-teal-700 border-teal-200'],amber:['bg-amber-600 text-white border-amber-600','bg-white text-amber-700 border-amber-200'],indigo:['bg-indigo-600 text-white border-indigo-600','bg-white text-indigo-700 border-indigo-200']};
+  const[selected,idle]=palettes[color]||palettes.indigo;
+  return <div className="flex flex-wrap items-center gap-2" role="group" aria-label="그래프 점 조작 방식">
+    <button type="button" aria-pressed={!active} onClick={()=>onChange('drag')} className={`px-3 py-2 rounded-xl border-2 text-sm font-bold ${!active?selected:idle}`}>● 점 끌기</button>
+    <button type="button" aria-pressed={active} onClick={()=>onChange('tap')} className={`px-3 py-2 rounded-xl border-2 text-sm font-bold ${active?selected:idle}`}>⌖ 좌표 눌러 이동</button>
+    {active&&<span className="text-xs font-semibold text-gray-500">그래프를 누르면 가장 가까운 정수 좌표로 점이 이동해요.</span>}
+  </div>;
+}
+function graphPointAtEvent(e,sz){
+  const r=e.currentTarget.getBoundingClientRect(),{SC,W,H,panX=0,panY=0}=sz;
+  const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));
+  return[cl((e.clientX-r.left-W/2)/SC+panX),cl((H/2-(e.clientY-r.top))/SC+panY)];
+}
 function RadicalModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[p,setP]=useState(0),[q,setQ]=useState(0),[a,setA]=useState(1);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -10637,7 +10722,7 @@ function RadicalModule({sz}){
   const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
-  const pts=[];for(let sx=0;sx<=W;sx+=2){const mx=(sx-cx)/SC,inn=mx-p;if(inn<0)continue;const my=a*Math.sqrt(inn)+q;if(Math.abs(my)>13)continue;pts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}
+  const pts=[],refPts=[];for(let sx=0;sx<=W;sx+=2){const mx=(sx-cx)/SC,inn=mx-p;if(inn>=0){const my=a*Math.sqrt(inn)+q;if(Math.abs(my)<=13)pts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}if(mx>=0){const my=a*Math.sqrt(mx);if(Math.abs(my)<=13)refPts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}}
   const aStr=a===1?'':a===-1?'−':String(a);const innerStr=p===0?'x':`x${eqSh(p)}`;
   return(<div className="space-y-3">
     <div className="flex flex-wrap gap-3 items-center">
@@ -10646,7 +10731,7 @@ function RadicalModule({sz}){
           {[-3,-2,-1,1,2,3].map(v=><option key={v} value={v}>{v}</option>)}
         </select>
       </label>
-      <span className="text-sm bg-blue-50 border border-blue-200 rounded-full px-3 py-1.5 text-blue-700 font-semibold">🔴 점 드래그 · 배경 길게 누르면 이동</span>
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="blue"/><span className="text-sm bg-blue-50 border border-blue-200 rounded-full px-3 py-1.5 text-blue-700 font-semibold">배경 길게 누르면 화면 이동</span>
     </div>
     <div className="text-center text-sm text-blue-600 bg-white rounded-xl py-2 px-3 border border-blue-100">
       원점에서 x축 방향으로 <strong>{p}</strong>만큼, y축 방향으로 <strong>{q}</strong>만큼 <strong>평행이동</strong>했어요!
@@ -10656,11 +10741,13 @@ function RadicalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 시작점: ({p}, {q})
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
-      {pts.length>1&&<path d={`M ${pts.join(' L ')}`} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
-      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#3b82f6" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
+      {refPts.length>1&&<polyline points={refPts.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/>}
+      {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
+      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#3b82f6" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[p,q]}/>
     </svg>
   </div>);
 }
@@ -10668,6 +10755,7 @@ function RadicalModule({sz}){
 function RationalModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[p,setP]=useState(0),[q,setQ]=useState(0),[k,setK]=useState(1);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -10676,7 +10764,7 @@ function RationalModule({sz}){
   const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
-  const branch=left=>{const pts=[];for(let mx=left?-13:p+0.04;left?mx<p-0.04:mx<=13;mx+=0.04){const my=k/(mx-p)+q;if(Math.abs(my)>13)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?`M ${pts.join(' L ')}`:''};
+  const branch=(left,translated=true)=>{const pts=[],asym=translated?p:0,dy=translated?q:0;for(let mx=left?-13:asym+0.04;left?mx<asym-0.04:mx<=13;mx+=0.04){const my=k/(mx-asym)+dy;if(Math.abs(my)>13)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?`M ${pts.join(' L ')}`:''};
   return(<div className="space-y-3">
     <div className="flex flex-wrap gap-3 items-center">
       <label className="flex items-center gap-2 text-base font-bold text-gray-700">상수 k:
@@ -10684,7 +10772,7 @@ function RationalModule({sz}){
           {[-4,-3,-2,-1,1,2,3,4].map(v=><option key={v} value={v}>{v}</option>)}
         </select>
       </label>
-      <span className="text-sm bg-purple-50 border border-purple-200 rounded-full px-3 py-1.5 text-purple-700 font-semibold">🟣 점 드래그 · 배경 길게 누르면 이동</span>
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="purple"/><span className="text-sm bg-purple-50 border border-purple-200 rounded-full px-3 py-1.5 text-purple-700 font-semibold">배경 길게 누르면 화면 이동</span>
     </div>
     <div className="text-center text-sm text-purple-600 bg-white rounded-xl py-2 px-3 border border-purple-100">
       원점에서 x축 방향으로 <strong>{p}</strong>만큼, y축 방향으로 <strong>{q}</strong>만큼 <strong>평행이동</strong>했어요!
@@ -10694,14 +10782,16 @@ function RationalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 점근선: x={p}, y={q}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       <line x1={cx+p*SC} y1={0} x2={cx+p*SC} y2={H} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
       <line x1={0} y1={cy-q*SC} x2={W} y2={cy-q*SC} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
+      <path d={branch(true,false)} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/><path d={branch(false,false)} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/>
       <path d={branch(true)} fill="none" stroke="#9333ea" strokeWidth={3} strokeLinecap="round"/>
       <path d={branch(false)} fill="none" stroke="#9333ea" strokeWidth={3} strokeLinecap="round"/>
-      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#9333ea" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
+      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#9333ea" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[p,q]}/>
     </svg>
   </div>);
 }
@@ -10709,6 +10799,7 @@ function RationalModule({sz}){
 function QuadraticModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[p,setP]=useState(0),[q,setQ]=useState(0),[a,setA]=useState(1),[ds,setDs]=useState(-7),[de,setDe]=useState(7);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -10727,12 +10818,13 @@ function QuadraticModule({sz}){
   const validY = [a * (ds - p)**2 + q, a * (de - p)**2 + q];
   if (p >= ds && p <= de) validY.push(q);
   const extreme = a > 0 ? Math.min(...validY) : Math.max(...validY);
-  const extremeXg = extreme===a*(ds-p)**2+q ? ds : de;   // 극점 밖 최대·최소의 x (굵은 색 숫자가 대신 쓰이는 눈금)
+  const extremeXg=p>=ds&&p<=de&&Math.abs(extreme-q)<1e-9?p:Math.abs(extreme-validY[0])<1e-9?ds:de;
   
   const aStr=a===-1?'−':a===1?'':String(a);
   
   return(<div className="space-y-3">
     <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center justify-center">
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="emerald"/>
       <label className="flex items-center gap-2 text-sm font-bold text-gray-700">a:
         <select value={a} onChange={e=>setA(+e.target.value)} className="border-2 border-emerald-300 rounded-xl px-2 py-2 bg-white font-bold">
           {[-2,-1,1,2].map(v=><option key={v} value={v}>{v}</option>)}
@@ -10757,10 +10849,11 @@ function QuadraticModule({sz}){
     
     <div className="text-center font-bold text-emerald-700 bg-emerald-50 rounded-2xl py-3 text-sm border border-emerald-200">
       <KF tex={`y=${a===-1?'-':a===1?'':a}(x${p===0?'':p>0?`-${p}`:`+${-p}`})^{2}${q===0?'':q>0?`+${q}`:String(q)}`}/>
-      <span className="text-gray-300 mx-2">|</span> {a>0?'최솟값':'최댓값'}: {Math.round(extreme)} (x∈[{ds},{de}])
+      <span className="text-gray-300 mx-2">|</span> {a>0?'최솟값':'최댓값'}: ({extremeXg}, {Math.round(extreme)}) (x∈[{ds},{de}])
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p,extremeXg]} skipY={[q,Math.round(extreme)]}/>
@@ -10768,23 +10861,12 @@ function QuadraticModule({sz}){
       <line x1={cx+ds*SC} y1={0} x2={cx+ds*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       <line x1={cx+de*SC} y1={0} x2={cx+de*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
       {dom.length>1&&<path d={`M ${dom.join(' L ')}`} fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round"/>}
-      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#16a34a" onDown={dn} cx={cx} cy={cy} label={[p,q]}/>
-      {/* 극점 이외에서 최대/최솟값이 발생하는 경우: 축 수선의 발 + 좌표 라벨 */}
-      {(()=>{
-        const extremeX=a>0?(extreme===a*(ds-p)**2+q?ds:de):(extreme===a*(ds-p)**2+q?ds:de);
-        const isVertex=p>=ds&&p<=de&&extreme===q;
-        if(isVertex)return null;
-        const esx=cx+extremeX*SC,esy=cy-extreme*SC;
-        const col='#ef4444';
-        return(<>
-          <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
-          <line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2} strokeDasharray="7,4" opacity={0.75}/>
-          <line x1={esx} y1={cy-8} x2={esx} y2={cy+8} stroke={col} strokeWidth={3.5}/>
-          <text x={esx} y={cy+30} textAnchor="middle" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{extremeX}</text>
-          <line x1={cx-8} y1={esy} x2={cx+8} y2={esy} stroke={col} strokeWidth={3.5}/>
-          <text x={cx-18} y={esy+8} textAnchor="end" fontSize={24} fill={col} fontWeight="900" stroke="white" strokeWidth="2" paintOrder="stroke">{Math.round(extreme)}</text>
-        </>);
-      })()}
+      <Dot sx={cx+p*SC} sy={cy-q*SC} color="#16a34a" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[p,q]}/>
+      {(()=>{const esx=cx+extremeXg*SC,esy=cy-extreme*SC,col='#dc2626';return <g pointerEvents="none">
+        <line x1={esx} y1={esy} x2={esx} y2={cy} stroke={col} strokeWidth={2.2} strokeDasharray="6,4" opacity={0.85}/><line x1={esx} y1={esy} x2={cx} y2={esy} stroke={col} strokeWidth={2.2} strokeDasharray="6,4" opacity={0.85}/>
+        <circle cx={esx} cy={esy} r={9} fill="white" stroke={col} strokeWidth={3}/><circle cx={esx} cy={esy} r={3.5} fill={col}/>
+        <text x={esx+(extremeXg>=0?10:-10)} y={esy-11} textAnchor={extremeXg>=0?'start':'end'} fontSize={16} fill={col} fontWeight="900" stroke="white" strokeWidth={3} paintOrder="stroke">{a>0?'최솟값':'최댓값'} ({extremeXg}, {Math.round(extreme)})</text>
+      </g>})()}
     </svg>
   </div>);
 }
@@ -10792,6 +10874,7 @@ function QuadraticModule({sz}){
 function DistanceModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[ptX,setPX]=useState(2),[ptY,setPY]=useState(3),[la,setLA]=useState(3),[lb,setLB]=useState(-4),[lc,setLC]=useState(5);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -10827,6 +10910,7 @@ function DistanceModule({sz}){
   const formulaTex=`d=\\dfrac{|${laS}\\times${ptX}+${lbS}\\times${ptY}+${lcS}|}{\\sqrt{${laS}^{2}+${lbS}^{2}}}=\\dfrac{${nCalc}}{${denTex}}${showFinal?`=${distToLatex(distStr)}`:''}`;
 
   return(<div className="space-y-3">
+    <GraphPointMode mode={pointMode} onChange={setPointMode} color="orange"/>
     <div className="grid grid-cols-3 gap-2">
       <Stepper label="a" val={la} onMinus={()=>setLA(v=>Math.max(-10,v-1))} onPlus={()=>setLA(v=>Math.min(10,v+1))}/>
       <Stepper label="b" val={lb} onMinus={()=>setLB(v=>Math.max(-10,v-1))} onPlus={()=>setLB(v=>Math.min(10,v+1))}/>
@@ -10846,13 +10930,14 @@ function DistanceModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[ptX]} skipY={[ptY]}/>
       {le.length>=2&&<line x1={le[0][0]} y1={le[0][1]} x2={le[1][0]} y2={le[1][1]} stroke="#ea580c" strokeWidth={2.5}/>}
       <line x1={cx+ptX*SC} y1={cy-ptY*SC} x2={cx+fX*SC} y2={cy-fY*SC} stroke="#fb923c" strokeWidth={1.8} strokeDasharray="4,3"/>
       <circle cx={cx+fX*SC} cy={cy-fY*SC} r={6} fill="#fb923c" stroke="white" strokeWidth={2}/>
-      <Dot sx={cx+ptX*SC} sy={cy-ptY*SC} color="#dc2626" onDown={dn} cx={cx} cy={cy} label={[ptX,ptY]}/>
+      <Dot sx={cx+ptX*SC} sy={cy-ptY*SC} color="#dc2626" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[ptX,ptY]}/>
       <text x={8} y={H-8} fontSize={11} fill="#64748b">거리 = {distStr}</text>
     </svg>
   </div>);
@@ -10861,6 +10946,7 @@ function DistanceModule({sz}){
 function CircleModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[h,setH]=useState(0),[k,setK]=useState(0),[r,setR]=useState(3);
+  const[pointMode,setPointMode]=useState('drag');
   const[lineEnabled,setLineEnabled]=useState(false);
   const[lineDir,setLineDir]=useState('h'); // 'h'=수평(y=n), 'v'=수직(x=n)
   const[linePos,setLinePos]=useState(0);
@@ -10885,7 +10971,7 @@ function CircleModule({sz}){
         <input type="range" min={1} max={6} value={r} onChange={e=>setR(+e.target.value)} className="w-24 accent-teal-500"/>
         <span className="font-bold text-teal-600 w-5">{r}</span>
       </label>
-      <span className="text-xs bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">🟢 중심 드래그 · 배경 길게 누르면 이동</span>
+      <GraphPointMode mode={pointMode} onChange={setPointMode} color="teal"/><span className="text-xs bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">배경 길게 누르면 화면 이동</span>
     </div>
 
     {/* 직선 추가 UI */}
@@ -10913,6 +10999,7 @@ function CircleModule({sz}){
       <KF tex={circleTex}/> <span className="text-gray-300 mx-2">|</span> 중심: ({h},{k}), r={r}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setH(x);setK(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>
@@ -10927,7 +11014,7 @@ function CircleModule({sz}){
       <circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="rgba(20,184,166,0.1)" stroke="#0d9488" strokeWidth={2.5}/>
       <line x1={cx+h*SC} y1={cy-k*SC} x2={cx+(h+r)*SC} y2={cy-k*SC} stroke="#0d9488" strokeWidth={1.5} strokeDasharray="5,3"/>
       <text x={(cx+h*SC+cx+(h+r)*SC)/2} y={cy-k*SC-7} textAnchor="middle" fontSize={11} fill="#0d9488" fontWeight="bold">r={r}</text>
-      <Dot sx={cx+h*SC} sy={cy-k*SC} color="#0d9488" onDown={dn} cx={cx} cy={cy} label={[h,k]}/>
+      <Dot sx={cx+h*SC} sy={cy-k*SC} color="#0d9488" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[h,k]}/>
     </svg>
   </div>);
 }
@@ -10935,6 +11022,7 @@ function CircleModule({sz}){
 function SymmetryModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[px,setPX]=useState(3),[py,setPY]=useState(2),[type,setType]=useState(null);
+  const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz);
@@ -10954,6 +11042,7 @@ function SymmetryModule({sz}){
     : null;
 
   return(<div className="space-y-3">
+    <GraphPointMode mode={pointMode} onChange={setPointMode} color="amber"/>
     <div className="flex flex-wrap gap-2 justify-center">
       {SYM_LIST.map(s=>(
         <button 
@@ -10972,6 +11061,7 @@ function SymmetryModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
+      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[px]} skipY={[py]}/>
@@ -10985,11 +11075,12 @@ function SymmetryModule({sz}){
           
           <circle cx={cx+sx*SC} cy={cy-sy*SC} r={10} fill="#2563eb" stroke="white" strokeWidth={2.5}/>
           <text x={cx+sx*SC+14} y={cy-sy*SC+4} fontSize={16} fill="#2563eb" fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">({sx},{sy})</text>
+          {type==='원점'&&<g pointerEvents="none"><circle cx={cx} cy={cy} r={12} fill="white" fillOpacity={0.9} stroke="#f59e0b" strokeWidth={2.5}/><line x1={cx-7} y1={cy} x2={cx+7} y2={cy} stroke="#f59e0b" strokeWidth={2}/><line x1={cx} y1={cy-7} x2={cx} y2={cy+7} stroke="#f59e0b" strokeWidth={2}/><text x={cx+14} y={cy-9} fontSize={12} fill="#b45309" fontWeight="900" stroke="white" strokeWidth="3" paintOrder="stroke">중심 O</text></g>}
         </>
       )}
       
       {/* 이동 전 원본 점 (항상 표시) */}
-      <Dot sx={cx+px*SC} sy={cy-py*SC} color="#dc2626" onDown={dn} cx={cx} cy={cy} label={[px,py]}/>
+      <Dot sx={cx+px*SC} sy={cy-py*SC} color="#dc2626" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[px,py]}/>
     </svg>
   </div>);
 }
@@ -11657,11 +11748,12 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
     setSavedData(()=>{try{return JSON.parse(localStorage.getItem('yakHakSavedSession_'+userData.name));}catch{return null;}});
   };
 
+  if(unified&&screen==='wrong-note')return <StudentWrongNotePractice userData={userData} onBack={()=>setScreen('menu')}/>;
   if(unified&&screen==='menu')return<UnifiedPracticeMenu userData={userData} section={unifiedSection} setSection={setUnifiedSection}
     savedData={savedData} onResume={resumeSession} onArithmetic={v=>{setVer(v);setVerTopic(null);setScreen('arithmetic');}}
-    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onSetTopic={topic=>{if(userData.name!=='박소명_학생')return;setVerTopic(topic);setScreen('focused-set');}}/>;
+    onCoordinate={k=>{setUnifiedLevel(k);setScreen('coordinate');}} onWrongNote={()=>setScreen('wrong-note')} onSetTopic={topic=>{if(!(PREVIEW_USERS||[]).includes(userData.name))return;setVerTopic(topic);setScreen('focused-set');}}/>;
   if(unified&&screen==='coordinate')return<CoordDailyTab userData={userData} onUpdate={onUpdate} initialLevel={unifiedLevel} onExit={()=>setScreen('menu')}/>;
-  if(unified&&screen==='focused-set'&&userData.name==='박소명_학생')return<FocusedSetPractice topic={verTopic} userData={userData} onUpdate={onUpdate} onBack={()=>setScreen('menu')}/>;
+  if(unified&&screen==='focused-set'&&(PREVIEW_USERS||[]).includes(userData.name))return<FocusedSetPractice topic={verTopic} userData={userData} onUpdate={onUpdate} onBack={()=>setScreen('menu')}/>;
   if(unified&&screen==='arithmetic')return<PracticeMenu ver={ver} setVer={setVer} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={null} onResume={resumeSession} selectedOnly onBack={()=>setScreen('menu')}/>;
   if(screen==='menu')return<PracticeMenu ver={ver} setVer={v=>{setVer(normalizePracticeVer(v));setVerTopic(null);}} rangeSettings={practiceRanges} setRangeSettings={setPracticeRanges} goal={goal} setGoal={setGoal} todayLessons={userData.todayLessons} onSave={saveSettings} onStart={startSession} savedData={savedData} onResume={resumeSession}/>;
   if(screen==='session')return<PracticeSession session={session} setSession={setSession} ver={ver} rangeMin={session.rangeMin} rangeMax={session.rangeMax} divMin={session.divMin} divMax={session.divMax} userData={userData} onUpdate={onUpdate} onDone={(result)=>{setScreen('done');onSessionActive?.(false);}} onBack={handleBack}/>;
@@ -11670,7 +11762,7 @@ function DailyPracticeTab({userData,onUpdate,onSessionActive,autoResume,onAutoRe
 }
 
 /* 기존 두 문제 메뉴를 한곳에 모은다. */
-function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onArithmetic,onCoordinate,onSetTopic}){
+function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onArithmetic,onCoordinate,onSetTopic,onWrongNote}){
  const items=[
   {v:0,lbl:'기본 나눗셈',desc:'설정한 범위에서 몫을 구합니다'},
   {v:1,lbl:'심화 나눗셈 (나머지)',desc:'몫과 나머지를 구합니다'},
@@ -11688,8 +11780,9 @@ function UnifiedPracticeMenu({userData,section,setSection,savedData,onResume,onA
   </button>;
  return <div className="p-4 space-y-4 pb-36"><div><div className="text-2xl font-black text-gray-800">✏️ 오늘의 문제풀이</div><div className="text-sm font-bold text-gray-500 mt-1">풀고 싶은 유형을 골라 10문제에 도전해 보세요.</div></div>
   {savedData&&<button onClick={onResume} className="w-full text-left bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 font-black text-amber-800">📚 하던 공부 이어서 풀기 ({savedData.correctCount||0}/10) →</button>}
+  <button onClick={onWrongNote} className="w-full text-left bg-rose-50 border-2 border-rose-200 rounded-3xl p-4 font-black text-rose-800">📒 오답노트만 풀기 <span className="block mt-1 text-xs">최근 기간을 정해 틀린 문제를 다시 풀어요</span></button>
   {groups.map(g=><section key={g.id} className="bg-white rounded-3xl shadow-md overflow-hidden"><button onClick={()=>setSection(section===g.id?null:g.id)} aria-expanded={section===g.id} className="w-full p-5 text-left flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span className="flex-1"><span className="block text-lg font-black text-gray-800">{g.title}</span><span className="block text-sm font-bold text-gray-500">{g.desc}</span></span><span className="font-black text-indigo-500">{section===g.id?'−':'+'}</span></button>
-   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?(userData.name==='박소명_학생'?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
+   {section===g.id&&<div className="px-4 pb-4 space-y-2">{g.id==='arithmetic'?items.map((x,i)=>card(x.v,`유형 ${i+1}`,x.lbl,x.desc,()=>onArithmetic(x.v))):g.id==='sets'?((PREVIEW_USERS||[]).includes(userData.name)?['집합','명제'].map(topic=><button key={topic} onClick={()=>onSetTopic&&onSetTopic(topic)} className="w-full text-left bg-white rounded-3xl p-4 shadow-sm border-2 border-indigo-200 flex items-center gap-3 active:scale-[0.98] transition-transform"><span className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-2xl shrink-0">{topic==='집합'?'∪':'⇒'}</span><span className="flex-1"><span className="block text-base font-black text-gray-800">{topic} 문제풀이</span><span className="block text-sm font-bold text-gray-500 mt-0.5">10문제 연습</span></span><span className="text-2xl text-gray-300">›</span></button>):<div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-800 font-bold text-sm" role="status">🔒 앗, 선생님이 아직 작업 중이에요! 곧 공개할 예정이에요.</div>):COORD_LEVELS.filter(l=>g.id==='count'?l.k==='count3':l.k!=='count3').map(l=>card(l.k,l.badge,l.lbl,l.desc,()=>onCoordinate(l.k),coordLevelLocked(l,userData.name)))}</div>}
   </section>)}
  </div>;
 }
@@ -11751,16 +11844,28 @@ function FocusedSetPractice({topic,userData,onUpdate,onBack}){
   return <div className="p-4 pb-36 space-y-4">
     <div className="flex items-center gap-3"><button onClick={onBack} className="w-11 h-11 rounded-2xl bg-white shadow-sm text-gray-500 font-black">←</button><div className="flex-1"><div className="text-lg font-black text-gray-800">{topic} 문제풀이</div><div className="text-sm font-bold text-gray-500">문제 {index+1}/{TOTAL}</div></div><div className="text-sm font-black text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl">{correct+(revealed&&selected===answer?1:0)}/{TOTAL}</div></div>
     <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 rounded-full transition-all" style={{width:`${((index+(revealed?1:0))/TOTAL)*100}%`}}/></div>
-    <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+    <div className="focused-ged-practice bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-4"><span className="w-8 h-8 rounded-full bg-indigo-500 text-white text-sm font-black flex items-center justify-center">{index+1}</span><span className="text-sm font-black text-indigo-700">{topic} · {q.topic}</span></div>
-      <div className="text-lg font-bold text-gray-900 leading-loose mb-4" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>
+      {q.practiceMarkup?<GEDPracticeMarkup className="focused-ged-question text-lg font-bold text-gray-900 leading-loose mb-4" html={q.q}/>:<div className="text-lg font-bold text-gray-900 leading-loose mb-4" dangerouslySetInnerHTML={{__html:examQHtml(q)}}/>}
+      {q.figure&&<GEDPracticeMarkup className="focused-ged-figure mb-4" html={q.figure}/>}
       <div className="grid gap-2">
-        {q.choices.map((choice,i)=>{const correctChoice=i===answer,isSelected=selected===i;let style='bg-white border-slate-200 text-gray-800';if(revealed&&correctChoice)style='bg-green-50 border-green-500 text-green-800';else if(revealed&&isSelected)style='bg-red-50 border-red-400 text-red-700';else if(isSelected)style='bg-indigo-50 border-indigo-400 text-indigo-800';return <button key={i} disabled={revealed} onClick={()=>setSelected(i)} className={`w-full text-left text-base font-bold px-4 py-3 rounded-2xl border-2 transition-all ${style}`}><span className="mr-2">{ORD[i]}</span><span dangerouslySetInnerHTML={{__html:examChoiceHtml(choice)}}/>{revealed&&correctChoice&&<span className="float-right">✅</span>}</button>;})}
+        {q.choices.map((choice,i)=>{const correctChoice=i===answer,isSelected=selected===i;let style='bg-white border-slate-200 text-gray-800';if(revealed&&correctChoice)style='bg-green-50 border-green-500 text-green-800';else if(revealed&&isSelected)style='bg-red-50 border-red-400 text-red-700';else if(isSelected)style='bg-indigo-50 border-indigo-400 text-indigo-800';return <button key={i} disabled={revealed} onClick={()=>setSelected(i)} className={`focused-ged-choice w-full text-left text-base font-bold px-4 py-3 rounded-2xl border-2 transition-all ${style}`}><span className="mr-2">{ORD[i]}</span>{q.practiceMarkup?<GEDPracticeMarkup className="focused-ged-choice-content" html={choice}/>:<span dangerouslySetInnerHTML={{__html:examChoiceHtml(choice)}}/>}{revealed&&correctChoice&&<span className="float-right">✅</span>}</button>;})}
       </div>
-      {revealed&&<ExplanationBox q={q}/>}
+      {revealed&&(q.practiceMarkup?<GEDPracticeSolutions solutions={q.sol}/>:<ExplanationBox q={q}/>)}
+      {revealed&&<QuestionDifficultyBookmark userData={userData} source={`${topic} · ${q.topic}`} question={{qFull:q.q,choices:q.choices,answerIdx:answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):'',meta:{type:q.topic}}}/>}
     </div>
     {!revealed?<button disabled={selected===null} onClick={reveal} className={`w-full py-4 rounded-2xl font-black text-lg ${selected===null?'bg-gray-200 text-gray-400':'bg-indigo-600 text-white active:scale-[0.98]'}`}>정답 확인 ✓</button>:<button onClick={next} className="w-full py-4 rounded-2xl bg-green-600 text-white font-black text-lg active:scale-[0.98]">{index+1===TOTAL?'결과 보기':'다음 문제 →'}</button>}
   </div>;
+}
+
+/* 기출 학습지의 data-tex 문법을 학생 풀이 화면에서도 KaTeX로 렌더링한다. */
+function GEDPracticeMarkup({html,className=''}){
+  const ref=React.useRef(null);
+  useEffect(()=>{const root=ref.current;if(!root)return;root.querySelectorAll('.tx[data-tex]').forEach(el=>{const tex=el.getAttribute('data-tex');el.style.whiteSpace='nowrap';el.style.display='inline-block';el.style.maxWidth='100%';el.style.overflowX='auto';el.style.verticalAlign='middle';try{if(window.katex)window.katex.render(tex,el,{throwOnError:false,strict:false});else el.textContent=tex;}catch(_){el.textContent=tex;}});},[html]);
+  return <div ref={ref} className={className} style={{minWidth:0,maxWidth:'100%',overflowWrap:'anywhere',wordBreak:'normal'}} dangerouslySetInnerHTML={{__html:String(html||'')}}/>;
+}
+function GEDPracticeSolutions({solutions=[]}){
+  return <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900 font-semibold leading-relaxed"><div className="font-black text-amber-700 mb-1.5">📖 풀이 과정</div><ol className="space-y-1">{solutions.map((s,i)=><li key={i} className="flex gap-1.5"><span className="shrink-0 font-black text-amber-600">{i+1===solutions.length?'➡':`${i+1}.`}</span><GEDPracticeMarkup className="min-w-0 flex-1" html={s}/></li>)}</ol></div>;
 }
 
 function PracticeMenu({ver,setVer,verTopic,setVerTopic,rangeSettings,setRangeSettings,goal,setGoal,todayLessons,onSave,onStart,savedData,onResume,selectedOnly=false,onBack}){
@@ -12253,6 +12358,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       examSource:(q._src!==undefined?q._src:getExamSource(q))||null,   // 화면에 보인 출처와 같게
       explanation:Array.isArray(q.sol)&&q.sol.length?q.sol.join('\n'):easyExplanation(q),
       meta};
+    if(q.isMC){newQ.qFull=q.q||q.qLogTxt||q.txt;newQ.choices=mcOpts.map(o=>String(o.text));newQ.answerIdx=mcOpts.findIndex(o=>o.isC);}
     // 검정고시(exam5)는 회차 인쇄/PDF를 위해 원문제 전체를 함께 저장 (그림·선택지·해설 포함)
     if(q.category==='exam5'){
       newQ.topic=q.topic;
@@ -12358,6 +12464,7 @@ function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax
       </div>
       <MockQBody q={practiceViewQ(q,mcOpts)} sel={selMC} isGraded={phase==='feedback'} readOnly={phase!=='question'}
         onPick={i=>{if(phase==='question'){handleFirstAction();setSelMC(i);}}}/>
+      {phase==='feedback'&&<QuestionDifficultyBookmark userData={userData} source={q.category==='exam5'?'검정고시 연습':q.category==='div'?'약수 구하기':'나눗셈'} question={{qFull:q.q||q.qLogTxt||q.txt||q.qTxt,choices:mcOpts,answerIdx:q.category==='exam5'?q.answer:(q.answerIdx??q.ans),explanation:q.explanation,meta:q.meta}}/>}
     </div>
     {fb&&<div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 fade-in ${fb.ok?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>{fb.msg}</div>}
     {fb&&<SolutionBox q={q.category==='exam5'&&Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식 */}
@@ -12456,6 +12563,41 @@ function PracticeDone({ver,userData,correct,wrong,onAgain,onHome}){
     <button onClick={onAgain} className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-black text-xl mb-3 active:scale-95 transition-transform">한 번 더 풀기 🔄</button>
     <button onClick={onHome} className="w-full max-w-xs py-4 bg-gray-100 text-gray-700 rounded-2xl font-black text-xl active:scale-95 transition-transform">홈으로 🏠</button>
   </div>);
+}
+
+
+// ========== js\student\wrongNotePractice.js ==========
+function StudentWrongNotePractice({userData,onBack}){
+  const[days,setDays]=useState(7),[active,setActive]=useState(false),[idx,setIdx]=useState(0),[sel,setSel]=useState(null),[revealed,setRevealed]=useState(false);
+  const[allLogs,setAllLogs]=useState(userData.logs||[]),[coordStage,setCoordStage]=useState(0);
+  useEffect(()=>{let live=true;db.collection('math_logs').where('studentName','==',userData.name).get().then(s=>{if(!live)return;const merged=s.docs.map(d=>d.data());setAllLogs(merged.length?merged:userData.logs||[]);}).catch(()=>{});return()=>{live=false;};},[userData.name]);
+  const cutoff=Date.now()-Number(days)*86400000;
+  const qs=allLogs.flatMap(log=>(log.questions||[]).filter(q=>!q.isOk).map(q=>({...q,logDate:log.date,logType:log.type})))
+    .filter(q=>{const t=Date.parse(q.logDate||'');return days==='all'||(!Number.isNaN(t)&&t>=cutoff);});
+  const q=qs[idx];
+  let coordReplay=null;try{if(q?.cSeed&&q?.cLv)coordReplay=withSeed(q.cSeed,()=>genCoordQ(q.cLv,q.cGrid==null?undefined:{circleGrid:q.cGrid}));}catch(e){console.warn('좌표 오답 그림 재생성 실패',e);}
+  const start=()=>{setIdx(0);setSel(null);setRevealed(false);setCoordStage(0);setActive(true);};
+  const steps=String(q?.explanation||q?.sol||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  if(!active)return <div className="p-4 pb-36 space-y-4"><button onClick={onBack} className="px-3 py-2 bg-gray-100 rounded-xl font-bold">← 문제풀이 메뉴</button>
+    <div className="bg-white rounded-3xl p-5 shadow"><h2 className="text-2xl font-black">📒 오답노트</h2><p className="mt-2 text-gray-600 font-bold">최근 틀린 문제를 다시 풀고, 풀이와 해설을 확인해요.</p>
+      <label className="block mt-5 font-black">오답 범위 <select value={days} onChange={e=>setDays(e.target.value==='all'?'all':Number(e.target.value))} className="ml-2 p-2 rounded-lg border">
+        <option value={3}>최근 3일</option><option value={7}>최근 7일</option><option value={14}>최근 14일</option><option value={30}>최근 30일</option><option value="all">전체 누적</option></select></label>
+      <p className="mt-3 text-sm text-gray-500">해당 범위의 오답 {qs.length}문제 · 같은 문제를 여러 번 틀린 기록은 각각 남아요.</p>
+      <button disabled={!qs.length} onClick={start} className="mt-5 w-full p-4 rounded-2xl bg-indigo-600 text-white font-black disabled:bg-gray-300">오답노트 풀기</button></div></div>;
+  if(!q)return <div className="p-5"><p>이 범위에는 오답 기록이 없어요.</p><button onClick={()=>setActive(false)} className="mt-4 p-3 bg-indigo-600 text-white rounded-xl">범위 다시 선택</button></div>;
+  const choices=q.choices||[];const ans=Number(q.answerIdx);const graphQ={q:q.qFull||q.qTxt||q.q||'',choices,answer:ans,graph:q.graph,meta:q.meta};
+  return <div className="p-4 pb-36 space-y-4"><div className="flex items-center justify-between"><button onClick={()=>setActive(false)} className="px-3 py-2 bg-gray-100 rounded-xl font-bold">← 범위</button><span className="font-black">오답 {idx+1} / {qs.length}</span></div>
+    <div className="bg-white rounded-3xl p-5 shadow"><div className="text-xs text-gray-400 font-bold mb-2">{q.logDate} · {q.logType||'문제풀이'}</div>
+      {choices.length?<MockQBody q={graphQ} sel={sel} isGraded={revealed} readOnly={revealed} onPick={setSel}/>:<><div className="text-lg font-bold whitespace-pre-wrap">{graphQ.q}</div><input value={sel||''} onChange={e=>setSel(e.target.value)} placeholder="답을 입력해 보세요" disabled={revealed} className="mt-3 w-full p-3 border-2 rounded-xl"/></>}
+      {!revealed&&<button disabled={choices.length?sel===null:!String(sel||'').trim()} onClick={()=>setRevealed(true)} className="mt-4 w-full p-3 bg-indigo-600 text-white rounded-xl font-black disabled:bg-gray-300">정답 확인</button>}
+      {revealed&&<div className="mt-4 space-y-3"><div className="p-3 bg-emerald-50 text-emerald-900 rounded-xl font-black">{choices.length?'정답':'기록된 정답'}: {choices[ans]??q.cAns??'기록된 정답 없음'}{!choices.length&&<span className="block mt-1 text-sm">입력한 답: {sel}</span>}</div>
+        <div className="font-black">단계별 해설</div>{steps.length?steps.map((s,i)=><div key={i} className="p-3 bg-slate-50 border-l-4 border-indigo-400 rounded-r-xl"><b>{i+1}단계</b> · {s}</div>):<p className="text-sm text-gray-600">이 문항에는 저장된 단계별 해설이 없어요. 정답과 당시 풀이 기록을 확인해 주세요.</p>}
+        {coordReplay&&<div className="p-3 bg-indigo-50 rounded-xl"><div className="text-sm font-black text-indigo-900">좌표 풀이 그림 · {q.cGrid!=null?(q.cGrid?'격자 있음':'격자 없음'):'원래 출제 형식'}</div>
+          <div key={`${q.cSeed}-${coordStage}`} className="my-2 flex justify-center" style={{opacity:1,transform:coordStage?'translateY(0) scale(1)':'translateY(0) scale(.99)',transition:'opacity .35s ease, transform .35s ease'}} dangerouslySetInnerHTML={{__html:coordStage===0?coordReplay.svg:coordReplay.svgAfter||coordReplay.svg}}/>
+          <button onClick={()=>setCoordStage(coordStage?0:1)} className="px-3 py-2 bg-white rounded-lg border border-indigo-200 text-sm font-black">{coordStage?'문제 그림 보기':'풀이 그림 보기'}</button>
+          <p className="mt-2 text-xs text-indigo-700">문제 그림에서 풀이 그림으로 바꾸며 점의 이동과 관계를 확인해요.</p></div>}
+        <button onClick={()=>{if(idx+1<qs.length){setIdx(idx+1);setSel(null);setRevealed(false);setCoordStage(0);}else setActive(false);}} className="w-full p-3 bg-indigo-600 text-white rounded-xl font-black">{idx+1<qs.length?'다음 오답 →':'마치기'}</button></div>}
+    </div></div>;
 }
 
 
@@ -13348,6 +13490,7 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
       })}
     </div>
 
+    {phase==='feedback'&&<QuestionDifficultyBookmark userData={userData} source={`좌표 · ${q.topic||level}`} question={{qFull:q.q,choices:q.choices,answerIdx:q.ans,meta:{type:q.topic},cSeed:q.seed,cLv:q.genLv,cGrid:q.circleGrid}}/>}
     {phase==='feedback'&&(
       <div className={`rounded-3xl p-5 border-2 ${sel===q.ans?'bg-emerald-50 border-emerald-300':'bg-amber-50 border-amber-300'}`}>
         <div className="font-black text-lg mb-2 text-gray-800">
@@ -13924,6 +14067,7 @@ return src?<span className="text-[10px] text-gray-400 font-normal ml-1">📌 {sr
           }}/>
           {isGraded&&!isCorrect&&(<div className="mt-3 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-700 font-bold">정답: {ORD[q.answer]} <span dangerouslySetInnerHTML={{__html:examChoiceHtml(q.choices[q.answer])}}/></div>)}
           {isGraded&&<ExplanationBox q={Array.isArray(q.sol)?{...q,sol:q.sol.map(toExamTex)}:q}/>}   {/* 풀이도 시험지 모양 수식으로 */}
+          {isGraded&&<QuestionDifficultyBookmark userData={userData} source={`${examLevel==='middle'?'중졸':'고졸'} 모의고사 ${q.examNo||i+1}번`} question={{qFull:q.q,choices:q.choices,answerIdx:q.answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):q.sol,meta:{type:q.topic},graph:q.graph}}/>}
         </div>);
       })}
       {answered===questionCount&&questionCount>0&&!isGraded&&(<div className="fade-in">
@@ -13973,7 +14117,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
     if(selected===null)return;
     if(idx+1>=total&&finishingRef.current)return;
     const isOk=selected===q.answer;
-    const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
+    const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),qFull:q.q,choices:q.choices,answerIdx:q.answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):'',graph:q.graph,uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
     setResults(newRes);
     const newCorrect=correctCount+(isOk?1:0);
     setCorrectCount(newCorrect);
@@ -14066,6 +14210,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
         )}
         {phase==='feedback'&&(
           <div className="space-y-3">
+            <QuestionDifficultyBookmark userData={userData} source={`숙제 · ${q.topic||homework.title}`} question={{qFull:q.q,choices:q.choices,answerIdx:q.answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):'',graph:q.graph,meta:{type:q.topic||'숙제'}}}/>
             <div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 ${selected===q.answer?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>
               {selected===q.answer?'✅ 정답입니다! 잘했어요!':` ❌ 아쉬워요! 정답은 ${ORD[q.answer]} ${q.choices[q.answer]}입니다.`}
             </div>
@@ -15740,6 +15885,22 @@ function FeedbackTab(){
       </div>}
     </div>
   </div>);
+}
+
+
+// ========== js\teacher\difficultyBookmarks.js ==========
+function DifficultyBookmarksTab(){
+  const[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[err,setErr]=useState(''),[student,setStudent]=useState('전체');
+  const load=async()=>{setLoading(true);setErr('');try{const snap=await db.collection('questionDifficultyBookmarks').orderBy('createdAt','desc').limit(500).get();setRows(snap.docs.map(d=>({id:d.id,...d.data()})));}
+    catch(e){console.error(e);setErr('어려움 표시 기록을 불러오지 못했어요. 연결 상태를 확인해 주세요.');}finally{setLoading(false);}};
+  useEffect(()=>{load();},[]);
+  const names=['전체',...new Set(rows.map(r=>r.studentName).filter(Boolean).sort())];
+  const shown=student==='전체'?rows:rows.filter(r=>r.studentName===student);
+  const counts={};shown.forEach(r=>{const k=r.topic||r.source||'분류 없음';counts[k]=(counts[k]||0)+1;});
+  return <div className="p-4 pb-28 space-y-4"><div className="bg-white p-5 rounded-3xl shadow-sm"><h2 className="text-2xl font-black">🔖 학생이 어렵다고 표시한 문제</h2><p className="text-sm text-gray-500 mt-2">학생의 자기보고 기록입니다. 실제 정답률과 구분해 어려움 패턴을 살펴보세요.</p>
+    <div className="flex gap-2 mt-4"><select className="flex-1 p-3 rounded-xl border font-bold" value={student} onChange={e=>setStudent(e.target.value)}>{names.map(n=><option key={n}>{n}</option>)}</select><button onClick={load} className="px-4 rounded-xl bg-indigo-600 text-white font-black">새로고침</button></div>
+    {Object.keys(counts).length>0&&<div className="mt-4 flex flex-wrap gap-2">{Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=><span key={k} className="px-3 py-2 rounded-full bg-amber-50 text-amber-900 text-xs font-black">{k} · {v}회</span>)}</div>}
+  </div>{loading?<div className="p-6 text-center font-bold text-gray-500">불러오는 중…</div>:err?<div role="alert" className="p-4 bg-red-50 text-red-700 rounded-xl font-bold">{err}</div>:shown.length===0?<div className="p-6 bg-white rounded-2xl text-center text-gray-500 font-bold">아직 표시된 문제가 없어요.</div>:shown.map(r=><article key={r.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100"><div className="flex justify-between gap-2 text-xs font-bold text-gray-400"><span>{r.studentName} · {r.topic||r.source}</span><span>{r.date||''} {r.time||''}</span></div><div className="mt-3 font-bold whitespace-pre-wrap">{r.qFull||'(문제 내용 없음)'}</div>{r.choices?.length>0&&<ol className="mt-2 text-sm text-gray-600">{r.choices.map((c,i)=><li key={i}>{'①②③④'[i]||`${i+1}.`} {c}</li>)}</ol>}</article>)}</div>;
 }
 
 
@@ -19359,7 +19520,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
   // 읽지 않은 학생 의견 수 (실시간) — 학생관리 탭에 빨간 숫자로 표시
   const[unreadFb,setUnreadFb]=useState(0);
   React.useEffect(()=>db.collection('studentFeedback').where('read','==',false).onSnapshot(s=>setUnreadFb(s.size),()=>{}),[]);   // 보관 기간 지난 음성 피드백 지우기 (하루 한 번)
-  const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'hwlab',icon:'✍️',lbl:'필기인식'}];
+  const TABS=[{k:'analysis',icon:'📊',lbl:'학생관리'},{k:'difficulty',icon:'🔖',lbl:'어려운 문제'},{k:'worksheets',icon:'📝',lbl:'학습지'},{k:'gedsheet',icon:'📐',lbl:'만능학습지'},{k:'notices',icon:'📢',lbl:'공지/숙제'},{k:'hwlab',icon:'✍️',lbl:'필기인식'}];
   const switchTarget=quickSwitchTarget(userData.name);   // 등록된 짝 계정이 있을 때만 전환 단추가 보인다
   return(<div className="teacher-ui flex flex-col min-h-screen max-w-2xl mx-auto bg-gray-50" style={{overflowX:'hidden',width:'100%',maxWidth:'100vw'}}>
     <header className="bg-indigo-700 text-white px-4 py-3 flex items-center gap-2 sticky top-0 z-20 shadow-md">
@@ -19378,6 +19539,7 @@ function TeacherDashboard({userData,onLogout,onUpdate,onSwitchUser}){
     <div className="flex-1 overflow-auto scroll-body">
       {tab==='analysis'&&<div className="px-4 pt-4"><PushCard userData={userData}/></div>}
       {tab==='analysis'&&<StudentAnalysisTab/>}
+      {tab==='difficulty'&&<DifficultyBookmarksTab/>}
       {tab==='worksheets'&&<WorksheetTab/>}
       {tab==='gedsheet'&&<GedWorksheetTab/>}
       {tab==='notices'&&<NoticeTab/>}

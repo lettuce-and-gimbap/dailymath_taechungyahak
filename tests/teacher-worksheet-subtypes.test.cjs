@@ -15,6 +15,8 @@ for(const file of [
   'js/generators/high/polynomial.js',
   'js/generators/high/equation.js',
   'js/generators/high/geometry.js',
+  'js/worksheet/gedCore.js',
+  'js/worksheet/gedUnits.js',
   'js/generators/high/setFunction.js',
   'js/generators/high/probStat.js'
   ,'js/ui/examFig.js'
@@ -43,25 +45,26 @@ for(const [level,groups] of [['중졸',ctx.MOCK_SUBTYPES_MIDDLE],['고졸',ctx.M
   }
   console.log(`${level}: ${count} selectable subtypes generated valid questions`);
 }
-const practiceSetGenerators=[ctx.gen_set_elements,ctx.gen_set_count,ctx.gen_set_union_inter_sum,ctx.gen_set_equal_const,ctx.gen_truth_set,
-  ctx.genPracticeSetComplement,ctx.genPracticeSetThreeWay,ctx.genPracticeSetCardinality,ctx.genPracticeSetDifferenceMember,ctx.genPracticeSetSurvey,ctx.genPracticeTruthInequality,ctx.genPracticeSubsetRelation];
-const practicePropositionGenerators=[ctx.gen_proposition,ctx.gen_nec_suff,ctx.genPracticeConditionSets,ctx.genPracticeContrapositive,ctx.genPracticePropositionTruth,ctx.genPracticeIntervalCondition];
-if(practiceSetGenerators.length<10||practiceSetGenerators.length<5*2)throw new Error('set practice DB did not at least double its template count');
-if(practicePropositionGenerators.length<4||practicePropositionGenerators.length<2*2)throw new Error('proposition practice DB did not at least double its template count');
-for(const [label,generators] of [['집합',practiceSetGenerators],['명제',practicePropositionGenerators]]){
-  for(const gen of generators)for(let i=0;i<12;i++){
-    const q=gen();
-    if(!q||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||new Set(q.choices.map(String)).size!==4||!Number.isInteger(q.answer)||q.answer<0||q.answer>3)
-      throw new Error(`${label} practice subtype generated invalid four-choice question: ${q?.topic}`);
+const gedSetKinds=ctx.GED_UNITS.find(u=>u.id==='u15').fields.find(f=>f.k==='kind').sel;
+const gedPropKinds=ctx.GED_UNITS.find(u=>u.id==='u16').fields.find(f=>f.k==='kind').sel;
+if(gedSetKinds.length<9||gedPropKinds.length<5)throw new Error('exam-backed set/proposition subtype bank is unexpectedly small');
+for(const [id,kinds] of [['u15',gedSetKinds],['u16',gedPropKinds]]){
+  const unit=ctx.GED_UNITS.find(u=>u.id===id);
+  for(const kind of kinds)for(let i=0;i<12;i++){
+    const q=unit.build({...unit.def,kind,seed:i+1});
+    if(!q||q.err||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||new Set(q.choices.map(String)).size!==4||!Number.isInteger(q.ans)||q.ans<0||q.ans>3)
+      throw new Error(`${id} 기출 유형 ${kind} generated invalid four-choice question`);
   }
 }
+const setPreset=ctx.GED_PRESETS.find(p=>p.k==='set-prop');
+if(!setPreset||JSON.stringify(setPreset.ids)!==JSON.stringify(['u15','u16']))throw new Error('focused set/proposition worksheet preset must include only exam items 15-16');
 for(const [label,gen] of [['집합',ctx.genPracticeSetQuestion],['명제',ctx.genPracticePropositionQuestion]]){
   for(let i=0;i<30;i++){
     const q=gen();
     if(!q||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||!Number.isInteger(q.answer))
       throw new Error(`${label} focused practice generated an invalid question`);
     const topic=String(q.topic||'');
-    const matches=label==='집합'?/집합|진리집합|부분집합|차집합/.test(topic):/명제|조건|참·거짓/.test(topic);
+    const matches=label==='집합'?gedSetKinds.includes(topic):gedPropKinds.includes(topic);
     if(!matches)throw new Error(`${label} focused practice leaked another question type: ${topic}`);
   }
   console.log(`${label}: focused practice generated 30 valid questions`);

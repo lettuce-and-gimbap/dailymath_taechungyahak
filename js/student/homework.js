@@ -22,7 +22,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
     if(selected===null)return;
     if(idx+1>=total&&finishingRef.current)return;
     const isOk=selected===q.answer;
-    const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
+    const newRes=[...results,{qTxt:(q.q||q.topic||'').slice(0,40),qFull:q.q,choices:q.choices,answerIdx:q.answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):'',graph:q.graph,uAns:q.choices[selected],cAns:q.choices[q.answer],isOk,meta:{category:'exam5',type:q.topic||'숙제',diff:'기초'}}];
     setResults(newRes);
     const newCorrect=correctCount+(isOk?1:0);
     setCorrectCount(newCorrect);
@@ -115,6 +115,7 @@ function HomeworkSession({homework,userData,onUpdate,onDone}){
         )}
         {phase==='feedback'&&(
           <div className="space-y-3">
+            <QuestionDifficultyBookmark userData={userData} source={`숙제 · ${q.topic||homework.title}`} question={{qFull:q.q,choices:q.choices,answerIdx:q.answer,explanation:Array.isArray(q.sol)?q.sol.join('\n'):'',graph:q.graph,meta:{type:q.topic||'숙제'}}}/>
             <div className={`rounded-2xl px-5 py-4 text-base font-bold flex items-center gap-3 ${selected===q.answer?'bg-green-50 text-green-700 border-2 border-green-300':'bg-red-50 text-red-700 border-2 border-red-300'}`}>
               {selected===q.answer?'✅ 정답입니다! 잘했어요!':` ❌ 아쉬워요! 정답은 ${ORD[q.answer]} ${q.choices[q.answer]}입니다.`}
             </div>

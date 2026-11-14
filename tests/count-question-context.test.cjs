@@ -22,7 +22,7 @@ const upwards=perm.build({c:'4개 중 3개',seed:18,v:3}).figure;
 assert(upwards.indexOf('>3층</text>')<upwards.indexOf('>2층</text>')&&upwards.indexOf('>2층</text>')<upwards.indexOf('>1층</text>'));
 for(const id of ['u19','u20']){let unit=now.GED_UNITS.find(x=>x.id===id);for(const seed of [48,52])for(const c of unit.fields[0].sel){let q=unit.build({c,seed,v:3});assert(!q.q.includes('옷걸이')&&!q.q.includes('준비물로 고르는')&&!q.q.includes('한 벌씩'));if(seed===48)assert(q.q.includes('옷차림 물품'));else assert(q.q.includes('캠핑 관련 그림'));}}
 console.log('Vertical slot coordinates, floor order and clothing/camping contexts: PASS');
-for(const [seed,kind] of [[1,'calendar'],[2,'shelf'],[3,'vase'],[5,'flag'],[9,'tray'],[16,'pot'],[19,'jar'],[24,'person'],[34,'board']]){
+for(const [seed,kind] of [[1,'calendar'],[2,'shelf'],[3,'vase'],[5,'flag'],[9,'tray'],[16,'pot'],[19,'jar'],[24,'person'],[29,'stand'],[34,'board']]){
  const figure=perm.build({c:'4개 중 3개',seed,v:3}).figure;
  assert.equal((figure.match(new RegExp('data-placement="'+kind+'"','g'))||[]).length,3,`${seed}: ${kind}`);
 }

@@ -66,6 +66,22 @@ async function main(){
  for(const [index,label,file] of [[2,'수국','v5_hydrangea.jpg'],[2,'수선화','v5_daffodil.jpg'],[5,'태권도','v5_taekwondo.jpg'],[5,'수영','v5_swimming.jpg'],[8,'멸치볶음','v5_anchovy.jpg'],[8,'오이무침','v5_cucumber_salad.jpg'],[8,'감자조림','v5_braised_potato.jpg'],[15,'배추','v5_cabbage_young.jpg'],[15,'무','v5_radish_young.jpg'],[15,'당근','v5_carrot_young.jpg']]){
   const scene=ctx.GED_COUNT_SCENES_V5[index],icon=ctx.gedCountIcon(scene,label,scene.items.indexOf(label));assert(icon.includes(file),`${label} 상세 삽화 연결`);if(index===15)assert(icon.includes('<circle cx="41" cy="9"'),'모종 식별 표지');
  }
+ for(const [index,label,file] of [[2,'카네이션','v5_carnation.jpg'],[31,'아령','v5_dumbbell.jpg'],[31,'운동 밴드','v5_exercise_band.jpg'],[33,'급식 봉사','v5_meal_service.jpg'],[33,'헌혈','v5_blood_donation.jpg'],[33,'환경 교육','v5_environment_education.jpg'],[49,'전자레인지','v5_microwave.jpg'],[49,'청소기','v5_vacuum.jpg'],[49,'에어컨','v5_air_conditioner.jpg'],[51,'손전등','v5_flashlight.jpg']])for(const scenes of [ctx.GED_COUNT_SCENES_V5,ctx.GED_CHOICE_SCENES_V5]){
+  const scene=scenes[index],icon=ctx.gedCountIcon(scene,label,scene.items.indexOf(label));assert(icon.includes(file),`${scene.name}: ${label} 상세 삽화 연결`);assert(icon.includes('height="52"'),`${label}: 그림과 이름 간 여백`);
+ }
+ for(const [index,label,file] of [[9,'딱지치기','v5_ddakji.jpg'],[9,'실뜨기','v5_cat_cradle.jpg'],[41,'개구리','v5_frog.jpg'],[42,'해파리','v5_jellyfish.jpg'],[42,'새우','v5_shrimp.jpg'],[42,'해마','v5_seahorse.jpg'],[45,'딱정벌레','v5_beetle.jpg'],[45,'사마귀','v5_mantis.jpg'],[45,'매미','v5_cicada.jpg']])for(const scenes of [ctx.GED_COUNT_SCENES_V5,ctx.GED_CHOICE_SCENES_V5]){
+  const scene=scenes[index];assert(ctx.gedCountIcon(scene,label,scene.items.indexOf(label)).includes(file),`${scene.name}: ${label} 상세 삽화 연결`);
+ }
+ assert.equal(Object.keys(ctx.GED_COUNT_RICH_ASSETS).length,61,'남은 실생활 소재 61종 상세 원화');
+ for(const [label,file] of Object.entries(ctx.GED_COUNT_RICH_ASSETS)){
+  assert(fs.existsSync(`assets/count-illustrations/${file}.jpg`),`${label}: 상세 원화 파일`);
+  for(const scenes of [ctx.GED_COUNT_SCENES_V5,ctx.GED_CHOICE_SCENES_V5]){
+   const uses=scenes.filter(scene=>scene.items.includes(label));assert(uses.length,`${label}: 해당 소재가 없음`);
+   for(const scene of uses)assert(ctx.gedCountIcon(scene,label,scene.items.indexOf(label)).includes(`${file}.jpg`),`${scene.name}: ${label} 연결`);
+  }
+ }
+ console.log('All 61 remaining detailed illustrations and scene mappings: PASS');
+ const captionFigure=ctx.gedCountFigure(ctx.GED_COUNT_SCENES_V5[33],4,2,false,null,true);assert(captionFigure.includes('<text x="37" y="73"'),'v5 그림 이름이 그림 아래 표시되어야 합니다');
  const teacher=fs.readFileSync('js/teacher/gedWorksheet.js','utf8');assert(teacher.includes("k==='seed'&&Number(v)>60&&params.v<5"),'이전 학습지에서 새 상황 선택 시 v5로 전환');
  console.log('Varied order boards, larger vertical slots and correct letter/month cards: PASS');
  assert.deepEqual(problems,[],`상황/그림 문제:\n${problems.join('\n')}`);console.log('Unique illustrations and all referenced files: PASS');

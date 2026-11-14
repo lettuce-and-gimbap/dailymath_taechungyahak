@@ -516,5 +516,15 @@ function genMockSetFunc(){
   return weightedGen(gens.map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));
 }
 // 문제풀이 탭 전용 문항 생성 진입점. MockExamTab/영역 quota/모의고사 상태를 거치지 않는다.
-function genPracticeSetQuestion(){return weightedGen([[gen_set_elements,3],[gen_set_count,2],[gen_set_union_inter_sum,2],[gen_set_equal_const,2],[gen_truth_set,2],[genPracticeSetComplement,3],[genPracticeSetThreeWay,2],[genPracticeSetCardinality,3],[genPracticeSetDifferenceMember,3],[genPracticeSetSurvey,2],[genPracticeTruthInequality,2],[genPracticeSubsetRelation,2]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_set_count();}},w]));}
-function genPracticePropositionQuestion(){return weightedGen([[gen_proposition,3],[gen_nec_suff,2],[genPracticeConditionSets,3],[genPracticeContrapositive,3],[genPracticePropositionTruth,2],[genPracticeIntervalCondition,3]].map(([f,w])=>[()=>{try{return f();}catch(e){return gen_proposition();}},w]));}
+function genPracticeGEDUnitQuestion(unitId,topic){
+  const unit=typeof GED_UNITS!=='undefined'&&GED_UNITS.find(u=>u.id===unitId);
+  if(!unit)throw new Error(`검정고시 ${topic} 문항 생성기(${unitId})를 찾을 수 없습니다.`);
+  for(let i=0;i<30;i++){
+    const params=unit.rand(),q=unit.build(params);
+    if(!q||q.err||!q.q||!Array.isArray(q.choices)||q.choices.length!==4||!Number.isInteger(q.ans))continue;
+    return{...q,topic:params.kind||topic,answer:q.ans,practiceMarkup:true,meta:{category:'set',type:'집합과 명제',diff:'기초'}};
+  }
+  throw new Error(`검정고시 ${topic} 문항을 만들지 못했습니다.`);
+}
+function genPracticeSetQuestion(){return genPracticeGEDUnitQuestion('u15','집합');}
+function genPracticePropositionQuestion(){return genPracticeGEDUnitQuestion('u16','명제');}

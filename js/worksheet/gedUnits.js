@@ -176,9 +176,9 @@ const GED_COUNT_EXTRA_SVG_1_30={
 // v5 35번은 기존 v4를 유지하면서 월 카드 1월~10월로 교체해야 한다.
 const GED_COUNT_EXTRA_31_60 = {
 31:[['그림자극','shadow'],['버블쇼','bubble'],['곡예','acrobat']],
-32:[['아령','dumbbell'],['운동 밴드','band'],['셔틀콕','@shuttlecock.jpg']],
+32:[['아령','@v5_dumbbell.jpg'],['운동 밴드','@v5_exercise_band.jpg'],['셔틀콕','@shuttlecock.jpg']],
 33:[['작가와의 만남','author'],['독서 마라톤','marathon'],['책 만들기','@craft.jpg']],
-34:[['급식 봉사','serving'],['헌혈','blood'],['환경 교육','education']],
+34:[['급식 봉사','@v5_meal_service.jpg'],['헌혈','@v5_blood_donation.jpg'],['환경 교육','@v5_environment_education.jpg']],
 35:[['8월','card'],['9월','card'],['10월','card']],
 36:[['8','card'],['9','card'],['10','card']],
 37:[['아','card'],['자','card'],['차','card']],
@@ -186,17 +186,17 @@ const GED_COUNT_EXTRA_31_60 = {
 39:[['카페','cafe'],['문화센터','culture'],['서점','bookstore']],
 40:[['관찰','@inquiry_math.jpg'],['실험','@science.jpg'],['조사','@research.jpg']],
 41:[['오토바이','motorcycle'],['헬리콥터','helicopter'],['지하철','subway']],
-42:[['벌','@bee.jpg'],['개구리','frog'],['거북이','@turtle.jpg']],
-43:[['해파리','jellyfish'],['새우','shrimp'],['해마','seahorse']],
+42:[['벌','@bee.jpg'],['개구리','@v5_frog.jpg'],['거북이','@turtle.jpg']],
+43:[['해파리','@v5_jellyfish.jpg'],['새우','@v5_shrimp.jpg'],['해마','@v5_seahorse.jpg']],
 44:[['우박','hail'],['태풍','typhoon'],['황사','dust']],
 45:[['사과','@apple.jpg'],['귤','@mandarin.jpg'],['배','@pear.jpg']],
-46:[['딱정벌레','beetle'],['사마귀','mantis'],['매미','cicada']],
+46:[['딱정벌레','@v5_beetle.jpg'],['사마귀','@v5_mantis.jpg'],['매미','@v5_cicada.jpg']],
 47:[['숟가락','@spoon.jpg'],['도마','cuttingboard'],['거품기','whisk']],
 48:[['모자','hat'],['목도리','scarf'],['넥타이','tie']],
 49:[['식탁','@dining_table_detail.jpg'],['옷장','wardrobe'],['화장대','vanity']],
-50:[['전자레인지','microwave'],['청소기','vacuum'],['에어컨','aircon']],
+50:[['전자레인지','@v5_microwave.jpg'],['청소기','@v5_vacuum.jpg'],['에어컨','@v5_air_conditioner.jpg']],
 51:[['혜성','comet'],['소행성','asteroid'],['우주정거장','station']],
-52:[['돗자리','@exercise_mat.jpg'],['코펠','@pot.jpg'],['손전등','flashlight']],
+52:[['돗자리','@exercise_mat.jpg'],['코펠','@pot.jpg'],['손전등','@v5_flashlight.jpg']],
 53:[['트램펄린','trampoline'],['흔들말','rockinghorse'],['터널 놀이대','tunnel']],
 54:[['축구화','cleats'],['덧신','overshoes'],['스케이트화','skates']],
 55:[['은행','bank'],['경찰서','police'],['시장','market']],
@@ -277,10 +277,13 @@ GED_COUNT_EXTRA_SVG_1_30['당근']='<path d="M14 32 H36 L33 43 H17 Z M25 32 V19 
 GED_COUNT_EXTRA_SVG_1_30['귀리']='<path d="M9 31 Q25 37 41 31 Q38 42 25 42 Q12 42 9 31 Z"/><ellipse cx="16" cy="26" rx="2" ry="5" transform="rotate(-35 16 26)"/><ellipse cx="25" cy="24" rx="2" ry="5"/><ellipse cx="34" cy="26" rx="2" ry="5" transform="rotate(35 34 26)"/>';
 GED_COUNT_EXTRA_1_30[2][0]=['수국','v5_hydrangea'];
 GED_COUNT_EXTRA_1_30[2][1]=['수선화','v5_daffodil'];
+GED_COUNT_EXTRA_1_30[2][2]=['카네이션','v5_carnation'];
 GED_COUNT_EXTRA_1_30[15]=[['배추','v5_cabbage_young'],['무','v5_radish_young'],['당근','v5_carrot_young']];
 GED_COUNT_EXTRA_1_30[5][1]=['태권도','v5_taekwondo'];
 GED_COUNT_EXTRA_1_30[5][2]=['수영','v5_swimming'];
 GED_COUNT_EXTRA_1_30[8]=[['멸치볶음','v5_anchovy'],['오이무침','v5_cucumber_salad'],['감자조림','v5_braised_potato']];
+GED_COUNT_EXTRA_1_30[9][0]=['딱지치기','v5_ddakji'];
+GED_COUNT_EXTRA_1_30[9][2]=['실뜨기','v5_cat_cradle'];
 GED_COUNT_EXTRA_31_60[49][0]=['협탁','side_table'];
 GED_COUNT_EXTRA_PATHS_31_60.side_table='<path d="M8 22 H42 V28 H8 Z M11 28 V43 M39 28 V43 M15 31 H35 V36 H15 Z M22 33 H28 M9 22 L13 16 H37 L41 22"/>';
 GED_COUNT_EXTRA_31_60[40][1]=['듣기','listening'];
@@ -301,6 +304,26 @@ function gedV5Scene(scene,i,choice){
 }
 var GED_COUNT_SCENES_V5=[...GED_COUNT_SCENES_V4.map((s,i)=>gedV5Scene(s,i,false)),...GED_COUNT_FUTURE_SCENES.map(s=>({...s,v5:true}))];
 var GED_CHOICE_SCENES_V5=[...GED_CHOICE_SCENES_V4.map((s,i)=>gedV5Scene(s,i,true)),...GED_COUNT_FUTURE_SCENES.map(s=>({...s,v5:true}))];
+/* 실생활 소재는 상세 원화를 쓰고 숫자·문자·도형 카드는 선화를 유지한다. */
+var GED_COUNT_RICH_ASSETS={
+ '비석치기':'v5_rich_biseok_play','체리':'v5_rich_cherries','블루베리':'v5_rich_blueberries','마시멜로':'v5_rich_marshmallows',
+ '귀리':'v5_rich_oat_grains','흑미':'v5_rich_black_rice','팥':'v5_rich_red_beans','그래프':'v5_rich_graph_chart',
+ '하프':'v5_rich_harp','트라이앵글':'v5_rich_triangle_instrument','장구':'v5_rich_janggu',
+ '색연필':'v5_rich_colored_pencil','볼펜':'v5_rich_ballpoint_pen','스테이플러':'v5_rich_stapler',
+ '요구르트':'v5_rich_yogurt','코코아':'v5_rich_cocoa','레모네이드':'v5_rich_lemonade',
+ '해바라기 화분':'v5_rich_sunflower_pot_extra','알로에':'v5_rich_aloe_pot','대나무':'v5_rich_bamboo_pot',
+ '그림자극':'v5_rich_shadow_theater','버블쇼':'v5_rich_bubble_show','곡예':'v5_rich_acrobat',
+ '작가와의 만남':'v5_rich_author_event','독서 마라톤':'v5_rich_reading_marathon',
+ '카페':'v5_rich_cafe_exhibit','문화센터':'v5_rich_culture_center','서점':'v5_rich_bookstore','듣기':'v5_rich_listening',
+ '오토바이':'v5_rich_motorcycle','헬리콥터':'v5_rich_helicopter','지하철':'v5_rich_subway_train',
+ '우박':'v5_rich_hail','태풍':'v5_rich_typhoon','황사':'v5_rich_yellow_dust','도마':'v5_rich_cutting_board','거품기':'v5_rich_whisk',
+ '모자':'v5_rich_hat','목도리':'v5_rich_scarf','넥타이':'v5_rich_tie','협탁':'v5_rich_side_table','옷장':'v5_rich_wardrobe','화장대':'v5_rich_vanity',
+ '혜성':'v5_rich_comet','소행성':'v5_rich_asteroid','우주정거장':'v5_rich_space_station',
+ '트램펄린':'v5_rich_trampoline','흔들말':'v5_rich_rocking_horse','터널 놀이대':'v5_rich_play_tunnel',
+ '축구화':'v5_rich_soccer_cleats','덧신':'v5_rich_shoe_cover','스케이트화':'v5_rich_ice_skates',
+ '은행':'v5_rich_bank_building','경찰서':'v5_rich_police_station','시장':'v5_rich_market','밥그릇':'v5_rich_rice_bowl','쟁반':'v5_rich_serving_tray',
+ '소프트웨어 개발':'v5_rich_software_developer','번역 모델':'v5_rich_ai_translation','코딩 모델':'v5_rich_ai_coding','학습 모델':'v5_rich_ai_learning'
+};
 
 /* v4는 그림 선택용 씨앗을 문항에 저장해 편집·불러오기·오답 재생에서 같은 그림을 유지한다. */
 function gedCountRandom(seed){let a=(Number(seed)>>>0)||1;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
@@ -445,11 +468,12 @@ var GED_COUNT_ORDER_ACTIONS_V5=[...GED_COUNT_ORDER_ACTIONS,
 /* 학습지에 들어가는 그림은 SVG 선화로 직접 그린다. 각 항목의 이름은
    그림 아래에 함께 써서 흑백 인쇄에서도 서로 다른 대상을 구별한다. */
 function gedCountIcon(scene, label, i){
- const extra=scene.v5Icons&&scene.v5Icons[label];
+ const rich=scene.v5&&GED_COUNT_RICH_ASSETS[label];
+ const extra=rich?{file:rich}:scene.v5Icons&&scene.v5Icons[label];
  const cropBadge={'배추':'<path d="M10 15 Q25 5 40 15 Q37 37 25 40 Q13 37 10 15 M25 12 V40 M14 20 L25 28 L36 20"/>','무':'<path d="M16 20 Q25 16 34 20 Q34 31 25 40 Q16 31 16 20 Z M25 20 V9 M25 16 L17 10 M25 16 L33 10"/>','당근':'<path d="M15 20 Q25 17 35 20 L25 42 Z M25 19 V7 M25 15 L17 9 M25 15 L33 9 M20 26 H25 M27 31 H31"/>'};
  const badge=(scene.iconName||scene.name)==='채소 모종'&&cropBadge[label]?`<circle cx="41" cy="9" r="9" fill="white" stroke="#333" stroke-width="1"/><g transform="translate(35.5,3.5) scale(.22)" fill="none" stroke="#111" stroke-width="3">${cropBadge[label]}</g>`:'';
  if(extra&&extra.svg)return `<g fill="none" stroke="#222" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${extra.svg}</g>${badge}`;
- if(extra&&extra.file){const path=`assets/count-illustrations/${extra.file}.jpg?v=1`;const url=typeof document!=='undefined'?new URL(path,document.baseURI).href:path;return `<image href="${url}" x="-6" y="-2" width="62" height="58" preserveAspectRatio="xMidYMid meet"/>${badge}`;}
+ if(extra&&extra.file){const path=`assets/count-illustrations/${extra.file}.jpg?v=1`;const url=typeof document!=='undefined'?new URL(path,document.baseURI).href:path;return `<image href="${url}" x="-6" y="0" width="62" height="52" preserveAspectRatio="xMidYMid meet"/>${badge}`;}
  const line='fill="white" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
  const book=`<path d="M12 7 L38 7 L38 43 L12 43 Z M16 7 V43 M20 15 H34 M20 21 H32 M20 27 H30"/>`;
  const people=`<circle cx="25" cy="14" r="7"/><path d="M11 42 Q11 26 25 26 Q39 26 39 42 Z M18 38 V42 M32 38 V42"/>`;
@@ -886,7 +910,7 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
  const cellW=82, columns=studentGrid?(n===4?2:Math.min(n,3)):n, width=columns*cellW+12;
  const extraY=studentGrid&&n>columns?86:0;
  const cells=scene.items.slice(0,n).map((label,i)=>{
-  let caption=`<text x="37" y="69" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text>`;
+  let caption=`<text x="37" y="${scene.v5?73:69}" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text>`;
   if(scene.v5&&label.length>=7){let cut=label.lastIndexOf(' ',Math.ceil(label.length/2));if(cut<2)cut=Math.ceil(label.length/2);const a=label.slice(0,cut).trim(),b=label.slice(cut).trim();caption=`<text x="37" y="62" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#111">${a}</text><text x="37" y="74" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#111">${b}</text>`;}
   const iconTransform=scene.v5&&label.length>=7?'translate(15,2) scale(.88)':'translate(12,3)';
   return `<g transform="translate(${10+(i%columns)*cellW},${5+Math.floor(i/columns)*86})"><rect x="0" y="0" width="74" height="78" rx="3" fill="white" stroke="#888"/><g transform="${iconTransform}">${gedCountIcon(scene,label,scene.iconIndices?scene.iconIndices[i]:i)}</g>${caption}</g>`;
@@ -899,7 +923,7 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
    slots=`<text x="10" y="${113+extraY}" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>{const x=55+(i%slotCols)*53,y=91+extraY+Math.floor(i/slotCols)*32;return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`;}).join('')}`;
    if(studentGrid&&r>slotCols)height+=32;
  }else if(ordered){
-   const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
+   const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':action.includes('받침대')?'stand':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
    const shapes={
      pot:'<path d="M8 18 H52 L48 46 Q30 50 12 46 Z M6 13 H54 V19 H6 Z M12 46 Q30 51 48 46 M15 23 L18 42 M45 23 L42 42 M20 46 H40"/><path d="M17 27 Q30 30 43 27" stroke-dasharray="2 3"/>',
      vase:'<path d="M19 11 H41 M21 11 C24 23 12 28 15 43 Q30 50 45 43 C48 28 36 23 39 11 M20 14 H40 M18 42 Q30 46 42 42 M19 31 Q17 36 19 40 M41 31 Q43 36 41 40"/>',
@@ -909,7 +933,8 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
      person:'<circle cx="30" cy="13" r="7"/><path d="M23 13 Q30 8 37 13 M17 37 Q17 24 30 24 Q43 24 43 37 M24 25 L30 31 L36 25 M30 31 V37 M11 42 H49 M15 39 H45 M14 42 V46 M46 42 V46"/>',
      calendar:'<rect x="7" y="8" width="46" height="40" rx="3"/><path d="M7 19 H53 M17 5 V13 M43 5 V13 M12 23 H48 M12 43 H48 M12 27 V39 M48 27 V39"/><circle cx="17" cy="10" r="1.5"/><circle cx="43" cy="10" r="1.5"/>',
      board:'<rect x="6" y="8" width="48" height="39" rx="2"/><rect x="10" y="12" width="40" height="31" rx="1" stroke-dasharray="3 2"/><path d="M21 8 V5 H39 V8 M24 5 V3 H36 V5 M8 46 H52 M13 16 H17 M43 16 H47"/><circle cx="13" cy="10" r="1"/><circle cx="47" cy="10" r="1"/>',
-     shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>'
+     shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>',
+     stand:'<path d="M7 22 H53 V28 H7 Z M10 28 L7 46 M50 28 L53 46 M14 31 H46 M13 37 H47 M6 46 H13 M47 46 H54 M12 19 H48"/>'
    };
    const boards=[shapes.board,
      '<path d="M6 10 H54 V46 H6 Z M10 14 H50 V42 H10 Z M10 46 L7 50 M50 46 L53 50"/><circle cx="10" cy="10" r="2"/><circle cx="50" cy="10" r="2"/>',
@@ -1771,14 +1796,14 @@ var GED_UNITS=(function(){
      영역 D. 집합 · 명제 · 함수
      ================================================================ */
   { id:'u15', tag:'15번', area:'D', title:'집합', src:'2023~2026 매회 15번',
-    fields:[{k:'kind',label:'문제 종류',sel:['n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']},
+    fields:[{k:'kind',label:'문제 종류',sel:['n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']},
       {k:'nA',label:'n(A)',min:2,max:5},{k:'nB',label:'n(B)',min:2,max:5},{k:'k',label:'겹치는 개수',min:1,max:4},
       {k:'num',label:'원소 종류',sel:['글자 (a, b, c)','숫자 (1, 2, 3)']}],
     def:{kind:'n(A∪B) 개수',nA:2,nB:3,k:1,num:'글자 (a, b, c)'},
     rand(){const nA=rnd(2,4),nB=rnd(2,4);
       /* 차집합이 빈 집합이 되지 않도록 겹치는 개수를 n(A) 보다 작게 잡는다 */
       const k=rnd(1,Math.max(1,Math.min(nA-1,nB)));
-      return{kind:pick(['n(A∪B) 개수','n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']),
+      return{kind:pick(['n(A∪B) 개수','n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']),
         nA,nB,k,num:pick(['글자 (a, b, c)','숫자 (1, 2, 3)'])};},
     build(p){
       if(p.k>Math.min(p.nA,p.nB))return{err:'겹치는 개수는 두 집합 원소 개수보다 클 수 없습니다.'};
@@ -1808,12 +1833,12 @@ var GED_UNITS=(function(){
             `따라서 ${tex(symbol+'='+correct)}`]};
       }
       /* ── 원소의 개수만 묻는 형태 (2026-2회 15번 · 2025-1회 14번 계열) ── */
-      if(kind==='n(A) 개수'){
-        const ans0=A.length,ch0=numChoices(ans0);
-        return{q:head+`${tex('n(A)')}의 값은?`,choices:ch0.list,ans:ch0.ans,answerTex:nf(ans0),
-          sol:[`${tex('n(A)')}는 집합 A 안에 들어 있는 <b>원소의 개수</b>를 뜻합니다.`,
-            `${tex('A='+st(A))}의 원소를 하나씩 세어 봅니다.`,
-            `따라서 ${tex('n(A)='+nf(ans0))}`]};
+      if(kind==='n(A) 개수'||kind==='n(B) 개수'){
+        const name=kind==='n(A) 개수'?'A':'B',S=name==='A'?A:B,ans0=S.length,ch0=numChoices(ans0);
+        return{q:head+`${tex(`n(${name})`)}의 값은?`,choices:ch0.list,ans:ch0.ans,answerTex:nf(ans0),
+          sol:[`${tex(`n(${name})`)}는 집합 ${name} 안에 들어 있는 <b>원소의 개수</b>를 뜻합니다.`,
+            `${tex(name+'='+st(S))}의 원소를 하나씩 세어 봅니다.`,
+            `따라서 ${tex(`n(${name})=${nf(ans0)}`)}`]};
       }
       if(kind==='n(A−B) 개수'){
         if(diff.length===0)return{err:'A의 원소가 모두 B에도 있어 차집합이 공집합이 됩니다. 겹치는 개수를 줄여 주세요.'};
@@ -2077,6 +2102,7 @@ var GED_UNITS=(function(){
 
 /* 자주 쓰는 묶음(프리셋) */
 var GED_PRESETS=[
+  {k:'set-prop',icon:'🧩',lbl:'집합 · 명제',desc:'15~16번 실제 검정고시 유형만 모아 연습',ids:['u15','u16']},
   {k:'coord',icon:'★',lbl:'좌표 완전정복',desc:'좌표 기초 3 + 좌표평면 유형 (7·10·11·12·13·14·18번)',ids:['c1','c2','c3','u7','u10','u11','u12','u13','u14','u18a','u18b']},
   {k:'kpoint',icon:'⭕',lbl:'핵심 점 찍기',desc:'원점 O 와 무리함수 시작점 · 유리함수 점근선 교점 · 이차함수 최대·최소 점에 ○ (1쪽 개념 + 섞어 연습)',ids:['p1']},
   {k:'warm',icon:'🌱',lbl:'좌표 워밍업',desc:'좌표 읽기·사분면·직선 + 대칭이동·거리',ids:['c1','c2','c3','u14','u10']},
