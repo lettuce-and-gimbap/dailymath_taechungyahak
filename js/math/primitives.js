@@ -79,23 +79,36 @@ function useCanvasSize(){
   return sz;
 }
 
+/* CSS 크기나 테두리가 바뀌어도 화면 좌표를 SVG 내부 좌표로 변환한다. */
+function graphClientToSvg(svg,ex,ey,W,H){
+  if(!svg||!Number.isFinite(ex)||!Number.isFinite(ey))return null;
+  try{const matrix=svg.getScreenCTM?.();if(matrix&&svg.createSVGPoint){const p=svg.createSVGPoint();p.x=ex;p.y=ey;const v=p.matrixTransform(matrix.inverse());if(Number.isFinite(v.x)&&Number.isFinite(v.y))return [v.x,v.y];}}catch(_){}
+  const r=svg.getBoundingClientRect();if(!r.width||!r.height)return null;
+  return [(ex-r.left)*W/r.width,(ey-r.top)*H/r.height];
+}
+function graphSnapClient(svg,ex,ey,sz){
+  const{SC,W,H,panX=0,panY=0}=sz;if(!SC)return null;
+  const p=graphClientToSvg(svg,ex,ey,W,H);if(!p)return null;
+  const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));
+  return[cl((p[0]-W/2)/SC+panX),cl((H/2-p[1])/SC+panY)];
+}
 function useDrag(svgRef,sz,onMove){
-  const szRef=useRef(sz);szRef.current=sz;const cbRef=useRef(onMove);cbRef.current=onMove;const active=useRef(false);
+  const szRef=useRef(sz);szRef.current=sz;const cbRef=useRef(onMove);cbRef.current=onMove;const active=useRef(false),last=useRef(null);
   const getXY=e=>{if(e.touches?.length>0)return[e.touches[0].clientX,e.touches[0].clientY];if(e.changedTouches?.length>0)return[e.changedTouches[0].clientX,e.changedTouches[0].clientY];return[e.clientX,e.clientY]};
-  const getCoords=(ex,ey)=>{if(!svgRef.current)return null;const{SC,W,H,panX=0,panY=0}=szRef.current;const r=svgRef.current.getBoundingClientRect();const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));return[cl((ex-r.left-W/2)/SC+panX),cl((H/2-(ey-r.top))/SC+panY)]};
-  const dn=useCallback(e=>{active.current=true;const[ex,ey]=getXY(e);const c=getCoords(ex,ey);if(c)cbRef.current(c)},[]);
-  const mv=useCallback(e=>{if(!active.current)return;const[ex,ey]=getXY(e);const c=getCoords(ex,ey);if(c)cbRef.current(c)},[]);
-  const up=useCallback(()=>{active.current=false},[]);
+  const update=e=>{const[ex,ey]=getXY(e),c=graphSnapClient(svgRef.current,ex,ey,szRef.current);if(c&&(!last.current||c[0]!==last.current[0]||c[1]!==last.current[1])){last.current=c;cbRef.current(c);}};
+  const dn=useCallback(e=>{active.current=true;last.current=null;update(e)},[]);
+  const mv=useCallback(e=>{if(active.current)update(e)},[]);
+  const up=useCallback(()=>{active.current=false;last.current=null},[]);
   return{dn,mv,up};
 }
 
 // 배경 길게 누르기(250ms) → 팬 모드: 좌표평면 이동
-function usePan(sz){
+function usePan(sz,svgRef){
   const szRef=useRef(sz);szRef.current=sz;
   const st=useRef({timer:null,active:false,sx:0,sy:0,spx:0,spy:0});
   const[panning,setPanning]=useState(false);
-  const start=useCallback((ex,ey)=>{const s=st.current;clearTimeout(s.timer);s.sx=ex;s.sy=ey;s.spx=szRef.current.panX||0;s.spy=szRef.current.panY||0;s.active=false;s.timer=setTimeout(()=>{s.active=true;setPanning(true)},250)},[]);
-  const move=useCallback((ex,ey)=>{const s=st.current;if(!s.active)return false;const{SC,onPan}=szRef.current;const nx=Math.max(-12,Math.min(12,s.spx-(ex-s.sx)/SC));const ny=Math.max(-12,Math.min(12,s.spy+(ey-s.sy)/SC));onPan?.(nx,ny);return true},[]);
+  const start=useCallback((ex,ey)=>{const s=st.current,{W,H}=szRef.current,p=graphClientToSvg(svgRef.current,ex,ey,W,H);if(!p)return;clearTimeout(s.timer);s.sx=p[0];s.sy=p[1];s.spx=szRef.current.panX||0;s.spy=szRef.current.panY||0;s.active=false;s.timer=setTimeout(()=>{s.active=true;setPanning(true)},250)},[]);
+  const move=useCallback((ex,ey)=>{const s=st.current;if(!s.active)return false;const{SC,W,H,onPan}=szRef.current,p=graphClientToSvg(svgRef.current,ex,ey,W,H);if(!p||!SC)return false;const nx=Math.max(-12,Math.min(12,s.spx-(p[0]-s.sx)/SC));const ny=Math.max(-12,Math.min(12,s.spy+(p[1]-s.sy)/SC));onPan?.(nx,ny);return true},[]);
   const end=useCallback(()=>{clearTimeout(st.current.timer);st.current.active=false;setPanning(false)},[]);
   return{panStart:start,panMove:move,panEnd:end,panning};
 }
@@ -107,10 +120,9 @@ function usePinch(svgRef,sz){
   const dist2=(t)=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
   const start=useCallback((touches)=>{
     if(touches.length<2)return false;
-    const r=svgRef.current?.getBoundingClientRect();if(!r)return false;
     const{SC,zoom=1,panX=0,panY=0,W,H}=szRef.current;
-    const midPx=(touches[0].clientX+touches[1].clientX)/2-r.left;
-    const midPy=(touches[0].clientY+touches[1].clientY)/2-r.top;
+    const midpoint=graphClientToSvg(svgRef.current,(touches[0].clientX+touches[1].clientX)/2,(touches[0].clientY+touches[1].clientY)/2,W,H);if(!midpoint||!SC||!dist2(touches))return false;
+    const [midPx,midPy]=midpoint;
     st.current={active:true,startDist:dist2(touches),startZoom:zoom,
       startPanX:panX,startPanY:panY,
       midMX:(midPx-W/2)/SC+panX,  // 핀치 중심점의 수학 좌표 (고정점)
@@ -120,8 +132,9 @@ function usePinch(svgRef,sz){
   const move=useCallback((touches)=>{
     const s=st.current;if(!s.active||touches.length<2)return false;
     const{onZoom}=szRef.current;
-    const scale=dist2(touches)/s.startDist;
-    const nz=Math.max(0.5,Math.min(3,s.startZoom*scale));
+    const rawScale=dist2(touches)/s.startDist;
+    const nz=Math.max(0.5,Math.min(3,s.startZoom*rawScale));
+    const scale=nz/s.startZoom;
     // 핀치 중심점이 픽셀 위치 유지되도록 pan 보정
     const npx=Math.max(-12,Math.min(12,s.midMX+(s.startPanX-s.midMX)/scale));
     const npy=Math.max(-12,Math.min(12,s.midMY+(s.startPanY-s.midMY)/scale));
@@ -131,7 +144,7 @@ function usePinch(svgRef,sz){
   return{pinchStart:start,pinchMove:move,pinchEnd:end};
 }
 
-var SVG_PROPS={style:{touchAction:'none',display:'block'},className:'border-2 border-gray-100 rounded-2xl bg-slate-50 shadow-sm mx-auto'};
+var SVG_PROPS={style:{touchAction:'none',display:'block',fontFamily:"'Jua','Noto Sans KR',sans-serif"},className:'border-2 border-gray-100 rounded-2xl bg-slate-50 shadow-sm mx-auto'};
 
 /* ===== MINI GRAPH (for quiz) ===== */
 var MINI_S=80,MINI_SC=6;

@@ -88,18 +88,18 @@ function GeometryLearn({sz, userData, onUpdate}){
   const baseSz={SC:baseSC,W:baseSC*13,H:baseSC*13};
   const onPan=useCallback((px,py)=>{setPanX(px);setPanY(py)},[]);
   const onZoom=useCallback((nz,npx,npy)=>{setZoom(Math.max(0.5,Math.min(3,nz)));if(npx!==undefined)setPanX(Math.max(-12,Math.min(12,npx)));if(npy!==undefined)setPanY(Math.max(-12,Math.min(12,npy)))},[]);
-  const zoomedSz=useMemo(()=>({W:baseSz.W,H:baseSz.H,SC:Math.round(baseSz.SC*zoom),panX,panY,zoom,onPan,onZoom}),[baseSz,zoom,panX,panY,onPan,onZoom]);
+  const zoomedSz=useMemo(()=>({W:baseSz.W,H:baseSz.H,SC:baseSz.SC*zoom,panX,panY,zoom,onPan,onZoom}),[baseSz,zoom,panX,panY,onPan,onZoom]);
 
   const szLive=useRef({});
-  szLive.current={SC:Math.round(baseSC*zoom),W:baseSz.W,H:baseSz.H,zoom,panX,panY};
+  szLive.current={SC:baseSC*zoom,W:baseSz.W,H:baseSz.H,zoom,panX,panY};
   useEffect(()=>{
     const el=contentRef.current;if(!el)return;
     const onWheel=e=>{
       const svgEl=e.target.closest('svg');if(!svgEl)return;
       e.preventDefault();
       const{SC,W,H,zoom,panX,panY}=szLive.current;
-      const r=svgEl.getBoundingClientRect();
-      const mx=e.clientX-r.left,my=e.clientY-r.top;
+      const point=graphClientToSvg(svgEl,e.clientX,e.clientY,W,H);if(!point||!SC)return;
+      const [mx,my]=point;
       const midMX=(mx-W/2)/SC+panX,midMY=(H/2-my)/SC+panY;
       const factor=e.deltaY>0?1/1.12:1.12;
       const nz=Math.max(0.5,Math.min(3,zoom*factor));

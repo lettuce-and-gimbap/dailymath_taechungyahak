@@ -353,14 +353,14 @@ var autoMathHtml=(text)=>{
       :(display?`<div style="font-style:italic;text-align:center">${esc(expr)}</div>`:`<em>${esc(expr)}</em>`);}
     catch(e){return`<em>${esc(expr)}</em>`;}
   };
-  const re=/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\{[^{}]*\\over[^{}]*\}|\\sqrt\{[^}]*\}|[a-zA-Z0-9]+\^\{[^}]*\})/g;
+  const re=/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\{[^{}]*\\over[^{}]*\}|\\sqrt\{[^}]*\}|[a-zA-Z0-9]+(?:\^\{[^}]*\}|\^-?\d+))/g;
   const parts=[];let last=0,m;
   while((m=re.exec(text))!==null){
     if(m.index>last)parts.push({t:'txt',v:text.slice(last,m.index)});
     const s=m[1];
     if(s.startsWith('$$'))parts.push({t:'display',v:s.slice(2,-2)});
     else if(s.startsWith('$'))parts.push({t:'inline',v:s.slice(1,-1)});
-    else parts.push({t:'inline',v:s});
+    else parts.push({t:'inline',v:s.replace(/\^(-?\d+)/g,'^{$1}')});
     last=m.index+s.length;
   }
   if(last<text.length)parts.push({t:'txt',v:text.slice(last)});
@@ -1014,23 +1014,36 @@ function useCanvasSize(){
   return sz;
 }
 
+/* CSS 크기나 테두리가 바뀌어도 화면 좌표를 SVG 내부 좌표로 변환한다. */
+function graphClientToSvg(svg,ex,ey,W,H){
+  if(!svg||!Number.isFinite(ex)||!Number.isFinite(ey))return null;
+  try{const matrix=svg.getScreenCTM?.();if(matrix&&svg.createSVGPoint){const p=svg.createSVGPoint();p.x=ex;p.y=ey;const v=p.matrixTransform(matrix.inverse());if(Number.isFinite(v.x)&&Number.isFinite(v.y))return [v.x,v.y];}}catch(_){}
+  const r=svg.getBoundingClientRect();if(!r.width||!r.height)return null;
+  return [(ex-r.left)*W/r.width,(ey-r.top)*H/r.height];
+}
+function graphSnapClient(svg,ex,ey,sz){
+  const{SC,W,H,panX=0,panY=0}=sz;if(!SC)return null;
+  const p=graphClientToSvg(svg,ex,ey,W,H);if(!p)return null;
+  const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));
+  return[cl((p[0]-W/2)/SC+panX),cl((H/2-p[1])/SC+panY)];
+}
 function useDrag(svgRef,sz,onMove){
-  const szRef=useRef(sz);szRef.current=sz;const cbRef=useRef(onMove);cbRef.current=onMove;const active=useRef(false);
+  const szRef=useRef(sz);szRef.current=sz;const cbRef=useRef(onMove);cbRef.current=onMove;const active=useRef(false),last=useRef(null);
   const getXY=e=>{if(e.touches?.length>0)return[e.touches[0].clientX,e.touches[0].clientY];if(e.changedTouches?.length>0)return[e.changedTouches[0].clientX,e.changedTouches[0].clientY];return[e.clientX,e.clientY]};
-  const getCoords=(ex,ey)=>{if(!svgRef.current)return null;const{SC,W,H,panX=0,panY=0}=szRef.current;const r=svgRef.current.getBoundingClientRect();const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));return[cl((ex-r.left-W/2)/SC+panX),cl((H/2-(ey-r.top))/SC+panY)]};
-  const dn=useCallback(e=>{active.current=true;const[ex,ey]=getXY(e);const c=getCoords(ex,ey);if(c)cbRef.current(c)},[]);
-  const mv=useCallback(e=>{if(!active.current)return;const[ex,ey]=getXY(e);const c=getCoords(ex,ey);if(c)cbRef.current(c)},[]);
-  const up=useCallback(()=>{active.current=false},[]);
+  const update=e=>{const[ex,ey]=getXY(e),c=graphSnapClient(svgRef.current,ex,ey,szRef.current);if(c&&(!last.current||c[0]!==last.current[0]||c[1]!==last.current[1])){last.current=c;cbRef.current(c);}};
+  const dn=useCallback(e=>{active.current=true;last.current=null;update(e)},[]);
+  const mv=useCallback(e=>{if(active.current)update(e)},[]);
+  const up=useCallback(()=>{active.current=false;last.current=null},[]);
   return{dn,mv,up};
 }
 
 // 배경 길게 누르기(250ms) → 팬 모드: 좌표평면 이동
-function usePan(sz){
+function usePan(sz,svgRef){
   const szRef=useRef(sz);szRef.current=sz;
   const st=useRef({timer:null,active:false,sx:0,sy:0,spx:0,spy:0});
   const[panning,setPanning]=useState(false);
-  const start=useCallback((ex,ey)=>{const s=st.current;clearTimeout(s.timer);s.sx=ex;s.sy=ey;s.spx=szRef.current.panX||0;s.spy=szRef.current.panY||0;s.active=false;s.timer=setTimeout(()=>{s.active=true;setPanning(true)},250)},[]);
-  const move=useCallback((ex,ey)=>{const s=st.current;if(!s.active)return false;const{SC,onPan}=szRef.current;const nx=Math.max(-12,Math.min(12,s.spx-(ex-s.sx)/SC));const ny=Math.max(-12,Math.min(12,s.spy+(ey-s.sy)/SC));onPan?.(nx,ny);return true},[]);
+  const start=useCallback((ex,ey)=>{const s=st.current,{W,H}=szRef.current,p=graphClientToSvg(svgRef.current,ex,ey,W,H);if(!p)return;clearTimeout(s.timer);s.sx=p[0];s.sy=p[1];s.spx=szRef.current.panX||0;s.spy=szRef.current.panY||0;s.active=false;s.timer=setTimeout(()=>{s.active=true;setPanning(true)},250)},[]);
+  const move=useCallback((ex,ey)=>{const s=st.current;if(!s.active)return false;const{SC,W,H,onPan}=szRef.current,p=graphClientToSvg(svgRef.current,ex,ey,W,H);if(!p||!SC)return false;const nx=Math.max(-12,Math.min(12,s.spx-(p[0]-s.sx)/SC));const ny=Math.max(-12,Math.min(12,s.spy+(p[1]-s.sy)/SC));onPan?.(nx,ny);return true},[]);
   const end=useCallback(()=>{clearTimeout(st.current.timer);st.current.active=false;setPanning(false)},[]);
   return{panStart:start,panMove:move,panEnd:end,panning};
 }
@@ -1042,10 +1055,9 @@ function usePinch(svgRef,sz){
   const dist2=(t)=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
   const start=useCallback((touches)=>{
     if(touches.length<2)return false;
-    const r=svgRef.current?.getBoundingClientRect();if(!r)return false;
     const{SC,zoom=1,panX=0,panY=0,W,H}=szRef.current;
-    const midPx=(touches[0].clientX+touches[1].clientX)/2-r.left;
-    const midPy=(touches[0].clientY+touches[1].clientY)/2-r.top;
+    const midpoint=graphClientToSvg(svgRef.current,(touches[0].clientX+touches[1].clientX)/2,(touches[0].clientY+touches[1].clientY)/2,W,H);if(!midpoint||!SC||!dist2(touches))return false;
+    const [midPx,midPy]=midpoint;
     st.current={active:true,startDist:dist2(touches),startZoom:zoom,
       startPanX:panX,startPanY:panY,
       midMX:(midPx-W/2)/SC+panX,  // 핀치 중심점의 수학 좌표 (고정점)
@@ -1055,8 +1067,9 @@ function usePinch(svgRef,sz){
   const move=useCallback((touches)=>{
     const s=st.current;if(!s.active||touches.length<2)return false;
     const{onZoom}=szRef.current;
-    const scale=dist2(touches)/s.startDist;
-    const nz=Math.max(0.5,Math.min(3,s.startZoom*scale));
+    const rawScale=dist2(touches)/s.startDist;
+    const nz=Math.max(0.5,Math.min(3,s.startZoom*rawScale));
+    const scale=nz/s.startZoom;
     // 핀치 중심점이 픽셀 위치 유지되도록 pan 보정
     const npx=Math.max(-12,Math.min(12,s.midMX+(s.startPanX-s.midMX)/scale));
     const npy=Math.max(-12,Math.min(12,s.midMY+(s.startPanY-s.midMY)/scale));
@@ -1066,7 +1079,7 @@ function usePinch(svgRef,sz){
   return{pinchStart:start,pinchMove:move,pinchEnd:end};
 }
 
-var SVG_PROPS={style:{touchAction:'none',display:'block'},className:'border-2 border-gray-100 rounded-2xl bg-slate-50 shadow-sm mx-auto'};
+var SVG_PROPS={style:{touchAction:'none',display:'block',fontFamily:"'Jua','Noto Sans KR',sans-serif"},className:'border-2 border-gray-100 rounded-2xl bg-slate-50 shadow-sm mx-auto'};
 
 /* ===== MINI GRAPH (for quiz) ===== */
 var MINI_S=80,MINI_SC=6;
@@ -1234,7 +1247,7 @@ var _EX_SYM={'×':'\\times ','÷':'\\div ','≤':'\\le ','≥':'\\ge ','≠':'\\
   '∠':'\\angle ','△':'\\triangle ','∆':'\\triangle ','α':'\\alpha ','β':'\\beta ','π':'\\pi ','…':'\\cdots ','⋯':'\\cdots ',
   '·':'\\cdot ','→':'\\to ','∈':'\\in ','⊂':'\\subset ','∅':'\\varnothing ','≒':'\\fallingdotseq ','∞':'\\infty ','∽':'\\backsim ','□':'\\square '};
 /* 수식 덩어리에 들어갈 수 있는 글자 */
-var _EX_MCH=/[A-Za-z0-9 ()\[\]{}|+\-−×÷=≠≤≥<>√\/²³⁴⁵⁶⁷⁸⁹⁰¹⁻₀₁₂₃.,:∠°△∆∪∩∘′'αβπ…⋯·→∈⊂∅≒∞∽̄̇]/;
+var _EX_MCH=/[A-Za-z0-9 ()\[\]{}|+\-−×÷=≠≤≥<>√\/\^²³⁴⁵⁶⁷⁸⁹⁰¹⁻₀₁₂₃.,:∠°△∆∪∩∘′'αβπ…⋯·→∈⊂∅≒∞∽̄̇]/;
 var _EX_UNIT=/(\d)\s?(cm²|cm|km|mm|mg|kg|m²|g|L|mL)(?![A-Za-z])/g;
 
 /* 괄호 짝 찾기 : s[i] 가 '(' 일 때 짝 ')' 의 위치 */
@@ -1243,7 +1256,9 @@ function _exClose(s,i){let d=0;for(let k=i;k<s.length;k++){if(s[k]==='(')d++;els
 /* 수식 덩어리 하나(평문) → TeX */
 function _exRunTex(r){
   let s=r.replace(/−/g,'-').replace(/\.\.\./g,'…');
-  s=s.replace(/[{}]/g,c=>'\\'+c);                              // 집합 기호 { } 는 글자 그대로
+  s=s.replace(/[{}]/g,c=>'\\'+c);
+  // 거듭제곱의 중괄호는 집합 기호와 달리 TeX 구조로 보존한다.
+  s=s.replace(/\^\\\{([^{}\\]*)\\\}/g,'^{$1}').replace(/\^(-?\d+)/g,'^{$1}');                              // 집합 기호 { } 는 글자 그대로
   s=s.replace(/([a-z])̄/g,'\\bar{$1}');                       // z̄
   s=s.replace(/(\d)̇/g,'\\dot{$1}');                          // 순환소수 점 0.7̇
   /* 루트 */
@@ -10706,9 +10721,7 @@ function GraphPointMode({mode,onChange,color='indigo'}){
   </div>;
 }
 function graphPointAtEvent(e,sz){
-  const r=e.currentTarget.getBoundingClientRect(),{SC,W,H,panX=0,panY=0}=sz;
-  const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));
-  return[cl((e.clientX-r.left-W/2)/SC+panX),cl((H/2-(e.clientY-r.top))/SC+panY)];
+  return graphSnapClient(e.currentTarget,e.clientX,e.clientY,sz);
 }
 function RadicalModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
@@ -10716,10 +10729,10 @@ function RadicalModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+p*SC),pt[1]-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   const pts=[],refPts=[];for(let sx=0;sx<=W;sx+=2){const mx=(sx-cx)/SC,inn=mx-p;if(inn>=0){const my=a*Math.sqrt(inn)+q;if(Math.abs(my)<=13)pts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}if(mx>=0){const my=a*Math.sqrt(mx);if(Math.abs(my)<=13)refPts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}}
@@ -10741,9 +10754,9 @@ function RadicalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 시작점: ({p}, {q})
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       {refPts.length>1&&<polyline points={refPts.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/>}
       {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
@@ -10758,10 +10771,10 @@ function RationalModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+p*SC),pt[1]-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   const branch=(left,translated=true)=>{const pts=[],asym=translated?p:0,dy=translated?q:0;for(let mx=left?-13:asym+0.04;left?mx<asym-0.04:mx<=13;mx+=0.04){const my=k/(mx-asym)+dy;if(Math.abs(my)>13)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?`M ${pts.join(' L ')}`:''};
@@ -10782,9 +10795,9 @@ function RationalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 점근선: x={p}, y={q}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       <line x1={cx+p*SC} y1={0} x2={cx+p*SC} y2={H} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
       <line x1={0} y1={cy-q*SC} x2={W} y2={cy-q*SC} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
@@ -10802,10 +10815,10 @@ function QuadraticModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+p*SC),pt[1]-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   
@@ -10853,9 +10866,9 @@ function QuadraticModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p,extremeXg]} skipY={[q,Math.round(extreme)]}/>
       {ghost.length>1&&<path d={`M ${ghost.join(' L ')}`} fill="none" stroke="#bbf7d0" strokeWidth={2} strokeDasharray="6,4"/>}
       <line x1={cx+ds*SC} y1={0} x2={cx+ds*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
@@ -10877,10 +10890,10 @@ function DistanceModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+ptX*SC),ey-r.top-(cy-ptY*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+ptX*SC),pt[1]-(cy-ptY*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   
@@ -10930,9 +10943,9 @@ function DistanceModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[ptX]} skipY={[ptY]}/>
       {le.length>=2&&<line x1={le[0][0]} y1={le[0][1]} x2={le[1][0]} y2={le[1][1]} stroke="#ea580c" strokeWidth={2.5}/>}
       <line x1={cx+ptX*SC} y1={cy-ptY*SC} x2={cx+fX*SC} y2={cy-fY*SC} stroke="#fb923c" strokeWidth={1.8} strokeDasharray="4,3"/>
@@ -10952,10 +10965,10 @@ function CircleModule({sz}){
   const[linePos,setLinePos]=useState(0);
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setH(mx);setK(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r2=ref.current?.getBoundingClientRect();if(!r2)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r2.left-(cx+h*SC),ey-r2.top-(cy-k*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+h*SC),pt[1]-(cy-k*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
 
@@ -10999,9 +11012,9 @@ function CircleModule({sz}){
       <KF tex={circleTex}/> <span className="text-gray-300 mx-2">|</span> 중심: ({h},{k}), r={r}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setH(x);setK(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setH(x);setK(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>
       {lineEnabled&&(lineDir==='h'
         ?<line x1={0} y1={cy-linePos*SC} x2={W} y2={cy-linePos*SC} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
@@ -11025,10 +11038,10 @@ function SymmetryModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+px*SC),ey-r.top-(cy-py*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+px*SC),pt[1]-(cy-py*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   
@@ -11061,9 +11074,9 @@ function SymmetryModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[px]} skipY={[py]}/>
       {symLine}
       
@@ -11191,18 +11204,18 @@ function GeometryLearn({sz, userData, onUpdate}){
   const baseSz={SC:baseSC,W:baseSC*13,H:baseSC*13};
   const onPan=useCallback((px,py)=>{setPanX(px);setPanY(py)},[]);
   const onZoom=useCallback((nz,npx,npy)=>{setZoom(Math.max(0.5,Math.min(3,nz)));if(npx!==undefined)setPanX(Math.max(-12,Math.min(12,npx)));if(npy!==undefined)setPanY(Math.max(-12,Math.min(12,npy)))},[]);
-  const zoomedSz=useMemo(()=>({W:baseSz.W,H:baseSz.H,SC:Math.round(baseSz.SC*zoom),panX,panY,zoom,onPan,onZoom}),[baseSz,zoom,panX,panY,onPan,onZoom]);
+  const zoomedSz=useMemo(()=>({W:baseSz.W,H:baseSz.H,SC:baseSz.SC*zoom,panX,panY,zoom,onPan,onZoom}),[baseSz,zoom,panX,panY,onPan,onZoom]);
 
   const szLive=useRef({});
-  szLive.current={SC:Math.round(baseSC*zoom),W:baseSz.W,H:baseSz.H,zoom,panX,panY};
+  szLive.current={SC:baseSC*zoom,W:baseSz.W,H:baseSz.H,zoom,panX,panY};
   useEffect(()=>{
     const el=contentRef.current;if(!el)return;
     const onWheel=e=>{
       const svgEl=e.target.closest('svg');if(!svgEl)return;
       e.preventDefault();
       const{SC,W,H,zoom,panX,panY}=szLive.current;
-      const r=svgEl.getBoundingClientRect();
-      const mx=e.clientX-r.left,my=e.clientY-r.top;
+      const point=graphClientToSvg(svgEl,e.clientX,e.clientY,W,H);if(!point||!SC)return;
+      const [mx,my]=point;
       const midMX=(mx-W/2)/SC+panX,midMY=(H/2-my)/SC+panY;
       const factor=e.deltaY>0?1/1.12:1.12;
       const nz=Math.max(0.5,Math.min(3,zoom*factor));

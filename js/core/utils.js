@@ -103,14 +103,14 @@ var autoMathHtml=(text)=>{
       :(display?`<div style="font-style:italic;text-align:center">${esc(expr)}</div>`:`<em>${esc(expr)}</em>`);}
     catch(e){return`<em>${esc(expr)}</em>`;}
   };
-  const re=/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\{[^{}]*\\over[^{}]*\}|\\sqrt\{[^}]*\}|[a-zA-Z0-9]+\^\{[^}]*\})/g;
+  const re=/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\{[^{}]*\\over[^{}]*\}|\\sqrt\{[^}]*\}|[a-zA-Z0-9]+(?:\^\{[^}]*\}|\^-?\d+))/g;
   const parts=[];let last=0,m;
   while((m=re.exec(text))!==null){
     if(m.index>last)parts.push({t:'txt',v:text.slice(last,m.index)});
     const s=m[1];
     if(s.startsWith('$$'))parts.push({t:'display',v:s.slice(2,-2)});
     else if(s.startsWith('$'))parts.push({t:'inline',v:s.slice(1,-1)});
-    else parts.push({t:'inline',v:s});
+    else parts.push({t:'inline',v:s.replace(/\^(-?\d+)/g,'^{$1}')});
     last=m.index+s.length;
   }
   if(last<text.length)parts.push({t:'txt',v:text.slice(last)});

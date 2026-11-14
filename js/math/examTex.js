@@ -20,7 +20,7 @@ var _EX_SYM={'×':'\\times ','÷':'\\div ','≤':'\\le ','≥':'\\ge ','≠':'\\
   '∠':'\\angle ','△':'\\triangle ','∆':'\\triangle ','α':'\\alpha ','β':'\\beta ','π':'\\pi ','…':'\\cdots ','⋯':'\\cdots ',
   '·':'\\cdot ','→':'\\to ','∈':'\\in ','⊂':'\\subset ','∅':'\\varnothing ','≒':'\\fallingdotseq ','∞':'\\infty ','∽':'\\backsim ','□':'\\square '};
 /* 수식 덩어리에 들어갈 수 있는 글자 */
-var _EX_MCH=/[A-Za-z0-9 ()\[\]{}|+\-−×÷=≠≤≥<>√\/²³⁴⁵⁶⁷⁸⁹⁰¹⁻₀₁₂₃.,:∠°△∆∪∩∘′'αβπ…⋯·→∈⊂∅≒∞∽̄̇]/;
+var _EX_MCH=/[A-Za-z0-9 ()\[\]{}|+\-−×÷=≠≤≥<>√\/\^²³⁴⁵⁶⁷⁸⁹⁰¹⁻₀₁₂₃.,:∠°△∆∪∩∘′'αβπ…⋯·→∈⊂∅≒∞∽̄̇]/;
 var _EX_UNIT=/(\d)\s?(cm²|cm|km|mm|mg|kg|m²|g|L|mL)(?![A-Za-z])/g;
 
 /* 괄호 짝 찾기 : s[i] 가 '(' 일 때 짝 ')' 의 위치 */
@@ -29,7 +29,9 @@ function _exClose(s,i){let d=0;for(let k=i;k<s.length;k++){if(s[k]==='(')d++;els
 /* 수식 덩어리 하나(평문) → TeX */
 function _exRunTex(r){
   let s=r.replace(/−/g,'-').replace(/\.\.\./g,'…');
-  s=s.replace(/[{}]/g,c=>'\\'+c);                              // 집합 기호 { } 는 글자 그대로
+  s=s.replace(/[{}]/g,c=>'\\'+c);
+  // 거듭제곱의 중괄호는 집합 기호와 달리 TeX 구조로 보존한다.
+  s=s.replace(/\^\\\{([^{}\\]*)\\\}/g,'^{$1}').replace(/\^(-?\d+)/g,'^{$1}');                              // 집합 기호 { } 는 글자 그대로
   s=s.replace(/([a-z])̄/g,'\\bar{$1}');                       // z̄
   s=s.replace(/(\d)̇/g,'\\dot{$1}');                          // 순환소수 점 0.7̇
   /* 루트 */

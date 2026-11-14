@@ -16,9 +16,7 @@ function GraphPointMode({mode,onChange,color='indigo'}){
   </div>;
 }
 function graphPointAtEvent(e,sz){
-  const r=e.currentTarget.getBoundingClientRect(),{SC,W,H,panX=0,panY=0}=sz;
-  const cl=v=>Math.max(-12,Math.min(12,Math.round(v)));
-  return[cl((e.clientX-r.left-W/2)/SC+panX),cl((H/2-(e.clientY-r.top))/SC+panY)];
+  return graphSnapClient(e.currentTarget,e.clientX,e.clientY,sz);
 }
 function RadicalModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
@@ -26,10 +24,10 @@ function RadicalModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+p*SC),pt[1]-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   const pts=[],refPts=[];for(let sx=0;sx<=W;sx+=2){const mx=(sx-cx)/SC,inn=mx-p;if(inn>=0){const my=a*Math.sqrt(inn)+q;if(Math.abs(my)<=13)pts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}if(mx>=0){const my=a*Math.sqrt(mx);if(Math.abs(my)<=13)refPts.push(`${sx.toFixed(1)},${(cy-my*SC).toFixed(1)}`)}}
@@ -51,9 +49,9 @@ function RadicalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 시작점: ({p}, {q})
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       {refPts.length>1&&<polyline points={refPts.join(' ')} fill="none" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6,5" opacity={0.65}/>}
       {pts.length>1&&<polyline points={pts.join(' ')} fill="none" stroke="#3b82f6" strokeWidth={3} strokeLinecap="round"/>}
@@ -68,10 +66,10 @@ function RationalModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+p*SC),pt[1]-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   const branch=(left,translated=true)=>{const pts=[],asym=translated?p:0,dy=translated?q:0;for(let mx=left?-13:asym+0.04;left?mx<asym-0.04:mx<=13;mx+=0.04){const my=k/(mx-asym)+dy;if(Math.abs(my)>13)continue;pts.push(`${(cx+mx*SC).toFixed(1)},${(cy-my*SC).toFixed(1)}`)}return pts.length>1?`M ${pts.join(' L ')}`:''};
@@ -92,9 +90,9 @@ function RationalModule({sz}){
       <span className="text-gray-300 mx-2">|</span> 점근선: x={p}, y={q}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p]} skipY={[q]}/>
       <line x1={cx+p*SC} y1={0} x2={cx+p*SC} y2={H} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
       <line x1={0} y1={cy-q*SC} x2={W} y2={cy-q*SC} stroke="#c084fc" strokeWidth={1.5} strokeDasharray="6,4"/>
@@ -112,10 +110,10 @@ function QuadraticModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setP(mx);setQ(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+p*SC),ey-r.top-(cy-q*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+p*SC),pt[1]-(cy-q*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   
@@ -163,9 +161,9 @@ function QuadraticModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setP(x);setQ(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setP(x);setQ(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[p,extremeXg]} skipY={[q,Math.round(extreme)]}/>
       {ghost.length>1&&<path d={`M ${ghost.join(' L ')}`} fill="none" stroke="#bbf7d0" strokeWidth={2} strokeDasharray="6,4"/>}
       <line x1={cx+ds*SC} y1={0} x2={cx+ds*SC} y2={H} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4,4"/>
@@ -187,10 +185,10 @@ function DistanceModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+ptX*SC),ey-r.top-(cy-ptY*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+ptX*SC),pt[1]-(cy-ptY*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   
@@ -240,9 +238,9 @@ function DistanceModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[ptX]} skipY={[ptY]}/>
       {le.length>=2&&<line x1={le[0][0]} y1={le[0][1]} x2={le[1][0]} y2={le[1][1]} stroke="#ea580c" strokeWidth={2.5}/>}
       <line x1={cx+ptX*SC} y1={cy-ptY*SC} x2={cx+fX*SC} y2={cy-fY*SC} stroke="#fb923c" strokeWidth={1.8} strokeDasharray="4,3"/>
@@ -262,10 +260,10 @@ function CircleModule({sz}){
   const[linePos,setLinePos]=useState(0);
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setH(mx);setK(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r2=ref.current?.getBoundingClientRect();if(!r2)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r2.left-(cx+h*SC),ey-r2.top-(cy-k*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+h*SC),pt[1]-(cy-k*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
 
@@ -309,9 +307,9 @@ function CircleModule({sz}){
       <KF tex={circleTex}/> <span className="text-gray-300 mx-2">|</span> 중심: ({h},{k}), r={r}
     </div>
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setH(x);setK(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setH(x);setK(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>
       {lineEnabled&&(lineDir==='h'
         ?<line x1={0} y1={cy-linePos*SC} x2={W} y2={cy-linePos*SC} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
@@ -335,10 +333,10 @@ function SymmetryModule({sz}){
   const[pointMode,setPointMode]=useState('drag');
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setPX(mx);setPY(my)});
-  const{panStart,panMove,panEnd,panning}=usePan(sz);
+  const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
   const{pinchStart,pinchMove,pinchEnd}=usePinch(ref,sz);
   const hXY=e=>e.touches?.length>0?[e.touches[0].clientX,e.touches[0].clientY]:[e.clientX,e.clientY];
-  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const r=ref.current?.getBoundingClientRect();if(!r)return;const[ex,ey]=hXY(e);if(Math.hypot(ex-r.left-(cx+px*SC),ey-r.top-(cy-py*SC))>40)panStart(ex,ey)};
+  const hDn=e=>{if(e.touches?.length>=2){up();panEnd();pinchStart(e.touches);return;}const[ex,ey]=hXY(e),pt=graphClientToSvg(ref.current,ex,ey,W,H);if(!pt)return;if(Math.hypot(pt[0]-(cx+px*SC),pt[1]-(cy-py*SC))>40)panStart(ex,ey)};
   const hMv=e=>{if(e.touches?.length>=2){pinchMove(e.touches);return;}const[ex,ey]=hXY(e);if(!panMove(ex,ey))mv(e)};
   const hUp=()=>{pinchEnd();panEnd();up()};
   
@@ -371,9 +369,9 @@ function SymmetryModule({sz}){
     </div>
     
     <svg ref={ref} width={W} height={H} {...SVG_PROPS} style={{...SVG_PROPS.style,cursor:panning?'grabbing':'crosshair'}}
-      onClick={e=>{if(pointMode!=='tap')return;const[x,y]=graphPointAtEvent(e,sz);setPX(x);setPY(y)}}
+      onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setPX(x);setPY(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
-      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp}>
+      onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
       <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[px]} skipY={[py]}/>
       {symLine}
       
