@@ -16,6 +16,8 @@ var QUICK_SWITCH_GROUPS=[['박소명','박소명_학생','테스트']];
 var QUICK_SWITCH_PAIRS=QUICK_SWITCH_GROUPS; // 기존 툴팁/대시보드 참조 호환
 /* 새 유형을 공개 전에 먼저 풀어 볼 수 있는 계정 (선생님의 학생 확인용 계정). 좌표 탭 openAt 참고 */
 var PREVIEW_USERS=['박소명_학생','테스트'];
+// 집합·명제와 이차부등식은 별도 지정 계정에만 공개한다.
+var canAccessRestrictedPractice=name=>['박소명_학생','박소명'].includes(name);
 function quickSwitchTarget(name){
   for(const group of QUICK_SWITCH_GROUPS){
     const i=group.indexOf(name);

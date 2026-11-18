@@ -41,7 +41,7 @@ var COORD_LEVELS=[
 ];
 /* 아직 열리지 않은 유형인지 — 미리 보기 계정은 늘 열려 있다 */
 var coordLevelLocked=(L,name)=>{
-  if(L&&L.k==='ineq')return name!=='박소명_학생';
+  if(L&&L.k==='ineq')return !canAccessRestrictedPractice(name);
   return !!(L&&((L.locked&&!(PREVIEW_USERS||[]).includes(name))||(L.openAt&&Date.now()<Date.parse(L.openAt)&&!(PREVIEW_USERS||[]).includes(name))));
 };
 
