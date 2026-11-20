@@ -265,6 +265,7 @@ function GedProblemCard({rec,unit,no,edit,showCtrl,onParam,onRandom,onRemove,onR
       {unit.fields.map(f=>f.sel
         ?<label key={f.k}>{f.label} <select value={rec.params[f.k]} onChange={e=>onParam(rec.key,f.k,e.target.value)}>{f.sel.map(o=><option key={o} value={o}>{o}</option>)}</select></label>
         :<GedNumField key={f.k} label={f.label} value={rec.params[f.k]} min={f.min} max={f.max} onCommit={n=>onParam(rec.key,f.k,n)}/>)}
+      {(()=>{const h=unit.hint?unit.hint(rec.params):'';return h?<div style={{flexBasis:'100%',fontSize:'12px',lineHeight:1.5,color:'#8a5a00',background:'#fff7e0',border:'1px solid #f0d9a0',borderRadius:'8px',padding:'5px 9px'}}>💡 {h}</div>:null;})()}
       <button onClick={()=>onRandom(rec.key)}>🎲 새 숫자</button>
       {rec.override&&<button onClick={()=>onRevert(rec.key)}>↩ 생성 상태로</button>}
       <button className="danger" onClick={()=>onRemove(rec.key)}>✕ 삭제</button>
