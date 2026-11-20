@@ -50,10 +50,32 @@ var GED_UID_MIGRATE={
   u17:p=>(((p.kind||'')+(p.ask||'')).indexOf('역함수')>=0?'u17b':'u17a'),
   u18:p=>(((p.kind||'')+(p.type||'')).indexOf('무리')>=0?'u18b':'u18a')
 };
+/* 글을 고쳐 둔 카드(override HTML)의 그림만 새 그림으로 바꾼다 — 고친 글은 그대로 둔다 */
+function gedSwapFig(html,figHtml){
+  if(!html||!figHtml||typeof document==='undefined')return html;
+  const t=document.createElement('template');t.innerHTML=html;
+  const f=t.content.querySelector('.fig');
+  const n=document.createElement('template');n.innerHTML=figHtml;const nf=n.content.firstElementChild;
+  if(!f||!nf)return html;
+  f.replaceWith(nf);return t.innerHTML;
+}
+function gedBuildFig(uid,params){
+  try{const u=GED_UNITS.find(x=>x.id===uid);const r=u&&u.build(params);return r&&r.figure?r.figure:null;}catch(e){return null;}
+}
+/* 소급 적용 : 원의 방정식(13번)에 '그림 모양'(시험지 모양 / 격자 있음) 조건이 생기기 전에 만든 카드는
+   조건이 없다. 열 때 한 번 정해 넣는다(둘을 섞어서). 시험지 모양이 된 카드는 글을 고쳐 두었더라도 그림만 바꾼다. */
+function gedMigrateU13(p){
+  if(p.uid!=='u13'||!p.params||p.params.grid!=null)return p;
+  const grid=Math.random()<0.5?'시험지 모양(격자 없음)':'격자 있음';
+  const params={...p.params,grid};
+  let override=p.override;
+  if(override&&override!=='1'&&grid!=='격자 있음'){const fg=gedBuildFig('u13',params);if(fg)override=gedSwapFig(override,fg);}
+  return{...p,params,override};
+}
 function gedMigrateProblems(problems){
   return(problems||[]).map(p=>{
     const f=GED_UID_MIGRATE[p.uid];
-    return f?{...p,uid:f(p.params||{})}:p;   // key 는 그대로 둔다 (편집해 둔 내용과 연결돼 있음)
+    return gedMigrateU13(f?{...p,uid:f(p.params||{})}:p);   // key 는 그대로 둔다 (편집해 둔 내용과 연결돼 있음)
   });
 }
 function gedMigrateIds(ids){
@@ -369,11 +391,12 @@ function GedWorksheetTab(){
   const[busy,setBusy]=useState(false);
   const[toast,setToast]=useState('');
   const[quotaWarn,setQuotaWarn]=useState(false);
-  const ovRef=useRef({});
+  /* 고쳐 둔 글(override)은 첫 화면을 그리기 전에 채워 둔다 — 효과(useEffect)로 채우면 펼쳐져 있던 학습지가 고친 글 대신 새로 만든 글로 먼저 그려지고, 그 위에서 고치면 저장돼 있던 글이 사라진다 */
+  const ovRef=useRef(null);
+  if(ovRef.current===null){ovRef.current={};init.sheets.forEach(s=>(s.problems||[]).forEach(p=>{if(p.override)ovRef.current[p.key]=p.override;}));}
   const fileRef=useRef();
   const[cLib,setCLib]=useState(gedLoadCLib);          // 내 개념 설명 (유형 id → {html,updatedAt})
   const[showCLib,setShowCLib]=useState(false);
-  useEffect(()=>{init.sheets.forEach(s=>(s.problems||[]).forEach(p=>{if(p.override)ovRef.current[p.key]=p.override;}));},[]);
 
   const showToast=m=>{setToast(m);clearTimeout(showToast._t);showToast._t=setTimeout(()=>setToast(''),2800);};
   const withOv=ps=>ps.map(p=>({...p,override:ovRef.current[p.key]||null}));
@@ -423,8 +446,12 @@ function GedWorksheetTab(){
   const mapProbs=(id,fn)=>patchSheet(id,s=>({...s,problems:fn(s.problems)}));
   /* reroll 이 있는 유형(p1)에서 '문제 종류'를 바꾸면 그 종류에 맞는 숫자를 새로 뽑는다
      (예전 숫자를 그대로 두면 무리함수의 점이 이차함수 범위와 안 맞아 바로 오류 카드가 된다) */
-  const onParam=(id,key,k,v)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
+  const onParam=(id,key,k,v)=>{
+    const keepOv=k==='grid'&&ovRef.current[key]&&ovRef.current[key]!=='1';   // 글을 고쳐 둔 카드 : 그림 모양만 바꾸고 고친 글은 지키지 않고 지우지도 않는다
+    if(!keepOv)delete ovRef.current[key];
+    mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
     const params=(k==='kind'&&u.reroll)?u.reroll({...p.params,kind:v}):{...p.params,[k]:v};
+    if(keepOv){const fg=gedBuildFig(p.uid,params);if(fg)ovRef.current[key]=gedSwapFig(ovRef.current[key],fg);return{...p,params,rev:p.rev+1};}
     // 예전에 저장된 19·20번도 조건을 고치는 순간 그림이 있는 생성기로 전환한다.
     if((u.id==='u19'||u.id==='u20')&&!params.v)params.v=3;
     // 기존 문항에서 새 상황 번호를 직접 고를 때에만 새 버전으로 전환한다.

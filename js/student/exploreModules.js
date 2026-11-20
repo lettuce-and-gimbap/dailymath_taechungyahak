@@ -251,6 +251,18 @@ function DistanceModule({sz}){
   </div>);
 }
 
+/* 기출 그림 바탕 : 얇은 축 + 화살표 + x·y·O 글자만 (js/ui/examFig.js 의 exfPlane.axes 와 같은 모양) */
+function ExamPlaneBase({W,H,cx,cy}){
+  const F=typeof EXF_SERIF!=='undefined'?EXF_SERIF:'serif',FS=22;
+  const inX=cy>=0&&cy<=H,inY=cx>=0&&cx<=W;
+  return(<g>
+    {inX&&<><line x1={0} y1={cy} x2={W-12} y2={cy} stroke="#111" strokeWidth={1.8}/><polygon points={`${W-2},${cy} ${W-13},${cy-5} ${W-13},${cy+5}`} fill="#111"/>
+      <text x={W-16} y={cy+FS+2} fontSize={FS} fontStyle="italic" fontFamily={F}>x</text></>}
+    {inY&&<><line x1={cx} y1={H} x2={cx} y2={12} stroke="#111" strokeWidth={1.8}/><polygon points={`${cx},2 ${cx-5},13 ${cx+5},13`} fill="#111"/>
+      <text x={cx+9} y={FS} fontSize={FS} fontStyle="italic" fontFamily={F}>y</text></>}
+    {inX&&inY&&<text x={cx-6} y={cy+FS} fontSize={FS} textAnchor="end" fontFamily={F}>O</text>}
+  </g>);
+}
 function CircleModule({sz}){
   const{W,H,SC,panX=0,panY=0}=sz;const cx=W/2-panX*SC,cy=H/2+panY*SC;
   const[h,setH]=useState(0),[k,setK]=useState(0),[r,setR]=useState(3);
@@ -258,6 +270,7 @@ function CircleModule({sz}){
   const[lineEnabled,setLineEnabled]=useState(false);
   const[lineDir,setLineDir]=useState('h'); // 'h'=수평(y=n), 'v'=수직(x=n)
   const[linePos,setLinePos]=useState(0);
+  const[examFig,setExamFig]=useState(false);   // 격자 없음 = 기출 13번 그림 모양 (모눈·눈금 없이 축, 점선, 값만)
   const ref=useRef();
   const{dn,mv,up}=useDrag(ref,sz,([mx,my])=>{setH(mx);setK(my)});
   const{panStart,panMove,panEnd,panning}=usePan(sz,ref);
@@ -280,6 +293,12 @@ function CircleModule({sz}){
         <span className="font-bold text-teal-600 w-5">{r}</span>
       </label>
       <GraphPointMode mode={pointMode} onChange={setPointMode} color="teal"/><span className="text-xs bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-teal-700 font-semibold">배경 길게 누르면 화면 이동</span>
+    </div>
+
+    {/* 그림 모양 : 격자 있음(모눈을 세며 연습) ↔ 격자 없음(기출 그림처럼) */}
+    <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="그림 모양">
+      <button type="button" aria-pressed={!examFig} onClick={()=>setExamFig(false)} className={`px-3 py-2 rounded-xl border-2 text-sm font-bold ${!examFig?'bg-teal-600 text-white border-teal-600':'bg-white text-teal-700 border-teal-200'}`}>▦ 격자 있음</button>
+      <button type="button" aria-pressed={examFig} onClick={()=>setExamFig(true)} className={`px-3 py-2 rounded-xl border-2 text-sm font-bold ${examFig?'bg-teal-600 text-white border-teal-600':'bg-white text-teal-700 border-teal-200'}`}>◯ 격자 없음 (기출 그림)</button>
     </div>
 
     {/* 직선 추가 UI */}
@@ -310,7 +329,9 @@ function CircleModule({sz}){
       onClick={e=>{if(pointMode!=='tap')return;const pos=graphPointAtEvent(e,sz);if(!pos)return;const[x,y]=pos;setH(x);setK(y)}}
       onMouseDown={hDn} onMouseMove={hMv} onMouseUp={hUp} onMouseLeave={hUp}
       onTouchStart={hDn} onTouchMove={hMv} onTouchEnd={hUp} onTouchCancel={hUp}>
-      <Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>
+      {examFig
+        ?<ExamPlaneBase W={W} H={H} cx={cx} cy={cy}/>
+        :<Grid W={W} H={H} SC={SC} cx={cx} cy={cy} skipX={[h]} skipY={[k]}/>}
       {lineEnabled&&(lineDir==='h'
         ?<line x1={0} y1={cy-linePos*SC} x2={W} y2={cy-linePos*SC} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
         :<line x1={cx+linePos*SC} y1={0} x2={cx+linePos*SC} y2={H} stroke="#e11d48" strokeWidth={2.5} strokeDasharray="8,4"/>
@@ -319,10 +340,23 @@ function CircleModule({sz}){
         ?<text x={8} y={Math.max(16,cy-linePos*SC-6)} fontSize={14} fill="#e11d48" fontWeight="bold">y={linePos}</text>
         :<text x={Math.min(cx+linePos*SC+6,W-44)} y={16} fontSize={14} fill="#e11d48" fontWeight="bold">x={linePos}</text>
       )}
-      <circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="rgba(20,184,166,0.1)" stroke="#0d9488" strokeWidth={2.5}/>
-      <line x1={cx+h*SC} y1={cy-k*SC} x2={cx+(h+r)*SC} y2={cy-k*SC} stroke="#0d9488" strokeWidth={1.5} strokeDasharray="5,3"/>
-      <text x={(cx+h*SC+cx+(h+r)*SC)/2} y={cy-k*SC-7} textAnchor="middle" fontSize={11} fill="#0d9488" fontWeight="bold">r={r}</text>
-      <Dot sx={cx+h*SC} sy={cy-k*SC} color="#0d9488" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[h,k]}/>
+      {examFig?<>
+        {/* 기출 13번 그림 : 검은 원 + 중심점, 중심에서 두 축으로 점선과 값 (반지름 글자는 쓰지 않는다) */}
+        <circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="none" stroke="#111" strokeWidth={2.4}/>
+        {k!==0&&<line x1={cx+h*SC} y1={cy-k*SC} x2={cx+h*SC} y2={cy} stroke="#444" strokeWidth={1.4} strokeDasharray="5 5"/>}
+        {h!==0&&<line x1={cx+h*SC} y1={cy-k*SC} x2={cx} y2={cy-k*SC} stroke="#444" strokeWidth={1.4} strokeDasharray="5 5"/>}
+        {h!==0&&<text x={cx+h*SC} y={k>=0?cy+24:cy-10} textAnchor="middle" fontSize={22} fontFamily={typeof EXF_SERIF!=='undefined'?EXF_SERIF:'serif'} paintOrder="stroke" stroke="#fff" strokeWidth={3}>{h<0?'−'+(-h):h}</text>}
+        {k!==0&&<text x={h<0?cx+9:cx-9} y={cy-k*SC+8} textAnchor={h<0?'start':'end'} fontSize={22} fontFamily={typeof EXF_SERIF!=='undefined'?EXF_SERIF:'serif'} paintOrder="stroke" stroke="#fff" strokeWidth={3}>{k<0?'−'+(-k):k}</text>}
+        <g style={{cursor:'grab',userSelect:'none'}} onMouseDown={pointMode==='drag'?(e=>{e.preventDefault();dn(e)}):undefined} onTouchStart={pointMode==='drag'?(e=>{e.preventDefault();dn(e)}):undefined}>
+          <circle cx={cx+h*SC} cy={cy-k*SC} r={26} fill="transparent"/>
+          <circle cx={cx+h*SC} cy={cy-k*SC} r={5.5} fill="#111"/>
+        </g>
+      </>:<>
+        <circle cx={cx+h*SC} cy={cy-k*SC} r={r*SC} fill="rgba(20,184,166,0.1)" stroke="#0d9488" strokeWidth={2.5}/>
+        <line x1={cx+h*SC} y1={cy-k*SC} x2={cx+(h+r)*SC} y2={cy-k*SC} stroke="#0d9488" strokeWidth={1.5} strokeDasharray="5,3"/>
+        <text x={(cx+h*SC+cx+(h+r)*SC)/2} y={cy-k*SC-7} textAnchor="middle" fontSize={11} fill="#0d9488" fontWeight="bold">r={r}</text>
+        <Dot sx={cx+h*SC} sy={cy-k*SC} color="#0d9488" onDown={pointMode==='drag'?dn:undefined} cx={cx} cy={cy} label={[h,k]}/>
+      </>}
     </svg>
   </div>);
 }
