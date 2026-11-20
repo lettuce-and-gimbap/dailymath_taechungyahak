@@ -8785,7 +8785,7 @@ var GED_UNITS=(function(){
       return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(p.d)};
     }
   },
-  { id:'u13', tag:'13번', area:'C', title:'원의 방정식', src:'2023~2026 매회 13번', coord:true, gridMix:true,   /* gridMix : [전체 다시 섞기]가 그림 모양(격자 있음/없음)도 절반씩 섞는다 */
+  { id:'u13', tag:'13번', area:'C', title:'원의 방정식', src:'2023~2026 매회 13번', coord:true, gridMix:true, keepEdits:['ask','dir','a','b','r'],   /* keepEdits : 이 조건을 바꿔도 글을 고친 카드의 고친 부분은 지킨다(고치지 않은 부분만 새 문제로 바뀐다) */   /* gridMix : [전체 다시 섞기]가 그림 모양(격자 있음/없음)도 절반씩 섞는다 */
     /* 문제 종류는 4가지만 (2026-10-30) : 반지름 주어짐 · x축에 접함 · y축에 접함 · 원과 직선의 접점.
        접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y = ±r, y축 접함 → 중심 x = ±r, 부호는 입력한 중심 값의 부호를 따른다).
        그래서 반지름을 고치면 그림 속 원의 크기가 실제로 바뀐다. 옛 저장본의 '원점을 지남'·'지름의 양 끝점'은 '반지름 주어짐'으로 읽는다. */
@@ -19035,6 +19035,31 @@ function gedGridAssign(problems,mode,ov,only){
   return{problems:out,total:idxs.length,changed,skipped};
 }
 
+/* 글을 고친 카드에서 조건을 바꿀 때 : 고친 부분은 지키고 고치지 않은 부분만 새 문제로 바꾼다.
+   카드(.gen)를 문제 글·그림·보기·풀이 상자·풀이·정답 단위로 나눠, 고친 카드의 부분이 '바뀌기 전 조건으로 만든 글'과 같으면 (= 고치지 않았으면) 새 조건으로 만든 부분으로 갈아 끼운다.
+   문항 번호(.qno)는 고친 카드의 것을 지킨다. 구조를 읽을 수 없으면 null (호출한 쪽이 예전처럼 고친 글을 걷어 낸다). */
+function gedMergeEdited(oldGen,ovHtml,newGen){
+  if(typeof document==='undefined')return null;
+  const P=h=>{const t=document.createElement('template');t.innerHTML=h;return t.content;};
+  const norm=el=>{const c=el.cloneNode(true);c.querySelectorAll('.tx').forEach(x=>{x.textContent='';x.removeAttribute('contenteditable');});c.querySelectorAll('.qno').forEach(x=>x.remove());
+    return c.outerHTML.replace(/\s+/g,' ').replace(/ contenteditable="(true|false)"/g,'').trim();};
+  const fo=P(ovHtml),od=P(oldGen).querySelector('.gen'),ov=fo.querySelector('.gen'),nw=P(newGen).querySelector('.gen');
+  if(!od||!ov||!nw)return null;
+  const keyed=root=>{const n={},m=new Map();[...root.children].forEach(el=>{const base=el.tagName+'.'+el.className;n[base]=(n[base]||0)+1;m.set(base+'#'+n[base],el);});return m;};
+  const mo=keyed(od),mn=keyed(nw);
+  const seen={};
+  [...ov.children].forEach(el=>{
+    const base=el.tagName+'.'+el.className;seen[base]=(seen[base]||0)+1;const k=base+'#'+seen[base];
+    const oldEl=mo.get(k),newEl=mn.get(k);
+    if(!oldEl||!newEl)return;                       // 새로 넣었거나 사라진 부분은 건드리지 않는다
+    if(norm(oldEl)!==norm(el))return;               // 고친 부분
+    const rep=newEl.cloneNode(true),q=el.querySelector('.qno'),rq=rep.querySelector('.qno');
+    if(q&&rq)rq.replaceWith(q.cloneNode(true));
+    el.replaceWith(rep);
+  });
+  return fo.firstElementChild?fo.firstElementChild.outerHTML:null;
+}
+
 /* 문항 목록 → 유형별 묶음 + 실전 문항 번호 매기기 */
 function gedGroups(problems){
   const gs=[];let no=0;
@@ -19360,11 +19385,18 @@ function GedWorksheetTab(){
      (예전 숫자를 그대로 두면 무리함수의 점이 이차함수 범위와 안 맞아 바로 오류 카드가 된다) */
   const onParam=(id,key,k,v)=>{
     const keepOv=k==='grid'&&ovRef.current[key]&&ovRef.current[key]!=='1';   // 글을 고쳐 둔 카드 : 그림 모양만 바꾸고 고친 글은 지키지 않고 지우지도 않는다
-    if(!keepOv)delete ovRef.current[key];
+    const u0=byId((getSheet(id)||{problems:[]}).problems.find(x=>x.key===key)?.uid);
+    const keepMerge=!keepOv&&u0&&u0.keepEdits&&u0.keepEdits.includes(k)&&ovRef.current[key]&&ovRef.current[key]!=='1';   // keepEdits 조건 : 고친 부분은 지키고 나머지만 새 문제로
+    if(!keepOv&&!keepMerge)delete ovRef.current[key];
     mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
     const params0=(k==='kind'&&u.reroll)?u.reroll({...p.params,kind:v}):{...p.params,[k]:v};
     const params=u.fix?u.fix(params0,k):params0;   // 유형이 고른 조건에 맞게 다른 숫자를 맞추는 경우(원과 직선의 '구할 것')
     if(keepOv){const fg=gedBuildFig(p.uid,params);if(fg)ovRef.current[key]=gedSwapFig(ovRef.current[key],fg);return{...p,params,rev:p.rev+1};}
+    if(keepMerge){
+      const merged=gedMergeEdited(GS.probHTML(u,p.params,p.idx,'0'),ovRef.current[key],GS.probHTML(u,params,p.idx,'0'));
+      if(merged){ovRef.current[key]=merged;return{...p,params,rev:p.rev+1};}
+      delete ovRef.current[key];                  // 구조를 읽을 수 없으면 예전처럼 고친 글을 걷어 내고 새로 만든다
+    }
     // 예전에 저장된 19·20번도 조건을 고치는 순간 그림이 있는 생성기로 전환한다.
     if((u.id==='u19'||u.id==='u20')&&!params.v)params.v=3;
     // 기존 문항에서 새 상황 번호를 직접 고를 때에만 새 버전으로 전환한다.

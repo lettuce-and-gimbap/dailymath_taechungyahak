@@ -1759,7 +1759,7 @@ var GED_UNITS=(function(){
       return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(p.d)};
     }
   },
-  { id:'u13', tag:'13번', area:'C', title:'원의 방정식', src:'2023~2026 매회 13번', coord:true, gridMix:true,   /* gridMix : [전체 다시 섞기]가 그림 모양(격자 있음/없음)도 절반씩 섞는다 */
+  { id:'u13', tag:'13번', area:'C', title:'원의 방정식', src:'2023~2026 매회 13번', coord:true, gridMix:true, keepEdits:['ask','dir','a','b','r'],   /* keepEdits : 이 조건을 바꿔도 글을 고친 카드의 고친 부분은 지킨다(고치지 않은 부분만 새 문제로 바뀐다) */   /* gridMix : [전체 다시 섞기]가 그림 모양(격자 있음/없음)도 절반씩 섞는다 */
     /* 문제 종류는 4가지만 (2026-10-30) : 반지름 주어짐 · x축에 접함 · y축에 접함 · 원과 직선의 접점.
        접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y = ±r, y축 접함 → 중심 x = ±r, 부호는 입력한 중심 값의 부호를 따른다).
        그래서 반지름을 고치면 그림 속 원의 크기가 실제로 바뀐다. 옛 저장본의 '원점을 지남'·'지름의 양 끝점'은 '반지름 주어짐'으로 읽는다. */
