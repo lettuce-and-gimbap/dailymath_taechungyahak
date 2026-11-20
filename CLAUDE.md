@@ -143,6 +143,11 @@ js/
   굵게·기울임·밑줄·취소선·글자색 6색·형광펜 4색·서식 지우기는 `document.execCommand`(`GS.fmt`), 결과는 편집 칸 innerHTML 에 `<b>·<i>·<s>·<mark>·<span style=color>` 로 담겨 저장·인쇄·PDF 에 그대로 간다(`SHEET_CSS` 에 인쇄 색 유지 규칙 포함).
   **마크다운 입력**(`GS.mdShortcut`) : `**굵게**` `*기울임*` `~~취소선~~` `==형광펜==` `$수식$` — 닫는 기호를 치는 순간 바뀐다(커서 뒤에 안 번지게 길이 0 글자 `\u200b` 를 둔다).
   **수식 직접 입력** : [∑ 수식] 또는 `$…$` → LaTeX 입력창(`GS.mathDialog`, 미리보기 포함). 수식은 `<span class="tx" data-tex="LaTeX">` 한 덩어리이고 편집 모드에서 누르면(`GS.mathClick`) 다시 고치거나 지울 수 있다.
+  **단축키(`GS.editKey`, 편집 칸 onKeyDown)** : Ctrl+] / Ctrl+[ 선택한 글(없으면 커서 낱말) 크기 키우기·줄이기(`GS.sizeStep`, 0.6~2.9배 12단, `<span style="font-size:Nem">` — 이미 크기 span 이면 합쳐 겹치지 않게) ·
+  Ctrl+Alt+1~6 글자색 · Ctrl+Alt+7·8·9·0 형광펜 · Ctrl+Alt+- 형광펜 끄기 · Ctrl+Shift+X 취소선. 색 목록은 `GS.EDIT_COLORS`·`GS.EDIT_HL` 하나를 도구막대와 단축키가 함께 쓴다.
+  **저장 HTML 은 `GS.cleanHtml(host)`** — 수식(`.tx`)의 그려진 KaTeX 조각을 비우고 LaTeX(`data-tex`)만 둔다(불러올 때 `renderTex` 가 다시 그린다). 안 그러면 수식 하나당 수 KB 가 임시저장·Firestore 문서에 쌓인다.
+  **임시저장 규칙** : 고칠 때마다 0.7~0.9초 뒤 localStorage 저장 + 탭 숨김·닫기(`pagehide`/`visibilitychange`)·다른 탭으로 이동(언마운트) 때는 바로 저장. 개념 글은 0.5초 뒤에야 상태에 반영되므로 `pendC` 에 먼저 보관해 두고 저장·반출·인쇄(`conceptsOf`)에 같이 합친다.
+  클라우드(Firestore) 저장은 자동이 아니라 [💾 저장]을 눌러야 한다.
   붙여넣기는 글자만(`GS.plainPaste`). 이 도구막대 안 버튼은 전역 `button{min-height:54px!important}` 에 눌리지 않도록 `.gfb` 규칙으로 높이를 따로 준다.
 - **글자 크기 4단** : 전체 글자 `cfg.fs`(px) · 문제 글자 `cfg.qs`(배율, `.qtext`·`.choices`) · 개념 글자 `cfg.cs`(배율, `.card.concept`) · 숫자·수식 `cfg.ms`(배율, `.katex`·`.nm`·좌표평면 눈금).
   `.gsheet` 의 CSS 변수 `--fs/--qs/--cs/--ms` 로 들어가며, 인쇄 때 `fs` 는 21px 로 묶이지만 `qs/ms` 는 em 배율이라 인쇄·PDF에도 반영된다.

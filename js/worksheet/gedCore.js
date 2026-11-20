@@ -373,6 +373,64 @@ var GS=(function(){
       return;
     }
   }
+  /* ── 단축키 · 글자 크기 · 저장용 HTML ─────────────────────────────────
+     Ctrl+] / Ctrl+[ : 선택한 글(없으면 커서가 놓인 낱말) 크기 키우기 / 줄이기 (한글 워드프로세서처럼)
+     Ctrl+Alt+1~6 : 글자색(빨강·주황·초록·파랑·보라·검정)   Ctrl+Alt+7·8·9·0 : 형광펜(노랑·분홍·연두·하늘)   Ctrl+Alt+- : 형광펜 없애기
+     Ctrl+Shift+X : 취소선                              (Ctrl+B · I · U 는 브라우저 기본) */
+  const EDIT_COLORS=[['#c0272d','빨강'],['#e8761e','주황'],['#1f8a4c','초록'],['#1b5fc1','파랑'],['#7a3fc4','보라'],['#111111','검정']];
+  const EDIT_HL=[['#fff3a3','노랑'],['#ffd6e0','분홍'],['#c8f0d8','연두'],['#cfe4ff','하늘'],['transparent','없음']];
+  const SIZE_STEPS=[0.6,0.7,0.8,0.9,1,1.15,1.3,1.5,1.75,2,2.4,2.9];
+  /* 편집 칸 host 안의 선택에 서식 적용 (선택이 없으면 이어서 쓰는 글에 적용) */
+  function execIn(host,cmd,val){
+    const sel=window.getSelection();if(!sel||!sel.rangeCount||editHost(sel.anchorNode)!==host)return false;
+    document.execCommand('styleWithCSS',false,true);document.execCommand(cmd,false,val);return true;
+  }
+  function sizeStep(host,dir){
+    const sel=window.getSelection();if(!sel||!sel.rangeCount||editHost(sel.anchorNode)!==host)return false;
+    if(sel.isCollapsed&&sel.modify){sel.modify('move','backward','word');sel.modify('extend','forward','word');}   // 커서만 있으면 그 낱말
+    if(sel.isCollapsed)return false;
+    const basePx=parseFloat(getComputedStyle(host).fontSize)||16;
+    const r0=sel.getRangeAt(0);let sn=r0.startContainer;if(sn.nodeType===1&&sn.childNodes[r0.startOffset])sn=sn.childNodes[r0.startOffset];
+    const an=sn.nodeType===1?sn:sn.parentElement;
+    const cur=(parseFloat(getComputedStyle(an).fontSize)||basePx)/basePx;
+    let i=0,best=1e9;SIZE_STEPS.forEach((v,k)=>{const d=Math.abs(v-cur);if(d<best){best=d;i=k;}});
+    const j=Math.max(0,Math.min(SIZE_STEPS.length-1,i+dir));
+    if(j===i&&Math.abs(SIZE_STEPS[i]-cur)<0.02)return true;      // 더 키우거나 줄일 수 없는 끝
+    const target=SIZE_STEPS[j]*basePx;
+    document.execCommand('styleWithCSS',false,false);
+    document.execCommand('fontSize',false,'7');
+    const spans=[...host.querySelectorAll('font[size="7"]')].map(f=>{
+      const s=document.createElement('span');
+      const pp=parseFloat(getComputedStyle(f.parentElement).fontSize)||basePx;
+      s.style.fontSize=(target/pp).toFixed(3)+'em';
+      while(f.firstChild)s.appendChild(f.firstChild);f.replaceWith(s);
+      // 이미 크기만 준 span 안에 통째로 들어갔으면 겹치지 않게 바깥 span 에 합친다
+      const p=s.parentElement;
+      if(p&&p!==host&&p.tagName==='SPAN'&&p.style.fontSize&&p.childNodes.length===1&&p.getAttribute('style').replace(/\s/g,'').replace(/font-size:[^;]+;?/,'')===''){
+        const gp=parseFloat(getComputedStyle(p.parentElement).fontSize)||basePx;
+        p.style.fontSize=(target/gp).toFixed(3)+'em';
+        while(s.firstChild)p.insertBefore(s.firstChild,s);s.remove();return p;
+      }
+      return s;});
+    if(spans.length){const r=document.createRange();r.setStart(spans[0],0);const L=spans[spans.length-1];r.setEnd(L,L.childNodes.length);sel.removeAllRanges();sel.addRange(r);}
+    fireInput(host);return true;
+  }
+  /* 편집 칸의 keydown 에 붙인다 */
+  function editKey(e){
+    const mod=e.ctrlKey||e.metaKey;if(!mod)return;
+    const host=e.currentTarget,c=e.code;
+    if(!e.altKey&&!e.shiftKey&&(c==='BracketRight'||c==='BracketLeft')){e.preventDefault();sizeStep(host,c==='BracketRight'?1:-1);return;}
+    if(e.altKey&&!e.shiftKey){
+      const dg={Digit1:0,Digit2:1,Digit3:2,Digit4:3,Digit5:4,Digit6:5}[c];
+      if(dg!==undefined){e.preventDefault();execIn(host,'foreColor',EDIT_COLORS[dg][0]);return;}
+      const hl={Digit7:0,Digit8:1,Digit9:2,Digit0:3,Minus:4}[c];
+      if(hl!==undefined){e.preventDefault();execIn(host,'hiliteColor',EDIT_HL[hl][0]);return;}
+    }
+    if(e.shiftKey&&!e.altKey&&c==='KeyX'){e.preventDefault();execIn(host,'strikeThrough');}
+  }
+  /* 저장할 HTML : 수식은 LaTeX(data-tex)만 두고 그려진 KaTeX 조각은 뺀다 (불러올 때 다시 그린다 → 용량이 크게 줄어든다) */
+  function cleanHtml(host){const c=host.cloneNode(true);c.querySelectorAll('.tx[data-tex]').forEach(t=>{t.textContent='';});return c.innerHTML;}
+
   /* 붙여넣기는 글자만 (다른 사이트의 글꼴·색이 따라오지 않게) */
   function plainPaste(e){e.preventDefault();const t=e.clipboardData.getData('text/plain');if(t)document.execCommand('insertText',false,t);}
 
@@ -651,6 +709,6 @@ ${SHEET_CSS}
 
   return{nf,par,xm,ym,tail,esc,tex,pr,rnd,pick,nz,CIRC,isInt,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,choicesHTML,
-    planeSVG,keyPointSVG,PGBREAK,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,mathDialog,fmt,openMath,mathClick,mdShortcut,plainPaste,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
+    planeSVG,keyPointSVG,PGBREAK,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,mathDialog,fmt,openMath,mathClick,mdShortcut,plainPaste,editKey,sizeStep,cleanHtml,EDIT_COLORS,EDIT_HL,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
     NAVY,RED,GREEN,GREY};
 })();
