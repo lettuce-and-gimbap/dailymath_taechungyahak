@@ -597,7 +597,7 @@ var GS=(function(){
 .gsheet .qno{display:inline-block;background:var(--ink);color:#fff;border-radius:10px;padding:1px 13px;margin-right:10px;font-size:.76em}
 .gsheet .card.ex .qno{background:var(--navy)}
 .gsheet .qtext{margin:4px 0 10px;font-size:calc(var(--qs,1)*1em)}
-.gsheet .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;margin:8px 0 6px 6px;font-size:calc(var(--qs,1)*.95em)}
+.gsheet .choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,14em),1fr));gap:6px 22px;margin:8px 0 6px 6px;font-size:calc(var(--qs,1)*.95em)}
 .gsheet .choices.one{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px 34px}
 .gsheet .choices .cs{display:inline-block;vertical-align:middle;width:230px;max-width:80%}
 .gsheet .choices .cs svg{width:100%;height:auto}
@@ -616,8 +616,14 @@ var GS=(function(){
 /* [숫자·수식 크기] : --ms 배율. 수식(KaTeX)과 글 속 맨 숫자(.nm)가 같이 커진다 */
 .gsheet .katex{font-size:calc(var(--ms,1)*1.05em)!important}
 .gsheet .nm{font-size:calc(var(--ms,1)*1em);line-height:1}
-.gsheet.cols2 .qgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;align-items:start}
+.gsheet.cols2 .qgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:18px;align-items:start}
+.gsheet .qgrid>.card,.gsheet .card .gen{min-width:0;max-width:100%}
+.gsheet .choices .cs svg,.gsheet .fig-svg{max-width:100%!important;height:auto}
+.gsheet .qtext,.gsheet .choices{overflow-wrap:anywhere}
 .gsheet.cols2 .qgrid .card{font-size:.8em;padding:12px 14px 14px}
+/* 2단은 칸이 좁아서 수식이 칸을 넘기 쉽다 — 숫자·수식 배율은 2단 안에서 1.15배까지만 키운다(식이 잘리지 않게) */
+.gsheet.cols2 .qgrid .katex{font-size:calc(min(var(--ms,1),1.15)*1.05em)!important}
+.gsheet.cols2 .qgrid .nm{font-size:calc(min(var(--ms,1),1.15)*1em)}
 .gsheet.cols2 .qgrid .fig svg{max-width:300px!important}
 .gsheet.edit [contenteditable=true]{outline:2px dashed #e8a33c;outline-offset:3px;border-radius:6px}
 .gsheet.edit [contenteditable=true]:focus{outline-color:#c0272d;background:#fffdf5}
@@ -653,8 +659,10 @@ var GS=(function(){
   .gsheet mark,.gsheet [style*="color"],.gsheet font,.gsheet .cex,.gsheet .ctip,.gsheet .cwarn,.gsheet .kw,.gsheet .cexa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .gsheet .card{page-break-inside:avoid!important;break-inside:avoid!important}
   .gsheet .fig svg{max-width:440px!important}
-  .gsheet.cols2 .qgrid{display:grid!important;grid-template-columns:1fr 1fr!important;column-gap:14px!important}
-  .gsheet.cols2 .qgrid .fig svg{max-width:280px!important}
+  .gsheet.cols2 .qgrid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;column-gap:6px!important}   /* 좌우 배치 : 칸 사이 간격 좁게 */
+  .gsheet.cols2 .qgrid .card{padding-left:9px!important;padding-right:9px!important}
+  .gsheet .card{padding-left:12px!important;padding-right:12px!important}
+  .gsheet.cols2 .qgrid .fig svg{max-width:300px!important}
   .gsheet [contenteditable]{outline:none!important}
   .gsheet .card.overridden{box-shadow:none!important}
 }`;
@@ -702,7 +710,7 @@ html,body{margin:0;padding:0;background:#dfe4ea}
 #gsbar .hint{font-size:13px;opacity:.85}
 .wrap{padding:22px 12px 80px}
 ${SHEET_CSS}
-@media print{@page{size:A4;margin:12mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
+@media print{@page{size:A4;margin:12mm 7mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
 </style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1};--cs:${cfg.cs||1}">${bodyHTML(cfg,groups)}</div></div>
 <script>${script}<${'/'}script></body></html>`;
   }

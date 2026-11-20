@@ -167,6 +167,107 @@ function gedGenUnit(u,count,withEx,opts,usedRecs){
   return out;
 }
 
+/* ───────────── 학습지 전체 다시 섞기 · 비슷한 문항 멀리 떼기 ─────────────
+   문항의 '비슷함'(sig) : 문제 종류(kind = 첫 선택 조건) · 정답 · 문제 글.
+   - gedPickSpread : 후보를 여러 번 뽑아 이미 쓴 종류·정답·글과 가장 덜 겹치는 것을 고른다 (순열·조합은 plan 으로 소재·종류를 돌려 쓴다).
+   - gedPlaceFar   : 같은 종류·같은 정답이 가까이 놓이지 않게 자리를 채운다(앞뒤 모두 보고, 이미 자리가 정해진 문항 포함). */
+function gedKindOf(u,params){
+  const f=(u.fields||[]).find(f=>f.sel&&f.k!=='grid'&&f.k!=='dir'&&f.k!=='ask');
+  return f?String(params[f.k]):'';
+}
+function gedSigOf(u,params){
+  const r=gedSafeBuild(u,params);if(!r)return null;
+  return{q:String(r.q||''),ans:String(r.answerTex!==undefined?r.answerTex:(r.answerRaw!==undefined?r.answerRaw:(r.choices&&r.choices[r.ans])||'')),kind:gedKindOf(u,params)};
+}
+function gedPickSpread(u,n,opts,fixed){
+  if(u.plan)return gedGenUnit(u,n,false,opts,fixed).map(r=>r.params);
+  const chosen=(fixed||[]).map(p=>gedSigOf(u,p.params||p)).filter(Boolean);
+  const out=[];
+  for(let i=0;i<n;i++){
+    let best=null,bs=1e9;
+    for(let t=0;t<40;t++){
+      const c=u.rand(opts),sg=gedSigOf(u,c);if(!sg)continue;
+      let pen=0;chosen.forEach(o=>{if(o.q===sg.q)pen+=100;if(o.kind===sg.kind)pen+=10;if(o.ans===sg.ans)pen+=3;});
+      if(pen<bs){bs=pen;best={c,sg};if(pen===0)break;}
+    }
+    if(!best){const c=u.rand(opts);best={c,sg:gedSigOf(u,c)||{q:'',ans:'',kind:gedKindOf(u,c)}};}
+    out.push(best.c);chosen.push(best.sg);
+  }
+  return out;
+}
+/* fixedSigs[i] : 그 자리가 이미 정해져 있으면 sig, 비어 있으면 null. pool : 넣을 항목들 [{sig,...}] (개수 = 빈 자리 수). 빈 자리를 앞에서부터 채운다 */
+function gedPlaceFar(fixedSigs,pool){
+  const N=fixedSigs.length,out=new Array(N).fill(null),rest=pool.slice();
+  const sigAt=i=>out[i]?out[i].sig:fixedSigs[i];
+  const dist=(i,test)=>{for(let d=1;d<N;d++){const a=i-d,b=i+d;
+    if(a>=0){const s=sigAt(a);if(s&&test(s))return d;}
+    if(b<N&&fixedSigs[b]&&test(fixedSigs[b]))return d;}return N+1;};
+  for(let i=0;i<N;i++){
+    if(fixedSigs[i])continue;
+    let bi=-1,bs=-1;
+    const order=rest.map((_,k)=>k).sort(()=>Math.random()-0.5);
+    order.forEach(k=>{const it=rest[k];
+      const sc=Math.min(dist(i,s=>s.q===it.sig.q),50)*10000+Math.min(dist(i,s=>s.kind===it.sig.kind),50)*100+Math.min(dist(i,s=>s.ans===it.sig.ans),50);
+      if(sc>bs){bs=sc;bi=k;}});
+    out[i]=rest.splice(bi,1)[0];
+  }
+  return out;
+}
+/* 글을 고치지 않은 실전 문항의 숫자·유형을 다시 뽑는다. 글을 고쳐 둔 문항과 예제는 그대로 둔다. 돌려주는 값 {problems, rerolled:[key], kept:n} */
+function gedReshuffle(problems,ov,kp){
+  const out=problems.slice(),rerolled=[];let kept=0;const spread=[];
+  GED_UNITS.forEach(u=>{
+    const slots=out.map((p,i)=>i).filter(i=>out[i].uid===u.id&&out[i].idx!==0);
+    if(!slots.length)return;
+    const edited=i=>{const o=ov[out[i].key];return !!(o&&o!=='1');};
+    const free=slots.filter(i=>!edited(i)),fixedRecs=slots.filter(edited).map(i=>out[i]);
+    kept+=fixedRecs.length;
+    const exRec=out.find(p=>p.uid===u.id&&p.idx===0);
+    const fixedForPick=[...(exRec?[exRec]:[]),...fixedRecs];
+    const params=gedPickSpread(u,free.length,kp,u.plan?[...spread,...fixedForPick]:fixedForPick);
+    const pool=params.map(p=>({params:p,sig:gedSigOf(u,p)||{q:'',ans:'',kind:gedKindOf(u,p)}}));
+    const fixedSigs=slots.map(i=>edited(i)?(gedSigOf(u,out[i].params)||{q:'',ans:'',kind:''}):null);
+    const placed=gedPlaceFar(fixedSigs,pool);
+    slots.forEach((i,k)=>{if(edited(i))return;const it=placed[k];
+      out[i]={...out[i],params:it.params,override:null,rev:(out[i].rev||0)+1};rerolled.push(out[i].key);});
+    if(u.plan)spread.push(...slots.map(i=>out[i]));
+  });
+  return{problems:out,rerolled,kept};
+}
+/* 문항은 그대로 두고 자리만 바꿔 같은 종류·같은 정답이 가까이 놓이지 않게 한다 (글을 고친 문항도 통째로 옮긴다) */
+function gedSpreadOrder(problems){
+  const out=problems.slice();
+  GED_UNITS.forEach(u=>{
+    const slots=out.map((p,i)=>i).filter(i=>out[i].uid===u.id&&out[i].idx!==0);
+    if(slots.length<3)return;
+    const pool=slots.map(i=>({rec:out[i],sig:gedSigOf(u,out[i].params)||{q:'',ans:'',kind:gedKindOf(u,out[i].params)}}));
+    const placed=gedPlaceFar(slots.map(()=>null),pool);
+    slots.forEach((i,k)=>{out[i]=placed[k].rec;});
+  });
+  return out;
+}
+/* 학습지 안 '격자(모눈) 있음/없음' 조건이 있는 모든 문항(원의 방정식 · 핵심 점 찍기) :
+   'exam' = 없음 · 'grid' = 있음 · 'rand' = 절반씩 무작위. 유형마다 선택지 글이 다르므로 '없음'이 들어 있는 선택지를 없음으로 읽는다.
+   글을 고쳐 둔 원의 방정식 카드는 그림만 바꾸고, 그림 구성이 다른 다른 유형의 고친 카드는 건드리지 않는다(skipped). */
+function gedGridAssign(problems,mode,ov){
+  const optsOf=u=>{const f=u.fields.find(f=>f.k==='grid');return{none:f.sel.find(o=>o.indexOf('없음')>=0),has:f.sel.find(o=>o.indexOf('없음')<0)};};
+  const idxs=problems.map((p,i)=>i).filter(i=>{const u=GED_UNITS.find(x=>x.id===problems[i].uid);return u&&u.fields.some(f=>f.k==='grid');});
+  const wantNone=mode==='rand'?idxs.map((_,k)=>k%2===0).sort(()=>Math.random()-0.5):idxs.map(()=>mode==='exam');
+  const out=problems.slice();let changed=0,skipped=0;
+  idxs.forEach((i,k)=>{
+    const p=out[i],u=GED_UNITS.find(x=>x.id===p.uid),o2=optsOf(u),g=wantNone[k]?o2.none:o2.has;
+    if(p.params.grid===g)return;
+    const o=ov[p.key];
+    if(o&&o!=='1'){
+      if(p.uid!=='u13'){skipped++;return;}
+      const params={...p.params,grid:g},fg=gedBuildFig(p.uid,params);if(fg)ov[p.key]=gedSwapFig(o,fg);
+      out[i]={...p,params,rev:(p.rev||0)+1};changed++;return;
+    }
+    out[i]={...p,params:{...p.params,grid:g},override:null,rev:(p.rev||0)+1};changed++;
+  });
+  return{problems:out,total:idxs.length,changed,skipped};
+}
+
 /* 문항 목록 → 유형별 묶음 + 실전 문항 번호 매기기 */
 function gedGroups(problems){
   const gs=[];let no=0;
@@ -343,6 +444,16 @@ function GedSheetView({sheet,seq,busy,ops}){
         <Btn on={cfg.format==='open'} onClick={()=>setCfg({format:cfg.format==='open'?'choice':'open'})}>{cfg.format==='open'?'서술형':'사지선다'}</Btn>
         <label className="flex items-center gap-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl px-3" style={{minHeight:'40px'}}>전체 글자
           <input type="range" min="16" max="40" value={cfg.fs} onChange={e=>setCfg({fs:+e.target.value})} style={{width:90,minHeight:0}}/>{cfg.fs}px</label>
+      </div>
+      {/* ── 학습지 전체에 한 번에 : 그림 모양 · 다시 섞기 · 비슷한 문항 떼기 ── */}
+      <div className="flex flex-wrap gap-2 items-center mt-2 bg-indigo-50 rounded-2xl px-2 py-2">
+        <span className="text-[11px] font-black text-indigo-700 px-1">전체 한 번에</span>
+        {problems.some(p=>{const u=GED_UNITS.find(x=>x.id===p.uid);return u&&u.fields.some(f=>f.k==='grid');})&&<>
+          <Btn onClick={()=>ops.setAllGrid(id,'exam')}>◯ 전체 격자 없음</Btn>
+          <Btn onClick={()=>ops.setAllGrid(id,'grid')}>▦ 전체 격자 있음</Btn>
+          <Btn onClick={()=>ops.setAllGrid(id,'rand')}>🎲 격자 랜덤</Btn></>}
+        <Btn onClick={()=>ops.reshuffle(id)}>🔀 숫자·유형 다시 섞기</Btn>
+        <Btn onClick={()=>ops.spreadOrder(id)}>↕ 비슷한 문항 멀리 떼기</Btn>
       </div>
       {/* 글자 크기 : 문제 글 / 숫자·수식 따로 — 인쇄·PDF에도 그대로 반영된다 */}
       <div className="flex flex-col gap-1.5 mt-2">
@@ -651,7 +762,31 @@ function GedWorksheetTab(){
     putCLib(uid,null);
   };
 
-  const ops={setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset,cLibHas};
+  const setAllGrid=(id,mode)=>{
+    const s=getSheet(id);if(!s)return;
+    const r=gedGridAssign(s.problems,mode,ovRef.current);
+    if(!r.total){showToast('격자 있음/없음을 고를 수 있는 문항(원의 방정식 · 핵심 점 찍기)이 없습니다.');return;}
+    patchSheet(id,sh=>({...sh,problems:r.problems}));
+    r.problems.forEach(p=>{if(p.override===null)delete ovRef.current[p.key];});
+    const sk=r.skipped?` (글을 고쳐 둔 ${r.skipped}개는 그대로)`:'';
+    showToast((mode==='exam'?`◯ ${r.total}문항을 모두 격자 없음으로 바꿨습니다.`:mode==='grid'?`▦ ${r.total}문항을 모두 격자 있음으로 바꿨습니다.`:`🎲 ${r.total}문항에 격자 있음/없음을 절반씩 섞어 넣었습니다.`)+sk);
+  };
+  const reshuffle=id=>{
+    const s=getSheet(id);if(!s)return;
+    const cnt=s.problems.filter(p=>p.idx!==0).length;if(!cnt)return;
+    const ed=s.problems.filter(p=>p.idx!==0&&ovRef.current[p.key]&&ovRef.current[p.key]!=='1').length;
+    if(!confirm(`이 학습지 실전 문항 ${cnt}개의 숫자·유형을 다시 뽑습니다.\n서로 겹치지 않게 뽑고, 비슷한 문항은 번호가 멀리 떨어지게 놓습니다.${ed?`\n(글을 고쳐 둔 ${ed}개와 예제는 그대로 둡니다)`:''}\n계속할까요?`))return;
+    const r=gedReshuffle(s.problems,ovRef.current,s.cfg.kp);
+    r.rerolled.forEach(k=>delete ovRef.current[k]);
+    patchSheet(id,sh=>({...sh,problems:r.problems}));
+    showToast(`🔀 ${r.rerolled.length}문항을 다시 뽑았습니다.${r.kept?` (글을 고친 ${r.kept}개는 그대로)`:''}`);
+  };
+  const spreadOrder=id=>{
+    const s=getSheet(id);if(!s)return;
+    patchSheet(id,sh=>({...sh,problems:gedSpreadOrder(sh.problems)}));
+    showToast('↕ 같은 종류·같은 정답인 문항이 가까이 놓이지 않게 번호 자리를 옮겼습니다.');
+  };
+  const ops={setAllGrid,reshuffle,spreadOrder,setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset,cLibHas};
   const Btn=({on,children,...rest})=><button {...rest} className={`px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap ${on?'bg-indigo-600 text-white':'bg-gray-100 text-gray-700'}`} style={{minHeight:'40px'}}>{children}</button>;
 
   return<div className="p-4 space-y-4 fade-in">

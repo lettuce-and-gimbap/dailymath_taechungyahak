@@ -1733,7 +1733,8 @@ var GED_UNITS=(function(){
       const xmin=Math.floor(Math.min(0,xi,Fx))-1,xmax=Math.ceil(Math.max(0,xi,Fx))+1,ymin=Math.floor(Math.min(0,yi,Fy))-1,ymax=Math.ceil(Math.max(0,yi,Fy))+1;
       const len=Math.sqrt(Fx*Fx+Fy*Fy);const u=[-Fx/len,-Fy/len],v=[b/5,-a/5];
       const items=[{t:'fn',f:x=>(-a*x-c)/b},{t:'seg',x1:0,y1:0,x2:Fx,y2:Fy,color:RED,dash:'8 6',width:3.4},{t:'rangle',x:Fx,y:Fy,u,v},{t:'pt',x:Fx,y:Fy,r:6},
-        {t:'text',x:xi+0.3,y:yi*0.5+0.3,s:line.replace('=0','=0'),size:18}];
+        /* 직선 이름 글자 : 오른쪽 끝을 넘으면 안쪽으로 당겨 오른쪽 정렬한다 (그림 밖으로 잘리지 않게) */
+        {t:'text',x:(xi+0.3+line.length*0.3>xmax-0.1)?xmax-0.1:xi+0.3,y:yi*0.5+0.3,s:line.replace('=0','=0'),size:18,anchor:(xi+0.3+line.length*0.3>xmax-0.1)?'end':'start'}];
       const figure=fig(planeSVG({xmin,xmax,ymin,ymax,s:34,maxW:420},items));
       const sol=[`공식에 넣습니다 : ${tex(`\\dfrac{|${nf(c)}|}{\\sqrt{${nf(a)}^2+${nf(b)}^2}}`)}`,
         `${tex(`=\\dfrac{${nf(Math.abs(c))}}{\\sqrt{${nf(a*a)}+${nf(b*b)}}}=\\dfrac{${nf(Math.abs(c))}}{5}=${nf(p.d)}`)} (그림의 빨간 점선 길이)`];

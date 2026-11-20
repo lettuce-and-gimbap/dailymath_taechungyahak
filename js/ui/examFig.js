@@ -18,17 +18,20 @@ var EXF_SANS="'Noto Sans KR',sans-serif";
 function exfMath(str,size){
   const esc=c=>c==='<'?'&lt;':c==='>'?'&gt;':c==='&'?'&amp;':c;
   let s=String(str).replace(/−/g,'−');
-  let o='';
+  let o='',rs=0;
+  /* 위첨자(지수) 뒤에는 글자 높이를 되돌려야 한다. 빈 tspan 의 dy 는 렌더러마다 무시되므로(지수 뒤 글자가 위로 뜨던 문제),
+     되돌림 dy 를 '그다음에 나오는 글자'의 tspan 에 얹는다. */
+  const emit=h=>{if(rs){o+=`<tspan dy="${rs}">${h}</tspan>`;rs=0;}else o+=h;};
   for(let i=0;i<s.length;i++){
     const c=s[i];
     if(c==='^'){const m=s.slice(i+1).match(/^(\{[^}]*\}|-?\d+)/);if(m){const t=m[1].replace(/[{}]/g,'');
-      o+=`<tspan dy="${-size*0.42}" font-size="${size*0.68}">${t.replace(/-/g,'−')}</tspan><tspan dy="${size*0.42}"></tspan>`;i+=m[1].length;continue;}}
+      emit(`<tspan dy="${-size*0.42}" font-size="${size*0.68}">${t.replace(/-/g,'−')}</tspan>`);rs=size*0.42;i+=m[1].length;continue;}}
     if(c==='√'){
       let body='';if(s[i+1]==='('){let d=0,j=i+1;for(;j<s.length;j++){if(s[j]==='(')d++;else if(s[j]===')'){d--;if(!d)break;}}body=s.slice(i+2,j);i=j;}
       else{const m=s.slice(i+1).match(/^(\d+|[a-z])/);body=m?m[1]:'';i+=body.length;}
-      o+=`<tspan font-style="normal">√</tspan><tspan text-decoration="overline">${body.split('').map(ch=>/[a-z]/.test(ch)?`<tspan font-style="italic">${ch}</tspan>`:esc(ch==='-'?'−':ch)).join('')}</tspan>`;continue;}
-    if(/[a-zA-Z]/.test(c)&&!/[A-Z]/.test(c))o+=`<tspan font-style="italic">${c}</tspan>`;
-    else o+=esc(c==='-'?'−':c);
+      emit(`<tspan font-style="normal">√</tspan><tspan text-decoration="overline">${body.split('').map(ch=>/[a-z]/.test(ch)?`<tspan font-style="italic">${ch}</tspan>`:esc(ch==='-'?'−':ch)).join('')}</tspan>`);continue;}
+    if(/[a-zA-Z]/.test(c)&&!/[A-Z]/.test(c))emit(`<tspan font-style="italic">${c}</tspan>`);
+    else emit(esc(c==='-'?'−':c));
   }
   return o;
 }

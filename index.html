@@ -6494,7 +6494,7 @@ var GS=(function(){
 .gsheet .qno{display:inline-block;background:var(--ink);color:#fff;border-radius:10px;padding:1px 13px;margin-right:10px;font-size:.76em}
 .gsheet .card.ex .qno{background:var(--navy)}
 .gsheet .qtext{margin:4px 0 10px;font-size:calc(var(--qs,1)*1em)}
-.gsheet .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;margin:8px 0 6px 6px;font-size:calc(var(--qs,1)*.95em)}
+.gsheet .choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,14em),1fr));gap:6px 22px;margin:8px 0 6px 6px;font-size:calc(var(--qs,1)*.95em)}
 .gsheet .choices.one{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px 34px}
 .gsheet .choices .cs{display:inline-block;vertical-align:middle;width:230px;max-width:80%}
 .gsheet .choices .cs svg{width:100%;height:auto}
@@ -6513,8 +6513,14 @@ var GS=(function(){
 /* [숫자·수식 크기] : --ms 배율. 수식(KaTeX)과 글 속 맨 숫자(.nm)가 같이 커진다 */
 .gsheet .katex{font-size:calc(var(--ms,1)*1.05em)!important}
 .gsheet .nm{font-size:calc(var(--ms,1)*1em);line-height:1}
-.gsheet.cols2 .qgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;align-items:start}
+.gsheet.cols2 .qgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:18px;align-items:start}
+.gsheet .qgrid>.card,.gsheet .card .gen{min-width:0;max-width:100%}
+.gsheet .choices .cs svg,.gsheet .fig-svg{max-width:100%!important;height:auto}
+.gsheet .qtext,.gsheet .choices{overflow-wrap:anywhere}
 .gsheet.cols2 .qgrid .card{font-size:.8em;padding:12px 14px 14px}
+/* 2단은 칸이 좁아서 수식이 칸을 넘기 쉽다 — 숫자·수식 배율은 2단 안에서 1.15배까지만 키운다(식이 잘리지 않게) */
+.gsheet.cols2 .qgrid .katex{font-size:calc(min(var(--ms,1),1.15)*1.05em)!important}
+.gsheet.cols2 .qgrid .nm{font-size:calc(min(var(--ms,1),1.15)*1em)}
 .gsheet.cols2 .qgrid .fig svg{max-width:300px!important}
 .gsheet.edit [contenteditable=true]{outline:2px dashed #e8a33c;outline-offset:3px;border-radius:6px}
 .gsheet.edit [contenteditable=true]:focus{outline-color:#c0272d;background:#fffdf5}
@@ -6550,8 +6556,10 @@ var GS=(function(){
   .gsheet mark,.gsheet [style*="color"],.gsheet font,.gsheet .cex,.gsheet .ctip,.gsheet .cwarn,.gsheet .kw,.gsheet .cexa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .gsheet .card{page-break-inside:avoid!important;break-inside:avoid!important}
   .gsheet .fig svg{max-width:440px!important}
-  .gsheet.cols2 .qgrid{display:grid!important;grid-template-columns:1fr 1fr!important;column-gap:14px!important}
-  .gsheet.cols2 .qgrid .fig svg{max-width:280px!important}
+  .gsheet.cols2 .qgrid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;column-gap:6px!important}   /* 좌우 배치 : 칸 사이 간격 좁게 */
+  .gsheet.cols2 .qgrid .card{padding-left:9px!important;padding-right:9px!important}
+  .gsheet .card{padding-left:12px!important;padding-right:12px!important}
+  .gsheet.cols2 .qgrid .fig svg{max-width:300px!important}
   .gsheet [contenteditable]{outline:none!important}
   .gsheet .card.overridden{box-shadow:none!important}
 }`;
@@ -6599,7 +6607,7 @@ html,body{margin:0;padding:0;background:#dfe4ea}
 #gsbar .hint{font-size:13px;opacity:.85}
 .wrap{padding:22px 12px 80px}
 ${SHEET_CSS}
-@media print{@page{size:A4;margin:12mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
+@media print{@page{size:A4;margin:12mm 7mm}html,body{background:#fff!important}#gsbar{display:none!important}.wrap{padding:0}}
 </style></head><body>${bar}<div class="wrap"><div class="${cls}" style="--fs:${cfg.fs||24}px;--qs:${cfg.qs||1};--ms:${cfg.ms||1};--cs:${cfg.cs||1}">${bodyHTML(cfg,groups)}</div></div>
 <script>${script}<${'/'}script></body></html>`;
   }
@@ -8751,7 +8759,8 @@ var GED_UNITS=(function(){
       const xmin=Math.floor(Math.min(0,xi,Fx))-1,xmax=Math.ceil(Math.max(0,xi,Fx))+1,ymin=Math.floor(Math.min(0,yi,Fy))-1,ymax=Math.ceil(Math.max(0,yi,Fy))+1;
       const len=Math.sqrt(Fx*Fx+Fy*Fy);const u=[-Fx/len,-Fy/len],v=[b/5,-a/5];
       const items=[{t:'fn',f:x=>(-a*x-c)/b},{t:'seg',x1:0,y1:0,x2:Fx,y2:Fy,color:RED,dash:'8 6',width:3.4},{t:'rangle',x:Fx,y:Fy,u,v},{t:'pt',x:Fx,y:Fy,r:6},
-        {t:'text',x:xi+0.3,y:yi*0.5+0.3,s:line.replace('=0','=0'),size:18}];
+        /* 직선 이름 글자 : 오른쪽 끝을 넘으면 안쪽으로 당겨 오른쪽 정렬한다 (그림 밖으로 잘리지 않게) */
+        {t:'text',x:(xi+0.3+line.length*0.3>xmax-0.1)?xmax-0.1:xi+0.3,y:yi*0.5+0.3,s:line.replace('=0','=0'),size:18,anchor:(xi+0.3+line.length*0.3>xmax-0.1)?'end':'start'}];
       const figure=fig(planeSVG({xmin,xmax,ymin,ymax,s:34,maxW:420},items));
       const sol=[`공식에 넣습니다 : ${tex(`\\dfrac{|${nf(c)}|}{\\sqrt{${nf(a)}^2+${nf(b)}^2}}`)}`,
         `${tex(`=\\dfrac{${nf(Math.abs(c))}}{\\sqrt{${nf(a*a)}+${nf(b*b)}}}=\\dfrac{${nf(Math.abs(c))}}{5}=${nf(p.d)}`)} (그림의 빨간 점선 길이)`];
@@ -10112,17 +10121,20 @@ var EXF_SANS="'Noto Sans KR',sans-serif";
 function exfMath(str,size){
   const esc=c=>c==='<'?'&lt;':c==='>'?'&gt;':c==='&'?'&amp;':c;
   let s=String(str).replace(/−/g,'−');
-  let o='';
+  let o='',rs=0;
+  /* 위첨자(지수) 뒤에는 글자 높이를 되돌려야 한다. 빈 tspan 의 dy 는 렌더러마다 무시되므로(지수 뒤 글자가 위로 뜨던 문제),
+     되돌림 dy 를 '그다음에 나오는 글자'의 tspan 에 얹는다. */
+  const emit=h=>{if(rs){o+=`<tspan dy="${rs}">${h}</tspan>`;rs=0;}else o+=h;};
   for(let i=0;i<s.length;i++){
     const c=s[i];
     if(c==='^'){const m=s.slice(i+1).match(/^(\{[^}]*\}|-?\d+)/);if(m){const t=m[1].replace(/[{}]/g,'');
-      o+=`<tspan dy="${-size*0.42}" font-size="${size*0.68}">${t.replace(/-/g,'−')}</tspan><tspan dy="${size*0.42}"></tspan>`;i+=m[1].length;continue;}}
+      emit(`<tspan dy="${-size*0.42}" font-size="${size*0.68}">${t.replace(/-/g,'−')}</tspan>`);rs=size*0.42;i+=m[1].length;continue;}}
     if(c==='√'){
       let body='';if(s[i+1]==='('){let d=0,j=i+1;for(;j<s.length;j++){if(s[j]==='(')d++;else if(s[j]===')'){d--;if(!d)break;}}body=s.slice(i+2,j);i=j;}
       else{const m=s.slice(i+1).match(/^(\d+|[a-z])/);body=m?m[1]:'';i+=body.length;}
-      o+=`<tspan font-style="normal">√</tspan><tspan text-decoration="overline">${body.split('').map(ch=>/[a-z]/.test(ch)?`<tspan font-style="italic">${ch}</tspan>`:esc(ch==='-'?'−':ch)).join('')}</tspan>`;continue;}
-    if(/[a-zA-Z]/.test(c)&&!/[A-Z]/.test(c))o+=`<tspan font-style="italic">${c}</tspan>`;
-    else o+=esc(c==='-'?'−':c);
+      emit(`<tspan font-style="normal">√</tspan><tspan text-decoration="overline">${body.split('').map(ch=>/[a-z]/.test(ch)?`<tspan font-style="italic">${ch}</tspan>`:esc(ch==='-'?'−':ch)).join('')}</tspan>`);continue;}
+    if(/[a-zA-Z]/.test(c)&&!/[A-Z]/.test(c))emit(`<tspan font-style="italic">${c}</tspan>`);
+    else emit(esc(c==='-'?'−':c));
   }
   return o;
 }
@@ -18861,6 +18873,107 @@ function gedGenUnit(u,count,withEx,opts,usedRecs){
   return out;
 }
 
+/* ───────────── 학습지 전체 다시 섞기 · 비슷한 문항 멀리 떼기 ─────────────
+   문항의 '비슷함'(sig) : 문제 종류(kind = 첫 선택 조건) · 정답 · 문제 글.
+   - gedPickSpread : 후보를 여러 번 뽑아 이미 쓴 종류·정답·글과 가장 덜 겹치는 것을 고른다 (순열·조합은 plan 으로 소재·종류를 돌려 쓴다).
+   - gedPlaceFar   : 같은 종류·같은 정답이 가까이 놓이지 않게 자리를 채운다(앞뒤 모두 보고, 이미 자리가 정해진 문항 포함). */
+function gedKindOf(u,params){
+  const f=(u.fields||[]).find(f=>f.sel&&f.k!=='grid'&&f.k!=='dir'&&f.k!=='ask');
+  return f?String(params[f.k]):'';
+}
+function gedSigOf(u,params){
+  const r=gedSafeBuild(u,params);if(!r)return null;
+  return{q:String(r.q||''),ans:String(r.answerTex!==undefined?r.answerTex:(r.answerRaw!==undefined?r.answerRaw:(r.choices&&r.choices[r.ans])||'')),kind:gedKindOf(u,params)};
+}
+function gedPickSpread(u,n,opts,fixed){
+  if(u.plan)return gedGenUnit(u,n,false,opts,fixed).map(r=>r.params);
+  const chosen=(fixed||[]).map(p=>gedSigOf(u,p.params||p)).filter(Boolean);
+  const out=[];
+  for(let i=0;i<n;i++){
+    let best=null,bs=1e9;
+    for(let t=0;t<40;t++){
+      const c=u.rand(opts),sg=gedSigOf(u,c);if(!sg)continue;
+      let pen=0;chosen.forEach(o=>{if(o.q===sg.q)pen+=100;if(o.kind===sg.kind)pen+=10;if(o.ans===sg.ans)pen+=3;});
+      if(pen<bs){bs=pen;best={c,sg};if(pen===0)break;}
+    }
+    if(!best){const c=u.rand(opts);best={c,sg:gedSigOf(u,c)||{q:'',ans:'',kind:gedKindOf(u,c)}};}
+    out.push(best.c);chosen.push(best.sg);
+  }
+  return out;
+}
+/* fixedSigs[i] : 그 자리가 이미 정해져 있으면 sig, 비어 있으면 null. pool : 넣을 항목들 [{sig,...}] (개수 = 빈 자리 수). 빈 자리를 앞에서부터 채운다 */
+function gedPlaceFar(fixedSigs,pool){
+  const N=fixedSigs.length,out=new Array(N).fill(null),rest=pool.slice();
+  const sigAt=i=>out[i]?out[i].sig:fixedSigs[i];
+  const dist=(i,test)=>{for(let d=1;d<N;d++){const a=i-d,b=i+d;
+    if(a>=0){const s=sigAt(a);if(s&&test(s))return d;}
+    if(b<N&&fixedSigs[b]&&test(fixedSigs[b]))return d;}return N+1;};
+  for(let i=0;i<N;i++){
+    if(fixedSigs[i])continue;
+    let bi=-1,bs=-1;
+    const order=rest.map((_,k)=>k).sort(()=>Math.random()-0.5);
+    order.forEach(k=>{const it=rest[k];
+      const sc=Math.min(dist(i,s=>s.q===it.sig.q),50)*10000+Math.min(dist(i,s=>s.kind===it.sig.kind),50)*100+Math.min(dist(i,s=>s.ans===it.sig.ans),50);
+      if(sc>bs){bs=sc;bi=k;}});
+    out[i]=rest.splice(bi,1)[0];
+  }
+  return out;
+}
+/* 글을 고치지 않은 실전 문항의 숫자·유형을 다시 뽑는다. 글을 고쳐 둔 문항과 예제는 그대로 둔다. 돌려주는 값 {problems, rerolled:[key], kept:n} */
+function gedReshuffle(problems,ov,kp){
+  const out=problems.slice(),rerolled=[];let kept=0;const spread=[];
+  GED_UNITS.forEach(u=>{
+    const slots=out.map((p,i)=>i).filter(i=>out[i].uid===u.id&&out[i].idx!==0);
+    if(!slots.length)return;
+    const edited=i=>{const o=ov[out[i].key];return !!(o&&o!=='1');};
+    const free=slots.filter(i=>!edited(i)),fixedRecs=slots.filter(edited).map(i=>out[i]);
+    kept+=fixedRecs.length;
+    const exRec=out.find(p=>p.uid===u.id&&p.idx===0);
+    const fixedForPick=[...(exRec?[exRec]:[]),...fixedRecs];
+    const params=gedPickSpread(u,free.length,kp,u.plan?[...spread,...fixedForPick]:fixedForPick);
+    const pool=params.map(p=>({params:p,sig:gedSigOf(u,p)||{q:'',ans:'',kind:gedKindOf(u,p)}}));
+    const fixedSigs=slots.map(i=>edited(i)?(gedSigOf(u,out[i].params)||{q:'',ans:'',kind:''}):null);
+    const placed=gedPlaceFar(fixedSigs,pool);
+    slots.forEach((i,k)=>{if(edited(i))return;const it=placed[k];
+      out[i]={...out[i],params:it.params,override:null,rev:(out[i].rev||0)+1};rerolled.push(out[i].key);});
+    if(u.plan)spread.push(...slots.map(i=>out[i]));
+  });
+  return{problems:out,rerolled,kept};
+}
+/* 문항은 그대로 두고 자리만 바꿔 같은 종류·같은 정답이 가까이 놓이지 않게 한다 (글을 고친 문항도 통째로 옮긴다) */
+function gedSpreadOrder(problems){
+  const out=problems.slice();
+  GED_UNITS.forEach(u=>{
+    const slots=out.map((p,i)=>i).filter(i=>out[i].uid===u.id&&out[i].idx!==0);
+    if(slots.length<3)return;
+    const pool=slots.map(i=>({rec:out[i],sig:gedSigOf(u,out[i].params)||{q:'',ans:'',kind:gedKindOf(u,out[i].params)}}));
+    const placed=gedPlaceFar(slots.map(()=>null),pool);
+    slots.forEach((i,k)=>{out[i]=placed[k].rec;});
+  });
+  return out;
+}
+/* 학습지 안 '격자(모눈) 있음/없음' 조건이 있는 모든 문항(원의 방정식 · 핵심 점 찍기) :
+   'exam' = 없음 · 'grid' = 있음 · 'rand' = 절반씩 무작위. 유형마다 선택지 글이 다르므로 '없음'이 들어 있는 선택지를 없음으로 읽는다.
+   글을 고쳐 둔 원의 방정식 카드는 그림만 바꾸고, 그림 구성이 다른 다른 유형의 고친 카드는 건드리지 않는다(skipped). */
+function gedGridAssign(problems,mode,ov){
+  const optsOf=u=>{const f=u.fields.find(f=>f.k==='grid');return{none:f.sel.find(o=>o.indexOf('없음')>=0),has:f.sel.find(o=>o.indexOf('없음')<0)};};
+  const idxs=problems.map((p,i)=>i).filter(i=>{const u=GED_UNITS.find(x=>x.id===problems[i].uid);return u&&u.fields.some(f=>f.k==='grid');});
+  const wantNone=mode==='rand'?idxs.map((_,k)=>k%2===0).sort(()=>Math.random()-0.5):idxs.map(()=>mode==='exam');
+  const out=problems.slice();let changed=0,skipped=0;
+  idxs.forEach((i,k)=>{
+    const p=out[i],u=GED_UNITS.find(x=>x.id===p.uid),o2=optsOf(u),g=wantNone[k]?o2.none:o2.has;
+    if(p.params.grid===g)return;
+    const o=ov[p.key];
+    if(o&&o!=='1'){
+      if(p.uid!=='u13'){skipped++;return;}
+      const params={...p.params,grid:g},fg=gedBuildFig(p.uid,params);if(fg)ov[p.key]=gedSwapFig(o,fg);
+      out[i]={...p,params,rev:(p.rev||0)+1};changed++;return;
+    }
+    out[i]={...p,params:{...p.params,grid:g},override:null,rev:(p.rev||0)+1};changed++;
+  });
+  return{problems:out,total:idxs.length,changed,skipped};
+}
+
 /* 문항 목록 → 유형별 묶음 + 실전 문항 번호 매기기 */
 function gedGroups(problems){
   const gs=[];let no=0;
@@ -19037,6 +19150,16 @@ function GedSheetView({sheet,seq,busy,ops}){
         <Btn on={cfg.format==='open'} onClick={()=>setCfg({format:cfg.format==='open'?'choice':'open'})}>{cfg.format==='open'?'서술형':'사지선다'}</Btn>
         <label className="flex items-center gap-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl px-3" style={{minHeight:'40px'}}>전체 글자
           <input type="range" min="16" max="40" value={cfg.fs} onChange={e=>setCfg({fs:+e.target.value})} style={{width:90,minHeight:0}}/>{cfg.fs}px</label>
+      </div>
+      {/* ── 학습지 전체에 한 번에 : 그림 모양 · 다시 섞기 · 비슷한 문항 떼기 ── */}
+      <div className="flex flex-wrap gap-2 items-center mt-2 bg-indigo-50 rounded-2xl px-2 py-2">
+        <span className="text-[11px] font-black text-indigo-700 px-1">전체 한 번에</span>
+        {problems.some(p=>{const u=GED_UNITS.find(x=>x.id===p.uid);return u&&u.fields.some(f=>f.k==='grid');})&&<>
+          <Btn onClick={()=>ops.setAllGrid(id,'exam')}>◯ 전체 격자 없음</Btn>
+          <Btn onClick={()=>ops.setAllGrid(id,'grid')}>▦ 전체 격자 있음</Btn>
+          <Btn onClick={()=>ops.setAllGrid(id,'rand')}>🎲 격자 랜덤</Btn></>}
+        <Btn onClick={()=>ops.reshuffle(id)}>🔀 숫자·유형 다시 섞기</Btn>
+        <Btn onClick={()=>ops.spreadOrder(id)}>↕ 비슷한 문항 멀리 떼기</Btn>
       </div>
       {/* 글자 크기 : 문제 글 / 숫자·수식 따로 — 인쇄·PDF에도 그대로 반영된다 */}
       <div className="flex flex-col gap-1.5 mt-2">
@@ -19345,7 +19468,31 @@ function GedWorksheetTab(){
     putCLib(uid,null);
   };
 
-  const ops={setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset,cLibHas};
+  const setAllGrid=(id,mode)=>{
+    const s=getSheet(id);if(!s)return;
+    const r=gedGridAssign(s.problems,mode,ovRef.current);
+    if(!r.total){showToast('격자 있음/없음을 고를 수 있는 문항(원의 방정식 · 핵심 점 찍기)이 없습니다.');return;}
+    patchSheet(id,sh=>({...sh,problems:r.problems}));
+    r.problems.forEach(p=>{if(p.override===null)delete ovRef.current[p.key];});
+    const sk=r.skipped?` (글을 고쳐 둔 ${r.skipped}개는 그대로)`:'';
+    showToast((mode==='exam'?`◯ ${r.total}문항을 모두 격자 없음으로 바꿨습니다.`:mode==='grid'?`▦ ${r.total}문항을 모두 격자 있음으로 바꿨습니다.`:`🎲 ${r.total}문항에 격자 있음/없음을 절반씩 섞어 넣었습니다.`)+sk);
+  };
+  const reshuffle=id=>{
+    const s=getSheet(id);if(!s)return;
+    const cnt=s.problems.filter(p=>p.idx!==0).length;if(!cnt)return;
+    const ed=s.problems.filter(p=>p.idx!==0&&ovRef.current[p.key]&&ovRef.current[p.key]!=='1').length;
+    if(!confirm(`이 학습지 실전 문항 ${cnt}개의 숫자·유형을 다시 뽑습니다.\n서로 겹치지 않게 뽑고, 비슷한 문항은 번호가 멀리 떨어지게 놓습니다.${ed?`\n(글을 고쳐 둔 ${ed}개와 예제는 그대로 둡니다)`:''}\n계속할까요?`))return;
+    const r=gedReshuffle(s.problems,ovRef.current,s.cfg.kp);
+    r.rerolled.forEach(k=>delete ovRef.current[k]);
+    patchSheet(id,sh=>({...sh,problems:r.problems}));
+    showToast(`🔀 ${r.rerolled.length}문항을 다시 뽑았습니다.${r.kept?` (글을 고친 ${r.kept}개는 그대로)`:''}`);
+  };
+  const spreadOrder=id=>{
+    const s=getSheet(id);if(!s)return;
+    patchSheet(id,sh=>({...sh,problems:gedSpreadOrder(sh.problems)}));
+    showToast('↕ 같은 종류·같은 정답인 문항이 가까이 놓이지 않게 번호 자리를 옮겼습니다.');
+  };
+  const ops={setAllGrid,reshuffle,spreadOrder,setCfg,setUI,toggle,removeSheet,saveCloud,openDoc,exportJSON,onParam,onRandom,onRemoveProb,onRevert,addProblem,removeUnit,onOverride,getOverride,onConceptEdit,onConceptReset,cLibHas};
   const Btn=({on,children,...rest})=><button {...rest} className={`px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap ${on?'bg-indigo-600 text-white':'bg-gray-100 text-gray-700'}`} style={{minHeight:'40px'}}>{children}</button>;
 
   return<div className="p-4 space-y-4 fade-in">
