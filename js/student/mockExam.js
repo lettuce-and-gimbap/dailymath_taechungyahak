@@ -141,6 +141,7 @@ function MockExamTab({userData,onUpdate}){
     if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
     else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
     const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
+    dealReset();   // 한 회 안에서 경우의 수 소재·종류가 겹치지 않게 (generators/shared.js dealPick)
     const usedQ=new Set();
     const addQuestion=(dom,allowDuplicate)=>{
       const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;

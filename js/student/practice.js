@@ -497,7 +497,7 @@ function NumPadInput({q,ans,setAns,activeField,setActiveField,onConfirmRequest,h
 function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax,userData,onUpdate,onBack}){
   const seenQKeysRef = React.useRef(new Set());
   const verTopic=session.verTopic||null;
-  const[q,setQ]=useState(()=>makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current,verTopic));
+  const[q,setQ]=useState(()=>{dealReset();return makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current,verTopic);});   // 새 묶음 : 경우의 수 소재·종류 겹침 기록 비우기
   const[ans,setAns]=useState({ansQ:'',ansR:'',ansDiv:'',ansCount:''});
   const[fb,setFb]=useState(null);
   const[selMC,setSelMC]=useState(null);

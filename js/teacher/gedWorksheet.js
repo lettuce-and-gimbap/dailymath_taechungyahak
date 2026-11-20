@@ -119,14 +119,16 @@ function gedSheetId(){return 's'+Date.now().toString(36)+Math.random().toString(
 /* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
    opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다) */
 /* 겹치지 않게 나눠 뽑기 : pool 의 값을 count 번 뽑되, 모든 값이 한 번씩 나오기 전에는 같은 값을 다시 뽑지 않는다
-   (count 가 pool 보다 많아지면 그다음 바퀴를 돈다). used = 이미 쓴 값들(예제 · 먼저 만든 카드 · 앞 유형) */
-function gedSpread(count,pool,used){
+   (count 가 pool 보다 많아지면 그다음 바퀴를 돈다 = 어쩔 수 없을 때만 최소한으로 겹친다). used = 이미 쓴 값들(예제 · 먼저 만든 카드 · 앞 유형) */
+function gedSpread(count,pool,used,prefer){
   const cnt=new Map(pool.map(v=>[v,0]));
   (used||[]).forEach(v=>{if(cnt.has(v))cnt.set(v,cnt.get(v)+1);});
   const out=[];
   for(let i=0;i<count;i++){
     const min=Math.min(...cnt.values());
-    const cand=pool.filter(v=>cnt.get(v)===min);
+    let cand=pool.filter(v=>cnt.get(v)===min);
+    const pref=prefer?cand.filter(v=>prefer.includes(v)):[];     // 같은 횟수끼리는 prefer(기출에 나온 것)를 먼저
+    if(pref.length)cand=pref;
     const v=cand[Math.floor(Math.random()*cand.length)];
     out.push(v);cnt.set(v,min+1);
   }
@@ -136,13 +138,13 @@ function gedSpread(count,pool,used){
 /* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
    opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다)
    usedRecs : 이미 같은 학습지에 있는 카드들 — u.plan 이 있는 유형(경우의 수 순열·조합)은 이 카드들과도 겹치지 않게 뽑는다
-   u.plan(n,opts,usedParams,exParams) : 문항마다 미리 정해 둘 값 [{seed},…] 을 돌려준다 (상황 번호 62가지를 한 바퀴 돌 때까지 겹치지 않게) */
+   u.plan(n,opts,usedParams,exParams,usedSameUnit) : 문항마다 미리 정해 둘 값 [{seed,c},…] 을 돌려준다 (상황 번호 62가지 · 문제 종류를 한 바퀴 돌 때까지 겹치지 않게) */
 function gedGenUnit(u,count,withEx,opts,usedRecs){
   const out=[];
   let ex=null;
   if(withEx){ex=gedNewRec(u,0,u.exDef?u.exDef(opts):{...u.def});out.push(ex);}
   let plan=null;
-  if(u.plan){try{plan=u.plan(count,opts,(usedRecs||[]).map(r=>r.params||{}),ex&&ex.params);}catch(e){plan=null;}}
+  if(u.plan){try{plan=u.plan(count,opts,(usedRecs||[]).map(r=>r.params||{}),ex&&ex.params,(usedRecs||[]).filter(r=>r.uid===u.id).map(r=>r.params||{}));}catch(e){plan=null;}}
   const seen=new Set();
   for(let i=1;i<=count;i++){
     let params=null,first=null;

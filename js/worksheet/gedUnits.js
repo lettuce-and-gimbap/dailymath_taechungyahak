@@ -2074,13 +2074,18 @@ var GED_UNITS=(function(){
   { id:'u19', tag:'19번', area:'E', title:'순열', src:'기출 참고 · 순열 연습',
     fields:[{k:'c',label:'문제 종류 (경우)',sel:['4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','4개 중 4개','5개 중 3개','6개 중 2개','6개 중 3개']},{k:'seed',label:'상황 번호',min:1,max:62}],
     def:{c:'4개 중 3개',seed:1,v:5,drawSeed:1},
-    /* 상황 번호(소재 60여 가지)는 한 바퀴 돌 때까지 겹치지 않게 : 문항 수가 상황 수 이하이면 모든 문항의 소재가 다르다 */
-    plan(n,opts,used,ex){
+    /* 상황 번호(소재 60여 가지)와 문제 종류(6가지)를 한 바퀴 돌 때까지 겹치지 않게 :
+       문항 수가 그 수 이하이면 모두 다르고, 넘으면 한 바퀴를 다 쓴 뒤에야 반복한다(어쩔 수 없을 때만 최소한으로 겹침).
+       문제 종류는 같은 횟수끼리는 기출에 나온 것(4개 중 2개·4개 중 3개·5개 중 2개)을 먼저 쓴다. */
+    plan(n,opts,used,ex,same){
       const max=opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62;
       const pool=Array.from({length:max},(_,i)=>i+1);
       const u0=(used||[]).map(p=>Math.floor(Number(p.seed)||0)).filter(Boolean);
       if(ex&&ex.seed)u0.push(Math.floor(Number(ex.seed)));
-      return gedSpread(n,pool,u0).map(seed=>({seed}));
+      const kinds=['4개 중 2개', '4개 중 3개', '5개 중 2개', '3개 중 3개', '5개 중 3개', '6개 중 2개'],first=['4개 중 2개', '4개 중 3개', '5개 중 2개'];
+      const k0=(same||[]).map(p=>p.c);if(ex&&ex.c)k0.push(ex.c);
+      const sd=gedSpread(n,pool,u0),ks=gedSpread(n,kinds,k0,first);
+      return sd.map((seed,i)=>({seed,c:ks[i]}));
     },
     // 기출에 반복해서 나온 3종(4P2 · 4P3 · 5P2)에 가중치를 두되, 연습용 확장 유형도 섞는다
     rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62),v:opts&&opts.version?opts.version:5,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
@@ -2098,13 +2103,18 @@ var GED_UNITS=(function(){
   { id:'u20', tag:'20번', area:'E', title:'조합', src:'기출 참고 · 조합 연습',
     fields:[{k:'c',label:'문제 종류 (경우)',sel:['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','6개 중 2개','6개 중 3개','5개 중 4개','6개 중 4개']},{k:'seed',label:'상황 번호',min:1,max:62}],
     def:{c:'5개 중 3개',seed:1,v:5,drawSeed:1},
-    /* 상황 번호(소재 60여 가지)는 한 바퀴 돌 때까지 겹치지 않게 : 문항 수가 상황 수 이하이면 모든 문항의 소재가 다르다 */
-    plan(n,opts,used,ex){
+    /* 상황 번호(소재 60여 가지)와 문제 종류(6가지)를 한 바퀴 돌 때까지 겹치지 않게 :
+       문항 수가 그 수 이하이면 모두 다르고, 넘으면 한 바퀴를 다 쓴 뒤에야 반복한다(어쩔 수 없을 때만 최소한으로 겹침).
+       문제 종류는 같은 횟수끼리는 기출에 나온 것(4개 중 2개·5개 중 3개·5개 중 2개·4개 중 3개)을 먼저 쓴다. */
+    plan(n,opts,used,ex,same){
       const max=opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62;
       const pool=Array.from({length:max},(_,i)=>i+1);
       const u0=(used||[]).map(p=>Math.floor(Number(p.seed)||0)).filter(Boolean);
       if(ex&&ex.seed)u0.push(Math.floor(Number(ex.seed)));
-      return gedSpread(n,pool,u0).map(seed=>({seed}));
+      const kinds=['4개 중 2개', '5개 중 3개', '5개 중 2개', '4개 중 3개', '6개 중 2개', '6개 중 3개'],first=['4개 중 2개', '5개 중 3개', '5개 중 2개', '4개 중 3개'];
+      const k0=(same||[]).map(p=>p.c);if(ex&&ex.c)k0.push(ex.c);
+      const sd=gedSpread(n,pool,u0),ks=gedSpread(n,kinds,k0,first);
+      return sd.map((seed,i)=>({seed,c:ks[i]}));
     },
     // 기출 4종에 가중치를 두되, 연습용 확장 유형도 섞는다
     rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62),v:opts&&opts.version?opts.version:5,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},

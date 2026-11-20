@@ -34,12 +34,12 @@ function genMockProbStat(requestedType){
       (n,r)=>`${n}명의 달리기 선수 중에서 금메달과 은메달을 받을 선수를 정하는 경우의 수는?`,
     ];
     const safeOpts=[[3,2],[4,2],[5,2]];
-    const[n,r]=pick(safeOpts);
+    const[n,r]=dealPick('ps_perm_nr',safeOpts);
     let pnr=1;for(let i=n;i>n-r;i--)pnr*=i;
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
     const pSteps=[];for(let i=n;i>n-r;i--)pSteps.push(`${i}`);
-    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'순열',q:dealPick('ps_perm_ctx',pCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,`P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,`(순서가 다르면 다른 경우로 셉니다.)`]};
   }
 
@@ -64,13 +64,13 @@ function genMockProbStat(requestedType){
       (n,r)=>`서로 다른 ${n}개의 견학 장소 중에서 ${r}곳을 고르는 경우의 수는?`,
     ];
     const safeCombs=[[4,2],[5,2],[6,2],[4,3],[5,3],[6,3]];
-    const[n,r]=pick(safeCombs);
+    const[n,r]=dealPick('ps_comb_nr',safeCombs);
     let cnr=1;for(let i=0;i<r;i++)cnr=Math.round(cnr*(n-i)/(i+1));
     if(cnr>20)cnr=10;
     const wrongs=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(cnr),wrongs);
     const cNum=[];const cDen=[];for(let i=0;i<r;i++){cNum.push(n-i);cDen.push(i+1);}
-    return{topic:'조합',q:pick(cCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'조합',q:dealPick('ps_comb_ctx',cCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,`C(${n},${r}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cnr}`,`(순서가 달라도 같은 선택이므로, 순열값을 r!로 나눕니다.)`]};
   }
 
@@ -146,11 +146,11 @@ function genMockProbStat(requestedType){
       c=>`${c.aLabel}와 ${c.bLabel}가 있을 때, 각각 하나를 선택하는 방법의 수는?`,
       c=>`${c.aLabel}와 ${c.bLabel}가 있다. 한 가지씩 선택하는 모든 경우의 수는?`,
     ];
-    const c=pick(multCases);
+    const c=dealPick('ps_mult_case',multCases);
     const poolNums=shuffle([c.a+c.b,c.ans+1,c.ans-1,c.ans+2,c.ans+3,c.a*(c.b+1)]).filter(v=>v>0&&v!==c.ans);
     const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(c.ans),wrongs);
-    return{topic:'경우의 수(곱)',q:pick(multCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'경우의 수(곱)',q:dealPick('ps_mult_ctx',multCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`곱의 법칙: 두 사건이 동시에 일어날 경우의 수 = (첫 번째 경우의 수) × (두 번째 경우의 수)`,`${c.a} × ${c.b} = ${c.ans}`]};
   }
 
@@ -171,10 +171,10 @@ function genMockProbStat(requestedType){
     c=>`${c.desc} 방법으로 ${c.aLabel}과 ${c.bLabel}이 있다. 이 중 한 가지를 선택하는 경우의 수는?`,
     c=>`${c.aLabel}과 ${c.bLabel}이 있을 때, 이 중 하나를 선택하는 방법의 수는? (중복 없음)`,
   ];
-  const c=pick(sumCases);
+  const c=dealPick('ps_sum_case',sumCases);
   const poolNums=shuffle([c.a*c.b,c.ans+1,c.ans-1,c.ans+2]).filter(v=>v>0&&v!==c.ans);
   const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(c.ans),wrongs);
-  return{topic:'경우의 수(합)',q:pick(sumCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+  return{topic:'경우의 수(합)',q:dealPick('ps_sum_ctx',sumCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
     sol:[`합의 법칙: 두 사건 중 하나가 일어나는 경우의 수 = (첫 번째 경우의 수) + (두 번째 경우의 수)`,`${c.a} + ${c.b} = ${c.ans}`]};
 }

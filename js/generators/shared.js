@@ -157,3 +157,16 @@ function weightedGen(items){
 }
 
 var middleMeta=(category,type)=>({category, type, diff:'중졸',level:'middle'});
+
+/* ── 한 세트 안에서 소재·문제 종류가 겹치지 않게 나눠 뽑기 (경우의 수 · 2026-11-20) ──
+   dealPick(key, 후보들) : 지금까지 가장 덜 쓴 후보를 뽑는다(같으면 무작위). 후보를 한 바퀴 다 쓰기 전에는 같은 것을 다시 뽑지 않고,
+   후보보다 문항이 많아 어쩔 수 없을 때만 고르게 반복한다(최소한으로 겹침).
+   dealReset() : 새 세트(문제풀이 한 묶음 · 모의고사 한 회)를 시작할 때 부른다. */
+var _dealMem={};
+function dealReset(){_dealMem={};}
+function dealIdx(key,n){
+  let m=_dealMem[key];if(!m||m.length!==n)m=_dealMem[key]=new Array(n).fill(0);
+  const mn=Math.min(...m),c=[];m.forEach((v,i)=>{if(v===mn)c.push(i);});
+  const i=c[Math.floor(Math.random()*c.length)];m[i]++;return i;
+}
+function dealPick(key,arr){return arr[dealIdx(key,arr.length)];}

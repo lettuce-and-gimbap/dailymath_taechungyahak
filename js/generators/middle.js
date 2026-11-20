@@ -551,7 +551,7 @@ function genMidProbability(){
     sol:[`(확률) = (그 일이 일어나는 경우의 수) ÷ (모든 경우의 수)`,S.sol+(g>1?` = ${correct}`:'')]};
 }
 function genMidCounting(){
-  const S=pick(MID_COUNT_STORIES)();
+  const S=dealPick('mid_count_story',MID_COUNT_STORIES)();
   const{choices,answer}=makeChoices(String(S.ans),[S.ans+1,S.ans-1,S.ans+2,S.ans+3].filter(v=>v>0&&v!==S.ans).map(String));
   return{topic:'경우의 수',q:S.q,choices,answer,graph:S.g||undefined,meta:_MM('mid_stat','확률과 통계'),
     sol:[S.g&&S.g.type==='menu'||/길은/.test(S.q)?`두 가지를 잇따라(또는 함께) 고르면 경우의 수를 곱합니다.`:`조건에 맞는 경우를 빠짐없이 셉니다.`,S.sol]};

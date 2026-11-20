@@ -3074,6 +3074,19 @@ function weightedGen(items){
 
 var middleMeta=(category,type)=>({category, type, diff:'중졸',level:'middle'});
 
+/* ── 한 세트 안에서 소재·문제 종류가 겹치지 않게 나눠 뽑기 (경우의 수 · 2026-11-20) ──
+   dealPick(key, 후보들) : 지금까지 가장 덜 쓴 후보를 뽑는다(같으면 무작위). 후보를 한 바퀴 다 쓰기 전에는 같은 것을 다시 뽑지 않고,
+   후보보다 문항이 많아 어쩔 수 없을 때만 고르게 반복한다(최소한으로 겹침).
+   dealReset() : 새 세트(문제풀이 한 묶음 · 모의고사 한 회)를 시작할 때 부른다. */
+var _dealMem={};
+function dealReset(){_dealMem={};}
+function dealIdx(key,n){
+  let m=_dealMem[key];if(!m||m.length!==n)m=_dealMem[key]=new Array(n).fill(0);
+  const mn=Math.min(...m),c=[];m.forEach((v,i)=>{if(v===mn)c.push(i);});
+  const i=c[Math.floor(Math.random()*c.length)];m[i]++;return i;
+}
+function dealPick(key,arr){return arr[dealIdx(key,arr.length)];}
+
 
 // ========== js\generators\elementary.js ==========
 // === js/generators/elementary.js ===
@@ -3974,7 +3987,7 @@ function genMidProbability(){
     sol:[`(확률) = (그 일이 일어나는 경우의 수) ÷ (모든 경우의 수)`,S.sol+(g>1?` = ${correct}`:'')]};
 }
 function genMidCounting(){
-  const S=pick(MID_COUNT_STORIES)();
+  const S=dealPick('mid_count_story',MID_COUNT_STORIES)();
   const{choices,answer}=makeChoices(String(S.ans),[S.ans+1,S.ans-1,S.ans+2,S.ans+3].filter(v=>v>0&&v!==S.ans).map(String));
   return{topic:'경우의 수',q:S.q,choices,answer,graph:S.g||undefined,meta:_MM('mid_stat','확률과 통계'),
     sol:[S.g&&S.g.type==='menu'||/길은/.test(S.q)?`두 가지를 잇따라(또는 함께) 고르면 경우의 수를 곱합니다.`:`조건에 맞는 경우를 빠짐없이 셉니다.`,S.sol]};
@@ -5735,12 +5748,12 @@ function genMockProbStat(requestedType){
       (n,r)=>`${n}명의 달리기 선수 중에서 금메달과 은메달을 받을 선수를 정하는 경우의 수는?`,
     ];
     const safeOpts=[[3,2],[4,2],[5,2]];
-    const[n,r]=pick(safeOpts);
+    const[n,r]=dealPick('ps_perm_nr',safeOpts);
     let pnr=1;for(let i=n;i>n-r;i--)pnr*=i;
     const wrongs=[pnr+2,pnr-2,pnr+r*2].filter(w=>w>0&&w!==pnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(pnr),wrongs);
     const pSteps=[];for(let i=n;i>n-r;i--)pSteps.push(`${i}`);
-    return{topic:'순열',q:pick(pCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'순열',q:dealPick('ps_perm_ctx',pCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`순열 P(n,r): n개 중 r개를 골라 순서대로 나열하는 경우의 수입니다.`,`P(${n},${r}) = ${pSteps.join('×')} = ${pnr}`,`(순서가 다르면 다른 경우로 셉니다.)`]};
   }
 
@@ -5765,13 +5778,13 @@ function genMockProbStat(requestedType){
       (n,r)=>`서로 다른 ${n}개의 견학 장소 중에서 ${r}곳을 고르는 경우의 수는?`,
     ];
     const safeCombs=[[4,2],[5,2],[6,2],[4,3],[5,3],[6,3]];
-    const[n,r]=pick(safeCombs);
+    const[n,r]=dealPick('ps_comb_nr',safeCombs);
     let cnr=1;for(let i=0;i<r;i++)cnr=Math.round(cnr*(n-i)/(i+1));
     if(cnr>20)cnr=10;
     const wrongs=[cnr+2,cnr-2,cnr+4].filter(w=>w>0&&w!==cnr).slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(cnr),wrongs);
     const cNum=[];const cDen=[];for(let i=0;i<r;i++){cNum.push(n-i);cDen.push(i+1);}
-    return{topic:'조합',q:pick(cCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'조합',q:dealPick('ps_comb_ctx',cCtxs)(n,r),choices,answer,graph:{type:'menu',groups:[['선택 가능한 항목',Array.from({length:n},(_,i)=>String.fromCharCode(65+i))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`조합 C(n,r): n개 중 r개를 순서 없이 선택하는 경우의 수입니다.`,`C(${n},${r}) = (${cNum.join('×')}) ÷ (${cDen.join('×')}) = ${cnr}`,`(순서가 달라도 같은 선택이므로, 순열값을 r!로 나눕니다.)`]};
   }
 
@@ -5847,11 +5860,11 @@ function genMockProbStat(requestedType){
       c=>`${c.aLabel}와 ${c.bLabel}가 있을 때, 각각 하나를 선택하는 방법의 수는?`,
       c=>`${c.aLabel}와 ${c.bLabel}가 있다. 한 가지씩 선택하는 모든 경우의 수는?`,
     ];
-    const c=pick(multCases);
+    const c=dealPick('ps_mult_case',multCases);
     const poolNums=shuffle([c.a+c.b,c.ans+1,c.ans-1,c.ans+2,c.ans+3,c.a*(c.b+1)]).filter(v=>v>0&&v!==c.ans);
     const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
     const{choices,answer}=makeChoices(String(c.ans),wrongs);
-    return{topic:'경우의 수(곱)',q:pick(multCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+    return{topic:'경우의 수(곱)',q:dealPick('ps_mult_ctx',multCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
       sol:[`곱의 법칙: 두 사건이 동시에 일어날 경우의 수 = (첫 번째 경우의 수) × (두 번째 경우의 수)`,`${c.a} × ${c.b} = ${c.ans}`]};
   }
 
@@ -5872,11 +5885,11 @@ function genMockProbStat(requestedType){
     c=>`${c.desc} 방법으로 ${c.aLabel}과 ${c.bLabel}이 있다. 이 중 한 가지를 선택하는 경우의 수는?`,
     c=>`${c.aLabel}과 ${c.bLabel}이 있을 때, 이 중 하나를 선택하는 방법의 수는? (중복 없음)`,
   ];
-  const c=pick(sumCases);
+  const c=dealPick('ps_sum_case',sumCases);
   const poolNums=shuffle([c.a*c.b,c.ans+1,c.ans-1,c.ans+2]).filter(v=>v>0&&v!==c.ans);
   const wrongs=[...new Set(poolNums)].slice(0,3).map(String);
   const{choices,answer}=makeChoices(String(c.ans),wrongs);
-  return{topic:'경우의 수(합)',q:pick(sumCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
+  return{topic:'경우의 수(합)',q:dealPick('ps_sum_ctx',sumCtxs)(c),choices,answer,graph:{type:'menu',groups:[[c.aLabel,Array.from({length:c.a},(_,i)=>String(i+1))],[c.bLabel,Array.from({length:c.b},(_,i)=>String(i+1))]]},meta:{category:'stat',type:'확률과 통계',diff:'기초'},
     sol:[`합의 법칙: 두 사건 중 하나가 일어나는 경우의 수 = (첫 번째 경우의 수) + (두 번째 경우의 수)`,`${c.a} + ${c.b} = ${c.ans}`]};
 }
 
@@ -9079,13 +9092,18 @@ var GED_UNITS=(function(){
   { id:'u19', tag:'19번', area:'E', title:'순열', src:'기출 참고 · 순열 연습',
     fields:[{k:'c',label:'문제 종류 (경우)',sel:['4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','4개 중 4개','5개 중 3개','6개 중 2개','6개 중 3개']},{k:'seed',label:'상황 번호',min:1,max:62}],
     def:{c:'4개 중 3개',seed:1,v:5,drawSeed:1},
-    /* 상황 번호(소재 60여 가지)는 한 바퀴 돌 때까지 겹치지 않게 : 문항 수가 상황 수 이하이면 모든 문항의 소재가 다르다 */
-    plan(n,opts,used,ex){
+    /* 상황 번호(소재 60여 가지)와 문제 종류(6가지)를 한 바퀴 돌 때까지 겹치지 않게 :
+       문항 수가 그 수 이하이면 모두 다르고, 넘으면 한 바퀴를 다 쓴 뒤에야 반복한다(어쩔 수 없을 때만 최소한으로 겹침).
+       문제 종류는 같은 횟수끼리는 기출에 나온 것(4개 중 2개·4개 중 3개·5개 중 2개)을 먼저 쓴다. */
+    plan(n,opts,used,ex,same){
       const max=opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62;
       const pool=Array.from({length:max},(_,i)=>i+1);
       const u0=(used||[]).map(p=>Math.floor(Number(p.seed)||0)).filter(Boolean);
       if(ex&&ex.seed)u0.push(Math.floor(Number(ex.seed)));
-      return gedSpread(n,pool,u0).map(seed=>({seed}));
+      const kinds=['4개 중 2개', '4개 중 3개', '5개 중 2개', '3개 중 3개', '5개 중 3개', '6개 중 2개'],first=['4개 중 2개', '4개 중 3개', '5개 중 2개'];
+      const k0=(same||[]).map(p=>p.c);if(ex&&ex.c)k0.push(ex.c);
+      const sd=gedSpread(n,pool,u0),ks=gedSpread(n,kinds,k0,first);
+      return sd.map((seed,i)=>({seed,c:ks[i]}));
     },
     // 기출에 반복해서 나온 3종(4P2 · 4P3 · 5P2)에 가중치를 두되, 연습용 확장 유형도 섞는다
     rand(opts){return{c:pick(['4개 중 2개','4개 중 3개','5개 중 2개','4개 중 2개','4개 중 3개','5개 중 2개','3개 중 3개','5개 중 3개','6개 중 2개']),seed:rnd(1,opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62),v:opts&&opts.version?opts.version:5,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
@@ -9103,13 +9121,18 @@ var GED_UNITS=(function(){
   { id:'u20', tag:'20번', area:'E', title:'조합', src:'기출 참고 · 조합 연습',
     fields:[{k:'c',label:'문제 종류 (경우)',sel:['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','6개 중 2개','6개 중 3개','5개 중 4개','6개 중 4개']},{k:'seed',label:'상황 번호',min:1,max:62}],
     def:{c:'5개 중 3개',seed:1,v:5,drawSeed:1},
-    /* 상황 번호(소재 60여 가지)는 한 바퀴 돌 때까지 겹치지 않게 : 문항 수가 상황 수 이하이면 모든 문항의 소재가 다르다 */
-    plan(n,opts,used,ex){
+    /* 상황 번호(소재 60여 가지)와 문제 종류(6가지)를 한 바퀴 돌 때까지 겹치지 않게 :
+       문항 수가 그 수 이하이면 모두 다르고, 넘으면 한 바퀴를 다 쓴 뒤에야 반복한다(어쩔 수 없을 때만 최소한으로 겹침).
+       문제 종류는 같은 횟수끼리는 기출에 나온 것(4개 중 2개·5개 중 3개·5개 중 2개·4개 중 3개)을 먼저 쓴다. */
+    plan(n,opts,used,ex,same){
       const max=opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62;
       const pool=Array.from({length:max},(_,i)=>i+1);
       const u0=(used||[]).map(p=>Math.floor(Number(p.seed)||0)).filter(Boolean);
       if(ex&&ex.seed)u0.push(Math.floor(Number(ex.seed)));
-      return gedSpread(n,pool,u0).map(seed=>({seed}));
+      const kinds=['4개 중 2개', '5개 중 3개', '5개 중 2개', '4개 중 3개', '6개 중 2개', '6개 중 3개'],first=['4개 중 2개', '5개 중 3개', '5개 중 2개', '4개 중 3개'];
+      const k0=(same||[]).map(p=>p.c);if(ex&&ex.c)k0.push(ex.c);
+      const sd=gedSpread(n,pool,u0),ks=gedSpread(n,kinds,k0,first);
+      return sd.map((seed,i)=>({seed,c:ks[i]}));
     },
     // 기출 4종에 가중치를 두되, 연습용 확장 유형도 섞는다
     rand(opts){return{c:pick(['4개 중 2개','5개 중 3개','5개 중 2개','4개 중 3개','4개 중 2개','5개 중 3개','6개 중 2개','6개 중 3개']),seed:rnd(1,opts&&opts.legacy?40:opts&&opts.version&&opts.version<5?60:62),v:opts&&opts.version?opts.version:5,...(!opts||!opts.version||opts.version>=4?{drawSeed:rnd(1,2147483647)}:{})};},
@@ -12397,7 +12420,7 @@ function NumPadInput({q,ans,setAns,activeField,setActiveField,onConfirmRequest,h
 function PracticeSession({session,setSession,ver,rangeMin,rangeMax,divMin,divMax,userData,onUpdate,onBack}){
   const seenQKeysRef = React.useRef(new Set());
   const verTopic=session.verTopic||null;
-  const[q,setQ]=useState(()=>makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current,verTopic));
+  const[q,setQ]=useState(()=>{dealReset();return makeQ(ver,session.qNum,session.divCountIdxs,rangeMin,rangeMax,divMin,divMax,seenQKeysRef.current,verTopic);});   // 새 묶음 : 경우의 수 소재·종류 겹침 기록 비우기
   const[ans,setAns]=useState({ansQ:'',ansR:'',ansDiv:'',ansCount:''});
   const[fb,setFb]=useState(null);
   const[selMC,setSelMC]=useState(null);
@@ -14110,6 +14133,7 @@ function MockExamTab({userData,onUpdate}){
     if(examMode==='weak')targets=weakDomains.length>0?weakDomains:DOMAINS;
     else if(examMode==='domain')targets=domainList&&domainList.length>0?domainList:DOMAINS;
     const quotas=mockExamDomainCounts(levelKey,targets,targetCount);
+    dealReset();   // 한 회 안에서 경우의 수 소재·종류가 겹치지 않게 (generators/shared.js dealPick)
     const usedQ=new Set();
     const addQuestion=(dom,allowDuplicate)=>{
       const q=safeGen(DOMAIN_GENS[dom]);if(!q)return false;
@@ -18729,14 +18753,16 @@ function gedSheetId(){return 's'+Date.now().toString(36)+Math.random().toString(
 /* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
    opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다) */
 /* 겹치지 않게 나눠 뽑기 : pool 의 값을 count 번 뽑되, 모든 값이 한 번씩 나오기 전에는 같은 값을 다시 뽑지 않는다
-   (count 가 pool 보다 많아지면 그다음 바퀴를 돈다). used = 이미 쓴 값들(예제 · 먼저 만든 카드 · 앞 유형) */
-function gedSpread(count,pool,used){
+   (count 가 pool 보다 많아지면 그다음 바퀴를 돈다 = 어쩔 수 없을 때만 최소한으로 겹친다). used = 이미 쓴 값들(예제 · 먼저 만든 카드 · 앞 유형) */
+function gedSpread(count,pool,used,prefer){
   const cnt=new Map(pool.map(v=>[v,0]));
   (used||[]).forEach(v=>{if(cnt.has(v))cnt.set(v,cnt.get(v)+1);});
   const out=[];
   for(let i=0;i<count;i++){
     const min=Math.min(...cnt.values());
-    const cand=pool.filter(v=>cnt.get(v)===min);
+    let cand=pool.filter(v=>cnt.get(v)===min);
+    const pref=prefer?cand.filter(v=>prefer.includes(v)):[];     // 같은 횟수끼리는 prefer(기출에 나온 것)를 먼저
+    if(pref.length)cand=pref;
     const v=cand[Math.floor(Math.random()*cand.length)];
     out.push(v);cnt.set(v,min+1);
   }
@@ -18746,13 +18772,13 @@ function gedSpread(count,pool,used){
 /* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
    opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다)
    usedRecs : 이미 같은 학습지에 있는 카드들 — u.plan 이 있는 유형(경우의 수 순열·조합)은 이 카드들과도 겹치지 않게 뽑는다
-   u.plan(n,opts,usedParams,exParams) : 문항마다 미리 정해 둘 값 [{seed},…] 을 돌려준다 (상황 번호 62가지를 한 바퀴 돌 때까지 겹치지 않게) */
+   u.plan(n,opts,usedParams,exParams,usedSameUnit) : 문항마다 미리 정해 둘 값 [{seed,c},…] 을 돌려준다 (상황 번호 62가지 · 문제 종류를 한 바퀴 돌 때까지 겹치지 않게) */
 function gedGenUnit(u,count,withEx,opts,usedRecs){
   const out=[];
   let ex=null;
   if(withEx){ex=gedNewRec(u,0,u.exDef?u.exDef(opts):{...u.def});out.push(ex);}
   let plan=null;
-  if(u.plan){try{plan=u.plan(count,opts,(usedRecs||[]).map(r=>r.params||{}),ex&&ex.params);}catch(e){plan=null;}}
+  if(u.plan){try{plan=u.plan(count,opts,(usedRecs||[]).map(r=>r.params||{}),ex&&ex.params,(usedRecs||[]).filter(r=>r.uid===u.id).map(r=>r.params||{}));}catch(e){plan=null;}}
   const seen=new Set();
   for(let i=1;i<=count;i++){
     let params=null,first=null;
