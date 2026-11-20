@@ -282,6 +282,101 @@ var GS=(function(){
   }
 
   /* =====================================================================
+     글자 편집 도구 — 서식(굵게·기울임·밑줄·취소선·글자색·형광펜) · 마크다운 입력 · 수식(LaTeX) 직접 입력
+     모두 편집 칸(contenteditable)의 innerHTML 에 그대로 담긴다 → 저장·인쇄·PDF 에 그대로 반영.
+     수식은 <span class="tx" data-tex="LaTeX"> 한 덩어리이고, 편집 모드에서 누르면 다시 고칠 수 있다.
+     ===================================================================== */
+  function editHost(node){const el=node&&(node.nodeType===1?node:node.parentElement);return el&&el.closest?el.closest('[contenteditable="true"]'):null;}
+  function fireInput(host){if(host)host.dispatchEvent(new Event('input',{bubbles:true}));}
+  function mkTx(tex){
+    const s=document.createElement('span');s.className='tx';s.setAttribute('contenteditable','false');s.dataset.tex=tex;
+    try{window.katex.render(tex,s,{throwOnError:false,displayMode:false});}catch(e){s.textContent=tex;}
+    return s;
+  }
+  /* 수식 입력창 : LaTeX 를 쓰면 아래에 바로 미리보기. cb({tex}) 또는 cb({del:true}) */
+  function mathDialog(init,cb,opts){
+    opts=opts||{};
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:16px;padding:16px;width:min(540px,100%);box-shadow:0 10px 40px rgba(0,0,0,.3);font-family:inherit;color:#111">
+      <div style="font-weight:900;font-size:16px;margin-bottom:8px">∑ 수식 입력 (LaTeX)</div>
+      <textarea rows="3" style="width:100%;box-sizing:border-box;border:2px solid #cbd5e1;border-radius:10px;padding:8px;font-family:Consolas,monospace;font-size:15px" placeholder="예) (x-2)^2+(y+1)^2=9"></textarea>
+      <div class="mprev" style="min-height:58px;margin:8px 0;padding:8px;background:#f8fafc;border-radius:10px;text-align:center;font-size:22px;overflow-x:auto"></div>
+      <div style="font-size:11px;color:#64748b;line-height:1.7;margin-bottom:10px">
+        제곱 <code>x^2</code> · 아래첨자 <code>a_1</code> · 분수 <code>\\dfrac{1}{2}</code> · 루트 <code>\\sqrt{x+1}</code> · 부등호 <code>\\le \\ge \\ne</code> · 곱 <code>\\times</code> · 괄호 크게 <code>\\left( \\right)</code> · 글자 <code>\\text{가나다}</code></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"></div></div>`;
+    const ta=ov.querySelector('textarea'),pv=ov.querySelector('.mprev'),bar=ov.lastElementChild.lastElementChild;
+    ta.value=init||'';
+    const draw=()=>{const v=ta.value.trim();if(!v){pv.textContent='미리보기';pv.style.color='#94a3b8';return;}pv.style.color='#111';pv.textContent='';
+      try{window.katex.render(v,pv,{throwOnError:false,displayMode:false});}catch(e){pv.textContent=v;}};
+    const close=()=>ov.remove();
+    const btn=(t,bg,fg,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.style.cssText=`padding:10px 16px;border-radius:12px;border:0;font-weight:800;font-size:14px;background:${bg};color:${fg};cursor:pointer`;b.onclick=fn;bar.appendChild(b);};
+    if(opts.canDelete)btn('🗑 수식 삭제','#fee2e2','#b91c1c',()=>{close();cb({del:true});});
+    btn('취소','#e5e7eb','#374151',close);
+    const ok=()=>{const v=ta.value.trim();if(!v)return;close();cb({tex:v});};
+    btn('확인','#4f46e5','#fff',ok);
+    ta.addEventListener('input',draw);
+    ta.addEventListener('keydown',e=>{if(e.key==='Escape')close();else if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();ok();}});
+    ov.addEventListener('mousedown',e=>{if(e.target===ov)close();});
+    document.body.appendChild(ov);draw();ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);
+  }
+  /* 도구막대 서식 : 선택한 글에 적용 (편집 칸 안에서만) */
+  function fmt(root,cmd,val){
+    const sel=window.getSelection();if(!sel||!sel.rangeCount)return false;
+    const h=editHost(sel.anchorNode);if(!h||!root||!root.contains(h))return false;
+    document.execCommand('styleWithCSS',false,true);
+    document.execCommand(cmd,false,val);
+    return true;
+  }
+  /* 커서 자리에(또는 선택한 글을 바탕으로) 수식 넣기 */
+  function openMath(root){
+    const sel=window.getSelection();if(!sel||!sel.rangeCount)return false;
+    const host=editHost(sel.anchorNode);if(!host||!root||!root.contains(host))return false;
+    const range=sel.getRangeAt(0).cloneRange(),init=sel.toString();
+    mathDialog(init,r=>{
+      if(!r.tex)return;
+      host.focus();const s=window.getSelection();s.removeAllRanges();s.addRange(range);
+      range.deleteContents();
+      const tx=mkTx(r.tex),z=document.createTextNode('\u200b');
+      range.insertNode(z);range.insertNode(tx);
+      const nr=document.createRange();nr.setStart(z,1);nr.collapse(true);s.removeAllRanges();s.addRange(nr);
+      fireInput(host);
+    });
+    return true;
+  }
+  /* 편집 모드에서 수식을 누르면 그 수식을 고친다 */
+  function mathClick(e){
+    const t=e.target&&e.target.closest?e.target.closest('.tx[data-tex]'):null;
+    if(!t)return;const host=editHost(t);if(!host)return;
+    e.preventDefault();
+    mathDialog(t.dataset.tex,r=>{
+      if(r.del)t.remove();
+      else if(r.tex){t.dataset.tex=r.tex;t.textContent='';try{window.katex.render(r.tex,t,{throwOnError:false});}catch(x){t.textContent=r.tex;}}
+      fireInput(host);
+    },{canDelete:true});
+  }
+  /* 마크다운 입력 : **굵게** · *기울임* · ~~취소선~~ · ==형광펜== · $수식$ — 닫는 기호를 치는 순간 바뀐다 */
+  function mdShortcut(e){
+    const ne=e.nativeEvent;if(!ne||ne.inputType!=='insertText')return;
+    const sel=window.getSelection();if(!sel||!sel.rangeCount||!sel.isCollapsed)return;
+    const n=sel.anchorNode;if(!n||n.nodeType!==3||!editHost(n))return;
+    const end=sel.anchorOffset,txt=n.data.slice(0,end);
+    const rules=[[/\*\*([^*\s][^*]*?)\*\*$/,'b'],[/~~([^~\s][^~]*?)~~$/,'s'],[/==([^=\s][^=]*?)==$/,'mark'],[/\$([^$\s][^$]*?)\$$/,'math'],[/(?<!\*)\*([^*\s][^*]*?)\*$/,'i']];
+    for(const[re,kind]of rules){
+      const m=re.exec(txt);if(!m)continue;
+      const el=kind==='math'?mkTx(m[1]):document.createElement(kind);
+      if(kind!=='math')el.textContent=m[1];
+      const r=document.createRange();r.setStart(n,m.index);r.setEnd(n,end);r.deleteContents();
+      const z=document.createTextNode('\u200b');
+      r.insertNode(z);r.insertNode(el);
+      const nr=document.createRange();nr.setStart(z,1);nr.collapse(true);sel.removeAllRanges();sel.addRange(nr);
+      return;
+    }
+  }
+  /* 붙여넣기는 글자만 (다른 사이트의 글꼴·색이 따라오지 않게) */
+  function plainPaste(e){e.preventDefault();const t=e.clipboardData.getData('text/plain');if(t)document.execCommand('insertText',false,t);}
+
+  /* =====================================================================
      HTML 템플릿
      ===================================================================== */
   /* 개념 설명 속 [[핵심말]] 마커 처리
@@ -427,6 +522,8 @@ var GS=(function(){
 .gsheet .card.concept li{margin:5px 0}
 .gsheet .chead{margin:4px 0 8px;font-size:1.02em;color:var(--navy);line-height:1.5}
 .gsheet .kw{font-weight:700;color:#0f2f57}
+.gsheet mark{background:#fff3a3;color:inherit;padding:0 2px;border-radius:3px}
+.gsheet.edit .tx{cursor:pointer;border-bottom:2px dotted #9aa8c2}
 .gsheet .bl{display:inline-block;min-width:4.2em;border-bottom:3px solid #444;text-align:center;margin:0 3px;line-height:1.25}
 .gsheet.noans .bl .ba{visibility:hidden}
 .gsheet .cfig{text-align:center;margin:10px 0 4px}
@@ -495,7 +592,7 @@ var GS=(function(){
   .gsheet h1{font-size:1.5em!important}
   .gsheet h2{page-break-after:avoid;break-after:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .gsheet .card,.gsheet .sol,.gsheet .ans,.gsheet .cap,.gsheet .qno,
-  .gsheet .cex,.gsheet .ctip,.gsheet .cwarn,.gsheet .kw,.gsheet .cexa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gsheet mark,.gsheet [style*="color"],.gsheet font,.gsheet .cex,.gsheet .ctip,.gsheet .cwarn,.gsheet .kw,.gsheet .cexa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .gsheet .card{page-break-inside:avoid!important;break-inside:avoid!important}
   .gsheet .fig svg{max-width:440px!important}
   .gsheet.cols2 .qgrid{display:grid!important;grid-template-columns:1fr 1fr!important;column-gap:14px!important}
@@ -554,6 +651,6 @@ ${SHEET_CSS}
 
   return{nf,par,xm,ym,tail,esc,tex,pr,rnd,pick,nz,CIRC,isInt,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,choicesHTML,
-    planeSVG,keyPointSVG,PGBREAK,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
+    planeSVG,keyPointSVG,PGBREAK,synthSVG,numlineSVG,divSVG,mapSVG,vennSVG,renderTex,mathDialog,fmt,openMath,mathClick,mdShortcut,plainPaste,markKw,conceptHTML,conceptMode,probHTML,bodyHTML,docHTML,SHEET_CSS,
     NAVY,RED,GREEN,GREY};
 })();

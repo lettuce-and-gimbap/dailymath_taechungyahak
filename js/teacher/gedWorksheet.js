@@ -160,6 +160,35 @@ function GedNumField({label,value,min,max,onCommit}){
   return<label>{label}<input type="number" value={v} min={min} max={max} onChange={change} onBlur={()=>{const n=parseInt(v,10);if(!isNaN(n)&&n!==value){clearTimeout(tRef.current);onCommit(n);}}}/></label>;
 }
 
+/* 글자 편집 도구막대 — 서식 · 글자색 · 형광펜 · 수식(LaTeX) · 마크다운 안내. 편집 칸을 누른 뒤(또는 글을 드래그해 선택한 뒤) 누른다. */
+function GedFormatBar({getRoot}){
+  const COLORS=[['#c0272d','빨강'],['#e8761e','주황'],['#1f8a4c','초록'],['#1b5fc1','파랑'],['#7a3fc4','보라'],['#111111','검정']];
+  const HL=[['#fff3a3','노랑'],['#ffd6e0','분홍'],['#c8f0d8','연두'],['#cfe4ff','하늘'],['transparent','없음']];
+  const keep=e=>e.preventDefault();   // 눌러도 편집 칸의 선택이 풀리지 않게
+  const hint=()=>alert('먼저 고칠 글 안을 눌러 커서를 두거나, 서식을 줄 글을 드래그해서 선택해 주세요.');
+  const run=(cmd,val)=>{if(!GS.fmt(getRoot(),cmd,val))hint();};
+  const B=({t,title,on,style})=><button type="button" title={title} onMouseDown={keep} onClick={on} className="px-3 rounded-lg bg-gray-100 text-gray-800 text-sm font-black" style={{minHeight:'38px',minWidth:'38px',...style}}>{t}</button>;
+  const Sw=({c,title,on})=><button type="button" className="sw" title={title} onMouseDown={keep} onClick={on} style={{width:28,height:28,minWidth:0,minHeight:0,padding:0,borderRadius:999,border:'2px solid #cbd5e1',background:c==='transparent'?'repeating-linear-gradient(45deg,#fff 0 4px,#e5e7eb 4px 8px)':c,flex:'none'}}/>;
+  return<div className="gfb noprint sticky top-0 z-20 bg-white border-2 border-indigo-200 rounded-2xl p-2 mt-2 shadow-md">
+    <style>{`.gfb button{min-height:38px!important}.gfb button.sw{min-height:0!important;min-width:0!important}`}</style>
+    <div className="flex flex-wrap gap-1.5 items-center">
+      <B t="B" title="굵게 (Ctrl+B)" on={()=>run('bold')} style={{fontWeight:900}}/>
+      <B t="I" title="기울임 (Ctrl+I)" on={()=>run('italic')} style={{fontStyle:'italic'}}/>
+      <B t="U" title="밑줄 (Ctrl+U)" on={()=>run('underline')} style={{textDecoration:'underline'}}/>
+      <B t="S" title="취소선" on={()=>run('strikeThrough')} style={{textDecoration:'line-through'}}/>
+      <span className="text-[11px] font-bold text-gray-500 ml-1">글자색</span>
+      {COLORS.map(([c,n])=><Sw key={c} c={c} title={n} on={()=>run('foreColor',c)}/>)}
+      <span className="text-[11px] font-bold text-gray-500 ml-1">형광펜</span>
+      {HL.map(([c,n])=><Sw key={c} c={c} title={n} on={()=>run('hiliteColor',c)}/>)}
+      <B t="∑ 수식" title="커서 자리에 수식(LaTeX) 넣기" on={()=>{if(!GS.openMath(getRoot()))hint();}} style={{background:'#e0e7ff',color:'#3730a3'}}/>
+      <B t="⌫ 서식 지우기" title="선택한 글의 서식 지우기" on={()=>run('removeFormat')}/>
+    </div>
+    <div className="text-[11px] text-gray-600 font-medium mt-1.5 leading-relaxed">
+      마크다운처럼 바로 써도 됩니다 : <b>**굵게**</b> · <i>*기울임*</i> · <s>~~취소선~~</s> · <mark>==형광펜==</mark> · <b>$x^2+1$</b>(수식) — 닫는 기호를 치는 순간 바뀝니다.
+      <b> 수식을 누르면 다시 고칠 수 있습니다.</b> 고친 카드는 노란 테두리가 되고, 조건 상자의 [↩ 생성 상태로]로 되돌릴 수 있습니다.</div>
+  </div>;
+}
+
 /* 문제 카드 : 생성 HTML(또는 덮어쓴 HTML) + 조건 편집 패널 */
 function GedProblemCard({rec,unit,no,edit,showCtrl,onParam,onRandom,onRemove,onRevert,onOverride,getOverride}){
   const ref=useRef();
@@ -169,7 +198,8 @@ function GedProblemCard({rec,unit,no,edit,showCtrl,onParam,onRandom,onRemove,onR
   const isEx=rec.idx===0;
   return<div className={`card${isEx?' ex':''}${rec.override?' overridden':''}`}>
     <div ref={ref} className="pslot" contentEditable={edit} suppressContentEditableWarning={true}
-      onInput={e=>onOverride(rec.key,e.currentTarget.innerHTML)}
+      onInput={e=>{GS.mdShortcut(e);onOverride(rec.key,e.currentTarget.innerHTML);}}
+      onClick={edit?GS.mathClick:undefined} onPaste={edit?GS.plainPaste:undefined}
       dangerouslySetInnerHTML={{__html:html}}/>
     {showCtrl&&<div className="ctrl noprint">
       <span className="tag">{isEx?'예제':'실전'} 조건</span>
@@ -193,7 +223,8 @@ function GedConceptCard({unit,blank,rev,edit,showCtrl,edited,saved,getHtml,onEdi
   useEffect(()=>{GS.renderTex(ref.current);},[html]);
   return<div className={`card concept${edited?' overridden':''}`}>
     <div ref={ref} contentEditable={edit} suppressContentEditableWarning={true}
-      onInput={e=>onEdit(e.currentTarget.innerHTML)}
+      onInput={e=>{GS.mdShortcut(e);onEdit(e.currentTarget.innerHTML);}}
+      onClick={edit?GS.mathClick:undefined} onPaste={edit?GS.plainPaste:undefined}
       dangerouslySetInnerHTML={{__html:html}}/>
     {showCtrl&&<div className="ctrl noprint"><span className="tag">개념 설명</span>
       <span style={{fontSize:'12px',color:'#666'}}>{edit?'글자를 눌러 바로 고칠 수 있습니다 · 고친 글은 다음 학습지에도 그대로 들어갑니다':'[✏️ 글자 편집]을 켜면 여기를 고칠 수 있습니다'}</span>
@@ -216,7 +247,7 @@ function GedSheetView({sheet,seq,busy,ops}){
   const cls=['gsheet',cfg.showAns?'':'noans',cfg.cols2?'cols2':'',cfg.format==='open'?'open':'',edit?'edit':''].filter(Boolean).join(' ');
   const Btn=({on,children,...rest})=><button {...rest} className={`px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap ${on?'bg-indigo-600 text-white':'bg-gray-100 text-gray-700'}`} style={{minHeight:'40px'}}>{children}</button>;
 
-  return<div id={'ged-sheet-'+id} className={`bg-white rounded-3xl shadow-sm border-2 ${collapsed?'border-gray-100':'border-indigo-200'} overflow-hidden`}>
+  return<div id={'ged-sheet-'+id} className={`bg-white rounded-3xl shadow-sm border-2 ${collapsed?'border-gray-100':'border-indigo-200'} overflow-clip`}>
     {/* ── 머리글 : 접었을 때도 항상 보임 ── */}
     <div className={`p-3 ${collapsed?'':'bg-indigo-50/60 border-b border-indigo-100'}`}>
       <button onClick={()=>ops.toggle(id)} className="w-full flex items-center gap-2 text-left" style={{minHeight:'48px'}}>
@@ -263,7 +294,7 @@ function GedSheetView({sheet,seq,busy,ops}){
         <input value={cfg.title} onChange={e=>setCfg({title:e.target.value})} placeholder="학습지 제목" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-indigo-400" style={{minHeight:'42px'}}/>
         <input value={cfg.subtitle} onChange={e=>setCfg({subtitle:e.target.value})} placeholder="부제(선택)" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-indigo-400" style={{minHeight:'38px'}}/>
       </div>
-      {edit&&<div className="text-[11px] text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mt-2 font-medium">글자 편집 모드: 문제·풀이 글을 바로 고칠 수 있습니다. 고친 카드는 노란 테두리가 되고, 조건 상자의 [↩ 생성 상태로]로 되돌릴 수 있습니다. (수식 자체는 조건 숫자로 바꾸는 편이 안전합니다)</div>}
+      {edit&&<GedFormatBar getRoot={()=>ref.current}/>}
 
       {/* ── 미리보기 ── */}
       <div ref={ref} className={cls+' mt-3'} style={{'--fs':cfg.fs+'px','--qs':cfg.qs||1,'--ms':cfg.ms||1,'--cs':cfg.cs||1}}>

@@ -139,6 +139,11 @@ js/
   문항별 조건 편집은 React, 문제 본문은 `GS.probHTML` 문자열을 `dangerouslySetInnerHTML`로 넣고 KaTeX를 `GS.renderTex`로 렌더링.
   글자 편집(override)은 `ovRef`(문항 key → HTML)에 보관해 커서가 튀지 않게 한다. 문항 key는 장을 넘어 유일하다.
   임시저장 키는 `ged_sheet_builder_v2`이며, 예전 단일 학습지(`..._v1`)는 `gedLoadInit()`이 한 장으로 자동 이관한다.
+- **글자 편집 도구 (2026-11-20)** : [✏️ 글자 편집]을 켜면 `GedFormatBar` 가 위에 붙어 다닌다(sticky — 그래서 카드 겉에 `overflow-hidden` 대신 `overflow-clip`).
+  굵게·기울임·밑줄·취소선·글자색 6색·형광펜 4색·서식 지우기는 `document.execCommand`(`GS.fmt`), 결과는 편집 칸 innerHTML 에 `<b>·<i>·<s>·<mark>·<span style=color>` 로 담겨 저장·인쇄·PDF 에 그대로 간다(`SHEET_CSS` 에 인쇄 색 유지 규칙 포함).
+  **마크다운 입력**(`GS.mdShortcut`) : `**굵게**` `*기울임*` `~~취소선~~` `==형광펜==` `$수식$` — 닫는 기호를 치는 순간 바뀐다(커서 뒤에 안 번지게 길이 0 글자 `\u200b` 를 둔다).
+  **수식 직접 입력** : [∑ 수식] 또는 `$…$` → LaTeX 입력창(`GS.mathDialog`, 미리보기 포함). 수식은 `<span class="tx" data-tex="LaTeX">` 한 덩어리이고 편집 모드에서 누르면(`GS.mathClick`) 다시 고치거나 지울 수 있다.
+  붙여넣기는 글자만(`GS.plainPaste`). 이 도구막대 안 버튼은 전역 `button{min-height:54px!important}` 에 눌리지 않도록 `.gfb` 규칙으로 높이를 따로 준다.
 - **글자 크기 4단** : 전체 글자 `cfg.fs`(px) · 문제 글자 `cfg.qs`(배율, `.qtext`·`.choices`) · 개념 글자 `cfg.cs`(배율, `.card.concept`) · 숫자·수식 `cfg.ms`(배율, `.katex`·`.nm`·좌표평면 눈금).
   `.gsheet` 의 CSS 변수 `--fs/--qs/--cs/--ms` 로 들어가며, 인쇄 때 `fs` 는 21px 로 묶이지만 `qs/ms` 는 em 배율이라 인쇄·PDF에도 반영된다.
   글 속 맨 숫자(3개, 5명)는 `GS.probHTML` 안의 `numSpan()` 이 `<span class="nm">` 으로 감싼다 (수식·SVG·문항 번호는 제외).
