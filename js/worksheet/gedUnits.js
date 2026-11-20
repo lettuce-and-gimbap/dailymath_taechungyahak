@@ -981,16 +981,22 @@ var GED_UNITS=(function(){
     numChoices,stepChoices,pickChoices,coordChoices,planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,NAVY,RED,GREEN,GREY}=GS;
   const fig=svg=>`<div class="fig">${svg}</div>`;
   /* 직선과 원(13번 접점 유형) : 직선 x=k(또는 y=k)와 원의 중심 c0(=중심의 x 또는 y), 반지름 r 에서 k 를 묻는 갈래 — 기출 13번(2026-1·2)·11번(2024-2)
-     P 접할 때 자연수 k = c0+r (c0−r≤0<c0+r 이어야 접선 둘 중 자연수가 하나로 정해진다) — x=k · y=k 모두
-     R 서로 다른 두 점에서 만날 때 정수(자연수) k 의 최댓값 = c0+r−1 (c0−r<k<c0+r) — 늘 가능
-     N 만나지 않을 때 자연수 k 의 최솟값 = c0+r+1 (c0−r≤1 이고 c0+r≥0 일 때만 하나로 정해진다)
-     조건이 안 맞는 ask 는 R 로 바꿔 읽는다(그림·문제·정답이 서로 맞도록). 옛 값('큰 값'·'작은 값'·'양수 k'·'음수 k')은 모두 P 로 읽는다. */
-  const TAN_ASK=['접할 때 · 자연수 k','두 점에서 만날 때 · 최댓값','만나지 않을 때 · 최솟값'];
+     P    접할 때 자연수 k = c0+r (c0−r≤0<c0+r 이어야 접선 둘 중 자연수가 하나로 정해진다) — x=k · y=k 모두
+     Tmax 접할 때 k 의 최댓값 = c0+r   ·  Tmin 접할 때 k 의 최솟값 = c0−r   (접선이 둘이므로 그 중 큰/작은 값 — 늘 가능)
+     R    서로 다른 두 점에서 만날 때 정수(자연수) k 의 최댓값 = c0+r−1   ·  Rm  같은 조건의 최솟값 = c0−r+1   (c0−r<k<c0+r — 늘 가능)
+     N    만나지 않을 때 자연수 k 의 최솟값 = c0+r+1 (c0−r≤1 이고 c0+r≥0 일 때만 하나로 정해진다)
+     조건이 안 맞는 갈래는 같은 계열의 늘 가능한 갈래로 바꿔 읽는다(P→Tmax · N→Rm). 옛 값('큰 값'·'작은 값'·'양수 k'·'음수 k')은 P 로 읽는다. */
+  const TAN_ASK=['접할 때 · 자연수 k','접할 때 · 최댓값','접할 때 · 최솟값','두 점에서 만날 때 · 최댓값','두 점에서 만날 때 · 최솟값','만나지 않을 때 · 최솟값'];
+  const TAN_KEY={'P':TAN_ASK[0],'Tmax':TAN_ASK[1],'Tmin':TAN_ASK[2],'R':TAN_ASK[3],'Rm':TAN_ASK[4],'N':TAN_ASK[5]};
+  const tanAskNorm=ask=>(!ask||ask==='큰 값'||ask==='작은 값'||ask==='접할 때 · 양수 k'||ask==='접할 때 · 음수 k')?TAN_ASK[0]:ask;
   const tanEff=(c0,r,ask)=>{
-    const t=(!ask||ask==='큰 값'||ask==='작은 값'||ask==='접할 때 · 양수 k'||ask==='접할 때 · 음수 k')?TAN_ASK[0]:ask;
-    if(t===TAN_ASK[0]&&c0-r<=0&&c0+r>=1)return'P';
-    if(t===TAN_ASK[2]&&c0-r<=1&&c0+r>=0)return'N';
-    return'R';
+    const t=tanAskNorm(ask);
+    if(t===TAN_ASK[0])return(c0-r<=0&&c0+r>=1)?'P':'Tmax';
+    if(t===TAN_ASK[1])return'Tmax';
+    if(t===TAN_ASK[2])return'Tmin';
+    if(t===TAN_ASK[3])return'R';
+    if(t===TAN_ASK[4])return'Rm';
+    return(c0-r<=1&&c0+r>=0)?'N':'Rm';
   };
   /* 조사 고르기 : 앞말 끝 글자에 받침이 있으면 withB(이/을), 없으면 noB(가/를).  4명이 · 4개가 · 3권을 · 2가지를 */
   const josa=(w,withB,noB)=>{const c=String(w).slice(-1).charCodeAt(0)-0xAC00;return(c>=0&&c<11172&&c%28)?withB:noB;};
@@ -1771,10 +1777,9 @@ var GED_UNITS=(function(){
       if(p.kind==='y축에 접함')return `y축에 접하는 원은 중심에서 y축까지의 거리가 곧 반지름이라, 중심 x는 반지름에 맞춰 ${r} 또는 −${r}로 자동 정해집니다. 중심 x 칸은 오른쪽(+)·왼쪽(−) 부호만 쓰이고, 중심 y와 반지름 r 은 마음대로 바꿀 수 있습니다. 중심을 자유롭게 옮기려면 '반지름 주어짐'을 고르세요.`;
       if(p.kind==='원과 직선의 접점'){
         const a=Math.round(p.a)||0,b=Math.round(p.b)||0,c0=p.dir==='x=a'?a:b,eff=tanEff(c0,r,p.ask);
-        const want={P:TAN_ASK[0],R:TAN_ASK[1],N:TAN_ASK[2]}[eff];
-        const cur=(!p.ask||p.ask==='큰 값'||p.ask==='작은 값'||p.ask==='접할 때 · 양수 k'||p.ask==='접할 때 · 음수 k')?TAN_ASK[0]:p.ask;
-        const why=want!==cur?' ⚠️ 고른 \'구할 것\'은 지금 중심·반지름으로는 답이 하나로 정해지지 않아 \'두 점에서 만날 때 · 최댓값\'으로 바꿔 냅니다(접할 때는 두 접선 중 자연수가 하나만 남을 때, 최솟값은 1 이하부터 시작할 때만 가능).':'';
-        return '기출 13번(접할 때 자연수 a), 11번(서로 다른 두 점에서 만날 때)과 같은 갈래입니다. 중심 x·y 를 0 으로 두면 기출처럼 원점 중심(a), 하나라도 0 이 아니면 중심을 옮긴 같은 문제(k)가 됩니다. 구할 것 : 접할 때 자연수 k(x직선·y직선 모두) / 두 점에서 만날 때 최댓값 / 만나지 않을 때 자연수 최솟값.'+why;
+        const want=TAN_KEY[eff],cur=tanAskNorm(p.ask);
+        const why=want!==cur?` ⚠️ 고른 '구할 것'은 지금 중심·반지름으로는 답이 하나로 정해지지 않아 '${want}'으로 바꿔 냅니다(접할 때 자연수는 두 접선 중 자연수가 하나만 남을 때, 만나지 않을 때 최솟값은 1 이하부터 시작할 때만 가능).`:'';
+        return '기출 13번(접할 때 자연수 a), 11번(서로 다른 두 점에서 만날 때)과 같은 갈래입니다. 중심 x·y 를 0 으로 두면 기출처럼 원점 중심(a), 하나라도 0 이 아니면 중심을 옮긴 같은 문제(k)가 됩니다. 구할 것 : 접할 때(자연수 k · 최댓값 · 최솟값) / 두 점에서 만날 때(최댓값 · 최솟값) / 만나지 않을 때 자연수 최솟값. 고르면 그림의 직선이 그 답의 자리에 그려집니다.'+why;
       }
       return '';
     },
@@ -1786,15 +1791,14 @@ var GED_UNITS=(function(){
       if(kind==='원과 직선의 접점'){
         /* 기출은 중심이 원점이라 6할은 원점(양수 a · 두 점에서 만날 때 · 만나지 않을 때), 나머지는 중심을 옮긴 같은 갈래.
            고른 갈래가 하나의 답으로 정해지는 조건이어야 하므로 맞을 때까지 다시 뽑는다 */
-        const dir=pick(['x=a','y=a']);let rr=rnd(2,3),ask=pick([TAN_ASK[0],TAN_ASK[0],TAN_ASK[1],TAN_ASK[2]]);
+        const dir=pick(['x=a','y=a']);let rr=rnd(2,3),ask=pick(TAN_ASK.concat([TAN_ASK[0]]));
         const origin=Math.random()<0.6;
         for(let t=0;t<60;t++){
-          rr=rnd(2,3);ask=pick([TAN_ASK[0],TAN_ASK[0],TAN_ASK[1],TAN_ASK[2]]);
+          rr=rnd(2,3);ask=pick(TAN_ASK.concat([TAN_ASK[0]]));
           const aa=origin?0:rnd(-3,3),bb=origin?0:rnd(-3,3);
           if(!origin&&!aa&&!bb)continue;
           const c0=dir==='x=a'?aa:bb,eff=tanEff(c0,rr,ask);
-          const want={P:TAN_ASK[0],R:TAN_ASK[1],N:TAN_ASK[2]}[eff];
-          if(want===ask)return{kind,a:aa,b:bb,r:rr,dir,ask,grid};
+          if(TAN_KEY[eff]===ask)return{kind,a:aa,b:bb,r:rr,dir,ask,grid};
         }
         return{kind,a:0,b:0,r:rr,dir,ask:TAN_ASK[0],grid};
       }
@@ -1804,35 +1808,33 @@ var GED_UNITS=(function(){
       if(p.kind==='원과 직선의 접점'){
         const r=Math.max(1,Math.round(p.r)||1),r2=r*r,a=Math.round(p.a)||0,b=Math.round(p.b)||0,vert=p.dir==='x=a',origin=!a&&!b;
         const c0=vert?a:b,eff=tanEff(c0,r,p.ask),nm=origin?'a':'k';
-        const kv={P:c0+r,R:c0+r-1,N:c0+r+1}[eff];
+        const kv={P:c0+r,Tmax:c0+r,Tmin:c0-r,R:c0+r-1,Rm:c0-r+1,N:c0+r+1}[eff];
         const lo=c0-r,hi=c0+r,line=(vert?'x=':'y=')+nm;
         const eq=origin?`x^2+y^2=${nf(r2)}`:`(${xm(a)})^2+(${ym(b)})^2=${nf(r2)}`;
         const eqTxt=origin?`x²+y²=${nf(r2)}`:`(x${a?(a<0?'+'+(-a):'−'+a):''})²+(y${b?(b<0?'+'+(-b):'−'+b):''})²=${nf(r2)}`;
         const natural=kv>=1;
-        const cond={P:'한 점에서 만날 때',R:'서로 다른 두 점에서 만날 때',N:'만나지 않을 때'}[eff];
-        const askTxt={P:`자연수 ${tex(nm)}의 값은?`,R:`${natural?'자연수':'정수'} ${tex(nm)}의 최댓값은?`,N:`자연수 ${tex(nm)}의 최솟값은?`}[eff];
+        const cond={P:'한 점에서 만날 때',Tmax:'한 점에서 만날 때',Tmin:'한 점에서 만날 때',R:'서로 다른 두 점에서 만날 때',Rm:'서로 다른 두 점에서 만날 때',N:'만나지 않을 때'}[eff];
+        const askTxt={P:`자연수 ${tex(nm)}의 값은?`,Tmax:`${tex(nm)}의 최댓값은?`,Tmin:`${tex(nm)}의 최솟값은?`,R:`${natural?'자연수':'정수'} ${tex(nm)}의 최댓값은?`,Rm:`${natural?'자연수':'정수'} ${tex(nm)}의 최솟값은?`,N:`자연수 ${tex(nm)}의 최솟값은?`}[eff];
         const ch=numChoices(kv);
         const q=`직선 ${tex(line)}와 원 ${tex(eq)}가 ${cond}, ${askTxt}`;
         const lim=Math.max(Math.abs(a)+r,Math.abs(b)+r,Math.abs(kv))+2;
-        const items=[{t:'circle',cx:a,cy:b,r},{t:'pt',x:a,y:b,r:5,color:'#000'},{t:'text',x:-lim+0.2,y:-lim+0.8,s:eqTxt,size:origin?19:17}];
+        const items=[{t:'circle',cx:a,cy:b,r},{t:'pt',x:a,y:b,r:5,color:'#000',guide:!origin},{t:'text',x:-lim+0.2,y:-lim+0.8,s:eqTxt,size:origin?19:17}];   // 중심에 점을 찍고, 중심이 원점이 아니면 두 축으로 점선과 좌표를 쓴다
         if(vert)items.push({t:'vline',x:kv,label:line,dash:'',color:NAVY});else items.push({t:'hline',y:kv,label:line,dash:'',color:NAVY});
-        if(eff==='P')items.push(vert?{t:'seg',x1:a,y1:b,x2:kv,y2:b,color:GREEN,width:4,dash:'9 6'}:{t:'seg',x1:a,y1:b,x2:a,y2:kv,color:GREEN,width:4,dash:'9 6'});
+        if(eff==='P'||eff==='Tmax'||eff==='Tmin')items.push(vert?{t:'seg',x1:a,y1:b,x2:kv,y2:b,color:GREEN,width:4,dash:'9 6'}:{t:'seg',x1:a,y1:b,x2:a,y2:kv,color:GREEN,width:4,dash:'9 6'});
         const exN=exam&&examFigSVG({graph:{type:'circle_line',r,h:a,k:b,lineType:vert?'v':'h',lineVal:kv,lbl:nm}});
         const figure=exN?fig(exN):fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(32,Math.floor(380/(2*lim)))},items));
         const dir0=vert?'가로':'세로',ax=vert?'x':'y';
         const s1=origin?`원 ${tex(eq)} 의 중심은 원점이고, 우변 ${tex(nf(r2))}은 반지름의 제곱이므로 반지름은 ${tex(nf(r))}입니다.`
           :`원 ${tex(eq)} 의 중심은 ${tex(pr(a,b))}, 오른쪽 ${tex(nf(r2))}은 반지름의 제곱이므로 반지름은 ${tex(nf(r))}입니다.`;
+        const tanLine=`${vert?'세로':'가로'}선 ${tex(line)}가 원에 접하려면(한 점에서 만나려면) 중심에서 ${dir0}로 딱 반지름 ${nf(r)}칸 떨어져 있어야 합니다. 중심의 ${tex(ax)}좌표 ${par(c0)}에서 ${vert?'오른쪽':'위쪽'}(+)과 ${vert?'왼쪽':'아래쪽'}(−)으로 ${nf(r)}칸 가면 ${tex(`${nm}=${nf(c0)}+${nf(r)}=${nf(hi)}`)} 또는 ${tex(`${nm}=${nf(c0)}-${nf(r)}=${nf(lo)}`)} 입니다.${exN?'':' (초록 점선)'}`;
+        const rangeLine=`서로 다른 두 점에서 만나려면 중심에서 직선까지 ${dir0} 거리가 반지름보다 작아야 합니다. 즉 ${tex(nm)}는 ${tex(nf(lo))}와 ${tex(nf(hi))} <b>사이</b>(양 끝은 접하는 곳이라 제외)입니다 : ${tex(`${nf(lo)}<${nm}<${nf(hi)}`)}`;
         let sol;
-        if(eff==='P'){
-          sol=[s1,`${vert?'세로':'가로'}선 ${tex(line)}가 원에 접하려면(한 점에서 만나려면) 중심에서 ${dir0}로 딱 반지름 ${nf(r)}칸 떨어져 있어야 합니다. 중심의 ${tex(ax)}좌표 ${par(c0)}에서 ${vert?'오른쪽':'위쪽'}(+)과 ${vert?'왼쪽':'아래쪽'}(−)으로 ${nf(r)}칸 가면 ${tex(`${nm}=${nf(c0)}+${nf(r)}=${nf(hi)}`)} 또는 ${tex(`${nm}=${nf(c0)}-${nf(r)}=${nf(lo)}`)} 입니다.${exN?'':' (초록 점선)'}`,
-            `${hi>=1&&lo>=1?'':'0 이하인 것은 자연수가 아니므로 빼면, '}자연수인 것은 ${tex(nm+'='+nf(kv))}`];
-        }else if(eff==='R'){
-          sol=[s1,`서로 다른 두 점에서 만나려면 중심에서 직선까지 ${dir0} 거리가 반지름보다 작아야 합니다. 즉 ${tex(nm)}는 ${tex(nf(lo))}와 ${tex(nf(hi))} <b>사이</b>(양 끝은 접하는 곳이라 제외)입니다 : ${tex(`${nf(lo)}<${nm}<${nf(hi)}`)}`,
-            `이 범위의 ${natural?'자연수':'정수'} 중 가장 큰 것은 ${tex(nm+'='+nf(kv))}`];
-        }else{
-          sol=[s1,`만나지 않으려면 중심에서 직선까지 ${dir0} 거리가 반지름보다 커야 합니다 : ${tex(`${nm}<${nf(lo)}`)} 또는 ${tex(`${nm}>${nf(hi)}`)}`,
+        if(eff==='P')sol=[s1,tanLine,`${hi>=1&&lo>=1?'':'0 이하인 것은 자연수가 아니므로 빼면, '}자연수인 것은 ${tex(nm+'='+nf(kv))}`];
+        else if(eff==='Tmax'||eff==='Tmin')sol=[s1,tanLine,`두 값 중 ${eff==='Tmax'?'큰':'작은'} 것이 ${eff==='Tmax'?'최댓':'최솟'}값이므로 ${tex(nm+'='+nf(kv))}`];
+        else if(eff==='R')sol=[s1,rangeLine,`이 범위의 ${natural?'자연수':'정수'} 중 가장 큰 것은 ${tex(nm+'='+nf(kv))}`];
+        else if(eff==='Rm')sol=[s1,rangeLine,`이 범위의 ${natural?'자연수':'정수'} 중 가장 작은 것은 ${tex(nm+'='+nf(kv))}`];
+        else sol=[s1,`만나지 않으려면 중심에서 직선까지 ${dir0} 거리가 반지름보다 커야 합니다 : ${tex(`${nm}<${nf(lo)}`)} 또는 ${tex(`${nm}>${nf(hi)}`)}`,
             `자연수 ${tex('1, 2, 3, \\cdots')} 중 ${tex(nm+'>'+nf(hi))}를 만족하는 가장 작은 수는 ${tex(nm+'='+nf(kv))}`];
-        }
         return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(kv)};
       }
       /* 반지름 r 이 원의 크기를 정한다. 접하는 원은 중심을 r 에 맞춰 옮긴다 (부호는 입력한 중심의 부호) */

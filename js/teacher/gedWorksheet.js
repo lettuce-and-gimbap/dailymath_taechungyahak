@@ -77,7 +77,7 @@ function gedMigrateU13(p){
    (고쳐 둔 글이 없는 카드는 열 때 저절로 새 문제로 그려진다). params.ask 가 표시이므로 한 번만 처리한다. */
 function gedMigrateU13Tangent(p){
   if(p.uid!=='u13'||!p.params||p.params.kind!=='원과 직선의 접점')return p;
-  const ask=p.params.ask,NEW=['접할 때 · 자연수 k','두 점에서 만날 때 · 최댓값','만나지 않을 때 · 최솟값'];
+  const ask=p.params.ask,NEW=['접할 때 · 자연수 k','접할 때 · 최댓값','접할 때 · 최솟값','두 점에서 만날 때 · 최댓값','두 점에서 만날 때 · 최솟값','만나지 않을 때 · 최솟값'];
   if(ask!=null&&NEW.includes(ask))return p;                     // 이미 새 갈래
   /* 접할 때는 자연수 k 로 한정(음수 갈래 삭제). 옛 값은 모두 '접할 때 · 자연수 k' 로 옮긴다.
      - '접할 때 · 양수 k' : 답이 같으므로 고친 글을 그대로 둔다

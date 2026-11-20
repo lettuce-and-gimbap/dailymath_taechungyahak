@@ -213,6 +213,8 @@ var EXAM_FIG={
         ymin:Math.min(0,k-r,lineType==='h'?lineVal:0)-1.4,ymax:Math.max(0,k+r,lineType==='h'?lineVal:0)+1.4}
       :{xmin:-r-1.4,xmax:r+1.6,ymin:-r-1.4,ymax:r+1.4};
     const P=exfPlane(w,{unit:Math.min(46,300/(2*r+3))});P.axes(false);P.circle(h,k,r);
+    P.dot(h,k,{r:4});                                     // 원의 중심에 점
+    if(off){P.guide(h,k);if(h)P.xval(h,null,k<0?false:'force');if(k)P.yval(k,null,h<0);}   // 중심이 원점이 아니면 두 축으로 점선과 좌표 값
     const v=lineVal;
     if(lineType==='v'){P.vline(v,{w:2.6});P.text(v,w.ymin,'x='+nm,{math:true,dx:8,dy:-4,anchor:'start'});}
     else{P.hline(v,{w:2.6});P.text(w.xmin,v,'y='+nm,{math:true,anchor:'start',dy:-8});}
