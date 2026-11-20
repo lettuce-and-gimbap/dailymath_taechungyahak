@@ -608,7 +608,8 @@ function GedWorksheetTab(){
     const keepOv=k==='grid'&&ovRef.current[key]&&ovRef.current[key]!=='1';   // 글을 고쳐 둔 카드 : 그림 모양만 바꾸고 고친 글은 지키지 않고 지우지도 않는다
     if(!keepOv)delete ovRef.current[key];
     mapProbs(id,ps=>ps.map(p=>{if(p.key!==key)return p;const u=byId(p.uid);
-    const params=(k==='kind'&&u.reroll)?u.reroll({...p.params,kind:v}):{...p.params,[k]:v};
+    const params0=(k==='kind'&&u.reroll)?u.reroll({...p.params,kind:v}):{...p.params,[k]:v};
+    const params=u.fix?u.fix(params0,k):params0;   // 유형이 고른 조건에 맞게 다른 숫자를 맞추는 경우(원과 직선의 '구할 것')
     if(keepOv){const fg=gedBuildFig(p.uid,params);if(fg)ovRef.current[key]=gedSwapFig(ovRef.current[key],fg);return{...p,params,rev:p.rev+1};}
     // 예전에 저장된 19·20번도 조건을 고치는 순간 그림이 있는 생성기로 전환한다.
     if((u.id==='u19'||u.id==='u20')&&!params.v)params.v=3;

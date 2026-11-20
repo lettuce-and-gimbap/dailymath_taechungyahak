@@ -1771,6 +1771,16 @@ var GED_UNITS=(function(){
        rand() 가 둘을 섞어 내고, 옛 저장본(grid 없음)은 예전 모양(격자 있음)으로 읽는다. */
     def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a',ask:TAN_ASK[0],grid:'시험지 모양(격자 없음)'},
     /* 조건 상자 안내 : 종류마다 어떤 칸이 어떻게 쓰이는지 (접하는 원은 중심 한쪽이 반지름으로 정해진다) */
+    /* 조건 상자에서 '구할 것'(ask)을 고르면 그 갈래가 성립하도록 직선과 같은 방향의 중심 좌표를 가장 가까운 값으로 맞춘다
+       (접할 때 자연수 k → c0−r≤0<c0+r · 만나지 않을 때 최솟값 → c0−r≤1, c0+r≥0). 맞추지 않으면 '최댓값' 같은 다른 갈래로 바뀌어 읽힌다.
+       숫자 칸(중심·반지름·방향)을 직접 고칠 때는 사용자가 쓴 숫자를 지키고 안내 줄만 보여 준다. */
+    fix(p,k){
+      if(k!=='ask'||p.kind!=='원과 직선의 접점')return p;
+      const r=Math.max(1,Math.round(p.r)||1),key=p.dir==='x=a'?'a':'b',c0=Math.round(p[key])||0,want=tanAskNorm(p.ask);
+      if(TAN_KEY[tanEff(c0,r,p.ask)]===want)return p;
+      let lo,hi;if(want===TAN_ASK[0]){lo=1-r;hi=r;}else if(want===TAN_ASK[5]){lo=-r;hi=r+1;}else return p;
+      return{...p,[key]:Math.max(lo,Math.min(hi,c0))};
+    },
     hint(p){
       const r=Math.max(1,Math.round(p.r)||1);
       if(p.kind==='x축에 접함')return `x축에 접하는 원은 중심에서 x축까지의 거리가 곧 반지름이라, 중심 y는 반지름에 맞춰 ${r} 또는 −${r}로 자동 정해집니다. 중심 y 칸은 위(+)·아래(−) 부호만 쓰이고, 중심 x와 반지름 r 은 마음대로 바꿀 수 있습니다. 중심을 자유롭게 옮기려면 '반지름 주어짐'을 고르세요.`;
