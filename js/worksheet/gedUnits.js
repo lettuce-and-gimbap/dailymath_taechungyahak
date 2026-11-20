@@ -1721,23 +1721,28 @@ var GED_UNITS=(function(){
        접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y = ±r, y축 접함 → 중심 x = ±r, 부호는 입력한 중심 값의 부호를 따른다).
        그래서 반지름을 고치면 그림 속 원의 크기가 실제로 바뀐다. 옛 저장본의 '원점을 지남'·'지름의 양 끝점'은 '반지름 주어짐'으로 읽는다. */
     fields:[{k:'kind',label:'문제 종류',sel:['반지름 주어짐','x축에 접함','y축에 접함','원과 직선의 접점']},
-      {k:'a',label:'중심 x',min:-4,max:4},{k:'b',label:'중심 y',min:-4,max:4},{k:'r',label:'반지름 r',min:1,max:4},{k:'dir',label:'[접점] 직선 종류',sel:['x=a','y=a']}],
-    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a'},
+      {k:'a',label:'중심 x',min:-4,max:4},{k:'b',label:'중심 y',min:-4,max:4},{k:'r',label:'반지름 r',min:1,max:4},{k:'dir',label:'[접점] 직선 종류',sel:['x=a','y=a']},
+      {k:'grid',label:'그림 모양',sel:['시험지 모양(격자 없음)','격자 있음']}],
+    /* 그림 모양 : 기출 13번은 모눈 없이 축과 점선·값만 그린다(js/ui/examFig.js 와 같은 그림). '격자 있음'은 모눈을 세는 연습용.
+       rand() 가 둘을 섞어 내고, 옛 저장본(grid 없음)은 예전 모양(격자 있음)으로 읽는다. */
+    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a',grid:'시험지 모양(격자 없음)'},
     rand(){const kind=pick(['반지름 주어짐','반지름 주어짐','x축에 접함','y축에 접함','원과 직선의 접점']);
       const r=rnd(1,3);let a=nz(-3,3),b=nz(-3,3);
       if(kind==='x축에 접함')b=b<0?-r:r;
       if(kind==='y축에 접함')a=a<0?-r:r;
-      return{kind,a,b,r,dir:pick(['x=a','x=a','y=a'])};},
+      return{kind,a,b,r,dir:pick(['x=a','x=a','y=a']),grid:pick(['시험지 모양(격자 없음)','격자 있음'])};},
     build(p){
+      const exam=p.grid==='시험지 모양(격자 없음)'&&typeof examFigSVG==='function';
       if(p.kind==='원과 직선의 접점'){
         const r=p.r,r2=r*r,vert=p.dir==='x=a';const ch=numChoices(r);
         const q=`직선 ${tex(p.dir)}와 원 ${tex(`x^2+y^2=${nf(r2)}`)}가 한 점에서 만날 때, 양수 ${tex('a')}의 값은?`;
         const R=r+2,items=[{t:'circle',cx:0,cy:0,r},{t:'pt',x:0,y:0,r:5,color:'#000'},{t:'text',x:-R+0.2,y:-R+0.8,s:`x²+y²=${nf(r2)}`,size:19}];
         if(vert)items.push({t:'vline',x:r,label:'x=a',dash:'',color:NAVY},{t:'seg',x1:0,y1:0,x2:r,y2:0,color:GREEN,width:4,dash:'9 6'});
         else items.push({t:'hline',y:r,label:'y=a',dash:'',color:NAVY},{t:'seg',x1:0,y1:0,x2:0,y2:r,color:GREEN,width:4,dash:'9 6'});
-        const figure=fig(planeSVG({xmin:-R,xmax:R,ymin:-R,ymax:R,s:32},items));
+        const ex1=exam&&examFigSVG({graph:{type:'circle_line',r,lineType:vert?'v':'h',lineVal:r}});
+        const figure=ex1?fig(ex1):fig(planeSVG({xmin:-R,xmax:R,ymin:-R,ymax:R,s:32},items));
         const sol=[`원의 반지름 : ${tex(`x^2+y^2=${nf(r2)}=${nf(r)}^2`)} → ${tex('r='+nf(r))}`,
-          `원점에서 ${vert?'오른쪽':'위쪽'}으로 반지름 ${nf(r)}칸을 가면 원의 끝입니다. ${vert?'세로':'가로'}선 ${tex(p.dir)}가 그 끝에 딱 닿으려면(접하려면) ${tex('a')}가 반지름과 같아야 합니다. (초록 점선)`,
+          `원점에서 ${vert?'오른쪽':'위쪽'}으로 반지름 ${nf(r)}칸을 가면 원의 끝입니다. ${vert?'세로':'가로'}선 ${tex(p.dir)}가 그 끝에 딱 닿으려면(접하려면) ${tex('a')}가 반지름과 같아야 합니다.${ex1?'':' (초록 점선)'}`,
           `따라서 ${tex('a='+nf(r))}`];
         return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(r)};
       }
@@ -1760,10 +1765,11 @@ var GED_UNITS=(function(){
       if(p.kind==='x축에 접함')items.push({t:'seg',x1:a,y1:b,x2:a,y2:0,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:a,y:0,color:GREEN,r:6});
       else if(p.kind==='y축에 접함')items.push({t:'seg',x1:a,y1:b,x2:0,y2:b,color:GREEN,width:4,dash:'9 6'},{t:'pt',x:0,y:b,color:GREEN,r:6});
       else items.push({t:'seg',x1:a,y1:b,x2:a+R,y2:b,color:GREEN,width:4,dash:'9 6'},{t:'text',x:a+R/2,y:b<0?b-0.8:b+0.35,s:'r='+nf(R),size:19,color:GREEN,anchor:'middle'});
-      const figure=fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim)),maxW:420},items));
+      const ex2=exam&&examFigSVG({graph:{type:'circle',h:a,k:b,r:R,show:'center'},q:{q:'중심의 좌표가 ('}});
+      const figure=ex2?fig(ex2):fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(34,Math.floor(340/lim)),maxW:420},items));
       const sol=[`원의 기본 모양은 ${tex('(x-a)^2+(y-b)^2=r^2')}입니다. 중심 ${tex(pr(a,b))}를 자리에 넣습니다. (괄호 안 부호는 반대!)`,
         why,
-        `오른쪽에는 반지름을 <b>두 번 곱한 값</b>을 씁니다. ${tex(`${Rtx}\times${Rtx}=${nf(R2)}`)}`,
+        `오른쪽에는 반지름을 <b>두 번 곱한 값</b>을 씁니다. ${tex(`${Rtx}\\times${Rtx}=${nf(R2)}`)}`,
         `따라서 ${tex(eq)}`];
       return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:eq,layout:'two'};
     }

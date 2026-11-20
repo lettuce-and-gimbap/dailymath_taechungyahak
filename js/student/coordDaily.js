@@ -340,6 +340,8 @@ function genDivQ(){
    접하는 원은 반지름 r 로 중심을 정한다(x축 접함 → 중심 y=±r, y축 접함 → 중심 x=±r). */
 function genCircQ(options){
   const gridMode=!options||options.circleGrid!==false;
+  /* 격자 없음 = 기출 13번 그림(js/ui/examFig.js) : 모눈·눈금 없이 중심에서 두 축으로 점선과 값만, 문제 글도 기출 문장 그대로 */
+  const exam=!gridMode&&typeof examFigSVG==='function';
   const G=window.GS;
   const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
   const pk=arr=>arr[Math.floor(Math.random()*arr.length)];
@@ -368,13 +370,14 @@ function genCircQ(options){
     const before=[...circ,vert?{t:'vline',x:5.4,label:dir,dash:'',color:'#1d3b8f',width:3}:{t:'hline',y:5.4,label:dir,dash:'',color:'#1d3b8f',width:3},...lg];
     const after=[...circ,vert?{t:'vline',x:r,label:dir,dash:'',color:'#1d3b8f',width:3}:{t:'hline',y:r,label:dir,dash:'',color:'#1d3b8f',width:3},
       {t:'seg',x1:0,y1:0,x2:vert?r:0,y2:vert?0:r,color:'#2e7d32',width:4,dash:'9 6'},...lg];
+    const exSvg=exam&&examFigSVG({graph:{type:'circle_line',r,lineType:vert?'v':'h',lineVal:r}});
     return{lv:'circ',topic:'원의 방정식(접점)',
-      qHtml:`직선 <b>${dir}</b>와 원 <b>x²+y²=${r*r}</b>이 한 점에서 만날 때, 양수 a의 값은?<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">(직선은 a에 따라 움직입니다)</div>`,
+      qHtml:`직선 <b>${dir}</b>와 원 <b>x²+y²=${r*r}</b>이 한 점에서 만날 때, 양수 a의 값은?${exSvg?'':'<div style="text-align:center;font-size:0.85em;color:#6b7280;margin-top:4px">(직선은 a에 따라 움직입니다)</div>'}`,
       q:`직선 ${dir} 와 원 x²+y²=${r*r} 이 한 점에서 만날 때 양수 a`,
-      svg:G.planeSVG(g,before),svgAfter:G.planeSVG(g,after),
+      svg:exSvg||G.planeSVG(g,before),svgAfter:exSvg||G.planeSVG(g,after),
       choices:list.map(String),ans:list.indexOf(r),answer:String(r),cols:2,
       sol:[`원 x²+y²=${r*r} 의 중심은 원점이고, 오른쪽 우변이 반지름의 제곱이므로 r² = ${r*r} → 반지름은 <b>${r}</b> 입니다.`,
-        `직선 ${dir} 가 원과 <b>한 점에서 만난다 = 접한다</b> → 원점에서 ${vert?'오른쪽':'위쪽'}으로 반지름 ${r}칸을 간 원의 끝에 직선이 닿습니다. (초록 점선)`,
+        `직선 ${dir} 가 원과 <b>한 점에서 만난다 = 접한다</b> → 원점에서 ${vert?'오른쪽':'위쪽'}으로 반지름 ${r}칸을 간 원의 끝에 직선이 닿습니다.${exam?'':' (초록 점선)'}`,
         `따라서 a = <b>${r}</b> (양수)`]};
   }
 
@@ -394,13 +397,14 @@ function genCircQ(options){
     {t:'pt',x:a,y:b,r:6,color:RED},
     ...legend(a,b,r,kind==='r'?[`● 중심 (${_neg(a)}, ${_neg(b)})`,`┅ 반지름 ${r}`]:[`● 중심 (${_neg(a)}, ${_neg(b)})`]),
   ];
-  const svg=G.planeSVG(g,items);
+  const svg=exam?examFigSVG({graph:{type:'circle',h:a,k:b,r,show:'center'},q:{q:'중심의 좌표가 ('}}):G.planeSVG(g,items);
   const cond=kind==='r'?'':kind==='x'?'x축에 접하는 ':'y축에 접하는 ';
   const why=kind==='r'?`반지름은 <b>${r}</b> 입니다.`
     :kind==='x'?`x축에 접하므로 반지름 = 중심에서 x축까지의 거리 = |y좌표| = |${_neg(b)}| = <b>${r}</b>`
     :`y축에 접하므로 반지름 = 중심에서 y축까지의 거리 = |x좌표| = |${_neg(a)}| = <b>${r}</b>`;
   return{lv:'circ',topic:'원의 방정식',
-    qHtml:`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?`,
+    qHtml:exam?`중심의 좌표가 <b>(${_neg(a)}, ${_neg(b)})</b>이고 ${kind==='r'?`반지름의 길이가 <b>${r}</b>인`:kind==='x'?'<b>x축</b>에 접하는':'<b>y축</b>에 접하는'} 원의 방정식은?`
+      :`다음 그림과 같이 ${cond}원의 방정식으로 옳은 것은?`,
     q:`중심 (${a}, ${b}), ${kind==='r'?`반지름 ${r} 인`:kind==='x'?'x축에 접하는':'y축에 접하는'} 원의 방정식`,
     svg,svgAfter:svg,
     choices:list,ans:list.indexOf(right),answer:right,cols:1,
@@ -653,8 +657,9 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
     if(k==='circ'&&gridChoice==null){setLevel(k);setPhase('circle-grid');return;}
     // 씨앗을 남겨 두면 선생님 화면에서 같은 문제(식·그림·보기 순서)를 그대로 다시 그릴 수 있다 (core/replay.js)
     const genLevel=k==='count3'?'count5':k;
-    const options=k==='circ'?{circleGrid:gridChoice}:undefined;
-    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();list.push({...withSeed(seed,()=>genCoordQ(genLevel,options)),seed,genLv:genLevel});}
+    const list=[];for(let i=0;i<TOTAL;i++){const seed=newSeed();
+      const options=k==='circ'?{circleGrid:gridChoice==='mix'?Math.random()<0.5:gridChoice}:undefined;
+      list.push({...withSeed(seed,()=>genCoordQ(genLevel,options)),seed,genLv:genLevel});}
     setLevel(k);setQs(list);setIdx(0);setSel(null);setRecs([]);setCorrect(0);
     setStartAt(Date.now());setQStartAt(Date.now());setFirstClick(null);setPhase('quiz');
     savingRef.current=false;savedRef.current=null;
@@ -733,7 +738,11 @@ function CoordDailyTab({userData,onUpdate,initialLevel=null,onExit}){
     </button>
     <button onClick={()=>start('circ',false)} className="w-full text-left bg-white rounded-3xl p-5 shadow-md border-2 border-emerald-200 active:scale-[0.98]">
       <div className="font-black text-lg text-emerald-800">◯ 격자 없는 그림</div>
-      <div className="text-sm text-gray-500 mt-1">실제 검정고시처럼 좌표 격자 없이 중심과 접선 정보를 보고 풉니다.</div>
+      <div className="text-sm text-gray-500 mt-1">실제 검정고시 13번 그림처럼 모눈 없이, 중심에서 축까지 점선과 값만 보고 풉니다.</div>
+    </button>
+    <button onClick={()=>start('circ','mix')} className="w-full text-left bg-white rounded-3xl p-5 shadow-md border-2 border-amber-200 active:scale-[0.98]">
+      <div className="font-black text-lg text-amber-800">🎲 섞어서 (랜덤)</div>
+      <div className="text-sm text-gray-500 mt-1">격자 있는 그림과 없는 그림이 문제마다 무작위로 나옵니다.</div>
     </button>
   </div>);
 
