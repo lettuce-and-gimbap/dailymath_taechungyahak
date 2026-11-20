@@ -76,8 +76,11 @@ function gedMigrateU13(p){
    중심을 옮겨 두었던 카드에서 글을 고쳐 둔 것은 그 글이 원점 중심 문제 기준이라 맞지 않으므로 고친 글을 걷어 내고 새로 그린다
    (고쳐 둔 글이 없는 카드는 열 때 저절로 새 문제로 그려진다). params.ask 가 표시이므로 한 번만 처리한다. */
 function gedMigrateU13Tangent(p){
-  if(p.uid!=='u13'||!p.params||p.params.kind!=='원과 직선의 접점'||p.params.ask!=null)return p;
-  const params={...p.params,ask:'큰 값'};
+  if(p.uid!=='u13'||!p.params||p.params.kind!=='원과 직선의 접점')return p;
+  const ask=p.params.ask,NEW=['접할 때 · 양수 k','접할 때 · 음수 k','두 점에서 만날 때 · 최댓값','만나지 않을 때 · 최솟값'];
+  if(ask!=null&&NEW.includes(ask))return p;                     // 이미 새 갈래
+  /* ask 없음(아주 예전) · '큰 값'/'작은 값'(중심 이동 첫 판) → 새 갈래로. 큰 값→접할 때 양수 k, 작은 값→접할 때 음수 k */
+  const params={...p.params,ask:ask==='작은 값'?NEW[1]:NEW[0]};
   if(p.override&&(params.a||params.b))return{...p,params,override:null,rev:(p.rev||0)+1};
   return{...p,params};
 }
