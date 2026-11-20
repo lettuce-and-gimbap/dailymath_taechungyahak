@@ -1746,17 +1746,39 @@ var GED_UNITS=(function(){
        그래서 반지름을 고치면 그림 속 원의 크기가 실제로 바뀐다. 옛 저장본의 '원점을 지남'·'지름의 양 끝점'은 '반지름 주어짐'으로 읽는다. */
     fields:[{k:'kind',label:'문제 종류',sel:['반지름 주어짐','x축에 접함','y축에 접함','원과 직선의 접점']},
       {k:'a',label:'중심 x',min:-4,max:4},{k:'b',label:'중심 y',min:-4,max:4},{k:'r',label:'반지름 r',min:1,max:4},{k:'dir',label:'[접점] 직선 종류',sel:['x=a','y=a']},
+      {k:'ask',label:'[접점] 중심이 원점이 아닐 때 구할 값',sel:['큰 값','작은 값']},
       {k:'grid',label:'그림 모양',sel:['시험지 모양(격자 없음)','격자 있음']}],
     /* 그림 모양 : 기출 13번은 모눈 없이 축과 점선·값만 그린다(js/ui/examFig.js 와 같은 그림). '격자 있음'은 모눈을 세는 연습용.
        rand() 가 둘을 섞어 내고, 옛 저장본(grid 없음)은 예전 모양(격자 있음)으로 읽는다. */
-    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a',grid:'시험지 모양(격자 없음)'},
+    def:{kind:'반지름 주어짐',a:1,b:2,r:3,dir:'x=a',ask:'큰 값',grid:'시험지 모양(격자 없음)'},
     rand(){const kind=pick(['반지름 주어짐','반지름 주어짐','x축에 접함','y축에 접함','원과 직선의 접점']);
       const r=rnd(1,3);let a=nz(-3,3),b=nz(-3,3);
       if(kind==='x축에 접함')b=b<0?-r:r;
       if(kind==='y축에 접함')a=a<0?-r:r;
-      return{kind,a,b,r,dir:pick(['x=a','x=a','y=a']),grid:pick(['시험지 모양(격자 없음)','격자 있음'])};},
+      /* 접점 : 기출 13번은 중심이 원점(x²+y²=r², 양수 a)이다. 6할은 그대로 원점으로, 나머지는 중심을 옮긴 변형(큰·작은 값) */
+      if(kind==='원과 직선의 접점'&&Math.random()<0.6){a=0;b=0;}
+      return{kind,a,b,r,dir:pick(['x=a','x=a','y=a']),ask:pick(['큰 값','작은 값']),grid:pick(['시험지 모양(격자 없음)','격자 있음'])};},
     build(p){
       const exam=p.grid==='시험지 모양(격자 없음)'&&typeof examFigSVG==='function';
+      if(p.kind==='원과 직선의 접점'&&(p.a||p.b)){
+        /* 중심이 (a,b) 인 원 : 직선 x=k(또는 y=k)가 접하려면 중심에서 반지름 r 만큼 떨어져야 한다 → k = a±r (또는 b±r) */
+        const r=Math.max(1,Math.round(p.r)||1),r2=r*r,a=Math.round(p.a)||0,b=Math.round(p.b)||0,vert=p.dir==='x=a',big=p.ask!=='작은 값';
+        const c0=vert?a:b,hi=c0+r,lo=c0-r,kv=big?hi:lo;
+        const eq=`(${xm(a)})^2+(${ym(b)})^2=${nf(r2)}`;
+        const ch=numChoices(kv);
+        const q=`직선 ${tex(vert?'x=k':'y=k')}와 원 ${tex(eq)}가 한 점에서 만날 때, 상수 ${tex('k')}의 값 중 <b>${big?'큰':'작은'} 값</b>은?`;
+        const lim=Math.max(Math.abs(a)+r,Math.abs(b)+r,Math.abs(kv))+2;
+        const items=[{t:'circle',cx:a,cy:b,r},{t:'pt',x:a,y:b,r:5,color:'#000'},{t:'text',x:-lim+0.2,y:-lim+0.8,s:`(x${a?(a<0?'+'+(-a):'−'+a):''})²+(y${b?(b<0?'+'+(-b):'−'+b):''})²=${nf(r2)}`,size:17}];
+        if(vert)items.push({t:'vline',x:kv,label:'x=k',dash:'',color:NAVY},{t:'seg',x1:a,y1:b,x2:kv,y2:b,color:GREEN,width:4,dash:'9 6'});
+        else items.push({t:'hline',y:kv,label:'y=k',dash:'',color:NAVY},{t:'seg',x1:a,y1:b,x2:a,y2:kv,color:GREEN,width:4,dash:'9 6'});
+        const exN=exam&&examFigSVG({graph:{type:'circle_line',r,h:a,k:b,lineType:vert?'v':'h',lineVal:kv,lbl:'k'}});
+        const figure=exN?fig(exN):fig(planeSVG({xmin:-lim,xmax:lim,ymin:-lim,ymax:lim,s:Math.min(32,Math.floor(380/(2*lim)))},items));
+        const sol=[`원 ${tex(eq)} 의 중심은 ${tex(pr(a,b))}, 오른쪽 ${tex(nf(r2))}은 반지름의 제곱이므로 반지름은 ${tex(nf(r))}입니다.`,
+          `${vert?'세로':'가로'}선 ${tex(vert?'x=k':'y=k')}가 원에 접하려면 중심에서 ${vert?'가로':'세로'}로 딱 반지름 ${nf(r)}칸 떨어져 있어야 합니다. 중심의 ${tex(vert?'x':'y')}좌표는 ${par(c0)}이므로 ${vert?'오른쪽':'위쪽'}(+)과 ${vert?'왼쪽':'아래쪽'}(−) 두 곳이 있습니다.${exN?'':' (초록 점선)'}`,
+          `${tex(`k=${nf(c0)}+${nf(r)}=${nf(hi)}`)} 또는 ${tex(`k=${nf(c0)}-${nf(r)}=${nf(lo)}`)}`,
+          `${big?'큰':'작은'} 값은 ${tex('k='+nf(kv))}`];
+        return{q,figure,choices:ch.list,ans:ch.ans,sol,answerTex:nf(kv)};
+      }
       if(p.kind==='원과 직선의 접점'){
         const r=p.r,r2=r*r,vert=p.dir==='x=a';const ch=numChoices(r);
         const q=`직선 ${tex(p.dir)}와 원 ${tex(`x^2+y^2=${nf(r2)}`)}가 한 점에서 만날 때, 양수 ${tex('a')}의 값은?`;

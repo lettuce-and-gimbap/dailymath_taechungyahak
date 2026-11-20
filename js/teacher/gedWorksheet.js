@@ -72,10 +72,19 @@ function gedMigrateU13(p){
   if(override&&override!=='1'&&grid!=='격자 있음'){const fg=gedBuildFig('u13',params);if(fg)override=gedSwapFig(override,fg);}
   return{...p,params,override};
 }
+/* 소급 적용 : '원과 직선의 접점' 카드는 예전에 중심(a,b)을 무시하고 늘 원점 중심으로 그렸다.
+   중심을 옮겨 두었던 카드에서 글을 고쳐 둔 것은 그 글이 원점 중심 문제 기준이라 맞지 않으므로 고친 글을 걷어 내고 새로 그린다
+   (고쳐 둔 글이 없는 카드는 열 때 저절로 새 문제로 그려진다). params.ask 가 표시이므로 한 번만 처리한다. */
+function gedMigrateU13Tangent(p){
+  if(p.uid!=='u13'||!p.params||p.params.kind!=='원과 직선의 접점'||p.params.ask!=null)return p;
+  const params={...p.params,ask:'큰 값'};
+  if(p.override&&(params.a||params.b))return{...p,params,override:null,rev:(p.rev||0)+1};
+  return{...p,params};
+}
 function gedMigrateProblems(problems){
   return(problems||[]).map(p=>{
     const f=GED_UID_MIGRATE[p.uid];
-    return gedMigrateU13(f?{...p,uid:f(p.params||{})}:p);   // key 는 그대로 둔다 (편집해 둔 내용과 연결돼 있음)
+    return gedMigrateU13Tangent(gedMigrateU13(f?{...p,uid:f(p.params||{})}:p));   // key 는 그대로 둔다 (편집해 둔 내용과 연결돼 있음)
   });
 }
 function gedMigrateIds(ids){

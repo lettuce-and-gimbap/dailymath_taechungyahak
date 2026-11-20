@@ -203,13 +203,19 @@ var EXAM_FIG={
   },
   /* 직선과 원 (기출 그림 1) : x²+y²=r² 과 직선 x=a(또는 y=a) — 이름표만 */
   circle_line(g){
-    const{r,lineType,lineVal}=g;
-    const w={xmin:-r-1.4,xmax:r+1.6,ymin:-r-1.4,ymax:r+1.4};
-    const P=exfPlane(w,{unit:Math.min(46,300/(2*r+3))});P.axes(false);P.circle(0,0,r);
+    const{r,lineType,lineVal}=g,h=g.h||0,k=g.k||0,off=!!(h||k),nm=g.lbl||'a';
+    /* 중심이 원점이 아니면(h,k) 원·직선·방정식 글자가 모두 들어오게 창을 넓힌다. 원점 중심은 예전 그대로 */
+    const w=off
+      ?{xmin:Math.min(0,h-r,lineType==='v'?lineVal:0)-1.4-Math.ceil(150/Math.min(46,300/(2*r+3))),xmax:Math.max(0,h+r,lineType==='v'?lineVal:0)+1.6,
+        ymin:Math.min(0,k-r,lineType==='h'?lineVal:0)-1.4,ymax:Math.max(0,k+r,lineType==='h'?lineVal:0)+1.4}
+      :{xmin:-r-1.4,xmax:r+1.6,ymin:-r-1.4,ymax:r+1.4};
+    const P=exfPlane(w,{unit:Math.min(46,300/(2*r+3))});P.axes(false);P.circle(h,k,r);
     const v=lineVal;
-    if(lineType==='v'){P.vline(v,{w:2.6});P.text(v,w.ymin,'x=a',{math:true,dx:8,dy:-4,anchor:'start'});}
-    else{P.hline(v,{w:2.6});P.text(w.xmin,v,'y=a',{math:true,anchor:'start',dy:-8});}
-    P.text(-r*0.75,-r*0.75,`x^2+y^2=${r*r}`,{math:true,anchor:'end',dx:-6,dy:FSo(P,1.2),size:20});
+    if(lineType==='v'){P.vline(v,{w:2.6});P.text(v,w.ymin,'x='+nm,{math:true,dx:8,dy:-4,anchor:'start'});}
+    else{P.hline(v,{w:2.6});P.text(w.xmin,v,'y='+nm,{math:true,anchor:'start',dy:-8});}
+    const sg=n=>n<0?'+'+(-n):'-'+n,eq=off?`(x${h?sg(h):''})^2+(y${k?sg(k):''})^2=${r*r}`:`x^2+y^2=${r*r}`;
+    if(off)P.text(0,0,eq,{math:true,anchor:'start',px:10,py:(lineType==='h'&&v<k)?P.FS+10:P.H-10,size:20});   // 중심을 옮긴 그림 : 방정식은 왼쪽 가장자리(비워 둔 칸)에 쓴다
+    else P.text(-r*0.75,-r*0.75,eq,{math:true,anchor:'end',dx:-6,dy:FSo(P,1.2),size:20});
     return P.svg();
   },
   /* 점과 직선 사이의 거리 : 직선 · 점 P · 수선의 발까지 점선 */
