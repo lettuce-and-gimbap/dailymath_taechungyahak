@@ -118,14 +118,36 @@ function gedSheetId(){return 's'+Date.now().toString(36)+Math.random().toString(
 
 /* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
    opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다) */
-function gedGenUnit(u,count,withEx,opts){
+/* 겹치지 않게 나눠 뽑기 : pool 의 값을 count 번 뽑되, 모든 값이 한 번씩 나오기 전에는 같은 값을 다시 뽑지 않는다
+   (count 가 pool 보다 많아지면 그다음 바퀴를 돈다). used = 이미 쓴 값들(예제 · 먼저 만든 카드 · 앞 유형) */
+function gedSpread(count,pool,used){
+  const cnt=new Map(pool.map(v=>[v,0]));
+  (used||[]).forEach(v=>{if(cnt.has(v))cnt.set(v,cnt.get(v)+1);});
   const out=[];
-  if(withEx)out.push(gedNewRec(u,0,u.exDef?u.exDef(opts):{...u.def}));
+  for(let i=0;i<count;i++){
+    const min=Math.min(...cnt.values());
+    const cand=pool.filter(v=>cnt.get(v)===min);
+    const v=cand[Math.floor(Math.random()*cand.length)];
+    out.push(v);cnt.set(v,min+1);
+  }
+  return out;
+}
+
+/* 유형 하나에 대해 예제 + 실전 n문항 생성 (문제 텍스트 중복 방지)
+   opts : 유형별 생성 설정 (지금은 핵심 점 찍기 p1 의 cfg.kp 만 쓴다. 다른 유형의 rand 는 받아도 무시한다)
+   usedRecs : 이미 같은 학습지에 있는 카드들 — u.plan 이 있는 유형(경우의 수 순열·조합)은 이 카드들과도 겹치지 않게 뽑는다
+   u.plan(n,opts,usedParams,exParams) : 문항마다 미리 정해 둘 값 [{seed},…] 을 돌려준다 (상황 번호 62가지를 한 바퀴 돌 때까지 겹치지 않게) */
+function gedGenUnit(u,count,withEx,opts,usedRecs){
+  const out=[];
+  let ex=null;
+  if(withEx){ex=gedNewRec(u,0,u.exDef?u.exDef(opts):{...u.def});out.push(ex);}
+  let plan=null;
+  if(u.plan){try{plan=u.plan(count,opts,(usedRecs||[]).map(r=>r.params||{}),ex&&ex.params);}catch(e){plan=null;}}
   const seen=new Set();
   for(let i=1;i<=count;i++){
     let params=null,first=null;
     /* 겹쳐서 다시 뽑을 때 reroll 이 있는 유형은 처음 뽑은 문제 종류를 지킨다 (p1 의 종류 섞기 순서가 밀리지 않게) */
-    const again=()=>first&&u.reroll?u.reroll(first):u.rand(opts);
+    const again=()=>{const c=first&&u.reroll?u.reroll(first):u.rand(opts);return plan&&plan[i-1]?{...c,...plan[i-1]}:c;};
     for(let t=0;t<20;t++){const c=again();if(!first)first=c;const r=gedSafeBuild(u,c);if(!r)continue;
       const k=r.q+'|'+(r.answerTex||r.answerRaw||'');if(!seen.has(k)){seen.add(k);params=c;break;}}
     if(!params){for(let t=0;t<10&&!params;t++){const c=again();if(gedSafeBuild(u,c))params=c;}}
@@ -463,7 +485,7 @@ function GedWorksheetTab(){
   const onRevert=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.map(p=>p.key===key?{...p,override:null,rev:p.rev+1}:p));};
   const onRemoveProb=(id,key)=>{delete ovRef.current[key];mapProbs(id,ps=>ps.filter(p=>p.key!==key));};
   const addProblem=(id,uid)=>{const u=byId(uid);patchSheet(id,s=>{const ps=s.problems;const mine=ps.filter(p=>p.uid===uid);const idx=Math.max(0,...mine.map(p=>p.idx))+1;
-    const[rec]=gedGenUnit(u,1,false,s.cfg.kp);rec.idx=idx;const last=ps.map(p=>p.uid).lastIndexOf(uid);const out=ps.slice();out.splice(last+1,0,rec);return{...s,problems:out};});};
+    const[rec]=gedGenUnit(u,1,false,s.cfg.kp,mine);rec.idx=idx;const last=ps.map(p=>p.uid).lastIndexOf(uid);const out=ps.slice();out.splice(last+1,0,rec);return{...s,problems:out};});};
   const removeUnit=(id,uid)=>mapProbs(id,ps=>{ps.filter(p=>p.uid===uid).forEach(p=>delete ovRef.current[p.key]);return ps.filter(p=>p.uid!==uid);});
   const onOverride=(key,html)=>{ovRef.current[key]=html;
     setSheets(ss=>ss.map(s=>s.problems.some(p=>p.key===key&&!p.override)?{...s,problems:s.problems.map(p=>p.key===key?{...p,override:'1'}:p)}:s));
@@ -474,7 +496,11 @@ function GedWorksheetTab(){
   const generate=()=>{
     if(!selected.length){showToast('유형을 하나 이상 골라 주세요.');return;}
     if(selected.includes('p1')&&!(setupCfg.kp&&setupCfg.kp.kinds&&setupCfg.kp.kinds.length)){showToast('점 찍기 연습에 넣을 함수를 하나 이상 골라 주세요.');return;}
-    const list=[];UNITS.forEach(u=>{if(selected.includes(u.id))list.push(...gedGenUnit(u,setupCfg.count,setupCfg.includeExample,setupCfg.kp));});
+    /* 순열·조합처럼 상황(소재)을 돌려 쓰는 유형은 앞 유형에서 쓴 상황과도 겹치지 않게 서로의 카드를 넘겨 준다 */
+    const list=[];const spread=[];
+    UNITS.forEach(u=>{if(!selected.includes(u.id))return;
+      const g=gedGenUnit(u,setupCfg.count,setupCfg.includeExample,setupCfg.kp,u.plan?spread:null);
+      if(u.plan)spread.push(...g);list.push(...g);});
     const sh=gedMakeSheet(setupCfg,list,null);
     sh.concepts=gedCLibFor(cLib,selected);   // 고쳐 둔 '내 설명'이 있는 유형은 그 글로 시작
     const before=sheets.length;
