@@ -77,11 +77,15 @@ function gedMigrateU13(p){
    (고쳐 둔 글이 없는 카드는 열 때 저절로 새 문제로 그려진다). params.ask 가 표시이므로 한 번만 처리한다. */
 function gedMigrateU13Tangent(p){
   if(p.uid!=='u13'||!p.params||p.params.kind!=='원과 직선의 접점')return p;
-  const ask=p.params.ask,NEW=['접할 때 · 양수 k','접할 때 · 음수 k','두 점에서 만날 때 · 최댓값','만나지 않을 때 · 최솟값'];
+  const ask=p.params.ask,NEW=['접할 때 · 자연수 k','두 점에서 만날 때 · 최댓값','만나지 않을 때 · 최솟값'];
   if(ask!=null&&NEW.includes(ask))return p;                     // 이미 새 갈래
-  /* ask 없음(아주 예전) · '큰 값'/'작은 값'(중심 이동 첫 판) → 새 갈래로. 큰 값→접할 때 양수 k, 작은 값→접할 때 음수 k */
-  const params={...p.params,ask:ask==='작은 값'?NEW[1]:NEW[0]};
-  if(p.override&&(params.a||params.b))return{...p,params,override:null,rev:(p.rev||0)+1};
+  /* 접할 때는 자연수 k 로 한정(음수 갈래 삭제). 옛 값은 모두 '접할 때 · 자연수 k' 로 옮긴다.
+     - '접할 때 · 양수 k' : 답이 같으므로 고친 글을 그대로 둔다
+     - '접할 때 · 음수 k' : 문장이 달라지므로 고친 글을 걷어 낸다
+     - ask 없음(아주 예전) · '큰 값'/'작은 값' : 중심을 옮겨 두었고 글까지 고친 카드는 옛 문장이라 걷어 낸다 */
+  const params={...p.params,ask:NEW[0]};
+  const drop=p.override&&(ask==='접할 때 · 음수 k'||((ask==null||ask==='큰 값'||ask==='작은 값')&&(params.a||params.b)));
+  if(drop)return{...p,params,override:null,rev:(p.rev||0)+1};
   return{...p,params};
 }
 function gedMigrateProblems(problems){
@@ -180,7 +184,8 @@ function gedKindOf(u,params){
 }
 function gedSigOf(u,params){
   const r=gedSafeBuild(u,params);if(!r)return null;
-  return{q:String(r.q||''),ans:String(r.answerTex!==undefined?r.answerTex:(r.answerRaw!==undefined?r.answerRaw:(r.choices&&r.choices[r.ans])||'')),kind:gedKindOf(u,params)};
+  const sec={};(u.fields||[]).forEach(f=>{if(f.sel&&f.k!==(((u.fields||[]).find(g=>g.sel)||{}).k))sec[f.k]=String(params[f.k]);});
+  return{q:String(r.q||''),ans:String(r.answerTex!==undefined?r.answerTex:(r.answerRaw!==undefined?r.answerRaw:(r.choices&&r.choices[r.ans])||'')),kind:gedKindOf(u,params),sec};
 }
 function gedPickSpread(u,n,opts,fixed){
   if(u.plan)return gedGenUnit(u,n,false,opts,fixed).map(r=>r.params);
@@ -190,7 +195,8 @@ function gedPickSpread(u,n,opts,fixed){
     let best=null,bs=1e9;
     for(let t=0;t<40;t++){
       const c=u.rand(opts),sg=gedSigOf(u,c);if(!sg)continue;
-      let pen=0;chosen.forEach(o=>{if(o.q===sg.q)pen+=100;if(o.kind===sg.kind)pen+=10;if(o.ans===sg.ans)pen+=3;});
+      let pen=0;chosen.forEach(o=>{if(o.q===sg.q)pen+=100;if(o.kind===sg.kind)pen+=10;if(o.ans===sg.ans)pen+=3;
+        Object.keys(sg.sec||{}).forEach(k=>{if(o.sec&&o.sec[k]===sg.sec[k])pen+=1;});});   // 문제 종류 말고 다른 선택 조건(그림 모양 · 직선 방향 …)도 고르게
       if(pen<bs){bs=pen;best={c,sg};if(pen===0)break;}
     }
     if(!best){const c=u.rand(opts);best={c,sg:gedSigOf(u,c)||{q:'',ans:'',kind:gedKindOf(u,c)}};}
@@ -235,7 +241,11 @@ function gedReshuffle(problems,ov,kp){
       out[i]={...out[i],params:it.params,override:null,rev:(out[i].rev||0)+1};rerolled.push(out[i].key);});
     if(u.plan)spread.push(...slots.map(i=>out[i]));
   });
-  return{problems:out,rerolled,kept};
+  rerolled.forEach(k=>{delete ov[k];});
+  /* 원의 방정식처럼 그림 모양(격자 있음/없음)이 있는 유형(gridMix)은 그것도 절반씩 무작위로 섞는다 — 글을 고쳐 둔 카드는 그림만 바꾼다 */
+  const mixIds=GED_UNITS.filter(u=>u.gridMix).map(u=>u.id);
+  const g=mixIds.length?gedGridAssign(out,'rand',ov,mixIds):null;
+  return{problems:g?g.problems:out,rerolled,kept};
 }
 /* 문항은 그대로 두고 자리만 바꿔 같은 종류·같은 정답이 가까이 놓이지 않게 한다 (글을 고친 문항도 통째로 옮긴다) */
 function gedSpreadOrder(problems){
@@ -252,9 +262,9 @@ function gedSpreadOrder(problems){
 /* 학습지 안 '격자(모눈) 있음/없음' 조건이 있는 모든 문항(원의 방정식 · 핵심 점 찍기) :
    'exam' = 없음 · 'grid' = 있음 · 'rand' = 절반씩 무작위. 유형마다 선택지 글이 다르므로 '없음'이 들어 있는 선택지를 없음으로 읽는다.
    글을 고쳐 둔 원의 방정식 카드는 그림만 바꾸고, 그림 구성이 다른 다른 유형의 고친 카드는 건드리지 않는다(skipped). */
-function gedGridAssign(problems,mode,ov){
+function gedGridAssign(problems,mode,ov,only){
   const optsOf=u=>{const f=u.fields.find(f=>f.k==='grid');return{none:f.sel.find(o=>o.indexOf('없음')>=0),has:f.sel.find(o=>o.indexOf('없음')<0)};};
-  const idxs=problems.map((p,i)=>i).filter(i=>{const u=GED_UNITS.find(x=>x.id===problems[i].uid);return u&&u.fields.some(f=>f.k==='grid');});
+  const idxs=problems.map((p,i)=>i).filter(i=>{const u=GED_UNITS.find(x=>x.id===problems[i].uid);return u&&u.fields.some(f=>f.k==='grid')&&(!only||(only.includes(u.id)&&problems[i].idx!==0));});
   const wantNone=mode==='rand'?idxs.map((_,k)=>k%2===0).sort(()=>Math.random()-0.5):idxs.map(()=>mode==='exam');
   const out=problems.slice();let changed=0,skipped=0;
   idxs.forEach((i,k)=>{
