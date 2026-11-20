@@ -907,7 +907,8 @@ function gedCountSlotInfo(action,r){
  return {title,vertical:title==='위→아래'||title==='아래→위',labels:Array.from({length:r},(_,i)=>label(title==='아래→위'?r-1-i:i))};
 }
 function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
- const cellW=82, columns=studentGrid?(n===4?2:Math.min(n,3)):n, width=columns*cellW+12;
+ const cellW=82, columns=studentGrid?(n===4?2:Math.min(n,3)):n;
+ let width=columns*cellW+12;
  const extraY=studentGrid&&n>columns?86:0;
  const cells=scene.items.slice(0,n).map((label,i)=>{
   let caption=`<text x="37" y="${scene.v5?73:69}" text-anchor="middle" font-family="sans-serif" font-size="${label.length>5?11:13}" fill="#111">${label}</text>`;
@@ -917,39 +918,62 @@ function gedCountFigure(scene,n,r,ordered,action,studentGrid=false){
  }).join('');
  const info=action?gedCountSlotInfo(action,r):{title:'순서',labels:Array.from({length:r},(_,i)=>String(i+1))};
  const vertical=ordered&&!!info.vertical;
- let slots='',height=(ordered?128:90)+extraY;
+ const S=studentGrid?1.22:1,itemsBottom=5+Math.ceil(n/columns)*86;
+ const LN='#3a3a3a',pal=['#f4a3a3','#9fc5ee','#a8d8a8','#f6cf7a','#c9b3e8','#f9b88a'];
+ let slots='',height=(ordered?128:90)+extraY,needW=0;
+ const itemsW=columns*cellW+12;
  if(ordered&&!action){
-   const slotCols=studentGrid?Math.min(columns,3):r;
-   slots=`<text x="10" y="${113+extraY}" font-family="sans-serif" font-size="14">순서</text>${info.labels.map((label,i)=>{const x=55+(i%slotCols)*53,y=91+extraY+Math.floor(i/slotCols)*32;return `<rect x="${x}" y="${y}" width="45" height="28" fill="white" stroke="#555"/><text x="${x+22}" y="${y+19}" text-anchor="middle" font-family="sans-serif" font-size="12">${label}</text>`;}).join('')}`;
-   if(studentGrid&&r>slotCols)height+=32;
+   /* 순서지 : 번호 칸이 그려진 종이 (접힌 모서리 · 점선 칸 · 큰 번호) */
+   const slotCols=studentGrid?Math.min(columns,3):r,rows=Math.ceil(r/slotCols);
+   const bw=Math.round(72*S),bh=Math.round(50*S),gap=Math.round(10*S);
+   const sw=slotCols*bw+(slotCols+1)*gap,sh=Math.round(34*S)+rows*(bh+gap)+gap;
+   needW=sw;height=itemsBottom+10+sh+8;
+   const px=Math.max(10,Math.round((Math.max(itemsW,sw+20)-sw)/2)),py=itemsBottom+10;
+   slots=`<g><path d="M${px} ${py} H${px+sw-18} L${px+sw} ${py+18} V${py+sh} H${px} Z" fill="#fffdf4" stroke="${LN}" stroke-width="1.7" stroke-linejoin="round"/><path d="M${px+sw-18} ${py} V${py+18} H${px+sw}" fill="#ece3c8" stroke="${LN}" stroke-width="1.5" stroke-linejoin="round"/><text x="${px+gap}" y="${py+Math.round(24*S)}" font-family="sans-serif" font-size="${Math.round(16*S)}" font-weight="700" fill="#111">순서지</text>`
+     +info.labels.map((label,i)=>{const x=px+gap+(i%slotCols)*(bw+gap),y=py+Math.round(34*S)+Math.floor(i/slotCols)*(bh+gap);return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="6" fill="#fff" stroke="#666" stroke-width="1.6" stroke-dasharray="5 3"/><text x="${x+bw/2}" y="${y+bh/2+7*S}" text-anchor="middle" font-family="sans-serif" font-size="${Math.round(22*S)}" font-weight="700" fill="#9aa3ad">${label}</text>`;}).join('')+`</g>`;
  }else if(ordered){
    const kind=action.includes('화분')&&action.includes('심는')?'pot':action.includes('화병')?'vase':action.includes('깃대')?'flag':action.includes('반찬 칸')?'tray':action.includes('통에')?'jar':action.includes('받침대')?'stand':info.title==='받는 사람'?'person':info.title==='날짜'||info.title==='주차'||info.title==='교시'?'calendar':vertical?'shelf':'board';
    const shapes={
-     pot:'<path d="M8 18 H52 L48 46 Q30 50 12 46 Z M6 13 H54 V19 H6 Z M12 46 Q30 51 48 46 M15 23 L18 42 M45 23 L42 42 M20 46 H40"/><path d="M17 27 Q30 30 43 27" stroke-dasharray="2 3"/>',
-     vase:'<path d="M19 11 H41 M21 11 C24 23 12 28 15 43 Q30 50 45 43 C48 28 36 23 39 11 M20 14 H40 M18 42 Q30 46 42 42 M19 31 Q17 36 19 40 M41 31 Q43 36 41 40"/>',
-     flag:'<path d="M15 48 V9 M9 48 H23 M12 45 H20 M15 10 H49 L41 18 L49 27 H15 M17 12 H45 M17 25 H45"/><circle cx="15" cy="7" r="2"/>',
-     tray:'<rect x="5" y="9" width="50" height="39" rx="6"/><rect x="8" y="12" width="44" height="33" rx="4"/><path d="M8 20 H52 M11 16 H16 M44 16 H49 M12 41 H48"/>',
-     jar:'<path d="M13 14 H47 V18 L44 21 V44 Q30 50 16 44 V21 L13 18 Z M13 14 V9 H47 V14 M17 11 V14 M22 11 V14 M27 11 V14 M32 11 V14 M37 11 V14 M42 11 V14 M19 24 V40 M41 24 V40 M19 44 Q30 47 41 44"/>',
-     person:'<circle cx="30" cy="13" r="7"/><path d="M23 13 Q30 8 37 13 M17 37 Q17 24 30 24 Q43 24 43 37 M24 25 L30 31 L36 25 M30 31 V37 M11 42 H49 M15 39 H45 M14 42 V46 M46 42 V46"/>',
-     calendar:'<rect x="7" y="8" width="46" height="40" rx="3"/><path d="M7 19 H53 M17 5 V13 M43 5 V13 M12 23 H48 M12 43 H48 M12 27 V39 M48 27 V39"/><circle cx="17" cy="10" r="1.5"/><circle cx="43" cy="10" r="1.5"/>',
-     board:'<rect x="6" y="8" width="48" height="39" rx="2"/><rect x="10" y="12" width="40" height="31" rx="1" stroke-dasharray="3 2"/><path d="M21 8 V5 H39 V8 M24 5 V3 H36 V5 M8 46 H52 M13 16 H17 M43 16 H47"/><circle cx="13" cy="10" r="1"/><circle cx="47" cy="10" r="1"/>',
-     shelf:'<rect x="5" y="3" width="50" height="26"/><path d="M9 6 V25 H51 V6 M2 29 H58 M3 31 H57 M10 25 H50 M8 28 V31 M52 28 V31"/>',
-     stand:'<path d="M7 22 H53 V28 H7 Z M10 28 L7 46 M50 28 L53 46 M14 31 H46 M13 37 H47 M6 46 H13 M47 46 H54 M12 19 H48"/>'
+     pot:()=>`<ellipse cx="50" cy="76" rx="30" ry="3.5" fill="#000" opacity=".1" stroke="none"/><path d="M22 36 H78 L71 70 Q50 77 29 70 Z" fill="#f1d3b5"/><path d="M33 42 L36 66 M46 43 V70 M58 43 L57 70 M69 42 L65 65" stroke="#c99a6c" stroke-width="1.1" fill="none"/><rect x="13" y="24" width="74" height="15" rx="3.5" fill="#e4b98f"/><path d="M13 31 H87" stroke="#c99a6c" stroke-width="1" fill="none"/><ellipse cx="50" cy="24.5" rx="35" ry="4.5" fill="#7a5a3c"/><circle cx="36" cy="24" r="1.2" fill="#a98462" stroke="none"/><circle cx="52" cy="25.5" r="1.2" fill="#a98462" stroke="none"/><circle cx="64" cy="23.8" r="1.2" fill="#a98462" stroke="none"/>`,
+     vase:()=>`<ellipse cx="50" cy="77" rx="24" ry="3" fill="#000" opacity=".1" stroke="none"/><path d="M39 10 H61 L59 20 Q57 27 66 36 Q82 52 74 67 Q70 75 50 75 Q30 75 26 67 Q18 52 34 36 Q43 27 41 20 Z" fill="#d6e6f7"/><ellipse cx="50" cy="10" rx="11.5" ry="3.2" fill="#fff"/><path d="M30 50 Q50 58 70 50 M27 59 Q50 67 73 59" stroke="#5b7fb0" stroke-width="1.4" fill="none"/><path d="M36 46 Q30 56 35 66" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".9"/><path d="M44 36 Q50 40 56 36" stroke="#5b7fb0" stroke-width="1.2" fill="none"/>`,
+     flag:(i,rr)=>`<path d="M16 ${i===0?0:-4} V${i===rr-1?50:60}" stroke="#666" stroke-width="3" fill="none" stroke-linecap="round"/>${i===0?'<circle cx="16" cy="3" r="4.5" fill="#f2c94c"/>':''}${i===rr-1?'<rect x="6" y="50" width="20" height="5" rx="2" fill="#aab0b8"/>':''}<path d="M19 8 C33 3 45 13 59 8 C73 3 81 9 90 7 L81 21 L90 35 C81 37 73 32 59 37 C45 42 33 32 19 37 Z" fill="${pal[i%pal.length]}"/><path d="M34 6 V34 M52 9 V38" stroke="#000" stroke-width=".8" opacity=".18" fill="none"/>`,
+     tray:()=>`<rect x="5" y="9" width="90" height="64" rx="11" fill="#c9d1db"/><rect x="9" y="13" width="82" height="56" rx="8" fill="#eef1f5"/><rect x="14" y="18" width="35" height="25" rx="7" fill="#fff"/><rect x="53" y="18" width="33" height="25" rx="7" fill="#fff"/><rect x="14" y="47" width="21" height="17" rx="6" fill="#fff"/><rect x="39" y="47" width="21" height="17" rx="6" fill="#fff"/><rect x="64" y="47" width="22" height="17" rx="6" fill="#fff"/><path d="M18 23 Q22 21 30 21 M57 23 Q60 21 66 21" stroke="#cdd5df" stroke-width="1.6" fill="none"/>`,
+     jar:()=>`<ellipse cx="50" cy="77" rx="28" ry="3" fill="#000" opacity=".1" stroke="none"/><rect x="25" y="5" width="50" height="11" rx="2.5" fill="#c9ccd1"/><path d="M31 5 V16 M37 5 V16 M43 5 V16 M49 5 V16 M55 5 V16 M61 5 V16 M67 5 V16" stroke="#9aa0a8" stroke-width="1" fill="none"/><rect x="29" y="16" width="42" height="6" fill="#e8edf2"/><path d="M26 22 H74 Q80 28 80 36 V65 Q80 76 69 76 H31 Q20 76 20 65 V36 Q20 28 26 22 Z" fill="#e6f1f7"/><rect x="30" y="38" width="40" height="23" rx="3" fill="#fffbe8"/><path d="M36 46 H64 M36 53 H56" stroke="#9aa3ad" stroke-width="1.4" fill="none"/><path d="M26 32 V66" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>`,
+     stand:()=>`<ellipse cx="50" cy="78" rx="38" ry="2.5" fill="#000" opacity=".1" stroke="none"/><rect x="12" y="12" width="76" height="10" rx="2.5" fill="#f3e3c2"/><rect x="19" y="22" width="62" height="6" fill="#d9c18f"/><path d="M31 28 H69 L65 62 H35 Z" fill="#efe6d2"/><path d="M42 30 L40 61 M50 30 V61 M58 30 L60 61" stroke="#cdb98e" stroke-width="1.2" fill="none"/><rect x="22" y="62" width="56" height="7" fill="#d9c18f"/><rect x="13" y="69" width="74" height="8" rx="2.5" fill="#f3e3c2"/>`,
+     person:i=>`<path d="M16 78 Q16 55 50 55 Q84 55 84 78 Z" fill="${pal[(i+1)%pal.length]}"/><path d="M41 55 L50 68 L59 55 Z" fill="#fff"/><rect x="44" y="45" width="12" height="11" fill="#f6d2b0"/><circle cx="50" cy="30" r="18" fill="#f9dcc0"/><path d="M31 29 Q33 8 50 9 Q67 8 69 29 Q61 20 50 21 Q40 20 31 29 Z" fill="${['#5a4636','#2f2a26','#8a5a2b','#3b2a20'][i%4]}"/><circle cx="43" cy="33" r="1.9" fill="#333" stroke="none"/><circle cx="57" cy="33" r="1.9" fill="#333" stroke="none"/><path d="M44 40 Q50 45 56 40" fill="none" stroke-width="1.4"/><circle cx="38" cy="38" r="2.6" fill="#f7a8a0" opacity=".6" stroke="none"/><circle cx="62" cy="38" r="2.6" fill="#f7a8a0" opacity=".6" stroke="none"/>`,
+     calendar:()=>`<rect x="9" y="9" width="82" height="66" rx="5" fill="#fff"/><path d="M9 14 Q9 9 14 9 H86 Q91 9 91 14 V27 H9 Z" fill="#f4a3a3"/><rect x="26" y="3" width="5" height="13" rx="2.5" fill="#666"/><rect x="47.5" y="3" width="5" height="13" rx="2.5" fill="#666"/><rect x="69" y="3" width="5" height="13" rx="2.5" fill="#666"/><path d="M13 40 H87 M13 53 H87 M13 65 H87 M33 29 V71 M54 29 V71 M74 29 V71" stroke="#c4c9d0" stroke-width="1.2" fill="none"/><rect x="34" y="41" width="19" height="11" fill="#ffe8a3" stroke="none"/>`,
+     shelf:()=>`<rect x="9" y="0" width="82" height="45" fill="#efe4d0"/><path d="M9 0 H91 V9 H9 Z" fill="#000" opacity=".06" stroke="none"/><rect x="3" y="0" width="7" height="54" fill="#cda877"/><rect x="90" y="0" width="7" height="54" fill="#cda877"/><rect x="3" y="45" width="94" height="9" rx="1.5" fill="#d9b787"/><path d="M12 49.5 H38 M50 49.5 H86" stroke="#b98d63" stroke-width="1" fill="none"/>`
    };
-   const boards=[shapes.board,
-     '<path d="M6 10 H54 V46 H6 Z M10 14 H50 V42 H10 Z M10 46 L7 50 M50 46 L53 50"/><circle cx="10" cy="10" r="2"/><circle cx="50" cy="10" r="2"/>',
-     '<path d="M7 11 H53 V46 H7 Z M11 15 H49 V42 H11 Z M18 11 V6 H42 V11 M22 6 V3 H38 V6 M12 19 H15 M45 19 H48"/>',
-     '<path d="M7 9 H53 V45 H7 Z M10 12 H50 V42 H10 Z M14 7 V12 M46 7 V12 M6 45 H54 M10 48 H50"/><circle cx="14" cy="9" r="2"/><circle cx="46" cy="9" r="2"/>'];
+   const boards=[
+     `<rect x="7" y="5" width="86" height="52" rx="3.5" fill="#c9cfd6"/><rect x="11" y="9" width="78" height="44" rx="1.5" fill="#fff"/><path d="M18 20 Q40 16 62 20 M18 30 Q44 26 70 30" stroke="#d3d8de" stroke-width="1.5" fill="none"/><rect x="20" y="57" width="60" height="5" rx="1.5" fill="#9aa3ad"/><rect x="28" y="57.5" width="12" height="3" rx="1" fill="#e0575b" stroke="none"/><rect x="46" y="57.5" width="12" height="3" rx="1" fill="#3a74d8" stroke="none"/><path d="M26 62 L18 78 M74 62 L82 78 M38 62 V76 M62 62 V76" stroke-width="2.4" fill="none" stroke-linecap="round"/>`,
+     `<rect x="7" y="5" width="86" height="56" rx="3.5" fill="#b98a58"/><rect x="12" y="10" width="76" height="46" rx="1.5" fill="#e3bf8b"/><circle cx="24" cy="46" r="1" fill="#c79f6a" stroke="none"/><circle cx="40" cy="20" r="1" fill="#c79f6a" stroke="none"/><circle cx="70" cy="48" r="1" fill="#c79f6a" stroke="none"/><circle cx="78" cy="24" r="1" fill="#c79f6a" stroke="none"/><rect x="30" y="26" width="26" height="19" rx="1.5" fill="#fff" transform="rotate(-4 43 35)"/><path d="M35 33 H51 M35 38 H47" stroke="#c4c9d0" stroke-width="1.3" fill="none" transform="rotate(-4 43 35)"/><circle cx="17" cy="15" r="2.6" fill="#e0575b"/><circle cx="83" cy="15" r="2.6" fill="#3a74d8"/><path d="M30 61 L24 78 M70 61 L76 78" stroke-width="2.4" fill="none" stroke-linecap="round"/>`,
+     `<rect x="7" y="5" width="86" height="54" rx="3" fill="#b9824a"/><rect x="12" y="10" width="76" height="44" rx="1.5" fill="#4e6b58"/><path d="M20 22 H46 M20 32 H60" stroke="#e8efe9" stroke-width="1.4" opacity=".55" fill="none" stroke-linecap="round"/><rect x="18" y="59" width="64" height="4" rx="1.5" fill="#8a5d33"/><rect x="26" y="59.5" width="9" height="2.6" rx="1" fill="#fff" stroke="none"/><path d="M24 63 L16 78 M76 63 L84 78 M50 63 V77" stroke-width="2.4" fill="none" stroke-linecap="round"/>`,
+     `<path d="M10 8 H90 V50 H10 Z" fill="#dbe9f7"/><rect x="10" y="8" width="80" height="12" fill="#5b8fd0"/><path d="M18 14 H42" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="16" y="26" width="68" height="18" rx="2" fill="#fff"/><path d="M22 32 H58 M22 38 H48" stroke="#c4c9d0" stroke-width="1.4" fill="none"/><path d="M28 50 V78 M72 50 V78 M22 78 H34 M66 78 H78" stroke-width="3" fill="none" stroke-linecap="round"/>`];
    const boardVariant=Array.from(scene.name).reduce((sum,ch)=>sum+ch.charCodeAt(0),0)%boards.length;
-   if(kind==='board')shapes.board=boards[boardVariant];
-   const scale=vertical&&studentGrid?1.45:1,slotX=vertical?(studentGrid?Math.round((width-60*scale)/2):55):14,slotY=(vertical?91:105)+extraY,step=vertical?(studentGrid?48:32):70,slotCols=studentGrid?Math.min(columns,3):r;
-   slots=`<text x="10" y="${99+extraY}" font-family="sans-serif" font-size="11" fill="#333">${kind==='board'?'순서판 · '+info.title:info.title}</text>`+info.labels.map((label,i)=>{
-     const x=slotX+(vertical?0:(i%slotCols)*step),y=slotY+(vertical?i*step:Math.floor(i/slotCols)*80);
-     return `<g class="count-placement" data-placement="${kind}" data-variant="${kind==='board'?boardVariant:0}" transform="translate(${x},${y})" fill="white" stroke="#444" stroke-width="1.4" stroke-linejoin="round"><g transform="scale(${scale})">${shapes[kind]}</g></g><text x="${x+30*scale}" y="${y+(vertical?20*scale:65)}" text-anchor="middle" font-family="sans-serif" font-size="${vertical&&studentGrid?14:11}" fill="#111">${label}</text>`;
-   }).join('');
-   height=(vertical?(studentGrid?99+r*48:99+r*32):180+(studentGrid?Math.floor((r-1)/slotCols)*80:0))+extraY;
+   if(kind==='board')shapes.board=()=>boards[boardVariant];
+   const dim={flag:[100,56],shelf:[100,56]}[kind]||[100,80];
+   const sc=vertical&&dim[1]>56?0.7:1,k=S*sc,cw=dim[0]*k,ch=dim[1]*k;
+   const title=kind==='board'?'순서판 · '+info.title:info.title,tfs=Math.round(13*S);
+   const y0=itemsBottom+22;
+   let body='';
+   if(vertical){
+     const step=Math.round(ch+10*S),labW=Math.round(64*S);
+     needW=cw+labW;height=y0+r*step+8;
+     const fw=Math.max(itemsW,needW+20),x0=Math.round((fw-needW)/2);
+     body=info.labels.map((label,i)=>{const y=y0+i*step;
+       return `<g class="count-placement" data-placement="${kind}" data-variant="${kind==='board'?boardVariant:0}" transform="translate(${x0},${y}) scale(${k})" fill="none" stroke="${LN}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">${shapes[kind](i,r)}</g><text x="${x0+cw+10}" y="${y+ch/2+5}" font-family="sans-serif" font-size="${Math.round(15*S)}" font-weight="700" fill="#111">${label}</text>`;}).join('');
+   }else{
+     const slotCols=studentGrid?Math.min(columns,3):r,rows=Math.ceil(r/slotCols),PW=Math.round(112*S),RH=Math.round(ch+34*S);
+     needW=slotCols*PW;height=y0+rows*RH+4;
+     const fw=Math.max(itemsW,needW+20),x0=Math.round((fw-needW)/2);
+     body=info.labels.map((label,i)=>{const x=x0+(i%slotCols)*PW+Math.round((PW-cw)/2),y=y0+Math.floor(i/slotCols)*RH;
+       return `<g class="count-placement" data-placement="${kind}" data-variant="${kind==='board'?boardVariant:0}" transform="translate(${x},${y}) scale(${k})" fill="none" stroke="${LN}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">${shapes[kind](i,r)}</g><text x="${x+cw/2}" y="${y+ch+Math.round(18*S)}" text-anchor="middle" font-family="sans-serif" font-size="${Math.round(15*S)}" font-weight="700" fill="#111">${label}</text>`;}).join('');
+   }
+   slots=`<text x="10" y="${itemsBottom+14}" font-family="sans-serif" font-size="${tfs}" font-weight="700" fill="#333">${title}</text>`+body;
  }
- return `<div class="fig"><svg class="count-figure" data-count="${n}" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg">${cells}${slots}</svg></div>`;
+ width=Math.max(width,needW+20);
+ const offItems=Math.round((width-itemsW)/2);
+ return `<div class="fig"><svg class="count-figure" data-count="${n}" style="max-width:100%;height:auto" viewBox="0 0 ${width} ${height}" width="${width}" role="img" aria-label="${scene.name} ${n}${scene.unit}${ordered?', '+(action?info.title:'순서')+' 칸 '+r+'개':''}" xmlns="http://www.w3.org/2000/svg"><g transform="translate(${offItems},0)">${cells}</g>${slots}</svg></div>`;
 }
 
 var GED_UNITS=(function(){
