@@ -980,6 +980,28 @@ var GED_UNITS=(function(){
   const{nf,par,xm,ym,tail,tex,pr,rnd,pick,nz,CIRC,sqrtTex,sqrtTxt,shuffle,shuffleWith,mulberry,term,poly,
     numChoices,stepChoices,pickChoices,coordChoices,planeSVG,synthSVG,numlineSVG,divSVG,mapSVG,NAVY,RED,GREEN,GREY}=GS;
   const fig=svg=>`<div class="fig">${svg}</div>`;
+/* 명제 16번용 문장 모음 — 역·대우·부정에 쓰는 '앞이면 뒤이다' 짝들 (기출 : x=n→x²=n², 정삼각형→이등변삼각형, 평행사변형→사다리꼴, 배수 …) */
+function GED_IMPLY_POOL(){
+  const C=(c,e)=>({c,e}),M=(a,b)=>C(tex(a)+'이면',tex(b)+'이다');
+  const out=[];
+  [2,3,4,5,6,7].forEach(n=>[2,3].forEach(k=>out.push({p:M(`x=${n}`,`x=${n}`),q:M(`x^${k}=${n**k}`,`x^${k}=${n**k}`),np:M(`x\\ne ${n}`,`x\\ne ${n}`),nq:M(`x^${k}\\ne ${n**k}`,`x^${k}\\ne ${n**k}`)})));
+  [[3,1],[5,2],[4,0],[6,3],[7,2],[5,1],[8,4]].forEach(([m,m2])=>out.push({p:M(`x>${m}`,`x>${m}`),q:M(`x>${m2}`,`x>${m2}`),np:M(`x\\le ${m}`,`x\\le ${m}`),nq:M(`x\\le ${m2}`,`x\\le ${m2}`)}));
+  [[4,2],[6,2],[6,3],[8,4],[9,3],[10,5],[12,6],[10,2],[12,3]].forEach(([a,b])=>out.push({p:C(`a가 ${a}의 배수이면`,`a는 ${a}의 배수이다`),q:C(`a가 ${b}의 배수이면`,`a는 ${b}의 배수이다`),np:C(`a가 ${a}의 배수가 아니면`,`a는 ${a}의 배수가 아니다`),nq:C(`a가 ${b}의 배수가 아니면`,`a는 ${b}의 배수가 아니다`)}));
+  const jos=w=>{const c=w.charCodeAt(w.length-1);return(c>=0xAC00&&c<=0xD7A3&&((c-0xAC00)%28)===0)?'가':'이';};
+  [['정삼각형','이등변삼각형'],['정사각형','직사각형'],['정사각형','마름모'],['직사각형','평행사변형'],['마름모','평행사변형'],['평행사변형','사다리꼴'],['정사각형','사다리꼴']].forEach(([a,b])=>
+    out.push({p:C(`${a}이면`,`${a}이다`),q:C(`${b}이면`,`${b}이다`),np:C(`${a}${jos(a)} 아니면`,`${a}${jos(a)} 아니다`),nq:C(`${b}${jos(b)} 아니면`,`${b}${jos(b)} 아니다`)}));
+  out.push({p:C('두 삼각형이 합동이면','두 삼각형은 합동이다'),q:C('두 삼각형의 넓이가 같으면','두 삼각형의 넓이는 같다'),np:C('두 삼각형이 합동이 아니면','두 삼각형은 합동이 아니다'),nq:C('두 삼각형의 넓이가 같지 않으면','두 삼각형의 넓이는 같지 않다')});
+  out.push({p:C('비가 오면','비가 온다'),q:C('땅이 젖으면','땅이 젖는다'),np:C('비가 오지 않으면','비가 오지 않는다'),nq:C('땅이 젖지 않으면','땅이 젖지 않는다')});
+  return out;
+}
+/* 필요·충분조건 판별용 짝 (a:0 충분 · 1 필요 · 2 필요충분) */
+function GED_NECSUFF_POOL(){
+  const out=[];
+  [2,3,4,5,6].forEach(c=>{out.push({p:tex(`x=${c}`),q:tex(`x^2=${c*c}`),a:0},{p:tex(`x^2=${c*c}`),q:tex(`x=${c}`),a:1},{p:tex(`x=${c}`),q:tex(`${c}x=${c*c}`),a:2},{p:tex(`x+1=${c+1}`),q:tex(`x=${c}`),a:2});});
+  [[2,0],[3,1],[5,2],[4,1],[6,3]].forEach(([m,m2])=>out.push({p:tex(`x>${m}`),q:tex(`x>${m2}`),a:0},{p:tex(`x>${m2}`),q:tex(`x>${m}`),a:1}));
+  [[4,2],[6,3],[8,4],[10,5],[6,2],[12,6]].forEach(([a,b])=>out.push({p:`a는 ${a}의 배수`,q:`a는 ${b}의 배수`,a:0},{p:`a는 ${b}의 배수`,q:`a는 ${a}의 배수`,a:1}));
+  return out;
+}
   /* 직선과 원(13번 접점 유형) : 직선 x=k(또는 y=k)와 원의 중심 c0(=중심의 x 또는 y), 반지름 r 에서 k 를 묻는 갈래 — 기출 13번(2026-1·2)·11번(2024-2)
      P    접할 때 자연수 k = c0+r (c0−r≤0<c0+r 이어야 접선 둘 중 자연수가 하나로 정해진다) — x=k · y=k 모두
      Tmax 접할 때 k 의 최댓값 = c0+r   ·  Tmin 접할 때 k 의 최솟값 = c0−r   (접선이 둘이므로 그 중 큰/작은 값 — 늘 가능)
@@ -1903,21 +1925,49 @@ var GED_UNITS=(function(){
      영역 D. 집합 · 명제 · 함수
      ================================================================ */
   { id:'u15', tag:'15번', area:'D', title:'집합', src:'2023~2026 매회 15번',
-    fields:[{k:'kind',label:'문제 종류',sel:['n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']},
+    fields:[{k:'kind',label:'문제 종류',sel:['n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)','A=B 상수 a','집합 고르기']},
       {k:'nA',label:'n(A)',min:2,max:5},{k:'nB',label:'n(B)',min:2,max:5},{k:'k',label:'겹치는 개수',min:1,max:4},
-      {k:'num',label:'원소 종류',sel:['글자 (a, b, c)','숫자 (1, 2, 3)']}],
-    def:{kind:'n(A∪B) 개수',nA:2,nB:3,k:1,num:'글자 (a, b, c)'},
-    rand(){const nA=rnd(2,4),nB=rnd(2,4);
+      {k:'num',label:'원소 종류',sel:['글자 (a, b, c)','숫자 (1, 2, 3)']},
+      {k:'seed',label:'문제 번호 (바꾸면 다른 원소·다른 문제)',min:1,max:999}],
+    def:{kind:'n(A∪B) 개수',nA:3,nB:3,k:1,num:'숫자 (1, 2, 3)',seed:7},
+    /* 기출 15번은 1~9 에서 흩어진 3~5개짜리 두 집합(예: {1,3,5,7,9}, {3,4,5,6}) — seed 가 있으면 원소를 그렇게 흩어 뽑는다(seed 없는 예전 저장본은 {a,b,c} 앞에서부터 그대로) */
+    rand(){const nA=rnd(3,5),nB=rnd(3,4);
       /* 차집합이 빈 집합이 되지 않도록 겹치는 개수를 n(A) 보다 작게 잡는다 */
       const k=rnd(1,Math.max(1,Math.min(nA-1,nB)));
-      return{kind:pick(['n(A∪B) 개수','n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)']),
-        nA,nB,k,num:pick(['글자 (a, b, c)','숫자 (1, 2, 3)'])};},
+      return{kind:pick(['n(A∪B) 개수','n(A∪B) 개수','n(A∩B) 개수','n(A−B) 개수','n(A) 개수','n(B) 개수','n(A∪B)+n(A∩B)','n(A∪B)+n(A∩B)','A∪B 원소','A∩B 원소','A−B 원소 (차집합)','A−B 원소 (차집합)','A=B 상수 a','집합 고르기']),
+        nA,nB,k,num:pick(['숫자 (1, 2, 3)','숫자 (1, 2, 3)','글자 (a, b, c)']),seed:rnd(1,999)};},
     build(p){
-      if(p.k>Math.min(p.nA,p.nB))return{err:'겹치는 개수는 두 집합 원소 개수보다 클 수 없습니다.'};
       // 예전 저장본 호환 : ask('합집합'/'교집합') → kind
       const kind=p.kind||(p.ask==='교집합'?'n(A∩B) 개수':'n(A∪B) 개수');
+      const rg0=mulberry((p.seed||7)*6271+5);
+      /* ── 집합인 것 고르기 (2024-2회 13번) ── */
+      if(kind==='집합 고르기'){
+        const POS=['7 이하의 자연수의 모임','10보다 작은 짝수의 모임','5의 배수의 모임','12의 약수의 모임','20 이하의 3의 배수의 모임','10 이하의 소수의 모임','1보다 크고 10보다 작은 홀수의 모임','100보다 작은 제곱수의 모임'];
+        const NEG=['작은 동물의 모임','유명한 가수의 모임','키가 큰 사람의 모임','예쁜 꽃의 모임','맛있는 음식의 모임','큰 수의 모임','가까운 도시의 모임','잘생긴 배우의 모임','재미있는 과목의 모임','착한 학생의 모임'];
+        const asIs=rg0()<0.7,one=asIs?shuffleWith(rg0,POS)[0]:shuffleWith(rg0,NEG)[0];
+        const rest=asIs?shuffleWith(rg0,NEG).slice(0,3):shuffleWith(rg0,POS).slice(0,3);
+        const chs=shuffleWith(rg0,[one,...rest]),ans=chs.indexOf(one);
+        return{q:asIs?'다음 중 집합인 것은?':'다음 중 집합이 <b>아닌</b> 것은?',choices:chs,raw:true,layout:'one',ans,answerRaw:one,
+          sol:[`집합은 <b>기준이 분명해서</b> 누가 봐도 같은 결과가 나오는 모임입니다. '작다·크다·유명하다·예쁘다' 같은 말은 사람마다 달라 집합이 아닙니다.`,`따라서 ${asIs?'집합인 것':'집합이 아닌 것'}은 '${one}' 입니다.`]};
+      }
+      /* ── 두 집합이 같을 때 상수 a (2023-1 · 2025-2회 15번) ── */
+      if(kind==='A=B 상수 a'){
+        const v=shuffleWith(rg0,[1,2,3,4,5,6,7,8,9]).slice(0,3).sort((x,y)=>x-y),idx=Math.floor(rg0()*3),d=1+Math.floor(rg0()*3);
+        let plus=rg0()<0.5;if(plus&&v[idx]-d<1)plus=false;
+        const a0=plus?v[idx]-d:v[idx]+d,expr=plus?`a+${d}`:`a-${d}`;
+        const Aarr=v.map((x,i)=>i===idx?expr:String(x));
+        const k0=numChoices(a0);
+        return{q:`두 집합 ${tex('A=\\{'+Aarr.join(',\\ ')+'\\}')}, ${tex('B=\\{'+v.join(',\\ ')+'\\}')}에 대하여 ${tex('A=B')}일 때, 상수 ${tex('a')}의 값은?`,choices:k0.list,ans:k0.ans,answerTex:nf(a0),
+          sol:[`${tex('A=B')}이면 두 집합의 원소가 <b>똑같아야</b> 합니다.`,`A 에서 이미 정해진 원소를 B 와 맞추면, ${tex(expr)}는 B 의 남은 원소 ${tex(String(v[idx]))}가 되어야 합니다 → ${tex(`${expr}=${v[idx]}`)}`,`따라서 ${tex('a='+nf(a0))}`]};
+      }
+      if(p.k>Math.min(p.nA,p.nB))return{err:'겹치는 개수는 두 집합 원소 개수보다 클 수 없습니다.'};
       const L=(p.num&&p.num.indexOf('숫자')===0)?'12345678'.split(''):'abcdefg'.split('');
-      const A=L.slice(0,p.nA),B=[...A.slice(p.nA-p.k),...L.slice(p.nA,p.nA+p.nB-p.k)];
+      let A,B;
+      if(p.seed!=null){   // 1~9 (또는 a~i) 에서 흩어 뽑기
+        const L2=(p.num&&p.num.indexOf('숫자')===0)?'123456789'.split(''):'abcdefghi'.split(''),rgS=mulberry(p.seed*6271+5);
+        const items=shuffleWith(rgS,L2).slice(0,p.nA+p.nB-p.k),ord=x=>L2.indexOf(x);
+        A=items.slice(0,p.nA).sort((x,y)=>ord(x)-ord(y));B=items.slice(p.nA-p.k).sort((x,y)=>ord(x)-ord(y));
+      }else{A=L.slice(0,p.nA);B=[...A.slice(p.nA-p.k),...L.slice(p.nA,p.nA+p.nB-p.k)];}
       const st=arr=>`\\{${arr.join(',\\ ')}\\}`;
       const uni=[...new Set([...A,...B])],inter=A.filter(x=>B.includes(x)),diff=A.filter(x=>!B.includes(x));
       const head=`두 집합 ${tex('A='+st(A))}, ${tex('B='+st(B))}에 대하여 `;
@@ -1970,9 +2020,9 @@ var GED_UNITS=(function(){
     }
   },
   { id:'u16', tag:'16번', area:'D', title:'명제', src:'2023~2026 매회 16번',
-    fields:[{k:'kind',label:'문제 종류',sel:['명제 고르기','역','대우','부정 (아닌 것)','조건과 상수 a','필요·충분조건']},{k:'seed',label:'문제 번호 (바꾸면 다른 문제)',min:1,max:999}],
+    fields:[{k:'kind',label:'문제 종류',sel:['명제 고르기','역','대우','부정 (아닌 것)','진리집합','조건과 상수 a','필요·충분조건']},{k:'seed',label:'문제 번호 (바꾸면 다른 문제)',min:1,max:999}],
     def:{kind:'명제 고르기',seed:7},
-    rand(){return{kind:pick(['명제 고르기','명제 고르기','역','역','대우','대우','조건과 상수 a','조건과 상수 a','필요·충분조건']),seed:rnd(1,999)};},   // 기출 15·16번 : 부정은 기출에 없어 뽑지 않고(직접 고르면 가능), 필요·충분조건은 상수 a 꼴을 주로
+    rand(){return{kind:pick(['명제 고르기','명제 고르기','역','역','대우','대우','진리집합','진리집합','조건과 상수 a','조건과 상수 a','필요·충분조건']),seed:rnd(1,999)};},   // 기출 15·16번 : 부정은 기출에 없어 뽑지 않고(직접 고르면 가능), 필요·충분조건은 상수 a 꼴을 주로
     build(p){
       const rng=mulberry(p.seed*7919+11);const T=['ㄱ','ㄴ','ㄷ','ㄹ'];
       if(p.kind==='명제 고르기'){
@@ -1992,11 +2042,7 @@ var GED_UNITS=(function(){
       if(p.kind==='대우'||p.kind==='역'||p.kind==='부정 (아닌 것)'){
         const mode=p.kind==='역'?'역':(p.kind==='대우'?'대우':'부정');
         const C=(c,e)=>({c,e}),M=(a,b)=>C(tex(a)+'이면',tex(b)+'이다');
-        const pool=[{p:M('x=2','x=2'),q:M('x^2=4','x^2=4'),np:M('x\\ne 2','x\\ne 2'),nq:M('x^2\\ne 4','x^2\\ne 4')},
-          {p:C('a가 4의 배수이면','a는 4의 배수이다'),q:C('a가 2의 배수이면','a는 2의 배수이다'),np:C('a가 4의 배수가 아니면','a는 4의 배수가 아니다'),nq:C('a가 2의 배수가 아니면','a는 2의 배수가 아니다')},
-          {p:C('두 삼각형이 합동이면','두 삼각형은 합동이다'),q:C('두 삼각형의 넓이가 같으면','두 삼각형의 넓이는 같다'),np:C('두 삼각형이 합동이 아니면','두 삼각형은 합동이 아니다'),nq:C('두 삼각형의 넓이가 같지 않으면','두 삼각형의 넓이는 같지 않다')},
-          {p:M('x>3','x>3'),q:M('x>1','x>1'),np:M('x\\le 3','x\\le 3'),nq:M('x\\le 1','x\\le 1')},
-          {p:C('비가 오면','비가 온다'),q:C('땅이 젖으면','땅이 젖는다'),np:C('비가 오지 않으면','비가 오지 않는다'),nq:C('땅이 젖지 않으면','땅이 젖지 않는다')}];
+        const pool=GED_IMPLY_POOL();
         const e=pool[Math.floor(rng()*pool.length)];const mk=(A,B)=>`${A.c} ${B.e}.`;
         // 역 : 앞뒤만 바꿈 / 대우 : 앞뒤 바꾸고 둘 다 부정 / 부정(이) : 앞뒤 그대로 두고 둘 다 부정
         const target=mode==='역'?mk(e.q,e.p):mode==='대우'?mk(e.nq,e.np):mk(e.np,e.nq);
@@ -2013,19 +2059,36 @@ var GED_UNITS=(function(){
       }
       /* ── 기출 꼴 : 일차 조건 p, 이차 조건 q 에서 상수 a (2024-2 · 2025-1 · 2026-1) ── */
       if(p.kind==='조건과 상수 a'){
-        const t=Math.floor(rng()*3),pk=(arr)=>arr[Math.floor(rng()*arr.length)];
+        const t=Math.floor(rng()*3),pk=(arr)=>arr[Math.floor(rng()*arr.length)],swap=rng()<0.5;
         const ch=(a0)=>numChoices(a0);
-        if(t===0){const c=pk([2,3,4]),a0=c*c,k=ch(a0);
-          return{q:`두 조건 ${tex(`p: x-${c}=0`)}, ${tex('q: x^2-a=0')}에 대하여 ${tex('p')}가 ${tex('q')}이기 위한 <b>충분조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(a0),
-            sol:[`충분조건이면 '${tex('p')}이면 ${tex('q')}이다'가 참입니다. 즉 ${tex('p')}의 해가 ${tex('q')}의 해이기도 해야 합니다.`,`${tex('p')}의 해는 ${tex(`x=${c}`)} 입니다. 이것을 ${tex('x^2-a=0')}에 넣으면 ${tex(`${c*c}-a=0`)}`,`따라서 ${tex(`a=${a0}`)}`]};}
-        if(t===1){const c=pk([2,3,4]),a0=c-1,k=ch(a0);
-          return{q:`두 조건 ${tex(`p: x-${c}=0`)}, ${tex(`q: x^2-ax-${c}=0`)}에 대하여 ${tex('q')}가 ${tex('p')}이기 위한 <b>필요조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(a0),
-            sol:[`${tex('q')}가 ${tex('p')}이기 위한 필요조건이면 '${tex('p')}이면 ${tex('q')}이다'가 참입니다. 즉 ${tex('p')}의 해가 ${tex('q')}의 해이기도 해야 합니다.`,`${tex(`x=${c}`)}을 ${tex(`x^2-ax-${c}=0`)}에 넣으면 ${tex(`${c*c}-${c}a-${c}=0`)}, ${tex(`${c}a=${c*c-c}`)}`,`따라서 ${tex(`a=${a0}`)}`]};}
-        const c=pk([4,5,6,7]),k=ch(c);
-        return{q:`두 조건 ${tex('p')}, ${tex('q')}는 ${tex(`p: x=${c}`)}, ${tex('q: (x-a)^2=0')} 이다. ${tex('p')}는 ${tex('q')}이기 위한 <b>필요충분조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(c),
+        if(t===0){const c=pk([2,3,4,5,6]),a0=c*c,k=ch(a0);
+          const cond=swap?`${tex('q')}가 ${tex('p')}이기 위한 <b>필요조건</b>`:`${tex('p')}가 ${tex('q')}이기 위한 <b>충분조건</b>`;
+          return{q:`두 조건 ${tex(`p: x-${c}=0`)}, ${tex('q: x^2-a=0')}에 대하여 ${cond}이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(a0),
+            sol:[`${swap?'필요조건':'충분조건'}이면 '${tex('p')}이면 ${tex('q')}이다'가 참입니다. 즉 ${tex('p')}의 해가 ${tex('q')}의 해이기도 해야 합니다.`,`${tex('p')}의 해는 ${tex(`x=${c}`)} 입니다. 이것을 ${tex('x^2-a=0')}에 넣으면 ${tex(`${c*c}-a=0`)}`,`따라서 ${tex(`a=${a0}`)}`]};}
+        if(t===1){const c=pk([2,3,4,5,6]),a0=c-1,k=ch(a0);
+          const cond=swap?`${tex('p')}가 ${tex('q')}이기 위한 <b>충분조건</b>`:`${tex('q')}가 ${tex('p')}이기 위한 <b>필요조건</b>`;
+          return{q:`두 조건 ${tex(`p: x-${c}=0`)}, ${tex(`q: x^2-ax-${c}=0`)}에 대하여 ${cond}이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(a0),
+            sol:[`'${tex('p')}이면 ${tex('q')}이다'가 참이어야 합니다. 즉 ${tex('p')}의 해가 ${tex('q')}의 해이기도 해야 합니다.`,`${tex(`x=${c}`)}을 ${tex(`x^2-ax-${c}=0`)}에 넣으면 ${tex(`${c*c}-${c}a-${c}=0`)}, ${tex(`${c}a=${c*c-c}`)}`,`따라서 ${tex(`a=${a0}`)}`]};}
+        const c=pk([3,4,5,6,7,8,9]),k=ch(c);
+        return{q:`두 조건 ${tex('p')}, ${tex('q')}는 ${tex(`p: x=${c}`)}, ${tex('q: (x-a)^2=0')} 이다. ${swap?tex('q')+'는 '+tex('p'):tex('p')+'는 '+tex('q')}이기 위한 <b>필요충분조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(c),
           sol:[`필요충분조건이면 두 조건의 해가 정확히 같아야 합니다.`,`${tex('(x-a)^2=0')}의 해는 ${tex('x=a')} 하나뿐입니다. ${tex('p')}의 해는 ${tex(`x=${c}`)}`,`따라서 ${tex(`a=${c}`)}`]};
       }
-      const pool=[{p:tex('x=2'),q:tex('x^2=4'),a:0},{p:tex('x^2=4'),q:tex('x=2'),a:1},{p:tex('x=2'),q:tex('2x=4'),a:2},{p:'a는 4의 배수',q:'a는 2의 배수',a:0},{p:'a는 2의 배수',q:'a는 4의 배수',a:1},{p:tex('x>2'),q:tex('x>0'),a:0},{p:tex('x+1=3'),q:tex('x=2'),a:2}];
+      /* ── 전체집합에서 조건의 진리집합 (2023-2 · 2024-1회 16번) ── */
+      if(p.kind==='진리집합'){
+        const n=[8,9,10,12,15][Math.floor(rng()*5)],U=Array.from({length:n},(_,i)=>i+1);
+        const odd=rng()<0.2,Ds=[2,3,4,5].filter(d=>Math.floor(n/d)>=2&&n-Math.floor(n/d)>=3),D=Ds[Math.floor(rng()*Ds.length)];
+        const keep=odd?(x=>x%2===1):(x=>x%D===0),word=odd?'홀수':(D===2?'짝수':`${D}의 배수`);
+        const T=U.filter(keep),sset=arr=>tex('\\{'+arr.join(',\\ ')+'\\}');
+        const cand=[T.slice(0,-1),U.filter(x=>!keep(x)),T.map(x=>x+1<=n?x+1:x-1).sort((x,y)=>x-y),T.slice(1),[...T,U.filter(x=>!keep(x))[0]].sort((x,y)=>x-y)]
+          .map(a=>a.join(',')).filter((v,i,ar)=>v!==T.join(',')&&v&&ar.indexOf(v)===i);
+        const wr=shuffleWith(rng,cand).slice(0,3).map(v=>sset(v.split(',').map(Number)));
+        if(wr.length<3||T.length<2)return{err:'보기를 만들지 못했습니다. 문제 번호를 바꿔 보세요.'};
+        const correct=sset(T),chs=shuffleWith(rng,[correct,...wr]),ans=chs.indexOf(correct);
+        const uTex=rng()<0.5?`\\{x\\mid x\\text{는 ${n} 이하의 자연수}\\}`:`\\{${U.join(',\\ ')}\\}`;
+        return{q:`전체집합 ${tex('U='+uTex)}일 때, 조건 <b>'${tex('x')}는 ${word}이다.'</b>의 진리집합은?`,choices:chs,raw:true,layout:'two',ans,answerRaw:correct,
+          sol:[`진리집합 = 전체집합의 원소 중에서 조건을 <b>참으로 만드는 것</b>만 모은 집합입니다.`,`1부터 ${n}까지 ${word}를 하나씩 찾으면 ${T.join(', ')}`,`따라서 진리집합은 ${correct}`]};
+      }
+      const pool=GED_NECSUFF_POOL();
       const e=pool[Math.floor(rng()*pool.length)];const names=['충분조건','필요조건','필요충분조건','어느 조건도 아니다'];
       const q=`두 조건 ${tex('p')} : ${e.p}, ${tex('q')} : ${e.q}에 대하여 ${tex('p')}는 ${tex('q')}이기 위한 무슨 조건인가?`;
       const why=[`${tex('p')}가 맞으면 ${tex('q')}도 반드시 맞지만, 거꾸로는 아닙니다(${tex('p \\Rightarrow q')}만 참). 화살표가 나가는 ${tex('p')}는 충분조건.`,

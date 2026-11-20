@@ -90,145 +90,64 @@ function gen_set_union_inter_sum(){
     ]};
 }
 
-// 4-4. 집합 A=B 조건 → 상수 a  (기출 Q15: 2023-2, 2025-2)
+// 4-4. 집합 A=B 조건 → 상수 a  (기출 Q15: 2023-1 · 2023-2 · 2025-2)
+// B 는 1~9 에서 뽑은 세 수, A 는 그 중 한 자리를 'a±d' 로 바꾼 꼴 — 위치·식·수를 매번 바꿔 수천 가지가 나온다.
 function gen_set_equal_const(){
-  const t=pick([1,2,3]);
-  if(t===1){const a=4;const{choices,answer}=makeChoices('4',['3','5','6']);return{topic:'집합 상수 구하기',q:`두 집합 A={1, a−1, 5}, B={1, 3, 5}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`B={1, 3, 5}이므로 A의 원소 a−1은 B의 원소 중 하나여야 합니다.`,`a−1=3이면 a=4. 확인: A={1, 3, 5}=B ✓`,`따라서 a=4입니다.`]};}
-  if(t===2){const a=5;const{choices,answer}=makeChoices('5',['4','6','3']);return{topic:'집합 상수 구하기',q:`두 집합 A={2, 4, a+1}, B={2, 4, 6}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`B={2, 4, 6}이므로 A의 원소 a+1은 B의 원소 중 하나여야 합니다.`,`a+1=6이면 a=5. 확인: A={2, 4, 6}=B ✓`,`따라서 a=5입니다.`]};}
-  const a=4;const{choices,answer}=makeChoices('4',['3','5','6']);
-  return{topic:'집합 상수 구하기',q:`두 집합 A={1, 3, a+1}, B={1, a−1, 5}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`B의 원소: {1, a−1, 5}이고 A의 원소: {1, 3, a+1}이 같아야 합니다.`,`3=a−1이면 a=4, 또는 a+1=5이면 a=4. 둘 다 a=4입니다.`,`따라서 a=4입니다.`]};
+  const v=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,3).sort((x,y)=>x-y),idx=randInt(0,2),d=randInt(1,3);
+  let plus=Math.random()<0.5;if(plus&&v[idx]-d<1)plus=false;
+  const a=plus?v[idx]-d:v[idx]+d,expr=plus?`a+${d}`:`a−${d}`;
+  const Aarr=v.map((x,i)=>i===idx?expr:String(x));
+  const wr=[a+1,a-1,a+2,v[idx],a+3,Math.abs(a-2)].filter((w,i,ar)=>w!==a&&w>0&&ar.indexOf(w)===i).slice(0,3);
+  const{choices,answer}=makeChoices(String(a),wr.map(String));
+  return{topic:'집합 상수 구하기',q:`두 집합 A={${Aarr.join(', ')}}, B={${v.join(', ')}}에 대하여 A=B일 때, 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`A=B이면 두 집합의 원소가 완전히 같아야 합니다.`,`A에서 이미 정해진 원소를 B와 맞추면, ${expr}는 B의 남은 원소 ${v[idx]}가 되어야 합니다.`,`${expr}=${v[idx]}이므로 a=${a}`,`따라서 a=${a}입니다.`]};
 }
 
-// 4-5. 진리집합  (기출 Q16: 2023-2, 2024-1)
+// 4-5. 진리집합  (기출 Q16: 2023-2 짝수 · 2024-1 n의 배수)
 function gen_truth_set(){
-  const t=pick([1,2,3,4]);
-  if(t===1){const{choices,answer}=makeChoices('{2, 4, 6, 8}',['{1, 3, 5, 7, 9}','{2, 4, 6}','{2, 4, 6, 8, 10}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 짝수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[`진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,`U={1~9} 중 짝수는 2, 4, 6, 8입니다.`,`따라서 진리집합은 {2, 4, 6, 8}입니다.`]};}
-  if(t===2){const{choices,answer}=makeChoices('{3, 6, 9}',['{3, 6}','{1, 4, 7}','{6, 9}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 3의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[`진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,`U={1~9} 중 3의 배수는 3, 6, 9입니다.`,`따라서 진리집합은 {3, 6, 9}입니다.`]};}
-  if(t===3){const{choices,answer}=makeChoices('{4, 8}',['{4}','{2, 4, 8}','{4, 8, 12}']);return{topic:'진리집합',q:`전체집합 U={1, 2, 3, 4, 5, 6, 7, 8, 9}일 때, 조건 "x는 4의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[`진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,`U={1~9} 중 4의 배수는 4, 8입니다.`,`따라서 진리집합은 {4, 8}입니다.`]};}
-  const div=pick([3,4,5]),maxN=pick([9,10,12]);
-  const mults=[];for(let i=div;i<=maxN;i+=div)mults.push(i);
-  const correct=`{${mults.join(', ')}}`;
-  const w1=`{${mults.slice(0,-1).join(', ')}}`,w2=`{${mults.map(x=>x+1).join(', ')}}`,w3=`{${mults.filter((_,i)=>i%2===0).join(', ')}}`;
-  const{choices,answer}=makeChoices(correct,[w1,w2,w3].filter(w=>w!==correct));
-  return{topic:'진리집합',q:`전체집합 U={x|x는 ${maxN} 이하의 자연수}일 때, 조건 "x는 ${div}의 배수이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
-    sol:[
-      `진리집합: 조건을 참으로 만드는 원소의 모임입니다.`,
-      `U={1~${maxN}} 중 ${div}의 배수를 순서대로 찾습니다: ${mults.join(', ')}`,
-      `따라서 진리집합은 ${correct}입니다.`
-    ]};
-}
-
-// 문제풀이 전용 확장 유형 1: 전체집합에서 여집합 찾기
-function genPracticeSetComplement(){
-  const U=Array.from({length:8},(_,i)=>i+1),A=shuffle([...U]).slice(0,randInt(3,5)).sort((a,b)=>a-b),C=U.filter(x=>!A.includes(x));
-  const correct=`{${C.join(', ')}}`,wrong=[`{${A.join(', ')}}`,`{${U.join(', ')}}`,`{${C.slice(1).join(', ')}}`];
-  const{choices,answer}=makeChoices(correct,wrong);
-  return{topic:'여집합',q:`전체집합 U={${U.join(', ')}}, A={${A.join(', ')}}일 때, A의 여집합 Aᶜ은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `여집합 Aᶜ은 전체집합 U에 속하지만 A에는 속하지 않는 원소입니다.`,
-    `U에서 A의 원소 ${A.join(', ')}를 제외합니다.`,
-    `따라서 Aᶜ={${C.join(', ')}}입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 2: 세 집합에 대한 연산
-function genPracticeSetThreeWay(){
-  const base=Array.from({length:10},(_,i)=>i+1),A=shuffle([...base]).slice(0,5).sort((a,b)=>a-b),B=shuffle([...base]).slice(0,5).sort((a,b)=>a-b),C=shuffle([...base]).slice(0,5).sort((a,b)=>a-b);
-  const op=pick(['(A∪B)∩C','A∩(B∪C)','A−(B∩C)']);
-  const ab=op==='(A∪B)∩C'?[...new Set([...A,...B])].filter(x=>C.includes(x)):op==='A∩(B∪C)'?A.filter(x=>B.includes(x)||C.includes(x)):A.filter(x=>!(B.includes(x)&&C.includes(x)));
-  if(!ab.length)return genPracticeSetThreeWay();
-  const result=`{${ab.join(', ')}}`,wrongs=[`{${A.filter(x=>B.includes(x)&&C.includes(x)).join(', ')}}`,`{${[...new Set([...A,...B,...C])].join(', ')}}`,`{${ab.slice(0,-1).join(', ')}}`];
-  const{choices,answer}=makeChoices(result,wrongs);
-  return{topic:'세 집합의 연산',q:`A={${A.join(', ')}}, B={${B.join(', ')}}, C={${C.join(', ')}}일 때, ${op}은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
-    `괄호 안의 합집합 또는 교집합을 먼저 구한 뒤 바깥 연산을 합니다.`,
-    `${op}의 결과에 해당하는 원소를 순서대로 확인합니다.`,
-    `따라서 ${op}=${result}입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 3: 원소 수 정보로 합집합·차집합의 원소 수 계산
-function genPracticeSetCardinality(){
-  const nA=randInt(5,9),nB=randInt(4,8),both=randInt(1,Math.min(nA,nB)-1),ask=pick(['union','onlyA']);
-  const union=nA+nB-both,ans=ask==='union'?union:nA-both,expr=ask==='union'?'n(A∪B)':'n(A−B)';
-  const{choices,answer}=makeChoices(String(ans),[ans+1,Math.max(0,ans-1),ans+2].map(String));
-  return{topic:'집합의 원소 개수',q:`n(A)=${nA}, n(B)=${nB}, n(A∩B)=${both}일 때, ${expr}의 값은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `두 집합의 합집합 원소 수는 n(A)+n(B)−n(A∩B)입니다.`,
-    ask==='union'?`n(A∪B)=${nA}+${nB}−${both}=${union}입니다.`:`A에만 속하는 원소 수는 n(A)−n(A∩B)=${nA}−${both}=${ans}입니다.`,
-    `따라서 ${expr}=${ans}입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 4: 차집합의 원소 판별
-function genPracticeSetDifferenceMember(){
-  const common=randInt(1,8),aOnly=common+randInt(1,4);let bOnly=common+randInt(1,4);while(bOnly===aOnly)bOnly=common+randInt(1,4);const outside=common+randInt(5,9);
-  const A=[common,aOnly].sort((a,b)=>a-b),B=[common,bOnly].sort((a,b)=>a-b);
-  const vals=shuffle([aOnly,bOnly,common,outside]),choices=vals.map(String),answer=choices.indexOf(String(aOnly));
-  return{topic:'차집합의 원소',q:`A={${A.join(', ')}}, B={${B.join(', ')}}일 때, 다음 중 A−B의 원소인 것은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `A−B는 A에 속하면서 B에는 속하지 않는 원소로 이루어집니다.`,
-    `${common}은 두 집합에 모두 있으므로 제외하고, ${aOnly}은 A에만 속합니다.`,
-    `따라서 정답은 ${aOnly}입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 5: 설문 맥락의 두 집합 원소 수
-function genPracticeSetSurvey(){
-  const both=randInt(8,20),onlyA=randInt(10,25),onlyB=randInt(9,24),total=both+onlyA+onlyB+randInt(2,8),ask=pick(['onlyB','union']);
-  const ans=ask==='onlyB'?onlyB:onlyA+onlyB+both;
-  const{choices,answer}=makeChoices(String(ans),[ans+both,ans-onlyA,ans+1].filter(n=>n>=0).map(String));
-  return{topic:'집합과 설문',q:`학생 ${total}명을 조사했더니 A를 좋아하는 학생은 ${onlyA+both}명, B를 좋아하는 학생은 ${onlyB+both}명, 둘 다 좋아하는 학생은 ${both}명이었다. ${ask==='onlyB'?'B만 좋아하는':'A 또는 B를 좋아하는'} 학생은 몇 명인가?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
-    `두 집합의 겹치는 학생 ${both}명은 두 번 세지 않도록 한 번만 계산합니다.`,
-    ask==='onlyB'?`B만 좋아하는 학생은 ${onlyB+both}−${both}=${onlyB}명입니다.`:`합집합은 A만 ${onlyA}명, 둘 다 ${both}명, B만 ${onlyB}명을 더합니다.`,
-    `따라서 정답은 ${ans}명입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 6: 조건의 진리집합(부등식)
-function genPracticeTruthInequality(){
-  const n=randInt(7,12),k=randInt(3,n-2),U=Array.from({length:n},(_,i)=>i+1),op=pick(['<','≤','>','≥']);
-  const C=U.filter(x=>op==='<'?x<k:op==='≤'?x<=k:op==='>'?x>k:x>=k),correct=`{${C.join(', ')}}`;
-  const near=`{${U.filter(x=>op==='<'?x<=k:op==='≤'?x<k:op==='>'?x>=k:x>k).join(', ')}}`,rev=`{${U.filter(x=>op==='<'?x>k:op==='≤'?x>=k:op==='>'?x<k:x<=k).join(', ')}}`;
-  const{choices,answer}=makeChoices(correct,[near,rev,`{${U.filter(x=>x%2===0).join(', ')}}`]);
-  return{topic:'부등식의 진리집합',q:`전체집합 U={1, 2, …, ${n}}일 때, 조건 “x ${op} ${k}”의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `진리집합은 주어진 조건을 참으로 만드는 U의 원소를 모은 집합입니다.`,
-    `1부터 ${n}까지 중 x ${op} ${k}를 만족하는 수를 고릅니다: ${C.join(', ')||'없음'}.`,
-    `따라서 진리집합은 ${correct}입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 7: 부분집합 관계 판별
-function genPracticeSubsetRelation(){
-  const a=randInt(1,5),A=[a,a+1],B=[a,a+1,a+2,a+3],correct='A⊂B',opts=['B⊂A','A∩B=∅',`A∪B={${a}, ${a+1}, ${a+2}}`];
-  const{choices,answer}=makeChoices(correct,opts);
-  return{topic:'부분집합 관계',q:`A={${A.join(', ')}}, B={${B.join(', ')}}일 때, 다음 중 옳은 것은?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `A의 모든 원소 1, 2가 B에도 있으므로 A는 B의 부분집합입니다.`,
-    `B에는 A에 없는 원소 3, 4도 있으므로 B⊂A는 아닙니다.`,
-    `따라서 옳은 설명은 A⊂B입니다.`
-  ]};
+  const n=pick([8,9,10,12,15]),U=Array.from({length:n},(_,i)=>i+1),odd=Math.random()<0.2,D=pick([2,3,4,5]);
+  const keep=odd?(x=>x%2===1):(x=>x%D===0),word=odd?'홀수':(D===2?'짝수':`${D}의 배수`);
+  const T=U.filter(keep),fmt=arr=>`{${arr.join(', ')}}`;
+  if(T.length<2)return gen_truth_set();
+  const cand=[T.slice(0,-1),U.filter(x=>!keep(x)),T.map(x=>x+1<=n?x+1:x-1).sort((x,y)=>x-y),T.slice(1),[...T,U.filter(x=>!keep(x))[0]].sort((x,y)=>x-y)]
+    .map(fmt).filter((v,i,ar)=>v!==fmt(T)&&ar.indexOf(v)===i);
+  const{choices,answer}=makeChoices(fmt(T),shuffle(cand).slice(0,3));
+  const uText=Math.random()<0.5?`U={x|x는 ${n} 이하의 자연수}`:`U={${U.join(', ')}}`;
+  return{topic:'진리집합',q:`전체집합 ${uText}일 때, 조건 "x는 ${word}이다."의 진리집합은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    sol:[`진리집합: 조건을 참으로 만드는 원소만 모은 집합입니다.`,`1부터 ${n}까지 중 ${word}는 ${T.join(', ')}입니다.`,`따라서 진리집합은 ${fmt(T)}입니다.`]};
 }
 
 // 4-6. 명제의 역/대우  (기출 Q16 패턴)
 // ※ 고졸 검정고시에서 '역'과 '대우'만 출제됨 ('이'는 미출제)
 function gen_proposition(){
-  const propType=pick(['num','shape']);
+  const propType=pick(['num','shape','multiple','ineq']);
   let orig,rev,contra,inv;
   if(propType==='num'){
-    const n=pick([2,3,4,5,6]),k=pick([2,3]);
+    const n=pick([2,3,4,5,6,7]),k=pick([2,3]);
     const nk=n**k,kStr=k===2?'²':'³';
     orig=`x=${n}이면 x${kStr}=${nk}이다.`;
     rev=`x${kStr}=${nk}이면 x=${n}이다.`;
     contra=`x${kStr}≠${nk}이면 x≠${n}이다.`;
     inv=`x≠${n}이면 x${kStr}≠${nk}이다.`;
+  }else if(propType==='multiple'){
+    const [a,b]=pick([[4,2],[6,2],[6,3],[8,4],[9,3],[10,5],[12,6],[10,2],[12,3]]);
+    orig=`자연수 n이 ${a}의 배수이면 n은 ${b}의 배수이다.`;
+    rev=`자연수 n이 ${b}의 배수이면 n은 ${a}의 배수이다.`;
+    contra=`자연수 n이 ${b}의 배수가 아니면 n은 ${a}의 배수가 아니다.`;
+    inv=`자연수 n이 ${a}의 배수가 아니면 n은 ${b}의 배수가 아니다.`;
+  }else if(propType==='ineq'){
+    const [m,m2]=pick([[3,1],[5,2],[4,0],[6,3],[7,2],[5,1],[8,4]]);
+    orig=`x>${m}이면 x>${m2}이다.`;
+    rev=`x>${m2}이면 x>${m}이다.`;
+    contra=`x≤${m2}이면 x≤${m}이다.`;
+    inv=`x≤${m}이면 x≤${m2}이다.`;
   }else{
-    const sp=pick([{A:'정삼각형',B:'이등변삼각형'},{A:'정사각형',B:'직사각형'},{A:'직사각형',B:'사다리꼴'},{A:'평행사변형',B:'사다리꼴'},{A:'마름모',B:'평행사변형'},{A:'정사각형',B:'마름모'}]);
+    const sp=pick([{A:'정삼각형',B:'이등변삼각형'},{A:'정사각형',B:'직사각형'},{A:'직사각형',B:'평행사변형'},{A:'평행사변형',B:'사다리꼴'},{A:'마름모',B:'평행사변형'},{A:'정사각형',B:'마름모'},{A:'정사각형',B:'사다리꼴'}]);
+    const jo=w=>{const c=w.charCodeAt(w.length-1);return((c-0xAC00)%28)===0?'가':'이';};
     orig=`${sp.A}이면 ${sp.B}이다.`;
     rev=`${sp.B}이면 ${sp.A}이다.`;
-    contra=`${sp.B}이 아니면 ${sp.A}이 아니다.`;
-    inv=`${sp.A}이 아니면 ${sp.B}이 아니다.`;
+    contra=`${sp.B}${jo(sp.B)} 아니면 ${sp.A}${jo(sp.A)} 아니다.`;
+    inv=`${sp.A}${jo(sp.A)} 아니면 ${sp.B}${jo(sp.B)} 아니다.`;
   }
   // '이'는 출제되지 않음 — '역'·'대우'만 출제
   const askType=pick(['역','대우']);
@@ -258,9 +177,9 @@ function gen_nec_suff(){
   const mk=(correct,wr)=>{const set=[...new Set(wr.filter(w=>w!==correct&&w>0))];for(let d=1;set.length<3;d++){if(!set.includes(correct+d))set.push(correct+d);}
     return makeChoices(String(correct),set.slice(0,3).map(String));};
   if(t===1){
-    const c=pick([2,3,4]),a=c*c;
+    const c=pick([2,3,4,5,6]),a=c*c,sw=Math.random()<0.5;
     const{choices,answer}=mk(a,[c,2*c,a+1,a-1,c+2]);
-    return{topic:'충분조건',q:`두 조건 'p: x−${c}=0', 'q: x²−a=0'에 대하여 p가 q이기 위한 충분조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    return{topic:'충분조건',q:`두 조건 'p: x−${c}=0', 'q: x²−a=0'에 대하여 ${sw?'q가 p이기 위한 필요조건이':'p가 q이기 위한 충분조건이'} 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
       sol:[
         `p가 q이기 위한 충분조건이면 'p이면 q이다'가 참입니다. 즉 p의 해가 q의 해이기도 해야 합니다.`,
         `p: x−${c}=0 의 해는 x=${c} 입니다.`,
@@ -269,9 +188,9 @@ function gen_nec_suff(){
       ]};
   }
   if(t===2){
-    const c=pick([2,3,4]),a=c-1;
+    const c=pick([2,3,4,5,6]),a=c-1,sw=Math.random()<0.5;
     const{choices,answer}=mk(a,[c,c+1,a+2,2*c,c-2]);
-    return{topic:'필요조건',q:`두 조건 'p: x−${c}=0', 'q: x²−ax−${c}=0'에 대하여 q가 p이기 위한 필요조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    return{topic:'필요조건',q:`두 조건 'p: x−${c}=0', 'q: x²−ax−${c}=0'에 대하여 ${sw?'p가 q이기 위한 충분조건이':'q가 p이기 위한 필요조건이'} 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
       sol:[
         `q가 p이기 위한 필요조건이면 'p이면 q이다'가 참입니다. 즉 p의 해 x=${c}가 q의 해이기도 해야 합니다.`,
         `x=${c}를 q: x²−ax−${c}=0 에 넣으면 ${c*c}−${c}a−${c}=0`,
@@ -279,80 +198,15 @@ function gen_nec_suff(){
         `따라서 a=${a}입니다.`
       ]};
   }
-  const c=pick([4,5,6,7]),a=c;
+  const c=pick([3,4,5,6,7,8,9]),a=c,sw=Math.random()<0.5;
   const{choices,answer}=mk(a,[c-1,c+1,c+2,2*c,c-2]);
-  return{topic:'필요충분조건',q:`두 조건 p, q는 p: x=${c}, q: (x−a)²=0 이다. p는 q이기 위한 필요충분조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+  return{topic:'필요충분조건',q:`두 조건 p, q는 p: x=${c}, q: (x−a)²=0 이다. ${sw?'q는 p':'p는 q'}이기 위한 필요충분조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
     sol:[
       `필요충분조건이면 두 조건의 해가 정확히 같아야 합니다.`,
       `q: (x−a)²=0 의 해는 x=a 하나뿐입니다. p의 해는 x=${c} 입니다.`,
       `두 해가 같으려면 a=${a}`,
       `따라서 a=${a}입니다.`
     ]};
-}
-
-// 문제풀이 전용 확장 유형 8: 조건의 해집합으로 필요·충분조건 판별
-function genPracticeConditionSets(){
-  const pairs=pick([
-    {P:[1,2],Q:[1,2,3],label:'충분조건',why:'p의 해집합이 q의 해집합에 포함됩니다.'},
-    {P:[1,2,3],Q:[1,2],label:'필요조건',why:'q의 해집합이 p의 해집합에 포함됩니다.'},
-    {P:[1,2],Q:[1,2],label:'필요충분조건',why:'두 조건의 해집합이 같습니다.'},
-    {P:[1,2],Q:[2,3],label:'필요조건도 충분조건도 아님',why:'어느 해집합도 다른 해집합에 포함되지 않습니다.'}
-  ]);
-  const names=['충분조건','필요조건','필요충분조건','필요조건도 충분조건도 아님'];
-  const{choices,answer}=makeChoices(pairs.label,names.filter(x=>x!==pairs.label));
-  return{topic:'해집합과 조건',q:`조건 p의 해집합이 {${pairs.P.join(', ')}}, 조건 q의 해집합이 {${pairs.Q.join(', ')}}일 때, p는 q의 어떤 조건인가?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
-    `p가 q의 충분조건이면 p의 해집합이 q의 해집합에 포함됩니다.`,
-    `해집합을 비교하면 ${pairs.why}`,
-    `따라서 p는 q의 ${pairs.label}입니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 9: 명제의 대우 만들기(기출에서 반복되는 역·대우 표현)
-function genPracticeContrapositive(){
-  const item=pick([
-    {p:'자연수 n은 6의 배수이다',q:'자연수 n은 3의 배수이다',np:'자연수 n은 6의 배수가 아니다',nq:'자연수 n은 3의 배수가 아니다'},
-    {p:'정수 n은 짝수이다',q:'정수 n²은 짝수이다',np:'정수 n은 홀수이다',nq:'정수 n²은 홀수이다'},
-    {p:'실수 x는 5보다 크다',q:'실수 x는 2보다 크다',np:'실수 x는 5 이하이다',nq:'실수 x는 2 이하이다'}
-  ]);
-  const original=`${item.p}이면 ${item.q}.`,correct=`${item.nq}이면 ${item.np}.`,reverse=`${item.q}이면 ${item.p}.`,inverse=`${item.np}이면 ${item.nq}.`;
-  const{choices,answer}=makeChoices(correct,[original,reverse,inverse]);
-  return{topic:'명제의 대우',q:`명제 “${original}”의 대우는?`,choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `대우는 두 조건의 순서를 바꾸고 각각을 부정합니다.`,
-    `q가 아니면 p가 아니다의 형태로 바꾸면 “${correct}”입니다.`,
-    `따라서 정답은 ${correct}`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 10: 참·거짓 판단과 반례
-function genPracticePropositionTruth(){
-  const falseItems=[
-    '자연수 n이 3의 배수이면 n은 6의 배수이다.',
-    '정수 n이 홀수이면 n²은 짝수이다.',
-    '자연수 n이 5의 배수이면 n은 10의 배수이다.'
-  ];
-  const trueItems=[
-    '자연수 n이 6의 배수이면 n은 3의 배수이다.',
-    '정수 n²이 짝수이면 n은 짝수이다.',
-    '자연수 n이 4의 배수이면 n은 짝수이다.',
-    '실수 x가 7보다 크면 x는 2보다 크다.'
-  ];
-  const correct=pick(falseItems),wrongs=shuffle([...trueItems]).slice(0,3),{choices,answer}=makeChoices(correct,wrongs);
-  return{topic:'명제의 참·거짓',q:'다음 중 거짓인 명제는? (n은 자연수, 정수 조건은 정수 전체에서 판단한다.)',choices,answer,meta:{category:'set',type:'집합과 명제',diff:'기초'},sol:[
-    `명제가 거짓임을 보이려면 조건을 만족하지만 결론은 만족하지 않는 반례를 찾습니다.`,
-    `정답 문장에서 조건에 맞는 간단한 수를 대입하면 결론이 성립하지 않음을 확인할 수 있습니다.`,
-    `나머지 명제는 조건이 결론을 보장합니다.`
-  ]};
-}
-
-// 문제풀이 전용 확장 유형 11: 부등식 조건으로 필요·충분조건 판별
-function genPracticeIntervalCondition(){
-  const a=randInt(2,8),d=randInt(-2,2),b=a+d,kind=d===0?'필요충분조건':d>0?'충분조건':'필요조건';
-  const choices=['충분조건','필요조건','필요충분조건','어느 것도 아님'],{choices:ordered,answer}=makeChoices(kind,choices.filter(x=>x!==kind));
-  return{topic:'부등식과 조건',q:`실수 x에 대하여 p: x<${a}, q: x<${b}일 때, p는 q의 어떤 조건인가?`,choices:ordered,answer,meta:{category:'set',type:'집합과 명제',diff:'응용'},sol:[
-    `p가 q의 충분조건인지 보려면 p의 해가 q의 해를 항상 만족하는지 확인합니다.`,
-    d>0?`x<${a}이면 x<${b}이므로 p이면 q입니다.`:d<0?`x<${b}이면 x<${a}이므로 q이면 p입니다.`:`두 조건의 해가 모두 x<${a}로 같습니다.`,
-    `따라서 p는 q의 ${kind}입니다.`
-  ]};
 }
 
 // 4-8. 합성함수 (g∘f)(a)  (기출 Q17 패턴A)
