@@ -1970,9 +1970,9 @@ var GED_UNITS=(function(){
     }
   },
   { id:'u16', tag:'16번', area:'D', title:'명제', src:'2023~2026 매회 16번',
-    fields:[{k:'kind',label:'문제 종류',sel:['명제 고르기','역','대우','부정 (아닌 것)','필요·충분조건']},{k:'seed',label:'문제 번호 (바꾸면 다른 문제)',min:1,max:999}],
+    fields:[{k:'kind',label:'문제 종류',sel:['명제 고르기','역','대우','부정 (아닌 것)','조건과 상수 a','필요·충분조건']},{k:'seed',label:'문제 번호 (바꾸면 다른 문제)',min:1,max:999}],
     def:{kind:'명제 고르기',seed:7},
-    rand(){return{kind:pick(['명제 고르기','명제 고르기','역','역','대우','부정 (아닌 것)','필요·충분조건']),seed:rnd(1,999)};},
+    rand(){return{kind:pick(['명제 고르기','명제 고르기','역','역','대우','대우','조건과 상수 a','조건과 상수 a','필요·충분조건']),seed:rnd(1,999)};},   // 기출 15·16번 : 부정은 기출에 없어 뽑지 않고(직접 고르면 가능), 필요·충분조건은 상수 a 꼴을 주로
     build(p){
       const rng=mulberry(p.seed*7919+11);const T=['ㄱ','ㄴ','ㄷ','ㄹ'];
       if(p.kind==='명제 고르기'){
@@ -2010,6 +2010,20 @@ var GED_UNITS=(function(){
           ?[`대우 = 앞뒤를 바꾸고 둘 다 부정합니다.`,`뒤의 '${e.q.e}'를 부정해 앞에 놓고, 앞의 '${e.p.e}'를 부정해 뒤에 놓습니다.`,`따라서 '${target}'`]
           :[`부정(이) = <b>앞뒤는 그대로</b> 두고 둘 다 부정합니다.`,`'${e.p.e}'를 부정, '${e.q.e}'를 부정합니다.`,`따라서 '${target}'`];
         return{q,choices:sh.map(o=>o.s),raw:true,layout:'two',ans,sol,answerRaw:target};
+      }
+      /* ── 기출 꼴 : 일차 조건 p, 이차 조건 q 에서 상수 a (2024-2 · 2025-1 · 2026-1) ── */
+      if(p.kind==='조건과 상수 a'){
+        const t=Math.floor(rng()*3),pk=(arr)=>arr[Math.floor(rng()*arr.length)];
+        const ch=(a0)=>numChoices(a0);
+        if(t===0){const c=pk([2,3,4]),a0=c*c,k=ch(a0);
+          return{q:`두 조건 ${tex(`p: x-${c}=0`)}, ${tex('q: x^2-a=0')}에 대하여 ${tex('p')}가 ${tex('q')}이기 위한 <b>충분조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(a0),
+            sol:[`충분조건이면 '${tex('p')}이면 ${tex('q')}이다'가 참입니다. 즉 ${tex('p')}의 해가 ${tex('q')}의 해이기도 해야 합니다.`,`${tex('p')}의 해는 ${tex(`x=${c}`)} 입니다. 이것을 ${tex('x^2-a=0')}에 넣으면 ${tex(`${c*c}-a=0`)}`,`따라서 ${tex(`a=${a0}`)}`]};}
+        if(t===1){const c=pk([2,3,4]),a0=c-1,k=ch(a0);
+          return{q:`두 조건 ${tex(`p: x-${c}=0`)}, ${tex(`q: x^2-ax-${c}=0`)}에 대하여 ${tex('q')}가 ${tex('p')}이기 위한 <b>필요조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(a0),
+            sol:[`${tex('q')}가 ${tex('p')}이기 위한 필요조건이면 '${tex('p')}이면 ${tex('q')}이다'가 참입니다. 즉 ${tex('p')}의 해가 ${tex('q')}의 해이기도 해야 합니다.`,`${tex(`x=${c}`)}을 ${tex(`x^2-ax-${c}=0`)}에 넣으면 ${tex(`${c*c}-${c}a-${c}=0`)}, ${tex(`${c}a=${c*c-c}`)}`,`따라서 ${tex(`a=${a0}`)}`]};}
+        const c=pk([4,5,6,7]),k=ch(c);
+        return{q:`두 조건 ${tex('p')}, ${tex('q')}는 ${tex(`p: x=${c}`)}, ${tex('q: (x-a)^2=0')} 이다. ${tex('p')}는 ${tex('q')}이기 위한 <b>필요충분조건</b>이 되도록 하는 상수 ${tex('a')}의 값은?`,choices:k.list,ans:k.ans,answerTex:nf(c),
+          sol:[`필요충분조건이면 두 조건의 해가 정확히 같아야 합니다.`,`${tex('(x-a)^2=0')}의 해는 ${tex('x=a')} 하나뿐입니다. ${tex('p')}의 해는 ${tex(`x=${c}`)}`,`따라서 ${tex(`a=${c}`)}`]};
       }
       const pool=[{p:tex('x=2'),q:tex('x^2=4'),a:0},{p:tex('x^2=4'),q:tex('x=2'),a:1},{p:tex('x=2'),q:tex('2x=4'),a:2},{p:'a는 4의 배수',q:'a는 2의 배수',a:0},{p:'a는 2의 배수',q:'a는 4의 배수',a:1},{p:tex('x>2'),q:tex('x>0'),a:0},{p:tex('x+1=3'),q:tex('x=2'),a:2}];
       const e=pool[Math.floor(rng()*pool.length)];const names=['충분조건','필요조건','필요충분조건','어느 조건도 아니다'];

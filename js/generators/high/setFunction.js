@@ -247,47 +247,46 @@ function gen_proposition(){
     ]};
 }
 
-// 4-7. 필요조건/충분조건/필요충분조건  (기출 Q16: 2024-2, 2025-1·2, 2026-1)
-// 세 유형: 충분조건(p→q, p⊆q), 필요조건(q→p, q⊆p), 필요충분조건(p=q)
+// 4-7. 필요조건/충분조건/필요충분조건  (기출 Q15·16: 2024-2 · 2025-1·2 · 2026-1)
+// 실제 기출은 모두 '일차 조건 p 와 이차 조건 q 의 상수 a' 한 단계짜리다 :
+//   충분  p: x−2=0, q: x²−a=0 (2024-2)       → a=c²
+//   필요  p: x−3=0, q: x²−ax−3=0 (2025-1)    → a=c−1
+//   충분조건·필요충분  p: x=7, q: (x−a)²=0 (2026-1) → a=c
+// (예전의 '두 근 중 양수 a' · 'a 의 최솟값' 꼴은 기출보다 어려워 뺐다)
 function gen_nec_suff(){
   const t=pick([1,2,3]);
+  const mk=(correct,wr)=>{const set=[...new Set(wr.filter(w=>w!==correct&&w>0))];for(let d=1;set.length<3;d++){if(!set.includes(correct+d))set.push(correct+d);}
+    return makeChoices(String(correct),set.slice(0,3).map(String));};
   if(t===1){
-    // 충분조건: p: x=a, q: x²-Sx+P=0 → p가 q의 충분조건 ↔ a∈{r1,r2}
-    const r1=pick([2,3,4]),r2=r1+pick([1,2,3]);
-    const S=r1+r2,P=r1*r2;
-    const a=pick([r1,r2]);
-    const{choices,answer}=makeChoices(String(a),[r2===a?r2+1:r2,a+2,a+3].filter(w=>w!==a&&w>0).slice(0,3).map(String));
-    return{topic:'충분조건',q:`두 조건 p: x=a, q: x²−${S}x+${P}=0에 대하여 p가 q이기 위한 충분조건이 되도록 하는 양수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    const c=pick([2,3,4]),a=c*c;
+    const{choices,answer}=mk(a,[c,2*c,a+1,a-1,c+2]);
+    return{topic:'충분조건',q:`두 조건 'p: x−${c}=0', 'q: x²−a=0'에 대하여 p가 q이기 위한 충분조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
       sol:[
-        `p가 q의 충분조건 ↔ 'p이면 q이다'가 성립 ↔ p의 경우가 q를 만족해야 합니다.`,
-        `q: x²−${S}x+${P}=0의 해를 구합니다. (x−${r1})(x−${r2})=0 → x=${r1} 또는 x=${r2}`,
-        `p: x=a가 q의 충분조건 ↔ a는 q의 해 중 하나 → a=${r1} 또는 a=${r2}`,
-        `양수 조건에 맞는 a = ${a}입니다.`
+        `p가 q이기 위한 충분조건이면 'p이면 q이다'가 참입니다. 즉 p의 해가 q의 해이기도 해야 합니다.`,
+        `p: x−${c}=0 의 해는 x=${c} 입니다.`,
+        `x=${c}를 q: x²−a=0 에 넣으면 ${c*c}−a=0 이므로 a=${a}`,
+        `따라서 a=${a}입니다.`
       ]};
   }
   if(t===2){
-    // 필요조건: p: lo<x<a, q: lo<x<hi → p가 q의 필요조건 ↔ q⊆p ↔ a≥hi → 최솟값=hi
-    const lo=randInt(0,2),hi=lo+randInt(3,5);
-    const ans=hi;
-    const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1,ans+2].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
-    return{topic:'필요조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p가 q이기 위한 필요조건이 되도록 하는 자연수 a의 최솟값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+    const c=pick([2,3,4]),a=c-1;
+    const{choices,answer}=mk(a,[c,c+1,a+2,2*c,c-2]);
+    return{topic:'필요조건',q:`두 조건 'p: x−${c}=0', 'q: x²−ax−${c}=0'에 대하여 q가 p이기 위한 필요조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
       sol:[
-        `p가 q의 필요조건 ↔ 'q이면 p이다'가 성립 ↔ q의 범위가 p의 범위에 포함되어야 합니다.`,
-        `q의 범위: ${lo}<x<${hi},  p의 범위: ${lo}<x<a`,
-        `q⊆p가 되려면 q의 오른쪽 끝 ${hi}보다 a가 같거나 커야 합니다: a ≥ ${hi}`,
-        `자연수 중 최솟값은 a = ${ans}입니다.`
+        `q가 p이기 위한 필요조건이면 'p이면 q이다'가 참입니다. 즉 p의 해 x=${c}가 q의 해이기도 해야 합니다.`,
+        `x=${c}를 q: x²−ax−${c}=0 에 넣으면 ${c*c}−${c}a−${c}=0`,
+        `${c}a=${c*c-c} 이므로 a=${a}`,
+        `따라서 a=${a}입니다.`
       ]};
   }
-  // 필요충분조건: p: lo<x<a, q: lo<x<hi → p↔q ↔ a=hi
-  const lo=randInt(1,3),hi=lo+randInt(2,4);
-  const ans=hi;
-  const{choices,answer}=makeChoices(String(ans),[ans+1,ans-1>lo?ans-1:ans+2,ans+2].filter(w=>w!==ans&&w>lo).slice(0,3).map(String));
-  return{topic:'필요충분조건',q:`두 조건 p: ${lo}<x<a, q: ${lo}<x<${hi}에 대하여 p와 q가 서로 필요충분조건이 되도록 하는 자연수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
+  const c=pick([4,5,6,7]),a=c;
+  const{choices,answer}=mk(a,[c-1,c+1,c+2,2*c,c-2]);
+  return{topic:'필요충분조건',q:`두 조건 p, q는 p: x=${c}, q: (x−a)²=0 이다. p는 q이기 위한 필요충분조건이 되도록 하는 상수 a의 값은?`,choices,answer,meta:{category:'set',type:'집합과 함수',diff:'기초'},
     sol:[
-      `p가 q의 필요충분조건 ↔ p와 q가 완전히 같은 범위 ↔ 두 조건의 진리집합이 동일합니다.`,
-      `p의 범위: ${lo}<x<a,  q의 범위: ${lo}<x<${hi}`,
-      `두 범위가 완전히 일치하려면 a = ${hi}이어야 합니다.`,
-      `따라서 a = ${ans}입니다.`
+      `필요충분조건이면 두 조건의 해가 정확히 같아야 합니다.`,
+      `q: (x−a)²=0 의 해는 x=a 하나뿐입니다. p의 해는 x=${c} 입니다.`,
+      `두 해가 같으려면 a=${a}`,
+      `따라서 a=${a}입니다.`
     ]};
 }
 
